@@ -1,0 +1,34 @@
+
+Exam Quiz App
+
+1.	Login with google
+2.	Login with facebook
+
+
+Home screen
+1.	As a learner I want to view all available subjects
+2.	As a learner I want to add a subject to my profile
+3.	3. As a learner, I want to see all the subjects added to my profile
+a.	Number of questions for the subject
+b.	Number of questions answered
+c.	Progress bar for my progress
+d.	An option to remove the subject from my profile
+4.	As a learner when I remove a subject from my profile I want a pop up to confirm
+
+Profile screen
+1.	Change grade
+2.	Change name
+3.	I want an option to see all exam questions. Toggle 
+4.	Signout
+
+Question screen
+1.	As a learner I want to see a question when I click on my subject card
+2.	As a learner I want to answer a question and see feedback including the correct answer
+3.	As a learner I want to skip a question
+4.	As a learner I want to I want to report a question (link to whatsapp)
+5.	As a learner I want to see my progress bar as I am answering the questions
+6.	As a learner I want to get the next question when I click next or skip
+7.	As a learner, I want to be able to answer questions of different types:
+a.	Multiple choice
+b.	True or false
+c.	Simple question with input field
