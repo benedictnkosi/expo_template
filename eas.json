@@ -11,7 +11,12 @@
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "withoutCredentials": false,
+        "env": {
+          "ANDROID_NDK_HOME": "/usr/local/share/android-ndk"
+        }
       }
     },
     "preview2": {
@@ -26,4 +31,4 @@
   "submit": {
     "production": {}
   }
-} 
+}

@@ -21,7 +21,8 @@ export default {
     },
     permissions: [
       'INTERNET'
-    ]
+    ],
+    "googleServicesFile": "./google-services.json",
   },
   web: {
     bundler: 'metro',
