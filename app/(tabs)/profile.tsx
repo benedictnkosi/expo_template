@@ -9,6 +9,7 @@ import { getLearner, updateLearner, fetchGrades } from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
+import Modal from 'react-native-modal';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -143,9 +144,10 @@ export default function ProfileScreen() {
   };
 
   const CustomAlert = () => (
-    <BottomSheetModal
-      isOpen={showAlert}
-      onDismiss={() => setShowAlert(false)}
+    <Modal
+      isVisible={showAlert}
+      onBackdropPress={() => setShowAlert(false)}
+      style={styles.modal}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.alertContainer}>
@@ -181,7 +183,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
-    </BottomSheetModal>
+    </Modal>
   );
 
   const handleSuccess = () => {
@@ -453,5 +455,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  modal: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
 }); 
