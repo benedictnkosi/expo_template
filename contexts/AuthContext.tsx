@@ -29,13 +29,17 @@ async function createLearner(uid: string, router: any) {
       }
     );
 
-    if (!response.ok) {
-      throw new Error('Failed to create learner');
-    }
+    const data = await response.json();
 
-    router.replace('/(tabs)');
+    if (data.status === 'OK') {
+      // Redirect to home page on success
+      router.replace('/(tabs)');
+    } else {
+      console.error('Failed to create learner:', data);
+    }
   } catch (error) {
     console.error('Error creating learner:', error);
+    throw error;
   }
 }
 

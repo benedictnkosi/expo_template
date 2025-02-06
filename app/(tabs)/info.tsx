@@ -1,7 +1,8 @@
-import { StyleSheet, ScrollView, Platform } from 'react-native';
+import { StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
+import { Linking } from 'react-native';
 
 interface FAQItem {
   question: string;
@@ -11,31 +12,31 @@ interface FAQItem {
 const FAQ_ITEMS: FAQItem[] = [
   {
     question: "How does the quiz work?",
-    answer: "Select a subject from your enrolled subjects. You'll be presented with questions one at a time. Answer each question and get immediate feedback. You can skip questions or move to the next one after answering."
+    answer: "Select a subject from your enrolled subjects. You'll be presented with past exam questions one at a time. Each question includes detailed solutions and explanations. Track your progress and improve your understanding of key concepts."
   },
   {
-    question: "How do I add subjects?",
-    answer: "On the home screen, scroll down to 'Available Subjects' and tap on any subject you want to add. It will immediately appear in 'Your Subjects' section."
+    question: "How do I get started?",
+    answer: "After signing in with Google, select your grade and add subjects you want to practice. You can find available subjects on the home screen and tap to add them to your list."
   },
   {
-    question: "Can I remove subjects?",
-    answer: "Yes, in 'Your Subjects' section, tap the remove (⊝) button next to any subject. Note that this will reset your progress for that subject."
+    question: "Can I change my grade?",
+    answer: "Yes, you can change your grade in the profile section. Note that changing your grade will reset your progress as questions are grade-specific."
   },
   {
     question: "How is my progress tracked?",
-    answer: "Each subject shows your progress with the number of questions answered and a progress bar. Your progress is saved automatically as you answer questions."
+    answer: "Each subject shows your total questions, answered questions, and correct answers. Your progress is saved automatically and you can track your improvement over time."
   },
   {
-    question: "What types of questions are there?",
-    answer: "There are two types: multiple choice questions where you select from options, and text input questions where you type your answer."
+    question: "Need help or have suggestions?",
+    answer: "We're here to help! Click the WhatsApp button above to chat with us directly. We welcome your feedback and questions."
   },
   {
-    question: "Can I update my profile?",
-    answer: "Yes, tap on the profile tab to update your name and grade at any time."
+    question: "Can I practice offline?",
+    answer: "Currently, an internet connection is required to access questions and track your progress. We're working on offline support for future updates."
   },
   {
-    question: "What if I can't see the question image clearly?",
-    answer: "Tap on any question image to view it in full screen. You can zoom in and swipe down to close."
+    question: "How often are new questions added?",
+    answer: "We regularly update our question bank with new past exam papers. Questions are carefully selected and verified by subject matter experts."
   }
 ];
 
@@ -53,6 +54,15 @@ export default function InfoScreen() {
             How It Works
           </ThemedText>
         </ThemedView>
+
+        <TouchableOpacity
+          style={styles.whatsappButton}
+          onPress={() => Linking.openURL('https://api.whatsapp.com/send/?phone=27837917430&text=Hi')}
+        >
+          <ThemedText style={styles.whatsappText}>
+            👋 Say hi on WhatsApp
+          </ThemedText>
+        </TouchableOpacity>
 
         <ThemedView style={styles.content}>
           {FAQ_ITEMS.map((item, index) => (
@@ -121,5 +131,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     lineHeight: 24,
+  },
+  whatsappButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    marginHorizontal: 20,
+    marginTop: 12,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+    }),
+  },
+  whatsappText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#25D366', // WhatsApp brand color
   },
 }); 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, TextInput, ScrollView, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, TextInput, ScrollView, View, Linking } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
+import Toast from 'react-native-toast-message';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -64,6 +65,16 @@ function cleanAnswer(answer: string): string {
         return answer;
     }
 }
+
+const reportIssue = (questionId: number) => {
+    const message = `Hi, I'd like to report an issue with question #${questionId}`;
+    Linking.openURL(`https://api.whatsapp.com/send/?phone=27837917430&text=${encodeURIComponent(message)}`);
+    Toast.show({
+        type: 'info',
+        text1: 'Opening WhatsApp',
+        position: 'bottom'
+    });
+};
 
 export default function QuizScreen() {
     const { user } = useAuth();
@@ -405,6 +416,15 @@ export default function QuizScreen() {
                             )}
                         </ThemedView>
                     )}
+
+                    <TouchableOpacity
+                        style={styles.reportButton}
+                        onPress={() => reportIssue(question.id)}
+                    >
+                        <ThemedText style={styles.reportButtonText}>
+                            ⚠️ Report Issue
+                        </ThemedText>
+                    </TouchableOpacity>
                 </ThemedView>
             </ScrollView>
 
@@ -702,5 +722,17 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'right',
         marginBottom: 8,
+    },
+    reportButton: {
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        padding: 8,
+        borderRadius: 8,
+        alignSelf: 'flex-end',
+        marginTop: 8,
+    },
+    reportButtonText: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
     },
 }); 

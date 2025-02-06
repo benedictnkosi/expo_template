@@ -1,4 +1,4 @@
-import React, { StyleSheet, TouchableOpacity, View, Image, ScrollView, TextInput, Alert, Platform, Modal } from 'react-native';
+import React, { StyleSheet, TouchableOpacity, View, Image, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +7,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { useState, useEffect } from 'react';
 import { getLearner, updateLearner, fetchGrades } from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import Toast from 'react-native-toast-message';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -120,16 +122,8 @@ export default function ProfileScreen() {
         grade: editGrade,
         imagePath: user.photoURL || undefined
       });
-      Alert.alert(
-        'Success',
-        'Profile updated successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => router.back()
-          }
-        ]
-      );
+      setIsEditing(false);
+      handleSuccess();
     } catch (error) {
       console.error('Failed to update profile:', error);
       Alert.alert('Error', 'Failed to update profile');
@@ -149,10 +143,9 @@ export default function ProfileScreen() {
   };
 
   const CustomAlert = () => (
-    <Modal
-      visible={showAlert}
-      transparent
-      animationType="fade"
+    <BottomSheetModal
+      isOpen={showAlert}
+      onDismiss={() => setShowAlert(false)}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.alertContainer}>
@@ -188,8 +181,16 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
-    </Modal>
+    </BottomSheetModal>
   );
+
+  const handleSuccess = () => {
+    Toast.show({
+      type: 'success',
+      text1: 'Profile updated successfully',
+      position: 'bottom'
+    });
+  };
 
   return (
     <LinearGradient
