@@ -9,11 +9,11 @@ export default {
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.nkosib.examquiz',
+    bundleIdentifier: 'za.co.examquiz',
     buildNumber: '1.0.0'
   },
   android: {
-    package: 'com.nkosib.examquiz',
+    package: 'za.co.examquiz',
     versionCode: 1,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
@@ -21,8 +21,7 @@ export default {
     },
     permissions: [
       'INTERNET'
-    ],
-    "googleServicesFile": "./google-services.json",
+    ]
   },
   web: {
     bundler: 'metro',

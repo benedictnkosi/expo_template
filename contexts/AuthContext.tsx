@@ -4,6 +4,9 @@ import { auth } from '@/config/firebase';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getLearner } from '@/services/api';
+import { router } from 'expo-router';
+import { addDoc, collection } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -16,27 +19,14 @@ const AuthContext = createContext<AuthContextType>({ user: null, isLoading: true
 const API_BASE_URL = 'https://prices.aluvefarm.co.za';
 
 // Add function to create learner
-async function createLearner(uid: string, router: any) {
+async function createLearner(user: FirebaseUser) {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/public/learn/learner/create`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ uid })
-      }
-    );
-
-    const data = await response.json();
-
-    if (data.status === 'OK') {
-      // Redirect to home page on success
-      router.replace('/(tabs)');
-    } else {
-      console.error('Failed to create learner:', data);
-    }
+    await addDoc(collection(db, 'learners'), {
+      uid: user.uid,
+      email: user.email,
+      createdAt: new Date(),
+    });
+    // Don't navigate here - let the auth state change handler handle navigation
   } catch (error) {
     console.error('Error creating learner:', error);
     throw error;
@@ -44,43 +34,53 @@ async function createLearner(uid: string, router: any) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [isReady, setIsReady] = useState(false);
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
+    // Initialize auth state
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Create learner when user signs in
-        await createLearner(user.uid, router);
+      try {
+        if (user) {
+          // User is signed in
+          const learnerDoc = await getLearner(user.uid);
+          if (!learnerDoc) {
+            await createLearner(user);
+          }
+          setUser(user);
+          setIsReady(true);
+          // Use setTimeout to ensure layout is mounted
+          setTimeout(() => {
+            router.replace('/(tabs)');
+          }, 0);
+        } else {
+          // User is signed out
+          setUser(null);
+          setIsReady(true);
+          setTimeout(() => {
+            router.replace('/login');
+          }, 0);
+        }
+      } catch (error) {
+        console.error('Auth state change error:', error);
+        setIsReady(true);
       }
-      setUser(user);
-      setIsLoading(false);
     });
 
     return unsubscribe;
-  }, [router]);
+  }, []);
 
-  const signOut = async () => {
-    try {
+  const authValue: AuthContextType = {
+    user,
+    isLoading: !isReady,
+    signOut: async () => {
       await firebaseSignOut(auth);
-      setUser(null);
-    } catch (error) {
-      console.error('Error signing out:', error);
-      throw error; // Re-throw to handle in the UI
     }
   };
 
-  // Don't render children until we've checked auth state
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#6B4EFF" />
-      </View>
-    );
-  }
+  if (!isReady) return null;
 
-  return <AuthContext.Provider value={{ user, isLoading, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

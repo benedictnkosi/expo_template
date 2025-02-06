@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
-import { signInWithPopup, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  GoogleAuthProvider,
+  signInWithCredential
+} from 'firebase/auth';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,7 +42,7 @@ export default function LoginScreen() {
           const credential = GoogleAuthProvider.credential(
             result.authentication?.accessToken
           );
-          await auth.signInWithCredential(credential);
+          await signInWithCredential(auth, credential);
           router.replace('/(tabs)');
         }
       }

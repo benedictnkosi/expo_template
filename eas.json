@@ -6,26 +6,28 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
-        "withoutCredentials": false,
-        "env": {
-          "ANDROID_NDK_HOME": "/usr/local/share/android-ndk"
-        }
-      }
+        "withoutCredentials": true
+      },
+      "channel": "preview"
     },
     "preview2": {
       "android": {
-        "gradleCommand": ":app:assembleRelease"
-      }
+        "gradleCommand": ":app:assembleRelease",
+        "withoutCredentials": true
+      },
+      "channel": "preview2"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production"
     }
   },
   "submit": {
