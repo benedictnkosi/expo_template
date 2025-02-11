@@ -26,7 +26,7 @@
     "@react-navigation/bottom-tabs": "~7.2.0",
     "@react-navigation/native": "~7.0.0",
     "@types/react-native-modal": "^4.1.1",
-    "expo": "~52.0.30",
+    "expo": "^52.0.30",
     "expo-auth-session": "~6.0.3",
     "expo-blur": "~14.0.3",
     "expo-constants": "~17.0.5",
@@ -54,7 +54,8 @@
     "react-native-screens": "~4.4.0",
     "react-native-toast-message": "~2.2.0",
     "react-native-web": "~0.19.13",
-    "react-native-webview": "13.12.5"
+    "react-native-webview": "13.12.5",
+    "expo-build-properties": "~0.13.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

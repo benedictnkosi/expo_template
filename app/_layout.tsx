@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useAuthNavigation } from './auth/navigation';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -17,6 +18,7 @@ export {
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
+  const { navigateToLogin, navigateToHome } = useAuthNavigation();
   const { user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -25,11 +27,9 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!user && !inAuthGroup) {
-      // Redirect to login if user is not logged in
-      router.replace('/login');
+      navigateToLogin();
     } else if (user && inAuthGroup) {
-      // Redirect to home if user is logged in and trying to access auth pages
-      router.replace('/(tabs)');
+      navigateToHome();
     }
   }, [user, segments]);
 

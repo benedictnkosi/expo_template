@@ -16,7 +16,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({ user: null, isLoading: true, signOut: async () => { } });
 
-const API_BASE_URL = 'https://prices.aluvefarm.co.za';
+//const API_BASE_URL = 'https://prices.aluvefarm.co.za';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // Add function to create learner
 async function createLearner(user: FirebaseUser) {

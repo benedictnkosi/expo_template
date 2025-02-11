@@ -10,7 +10,8 @@ export default {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'za.co.examquiz',
-    buildNumber: '1.0.0'
+    buildNumber: '1.0.0',
+    deploymentTarget: "15.1"
   },
   android: {
     package: 'za.co.examquiz',
@@ -19,9 +20,16 @@ export default {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#ffffff'
     },
-    permissions: [
-      'INTERNET'
-    ]
+    permissions: ['INTERNET'],
+    softwareKeyboardLayoutMode: "pan",
+    allowBackup: true,
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON,
+    config: {
+      googleSignIn: {
+        apiKey: "AIzaSyCjV86H9STLEy1SyWVyedLUlUFQB7ABIJ8",
+        certificateHash: "your-certificate-hash"
+      }
+    }
   },
   web: {
     bundler: 'metro',
@@ -30,6 +38,20 @@ export default {
   },
   plugins: [
     'expo-router',
+    '@react-native-google-signin/google-signin',
+    [
+      'expo-build-properties',
+      {
+        android: {
+          compileSdkVersion: 33,
+          targetSdkVersion: 33,
+          buildToolsVersion: "33.0.0"
+        },
+        ios: {
+          deploymentTarget: "15.1"
+        }
+      }
+    ],
     [
       'expo-splash-screen',
       {

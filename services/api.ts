@@ -1,6 +1,5 @@
 import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse } from '@/types/api';
-
-export const API_BASE_URL = 'https://prices.aluvefarm.co.za';
+import { API_BASE_URL } from '@/config/api';
 
 export async function fetchAvailableSubjects(uid: string): Promise<SubjectsResponse> {
   const response = await fetch(

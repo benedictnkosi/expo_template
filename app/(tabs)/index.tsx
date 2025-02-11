@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
         elevation: 8,
       },
       web: {
-        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)',
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
       },
     }),
   },

@@ -8,6 +8,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkAnswer, getLearner, API_BASE_URL } from '@/services/api';
+import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
 
 interface Question {
     id: number;
@@ -113,7 +114,7 @@ export default function QuizScreen() {
             setIsLoading(true);
             setInputAnswer('');
             const response = await fetch(
-                `https://prices.aluvefarm.co.za/public/learn/question/random?subject_id=${subjectId}&uid=${user.uid}&question_id=0`
+                `${ConfigAPI_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${user.uid}&question_id=0`
             );
 
             if (!response.ok) {
@@ -193,7 +194,7 @@ export default function QuizScreen() {
                                 try {
                                     if (!user?.uid || !subjectId) return;
                                     await fetch(
-                                        `${API_BASE_URL}/public/learn/learner/remove-results`,
+                                        `${ConfigAPI_BASE_URL}/public/learn/learner/remove-results`,
                                         {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
@@ -295,7 +296,7 @@ export default function QuizScreen() {
                             >
                                 <Image
                                     source={{
-                                        uri: `https://prices.aluvefarm.co.za/public/learn/learner/get-image?image=${question.image_path}`
+                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                     }}
                                     style={styles.questionImage}
                                     resizeMode="contain"
@@ -322,7 +323,7 @@ export default function QuizScreen() {
                                     </TouchableOpacity>
                                     <Image
                                         source={{
-                                            uri: `https://prices.aluvefarm.co.za/public/learn/learner/get-image?image=${question.image_path}`
+                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                         }}
                                         style={styles.fullScreenImage}
                                         resizeMode="contain"
@@ -335,7 +336,7 @@ export default function QuizScreen() {
                     {question.question_image_path ? (
                         <Image
                             source={{
-                                uri: `https://prices.aluvefarm.co.za/public/learn/learner/get-image?image=${question.question_image_path}`
+                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
                             }}
                             style={styles.questionImage}
                             resizeMode="contain"
@@ -406,7 +407,7 @@ export default function QuizScreen() {
                                     {question.answer_image && (
                                         <Image
                                             source={{
-                                                uri: `https://prices.aluvefarm.co.za/public/learn/learner/get-image?image=${question.answer_image}`
+                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
                                             }}
                                             style={styles.answerImage}
                                             resizeMode="contain"
