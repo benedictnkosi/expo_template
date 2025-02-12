@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCjV86H9STLEy1SyWVyedLUlUFQB7ABIJ8",
+  apiKey: "............",
   authDomain: "aluve-learn.firebaseapp.com",
   projectId: "aluve-learn",
   storageBucket: "aluve-learn.firebasestorage.app",
