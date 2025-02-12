@@ -7,11 +7,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 
 interface AuthContextType {
-  user: {
-    photoURL: string | null;
-    displayName: string | null;
-    // ... other user properties
-  } | null;
+  user: FirebaseUser | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
 }
@@ -19,7 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  signOut: async () => {}
+  signOut: async () => { }
 });
 
 //const API_BASE_URL = 'https://prices.aluvefarm.co.za';
@@ -42,6 +38,7 @@ async function createLearner(user: FirebaseUser) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasProfile, setHasProfile] = useState(false);
   const segments = useSegments();
   const router = useRouter();
 
@@ -53,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!learnerDoc) {
             await createLearner(user);
           }
+          setHasProfile(!!learnerDoc?.name && !!learnerDoc?.grade);
         }
         setUser(user);
       } catch (error) {
@@ -65,18 +63,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  // Handle routing based on auth state
   useEffect(() => {
     if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    
-    if (!user && !inAuthGroup) {
+    const inLoginScreen = segments.join('/') === 'login';
+    const inOnboarding = segments.join('/').includes('onboarding');
+
+    if (!user && !inLoginScreen) {
       router.replace('/login');
-    } else if (user && inAuthGroup) {
+    } else if (user && !hasProfile && !inOnboarding) {
+      router.replace('/(auth)/onboarding/welcome');
+    } else if (user && hasProfile && (inAuthGroup || inLoginScreen)) {
       router.replace('/(tabs)');
     }
-  }, [user, segments, isLoading]);
+  }, [user, isLoading, segments, hasProfile]);
 
   const authValue: AuthContextType = {
     user,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { router } from 'expo-router';
+import { router, useRouter } from 'expo-router';
 import { signInWithPopup, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -17,6 +17,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
@@ -29,22 +30,14 @@ export default function Login() {
     setError(null);
     try {
       if (Platform.OS === 'web') {
-        const result = await signInWithPopup(auth, googleProvider);
-        if (result.user) {
-          router.replace('/(tabs)');
-        }
+        await signInWithPopup(auth, googleProvider);
       } else {
         const result = await promptAsync();
         if (result?.type === 'success') {
           const credential = GoogleAuthProvider.credential(
             result.authentication?.idToken
           );
-          const userCredential = await signInWithCredential(auth, credential);
-          if (userCredential.user) {
-            router.replace('/(tabs)');
-          }
-        } else if (result?.type === 'error') {
-          setError('Failed to sign in with Google. Please try again.');
+          await signInWithCredential(auth, credential);
         }
       }
     } catch (error) {

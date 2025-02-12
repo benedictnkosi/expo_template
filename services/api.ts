@@ -132,7 +132,10 @@ export async function getLearner(uid: string): Promise<LearnerResponse> {
   return response.json();
 }
 
-export async function updateLearner(uid: string, name: string, grade: string): Promise<void> {
+export async function updateLearner(uid: string, data: {
+  name: string;
+  grade: number;
+}) {
   const response = await fetch(
     `${API_BASE_URL}/public/learn/learner/update`,
     {
@@ -142,8 +145,8 @@ export async function updateLearner(uid: string, name: string, grade: string): P
       },
       body: JSON.stringify({
         uid,
-        name,
-        grade: grade.toString()
+        name: data.name,
+        grade: data.grade.toString()
       })
     }
   );

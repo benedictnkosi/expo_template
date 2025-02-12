@@ -11,13 +11,6 @@ import { Subject } from '@/types/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Temporary mock data
-const MOCK_SUBJECTS = [
-  { id: '1', name: 'Mathematics', totalQuestions: 100, answeredQuestions: 0 },
-  { id: '2', name: 'Science', totalQuestions: 80, answeredQuestions: 0 },
-  { id: '3', name: 'History', totalQuestions: 75, answeredQuestions: 0 },
-  { id: '4', name: 'English', totalQuestions: 90, answeredQuestions: 0 },
-  { id: '5', name: 'Geography', totalQuestions: 60, answeredQuestions: 0 },
-];
 
 export default function HomeScreen() {
   const { user } = useAuth();
