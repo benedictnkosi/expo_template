@@ -5,9 +5,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuthNavigation } from './auth/navigation';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../config/firebase';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -53,7 +55,6 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -70,10 +71,7 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-      </Stack>
+      <Slot />
     </AuthProvider>
   );
 }

@@ -1,26 +1,22 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { router } from 'expo-router';
-import {
-  signInWithPopup,
-  signInWithRedirect,
-  GoogleAuthProvider,
-  signInWithCredential
-} from 'firebase/auth';
+import { signInWithPopup, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { LinearGradient } from 'expo-linear-gradient';
-
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { auth, googleProvider } from '@/config/firebase';
 import { GOOGLE_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '@/config/oauth';
 
 // Initialize WebBrowser for OAuth
 WebBrowser.maybeCompleteAuthSession();
 
-export default function LoginScreen() {
+export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
@@ -30,37 +26,30 @@ export default function LoginScreen() {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       if (Platform.OS === 'web') {
-        // Web platform uses Firebase popup
-        await signInWithPopup(auth, googleProvider);
-        router.replace('/(tabs)');
+        const result = await signInWithPopup(auth, googleProvider);
+        if (result.user) {
+          router.replace('/(tabs)');
+        }
       } else {
-        // Mobile platforms use Expo Auth Session
         const result = await promptAsync();
         if (result?.type === 'success') {
           const credential = GoogleAuthProvider.credential(
-            result.authentication?.accessToken
+            result.authentication?.idToken
           );
-          await signInWithCredential(auth, credential);
-          router.replace('/(tabs)');
+          const userCredential = await signInWithCredential(auth, credential);
+          if (userCredential.user) {
+            router.replace('/(tabs)');
+          }
+        } else if (result?.type === 'error') {
+          setError('Failed to sign in with Google. Please try again.');
         }
       }
     } catch (error) {
       console.error('Google login failed:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    setIsLoading(true);
-    try {
-      // TODO: Implement Facebook OAuth
-      // For now, just navigate to home
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Facebook login failed:', error);
+      setError('An error occurred during sign in. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -73,35 +62,42 @@ export default function LoginScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ThemedView style={styles.container}>
-        <ThemedView style={styles.contentContainer}>
-          <ThemedView style={styles.logoContainer}>
-            <Image
-              source={require('@/assets/images/icon.png')}
-              style={styles.logo}
-            />
-            <ThemedText type="title" style={styles.appTitle}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.contentContainer}>
+          <View style={styles.logoContainer}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="school-outline" size={48} color="#4F46E5" />
+            </View>
+            <Text style={styles.appTitle}>
               Exam Quiz
-            </ThemedText>
-            <ThemedText style={styles.description}>
+            </Text>
+            <Text style={styles.description}>
               Practice past exam papers and improve your grades. Track your progress across multiple subjects.
-            </ThemedText>
-          </ThemedView>
+            </Text>
+          </View>
 
-          <ThemedView style={styles.buttonContainer}>
+          <View style={styles.buttonContainer}>
+            {error && (
+              <Text style={styles.errorText}>{error}</Text>
+            )}
             <TouchableOpacity
               style={[styles.button, styles.googleButton]}
               onPress={handleGoogleLogin}
               disabled={isLoading}
             >
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Signing in...' : 'Login with Google'}
-              </ThemedText>
+              <Ionicons
+                name="logo-google"
+                size={24}
+                color="#DB4437"
+                style={styles.googleIcon}
+              />
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Signing in...' : 'Continue with Google'}
+              </Text>
             </TouchableOpacity>
-
-          </ThemedView>
-        </ThemedView>
-      </ThemedView>
+          </View>
+        </View>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -114,10 +110,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'transparent',
   },
   contentContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     padding: 32,
     borderRadius: 16,
     width: '100%',
@@ -140,44 +135,58 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 50,
-    backgroundColor: 'transparent',
+    marginBottom: 40,
   },
-  logo: {
-    width: 120,
-    height: 120,
+  iconContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 20,
     marginBottom: 20,
-  },
-  buttonContainer: {
-    gap: 15,
-  },
-  button: {
-    padding: 15,
-    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  googleButton: {
-    backgroundColor: '#DB4437',
-  },
-  facebookButton: {
-    backgroundColor: '#4267B2',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  description: {
-    textAlign: 'center',
-    color: '#666',
-    fontSize: 16,
-    marginTop: 16,
-    maxWidth: 300,
-    lineHeight: 24,
   },
   appTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#6B4EFF',
+    color: '#4F46E5',
+    marginBottom: 12,
+  },
+  description: {
+    textAlign: 'center',
+    color: '#6B7280',
+    fontSize: 16,
+    lineHeight: 24,
+    maxWidth: 300,
+  },
+  buttonContainer: {
+    gap: 16,
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  googleButton: {
+    backgroundColor: '#ffffff',
+  },
+  googleIcon: {
+    marginRight: 12,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  errorText: {
+    color: '#DC2626',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontSize: 14,
   },
 }); 
