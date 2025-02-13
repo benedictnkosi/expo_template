@@ -194,7 +194,7 @@ export default function HomeScreen() {
               }}
               style={styles.removeButton}
             >
-              <ThemedText style={styles.removeButtonText}>Remove</ThemedText>
+              <ThemedText style={styles.removeButtonText}>✕</ThemedText>
             </TouchableOpacity>
           )}
         </View>
@@ -387,7 +387,7 @@ const styles = StyleSheet.create({
     }),
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
     color: '#000000',
     marginBottom: 16,
@@ -426,21 +426,25 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   subjectName: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
   },
   removeButton: {
-    backgroundColor: '#FF3B30',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   questionsText: {
-    fontSize: 14,
+    fontSize: 12,
     marginTop: 4,
   },
   progressText: {
-    fontSize: 14,
+    fontSize: 12,
     marginTop: 4,
   },
 
@@ -551,8 +555,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   removeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 14,
+    color: '#000000',
     fontWeight: '600',
   },
   modalOverlay: {
@@ -597,5 +601,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  mySubjectText: {
+    color: '#000000',
   },
 });
