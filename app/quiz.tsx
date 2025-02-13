@@ -383,7 +383,7 @@ export default function QuizScreen() {
                                 multiline={false}
                                 editable={!showFeedback}
                             />
-                            {!showFeedback && (
+                            {!showFeedback && question.type === 'single' && (
                                 <TouchableOpacity
                                     style={[styles.footerButton, styles.submitButton]}
                                     onPress={handleSubmit}
@@ -486,12 +486,14 @@ export default function QuizScreen() {
             </ScrollView>
 
             <ThemedView style={styles.footer}>
-                <TouchableOpacity
-                    style={[styles.footerButton]}
-                    onPress={loadRandomQuestion}
-                >
-                    <ThemedText style={styles.footerButtonText}>Skip</ThemedText>
-                </TouchableOpacity>
+                {!showFeedback && (
+                    <TouchableOpacity
+                        style={[styles.footerButton]}
+                        onPress={loadRandomQuestion}
+                    >
+                        <ThemedText style={styles.footerButtonText}>Skip</ThemedText>
+                    </TouchableOpacity>
+                )}
 
                 {showFeedback && (
                     <TouchableOpacity
