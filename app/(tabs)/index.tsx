@@ -274,7 +274,7 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6B4EFF" />
+        <ActivityIndicator size="large" color="#000000" />
       </ThemedView>
     );
   }
@@ -356,16 +356,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
+    padding: 20,
   },
   content: {
-    padding: 20,
     gap: 20,
     backgroundColor: 'transparent',
   },
   appTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#6B4EFF',
+    color: '#000000',
   },
   sectionCard: {
     // backgroundColor: 'rgba(255, 255, 255, 0.7)',
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#6B4EFF',
+    color: '#000000',
     marginBottom: 16,
   },
   card: {
@@ -412,10 +412,12 @@ const styles = StyleSheet.create({
     }),
   },
   mySubjectCard: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
   },
   availableSubjectCard: {
     backgroundColor: '#FFFFFF',
+    color: '#000000',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -426,7 +428,6 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
   },
   removeButton: {
     backgroundColor: '#FF3B30',
@@ -436,20 +437,15 @@ const styles = StyleSheet.create({
   },
   questionsText: {
     fontSize: 14,
-    color: '#666',
     marginTop: 4,
   },
   progressText: {
     fontSize: 14,
-    color: '#FFFFFF',
     marginTop: 4,
   },
-  mySubjectText: {
-    color: '#FFFFFF',
-  },
+
   progressBarContainer: {
     height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 3,
     marginTop: 8,
     marginBottom: 4,
@@ -457,7 +453,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#FFFFFF',
     borderRadius: 3,
   },
   loadingContainer: {
@@ -496,7 +491,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#000000',
   },
   profilePlaceholder: {
     alignItems: 'center',
@@ -535,7 +530,7 @@ const styles = StyleSheet.create({
   profileNoticeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#6B4EFF',
+    color: '#000000',
     marginBottom: 12,
   },
   profileNoticeText: {
@@ -545,7 +540,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   completeProfileButton: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#000000',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,

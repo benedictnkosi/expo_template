@@ -38,7 +38,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <LinearGradient colors={['#DBEAFE', '#F3E8FF']} style={styles.gradient}>
+    <LinearGradient colors={['#FFFFFF', '#FFFFFF']} style={styles.gradient}>
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <View style={styles.header}>
@@ -85,6 +85,7 @@ export default function ForgotPassword() {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
@@ -93,33 +94,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 8,
+    color: '#000000',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    color: '#666666',
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   button: {
-    backgroundColor: '#818CF8',
+    backgroundColor: '#000000',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -128,7 +127,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -137,7 +136,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#4F46E5',
+    color: '#000000',
     fontSize: 14,
   },
 }); 

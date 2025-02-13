@@ -52,7 +52,7 @@ export default function Login() {
 
   return (
     <LinearGradient
-      colors={['#DBEAFE', '#F3E8FF']}
+      colors={['#FFFFFF', '#F5F5F5']}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container}>
@@ -117,42 +117,49 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
     padding: 24,
     justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
-    marginTop: 24,
+    marginTop: 48,
+    paddingHorizontal: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 12,
+    color: '#000000',
+    marginBottom: 16,
     textAlign: 'center',
     includeFontPadding: false,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#666666',
     textAlign: 'center',
     includeFontPadding: false,
+    letterSpacing: 0.25,
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
   button: {
-    backgroundColor: '#818CF8',
+    backgroundColor: '#000000',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -161,7 +168,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -170,7 +177,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#4F46E5',
+    color: '#000000',
     fontSize: 14,
   },
   forgotPassword: {
@@ -179,7 +186,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   forgotPasswordText: {
-    color: '#4F46E5',
+    color: '#000000',
     fontSize: 14,
   },
 }); 

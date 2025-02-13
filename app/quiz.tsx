@@ -191,7 +191,7 @@ export default function QuizScreen() {
     if (isLoading) {
         return (
             <ThemedView style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#6B4EFF" />
+                <ActivityIndicator size="large" color="#000000" />
             </ThemedView>
         );
     }
@@ -509,6 +509,7 @@ export default function QuizScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        padding: 20,
     },
     scrollContainer: {
         flex: 1,
@@ -533,7 +534,7 @@ const styles = StyleSheet.create({
     },
     progressFill: {
         height: '100%',
-        backgroundColor: '#6B4EFF',
+        backgroundColor: '#000000',
         borderRadius: 4,
     },
     questionContainer: {
@@ -557,8 +558,8 @@ const styles = StyleSheet.create({
         borderColor: '#E0E0E0',
     },
     selectedOption: {
-        backgroundColor: '#6B4EFF20',
-        borderColor: '#6B4EFF',
+        backgroundColor: '#00000020',
+        borderColor: '#000000',
     },
     correctOption: {
         backgroundColor: '#4CAF5020',
@@ -581,7 +582,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     nextButton: {
-        backgroundColor: '#6B4EFF',
+        backgroundColor: '#000000',
     },
     footerButtonText: {
         fontSize: 16,
@@ -628,7 +629,7 @@ const styles = StyleSheet.create({
         color: '#333',
     },
     submitButton: {
-        backgroundColor: '#6B4EFF',
+        backgroundColor: '#000000',
         marginTop: 8,
     },
     feedbackEmoji: {
@@ -651,7 +652,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
         marginBottom: 32,
-        color: '#6B4EFF',
+        color: '#000000',
     },
     header: {
         flexDirection: 'row',
@@ -666,13 +667,13 @@ const styles = StyleSheet.create({
     appTitle: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#6B4EFF',
+        color: '#000000',
     },
     profileImage: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#6B4EFF',
+        backgroundColor: '#000000',
     },
     profilePlaceholder: {
         alignItems: 'center',
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
     subjectTitle: {
         fontSize: 24,
         fontWeight: '600',
-        color: '#6B4EFF',
+        color: '#000000',
         marginBottom: 20,
         textAlign: 'center',
         lineHeight: 32,

@@ -87,6 +87,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    padding: 20,
   },
   header: {
     padding: 20,
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#6B4EFF',
+    color: '#000000',
   },
   content: {
     padding: 20,
@@ -124,7 +125,7 @@ const styles = StyleSheet.create({
   question: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6B4EFF',
+    color: '#000000',
     marginBottom: 8,
   },
   answer: {

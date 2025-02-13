@@ -294,22 +294,21 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    marginBottom: 32,
   },
   appTitle: {
+    marginTop: 20,
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#6B4EFF',
+    color: '#000000',
   },
   content: {
     padding: 20,
+    backgroundColor: '#F5F5F5',
   },
   profileCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
@@ -335,10 +334,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#6B4EFF',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#000000',
+    marginBottom: 16,
   },
   profilePlaceholder: {
     alignItems: 'center',
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   },
   profileInitial: {
     color: '#FFFFFF',
-    fontSize: 32,
+    fontSize: 48,
     fontWeight: 'bold',
   },
   editForm: {
@@ -360,28 +360,28 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
-    marginBottom: 4,
+    color: '#666666',
+    marginBottom: 8,
   },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
-    color: '#333',
+    color: '#000000',
     width: '100%',
   },
   button: {
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: '#000000',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    backgroundColor: '#6B4EFF',
     marginTop: 8,
   },
   saveButton: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#000000',
   },
   buttonText: {
     color: '#FFFFFF',
@@ -392,19 +392,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderRadius: 8,
-    overflow: 'hidden',
+    borderRadius: 12,
+    overflow: Platform.OS === 'ios' ? 'hidden' : 'visible',
+    marginVertical: 8,
   },
   picker: {
-    height: 48,
+    height: Platform.OS === 'ios' ? 150 : 50,
     width: '100%',
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    ...Platform.select({
+      android: {
+        borderWidth: 0,
+        elevation: 0,
+      }
+    }),
   },
   signOutContainer: {
     padding: 20,
     marginTop: 20,
   },
   signOutButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#000000',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -452,7 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E0E0E0',
   },
   confirmButton: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#000000',
   },
   alertButtonText: {
     color: '#FFFFFF',
@@ -463,4 +474,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
+  name: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 16,
+    color: '#666666',
+    marginBottom: 24,
+  },
+  section: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  logoutButton: {
+    backgroundColor: '#000000',
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  infoLabel: {
+    fontSize: 16,
+    color: '#666666',
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#000000',
+    fontWeight: '500',
+  }
 }); 
