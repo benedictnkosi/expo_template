@@ -7,6 +7,12 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug",
+        "buildType": "apk",
+        "withoutCredentials": true,
+        "releaseChannel": "development"
+      },
       "channel": "development"
     },
     "preview": {

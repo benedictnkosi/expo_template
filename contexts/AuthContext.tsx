@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { User } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { useRouter, useSegments } from 'expo-router';
 import { getLearner } from '@/services/api';
@@ -7,24 +7,22 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 
 interface AuthContextType {
-  user: FirebaseUser | null;
+  user: User | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  signOut: async () => { },
-  refreshProfile: async () => { }
+  signOut: async () => {}
 });
 
 const API_BASE_URL = 'https://api.examquiz.co.za';
 //const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // Add function to create learner
-async function createLearner(user: FirebaseUser) {
+async function createLearner(user: User) {
   try {
     await addDoc(collection(db, 'learners'), {
       uid: user.uid,
@@ -38,36 +36,15 @@ async function createLearner(user: FirebaseUser) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasProfile, setHasProfile] = useState(false);
   const segments = useSegments();
   const router = useRouter();
 
-  // Add function to check profile
-  const checkProfile = async (uid: string) => {
-    try {
-      const learnerDoc = await getLearner(uid);
-      setHasProfile(!!learnerDoc?.name && !!learnerDoc?.grade);
-    } catch (error) {
-      console.error('Failed to check profile:', error);
-    }
-  };
-
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      try {
-        if (user) {
-          await checkProfile(user.uid);
-        } else {
-          setHasProfile(false);
-        }
-        setUser(user);
-      } catch (error) {
-        console.error('Auth state change error:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+      setIsLoading(false);
     });
 
     return unsubscribe;
@@ -78,33 +55,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inLoginScreen = segments.join('/') === 'login';
-    const inOnboarding = segments.join('/').includes('onboarding');
+    const inRegisterScreen = segments.join('/') === 'register';
+    const inForgotPasswordScreen = segments.join('/') === 'forgot-password';
 
-    if (!user && !inLoginScreen) {
+    if (!user && !inLoginScreen && !inRegisterScreen && !inForgotPasswordScreen) {
       router.replace('/login');
-    } else if (user && !hasProfile && !inOnboarding) {
-      router.replace('/(auth)/onboarding/welcome');
-    } else if (user && hasProfile && (inAuthGroup || inLoginScreen)) {
+    } else if (user && (inAuthGroup || inLoginScreen || inRegisterScreen || inForgotPasswordScreen)) {
       router.replace('/(tabs)');
     }
-  }, [user, isLoading, segments, hasProfile]);
+  }, [user, isLoading, segments]);
 
-  // Export checkProfile to be used after profile updates
-  const authValue = {
-    user,
-    isLoading,
-    signOut: async () => {
-      await firebaseSignOut(auth);
-    },
-    refreshProfile: async () => {
-      if (user?.uid) {
-        await checkProfile(user.uid);
-      }
+  const signOut = async () => {
+    try {
+      await auth.signOut();
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
     }
   };
 
   return (
-    <AuthContext.Provider value={authValue}>
+    <AuthContext.Provider value={{ user, isLoading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

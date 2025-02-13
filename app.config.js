@@ -4,31 +4,23 @@ export default {
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'your-app-scheme',
+  scheme: 'examquiz',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'za.co.examquiz',
     buildNumber: '1.0.0',
-    deploymentTarget: "15.1"
+    deploymentTarget: "15.1",
+    googleServicesFile: './GoogleService-Info.plist'
   },
   android: {
     package: 'za.co.examquiz',
     versionCode: 1,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
-      backgroundColor: '#ffffff'
-    },
-    permissions: ['INTERNET'],
-    softwareKeyboardLayoutMode: "pan",
-    allowBackup: true,
-    googleServicesFile: process.env.GOOGLE_SERVICES_JSON,
-    config: {
-      googleSignIn: {
-        apiKey: "AIzaSyCjV86H9STLEy1SyWVyedLUlUFQB7ABIJ8",
-        certificateHash: "your-certificate-hash"
-      }
+      backgroundColor: '#ffffff',
+      googleServicesFile: './google-services.json'
     }
   },
   web: {
@@ -43,9 +35,9 @@ export default {
       'expo-build-properties',
       {
         android: {
-          compileSdkVersion: 33,
-          targetSdkVersion: 33,
-          buildToolsVersion: "33.0.0"
+          compileSdkVersion: 35,
+          targetSdkVersion: 35,
+          buildToolsVersion: "34.0.0"
         },
         ios: {
           deploymentTarget: "15.1"

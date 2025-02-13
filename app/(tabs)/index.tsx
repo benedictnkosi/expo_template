@@ -279,38 +279,6 @@ export default function HomeScreen() {
     );
   }
 
-  if (!learnerInfo?.grade) {
-    return (
-      <LinearGradient
-        colors={['#DBEAFE', '#F3E8FF']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        <ScrollView style={styles.container}>
-          <ThemedView style={styles.content}>
-            <ThemedView style={[styles.sectionCard, styles.profileNoticeCard]}>
-              <ThemedText style={styles.profileNoticeTitle}>
-                Complete Your Profile
-              </ThemedText>
-              <ThemedText style={styles.profileNoticeText}>
-                Please complete your profile to access and add subjects.
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.completeProfileButton}
-                onPress={() => router.push('/(tabs)/profile')}
-              >
-                <ThemedText style={styles.completeProfileButtonText}>
-                  Complete Profile
-                </ThemedText>
-              </TouchableOpacity>
-            </ThemedView>
-          </ThemedView>
-        </ScrollView>
-      </LinearGradient>
-    );
-  }
-
   return (
     <LinearGradient
       colors={['#DBEAFE', '#F3E8FF']}
@@ -349,7 +317,7 @@ export default function HomeScreen() {
               ) : (
                 <View style={[styles.profileImage, styles.profilePlaceholder]}>
                   <ThemedText style={styles.profileInitial}>
-                    {user?.displayName?.[0]?.toUpperCase() || '?'}
+                    {user?.displayName?.[0]?.toUpperCase() || '👤'}
                   </ThemedText>
                 </View>
               )}
@@ -400,7 +368,7 @@ const styles = StyleSheet.create({
     color: '#6B4EFF',
   },
   sectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    // backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: 16,
     padding: 24,
     ...Platform.select({

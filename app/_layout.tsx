@@ -10,6 +10,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAuthNavigation } from './auth/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
+import Toast from 'react-native-toast-message';
+import AuthLayout from './_auth';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -71,7 +73,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <Slot />
+      <AuthLayout />
+      <Stack screenOptions={{ headerShown: false }} />
+      <Toast />
     </AuthProvider>
   );
 }

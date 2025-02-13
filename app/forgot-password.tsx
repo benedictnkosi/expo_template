@@ -1,65 +1,51 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, TextInput, Alert, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
-import Toast from 'react-native-toast-message';
 
-export default function Login() {
+export default function ForgotPassword() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please fill in all fields',
-        position: 'bottom'
-      });
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
       return;
     }
 
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert(
+        'Reset Email Sent',
+        'Check your email for password reset instructions',
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
+      );
     } catch (error: any) {
-      console.error('Login error:', error.code, error.message);
-
+      console.error('Password reset error:', error);
       const messages: { [key: string]: string } = {
         'auth/invalid-email': 'Invalid email address',
-        'auth/user-not-found': 'No account found with this email',
-        'auth/wrong-password': 'Incorrect email or password',
-        'auth/invalid-credential': 'Incorrect email or password',
-        'auth/too-many-requests': 'Too many attempts. Please try again later'
+        'auth/user-not-found': 'No account found with this email'
       };
-
-      Toast.show({
-        type: 'error',
-        text1: 'Login Failed',
-        text2: messages[error.code] || 'Invalid email or password',
-        position: 'bottom'
-      });
+      Alert.alert('Error', messages[error.code] || 'Failed to send reset email');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <LinearGradient
-      colors={['#DBEAFE', '#F3E8FF']}
-      style={styles.gradient}
-    >
+    <LinearGradient colors={['#DBEAFE', '#F3E8FF']} style={styles.gradient}>
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={styles.title}>Exam Quiz</ThemedText>
-            <ThemedText style={styles.subtitle}>Sign in to continue</ThemedText>
+            <ThemedText style={styles.title}>Reset Password</ThemedText>
+            <ThemedText style={styles.subtitle}>
+              Enter your email to receive reset instructions
+            </ThemedText>
           </View>
 
           <View style={styles.form}>
@@ -71,38 +57,23 @@ export default function Login() {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => router.push('/forgot-password')}
-            >
-              <ThemedText style={styles.forgotPasswordText}>
-                Forgot Password?
-              </ThemedText>
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleLogin}
+              onPress={handleResetPassword}
               disabled={isLoading}
             >
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? 'Sending...' : 'Send Reset Link'}
               </ThemedText>
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => router.replace('/register')}
+            onPress={() => router.replace('/login')}
           >
             <ThemedText style={styles.linkText}>
-              Don't have an account? Register
+              Back to Login
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -126,21 +97,17 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 32,
-    marginTop: 24,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#4F46E5',
-    marginBottom: 12,
-    textAlign: 'center',
-    includeFontPadding: false,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    includeFontPadding: false,
   },
   form: {
     gap: 16,
@@ -166,19 +133,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   linkButton: {
-    marginTop: 16,
+    marginTop: 24,
     alignItems: 'center',
   },
   linkText: {
-    color: '#4F46E5',
-    fontSize: 14,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: -4,
-    marginBottom: 16,
-  },
-  forgotPasswordText: {
     color: '#4F46E5',
     fontSize: 14,
   },

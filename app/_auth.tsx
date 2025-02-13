@@ -30,14 +30,14 @@ export function useProtectedRoute() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)' || segments.join('/') === 'login';
+    const inAuthGroup = segments[0] === '(auth)' || 
+      ['login', 'register', 'forgot-password'].includes(segments.join('/'));
+
+    const inQuizPage = segments.join('/') === 'quiz';
 
     if (!user && !inAuthGroup) {
       router.replace('/login');
-    } else if (user && !hasProfile && !segments.join('/').includes('onboarding/welcome')) {
-      console.log('Replacing to /(auth)/onboarding/welcome');
-      router.replace('/(auth)/onboarding/welcome');
-    } else if (user && hasProfile && inAuthGroup) {
+    } else if (user && hasProfile && inAuthGroup && !inQuizPage) {
       console.log('Replacing to /(tabs)');
       router.replace('/(tabs)');
     }

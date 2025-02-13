@@ -89,6 +89,7 @@ export default function QuizScreen() {
     const [noMoreQuestions, setNoMoreQuestions] = useState(false);
     const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
     const [isImageVisible, setIsImageVisible] = useState(false);
+    const scrollViewRef = React.useRef<ScrollView>(null);
 
     useEffect(() => {
         loadRandomQuestion();
@@ -132,7 +133,12 @@ export default function QuizScreen() {
             }
         } catch (error) {
             console.error('Failed to load question:', error);
-            Alert.alert('Error', 'Failed to load question');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to load question',
+                position: 'bottom'
+            });
         } finally {
             setIsLoading(false);
         }
@@ -146,9 +152,19 @@ export default function QuizScreen() {
             setSelectedAnswer(answer);
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
+
+            // Scroll to bottom after a short delay to ensure feedback is rendered
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
         } catch (error) {
             console.error('Failed to check answer:', error);
-            Alert.alert('Error', 'Failed to check answer');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to check answer',
+                position: 'bottom'
+            });
         }
     };
 
@@ -161,7 +177,12 @@ export default function QuizScreen() {
 
     const handleSubmit = () => {
         if (!inputAnswer.trim()) {
-            Alert.alert('Error', 'Please enter an answer');
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Please enter an answer',
+                position: 'bottom'
+            });
             return;
         }
         handleAnswer(inputAnswer);
@@ -268,7 +289,11 @@ export default function QuizScreen() {
                 </ThemedView>
             </ThemedView>
 
-            <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollContainer}
+                showsVerticalScrollIndicator={false}
+            >
                 <ThemedView style={styles.content}>
                     <ThemedText style={styles.subjectTitle}>
                         {subjectName}
@@ -347,7 +372,7 @@ export default function QuizScreen() {
                         </ThemedText>
                     )}
 
-                    {question.type === 'single' ? (
+                    {question.type === 'single' && (
                         <ThemedView style={styles.singleAnswerContainer}>
                             <TextInput
                                 style={styles.answerInput}
@@ -367,9 +392,38 @@ export default function QuizScreen() {
                                 </TouchableOpacity>
                             )}
                         </ThemedView>
-                    ) : (
+                    )}
+
+                    {question.type === 'multiple_choice' && (
                         <ThemedView style={styles.optionsContainer}>
                             {Object.entries(question.options)
+                                .filter(([_, value]) => value)
+                                .map(([key, value]) => (
+                                    <TouchableOpacity
+                                        key={key}
+                                        style={[
+                                            styles.option,
+                                            selectedAnswer === value && styles.selectedOption,
+                                            showFeedback && selectedAnswer === value &&
+                                            (JSON.parse(question.answer).includes(value)
+                                                ? styles.correctOption
+                                                : styles.wrongOption)
+                                        ]}
+                                        onPress={() => handleAnswer(value)}
+                                        disabled={showFeedback}
+                                    >
+                                        <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                    </TouchableOpacity>
+                                ))}
+                        </ThemedView>
+                    )}
+
+                    {question.type === 'true_false' && (
+                        <ThemedView style={styles.optionsContainer}>
+                            {[
+                                ['true', 'True'],
+                                ['false', 'False']
+                            ]
                                 .filter(([_, value]) => value)
                                 .map(([key, value]) => (
                                     <TouchableOpacity
@@ -417,6 +471,8 @@ export default function QuizScreen() {
                             )}
                         </ThemedView>
                     )}
+
+
 
                     <TouchableOpacity
                         style={styles.reportButton}
@@ -487,6 +543,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 20,
+        lineHeight: 24,
+        includeFontPadding: false,
     },
     optionsContainer: {
         gap: 12,
@@ -512,6 +570,8 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 16,
+        lineHeight: 24,
+        includeFontPadding: false,
     },
     footerButton: {
         padding: 15,
@@ -537,6 +597,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginBottom: 16,
         color: '#666',
+        lineHeight: 20,
+        includeFontPadding: false,
     },
     option: {
         padding: 16,
@@ -716,6 +778,8 @@ const styles = StyleSheet.create({
         color: '#6B4EFF',
         marginBottom: 20,
         textAlign: 'center',
+        lineHeight: 32,
+        includeFontPadding: false,
     },
     questionMeta: {
         fontSize: 12,
@@ -723,6 +787,8 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'right',
         marginBottom: 8,
+        lineHeight: 16,
+        includeFontPadding: false,
     },
     reportButton: {
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
