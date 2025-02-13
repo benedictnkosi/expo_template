@@ -1,9 +1,13 @@
 import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse } from '@/types/api';
 import { API_BASE_URL } from '@/config/api';
 
+function ensureHttps(url: string): string {
+  return url.replace('http://', 'https://');
+}
+
 export async function fetchAvailableSubjects(uid: string): Promise<SubjectsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/subjects-not-enrolled?uid=${uid}`
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects-not-enrolled?uid=${uid}`)
   );
 
   if (!response.ok) {
@@ -16,7 +20,7 @@ export async function fetchAvailableSubjects(uid: string): Promise<SubjectsRespo
 
 export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`)
   );
 
   if (!response.ok) {
@@ -28,7 +32,7 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
 
 export async function removeSubject(uid: string, subjectId: number): Promise<void> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/remove-subject`,
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-subject`),
     {
       method: 'POST',
       headers: {
@@ -49,7 +53,7 @@ export async function removeSubject(uid: string, subjectId: number): Promise<voi
 
 export async function assignSubject(uid: string, subjectId: number): Promise<void> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/assign-subject`,
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/assign-subject`),
     {
       method: 'POST',
       headers: {
@@ -74,7 +78,7 @@ export async function checkAnswer(
   answer: string
 ): Promise<CheckAnswerResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/check-answer`,
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/check-answer`),
     {
       method: 'POST',
       headers: {
@@ -122,7 +126,7 @@ interface LearnerResponse {
 
 export async function getLearner(uid: string): Promise<LearnerResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner?uid=${uid}`
+    ensureHttps(`${API_BASE_URL}/public/learn/learner?uid=${uid}`)
   );
 
   if (!response.ok) {
@@ -137,7 +141,7 @@ export async function updateLearner(uid: string, data: {
   grade: number;
 }) {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/update`,
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/update`),
     {
       method: 'POST',
       headers: {
@@ -152,8 +156,11 @@ export async function updateLearner(uid: string, data: {
   );
 
   if (!response.ok) {
-    throw new Error('Failed to update learner');
+    const error = await response.json().catch(() => ({ message: 'Failed to update learner' }));
+    throw new Error(error.message || 'Failed to update learner');
   }
+
+  return response.json();
 }
 
 interface Grade {
@@ -169,7 +176,7 @@ interface GradesResponse {
 
 export async function fetchGrades(): Promise<Grade[]> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/grades`
+    ensureHttps(`${API_BASE_URL}/public/learn/grades`)
   );
 
   if (!response.ok) {
@@ -182,7 +189,7 @@ export async function fetchGrades(): Promise<Grade[]> {
 
 export async function fetchQuestion(uid: string, subjectId: number) {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${uid}&question_id=0`
+    ensureHttps(`${API_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${uid}&question_id=0`)
   );
 
   if (!response.ok) {

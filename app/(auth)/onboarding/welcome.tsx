@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 
 export default function Welcome() {
+  console.log('Welcome screen loaded');
   return (
     <LinearGradient
       colors={['#DBEAFE', '#F3E8FF']}
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   button: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#818CF8',
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 12,

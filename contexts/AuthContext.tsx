@@ -10,16 +10,18 @@ interface AuthContextType {
   user: FirebaseUser | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  signOut: async () => { }
+  signOut: async () => { },
+  refreshProfile: async () => { }
 });
 
-//const API_BASE_URL = 'https://prices.aluvefarm.co.za';
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = 'https://api.examquiz.co.za';
+//const API_BASE_URL = 'http://127.0.0.1:8000';
 
 // Add function to create learner
 async function createLearner(user: FirebaseUser) {
@@ -42,15 +44,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
 
+  // Add function to check profile
+  const checkProfile = async (uid: string) => {
+    try {
+      const learnerDoc = await getLearner(uid);
+      setHasProfile(!!learnerDoc?.name && !!learnerDoc?.grade);
+    } catch (error) {
+      console.error('Failed to check profile:', error);
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
         if (user) {
-          const learnerDoc = await getLearner(user.uid);
-          if (!learnerDoc) {
-            await createLearner(user);
-          }
-          setHasProfile(!!learnerDoc?.name && !!learnerDoc?.grade);
+          await checkProfile(user.uid);
+        } else {
+          setHasProfile(false);
         }
         setUser(user);
       } catch (error) {
@@ -79,11 +89,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading, segments, hasProfile]);
 
-  const authValue: AuthContextType = {
+  // Export checkProfile to be used after profile updates
+  const authValue = {
     user,
     isLoading,
     signOut: async () => {
       await firebaseSignOut(auth);
+    },
+    refreshProfile: async () => {
+      if (user?.uid) {
+        await checkProfile(user.uid);
+      }
     }
   };
 

@@ -48,3 +48,33 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Environment Setup
+
+### Android Development Setup
+
+1. Download and install Android Studio from [developer.android.com](https://developer.android.com/studio)
+
+2. Set up your ANDROID_HOME environment variable:
+
+   For macOS/Linux, add these lines to your `~/.bash_profile`, `~/.zshrc`, or equivalent:
+   ```bash
+   export ANDROID_HOME=$HOME/Library/Android/sdk
+   export PATH=$PATH:$ANDROID_HOME/tools
+   export PATH=$PATH:$ANDROID_HOME/platform-tools
+   ```
+
+   For Windows, set the environment variable through System Properties:
+   - Open System Properties > Advanced > Environment Variables
+   - Add new System Variable:
+     - Variable name: ANDROID_HOME
+     - Variable value: C:\Users\YourUsername\AppData\Local\Android\Sdk
+
+3. After setting the environment variables, restart your terminal and IDE
+
+4. In Android Studio:
+   - Go to Tools > SDK Manager
+   - Install the following:
+     - Android SDK Platform Tools
+     - At least one Android SDK Platform (recommended: Android 13 (API Level 33))
+     - Android SDK Build-Tools

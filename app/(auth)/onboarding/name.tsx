@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, TextInput } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -11,21 +11,27 @@ export default function NameScreen() {
   const { grade } = useLocalSearchParams<{ grade: string }>();
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
 
   const handleNext = async () => {
     if (!name.trim() || !user?.uid || isSubmitting) return;
-    
+
     setIsSubmitting(true);
     try {
       await updateLearner(user.uid, {
         name: name.trim(),
         grade: parseInt(grade),
       });
-      router.replace('/(tabs)');
+      await refreshProfile();
+      console.log('Learner updated successfully, redirecting...');
+      router.replace('/(tabs)/profile');
     } catch (error) {
       console.error('Failed to update learner:', error);
       setIsSubmitting(false);
+      Alert.alert(
+        'Error',
+        'Failed to update profile. Please try again.'
+      );
     }
   };
 
@@ -109,7 +115,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   nextButton: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#818CF8',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',

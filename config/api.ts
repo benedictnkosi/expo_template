@@ -1,1 +1,1 @@
-export const API_BASE_URL = 'https://prices.aluvefarm.co.za'; 
+export const API_BASE_URL = 'https://api.examquiz.co.za'; 

@@ -57,6 +57,7 @@ export default function HomeScreen() {
               }));
               setMySubjects(transformedEnrolledSubjects);
             } catch (error) {
+              setMySubjects([]);
               console.error('Failed to fetch subjects:', error);
             }
           }

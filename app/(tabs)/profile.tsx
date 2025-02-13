@@ -117,7 +117,10 @@ export default function ProfileScreen() {
     if (!user?.uid) return;
     try {
       setIsLoading(true);
-      await updateLearner(user.uid, editName.trim(), editGrade);
+      await updateLearner(user.uid, {
+        name: editName.trim(),
+        grade: parseInt(editGrade),
+      });
       setLearnerInfo({
         name: editName.trim(),
         grade: editGrade,

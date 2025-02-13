@@ -117,8 +117,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   selectedGrade: {
-    borderColor: '#6B4EFF',
-    backgroundColor: '#6B4EFF',
+    borderColor: '#818CF8',
+    backgroundColor: '#818CF8',
   },
   gradeText: {
     fontSize: 18,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   nextButton: {
-    backgroundColor: '#6B4EFF',
+    backgroundColor: '#818CF8',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
