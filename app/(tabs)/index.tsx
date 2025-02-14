@@ -186,7 +186,10 @@ export default function HomeScreen() {
               <ThemedText style={styles.removeButtonText}>✕</ThemedText>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.removeButton}>
+            <TouchableOpacity
+              style={styles.removeButton}
+              onPress={() => handleAddSubject(item)}
+            >
               <ThemedText style={styles.removeButtonText}>+</ThemedText>
             </TouchableOpacity>
           )}

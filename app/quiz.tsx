@@ -92,6 +92,9 @@ export default function QuizScreen() {
     const [noMoreQuestions, setNoMoreQuestions] = useState(false);
     const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
     const [isImageVisible, setIsImageVisible] = useState(false);
+    const [isImageLoading, setIsImageLoading] = useState(true);
+    const [isAnswerImageVisible, setIsAnswerImageVisible] = useState(false);
+    const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
 
     useEffect(() => {
@@ -218,46 +221,26 @@ export default function QuizScreen() {
         return (
             <ThemedView style={styles.container}>
                 <ThemedView style={styles.noQuestionsContainer}>
-                    <ThemedText style={styles.noQuestionsEmoji}>
-                        {noMoreQuestions ? '🎉' : '🤔'}
-                    </ThemedText>
+                    <View style={styles.emojiContainer}>
+                        <ThemedText style={styles.noQuestionsEmoji}>
+                            🎉
+                        </ThemedText>
+                    </View>
                     <ThemedText style={styles.noQuestionsText}>
-                        {noMoreQuestions
-                            ? "Congratulations! You've completed all questions!"
-                            : "No questions available"}
+                        Congratulations! You've completed all questions!
                     </ThemedText>
-                    <View style={styles.buttonContainer}>
+                    <View style={styles.completionButtons}>
                         <TouchableOpacity
                             style={[styles.footerButton, styles.restartButton]}
-                            onPress={async () => {
-                                try {
-                                    if (!user?.uid || !subjectId) return;
-                                    await fetch(
-                                        `${ConfigAPI_BASE_URL}/public/learn/learner/remove-results`,
-                                        {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ uid: user.uid, subject_id: subjectId })
-                                        }
-                                    );
-                                    loadRandomQuestion();
-                                } catch (error) {
-                                    console.error('Failed to restart subject:', error);
-                                    Alert.alert('Error', 'Failed to restart subject');
-                                }
-                            }}
+                            onPress={loadRandomQuestion}
                         >
-                            <ThemedText style={styles.footerButtonText}>
-                                Restart Subject
-                            </ThemedText>
+                            <ThemedText style={styles.footerButtonText}>Restart Subject</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.footerButton, styles.nextButton]}
-                            onPress={() => router.back()}
+                            onPress={() => router.push('/(tabs)')}
                         >
-                            <ThemedText style={styles.footerButtonText}>
-                                Back to Subjects
-                            </ThemedText>
+                            <ThemedText style={styles.footerButtonText}>Back to Subjects</ThemedText>
                         </TouchableOpacity>
                     </View>
                 </ThemedView>
@@ -309,12 +292,19 @@ export default function QuizScreen() {
                                     onPress={() => setIsImageVisible(true)}
                                     style={styles.imageContainer}
                                 >
+                                    {isImageLoading && (
+                                        <View style={styles.imagePlaceholder}>
+                                            <ActivityIndicator color="#000000" />
+                                        </View>
+                                    )}
                                     <Image
                                         source={{
                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                         }}
                                         style={styles.questionImage}
                                         resizeMode="contain"
+                                        onLoadStart={() => setIsImageLoading(true)}
+                                        onLoadEnd={() => setIsImageLoading(false)}
                                     />
                                 </TouchableOpacity>
 
@@ -325,11 +315,7 @@ export default function QuizScreen() {
                                     swipeDirection="down"
                                     style={styles.modal}
                                 >
-                                    <TouchableOpacity
-                                        style={styles.modalContent}
-                                        activeOpacity={1}
-                                        onPress={() => setIsImageVisible(false)}
-                                    >
+                                    <View style={styles.modalContent}>
                                         <TouchableOpacity
                                             style={styles.closeButton}
                                             onPress={() => setIsImageVisible(false)}
@@ -343,7 +329,7 @@ export default function QuizScreen() {
                                             style={styles.fullScreenImage}
                                             resizeMode="contain"
                                         />
-                                    </TouchableOpacity>
+                                    </View>
                                 </Modal>
                             </>
                         )}
@@ -451,13 +437,25 @@ export default function QuizScreen() {
                                             {cleanAnswer(question.answer)}
                                         </ThemedText>
                                         {question.answer_image && (
-                                            <Image
-                                                source={{
-                                                    uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
-                                                }}
-                                                style={styles.answerImage}
-                                                resizeMode="contain"
-                                            />
+                                            <TouchableOpacity
+                                                onPress={() => setIsAnswerImageVisible(true)}
+                                                style={styles.imageContainer}
+                                            >
+                                                {isAnswerImageLoading && (
+                                                    <View style={styles.imagePlaceholder}>
+                                                        <ActivityIndicator color="#000000" />
+                                                    </View>
+                                                )}
+                                                <Image
+                                                    source={{
+                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                    }}
+                                                    style={styles.answerImage}
+                                                    resizeMode="contain"
+                                                    onLoadStart={() => setIsAnswerImageLoading(true)}
+                                                    onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                />
+                                            </TouchableOpacity>
                                         )}
                                         {question.explanation && (
                                             <ThemedText style={styles.correctAnswerText}>
@@ -511,6 +509,32 @@ export default function QuizScreen() {
                     </ThemedView>
                 )}
             </ThemedView>
+
+            {question.answer_image && (
+                <Modal
+                    isVisible={isAnswerImageVisible}
+                    onBackdropPress={() => setIsAnswerImageVisible(false)}
+                    onSwipeComplete={() => setIsAnswerImageVisible(false)}
+                    swipeDirection="down"
+                    style={styles.modal}
+                >
+                    <View style={styles.modalContent}>
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setIsAnswerImageVisible(false)}
+                        >
+                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+                        </TouchableOpacity>
+                        <Image
+                            source={{
+                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                            }}
+                            style={styles.fullScreenImage}
+                            resizeMode="contain"
+                        />
+                    </View>
+                </Modal>
+            )}
         </LinearGradient>
     );
 }
@@ -682,9 +706,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
     },
-    noQuestionsEmoji: {
-        fontSize: 96,
+    emojiContainer: {
+        height: 80,
+        justifyContent: 'center',
         marginBottom: 16,
+    },
+    noQuestionsEmoji: {
+        fontSize: 64,
+        textAlign: 'center',
+        includeFontPadding: false,
+        lineHeight: 80,
     },
     noQuestionsText: {
         fontSize: 20,
@@ -846,5 +877,20 @@ const styles = StyleSheet.create({
     footerButtonGroup: {
         flexDirection: 'row',
         gap: 12,
+    },
+    imagePlaceholder: {
+        position: 'absolute',
+        width: '100%',
+        height: 200,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F5F5F5',
+        borderRadius: 8,
+        zIndex: 1,
+    },
+    completionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 24,
     },
 }); 
