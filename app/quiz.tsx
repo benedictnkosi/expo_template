@@ -96,6 +96,7 @@ export default function QuizScreen() {
     const [isAnswerImageVisible, setIsAnswerImageVisible] = useState(false);
     const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
+    const [showAllTerms, setShowAllTerms] = useState(true);
 
     useEffect(() => {
         loadRandomQuestion();
@@ -126,7 +127,7 @@ export default function QuizScreen() {
         try {
             setIsLoading(true);
             const response = await fetch(
-                `${ConfigAPI_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${user.uid}&question_id=0`
+                `${ConfigAPI_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${user.uid}&question_id=0${showAllTerms ? '&show_all_questions=yes' : '&show_all_questions=no'}`
             );
 
             if (!response.ok) {
@@ -265,6 +266,34 @@ export default function QuizScreen() {
                     user={user}
                     learnerInfo={learnerInfo}
                 />
+
+                {new Date().getMonth() < 6 && (
+                    <ThemedView style={styles.headerControls}>
+                        <View style={styles.filterRow}>
+                            <ThemedText style={styles.filterLabel}>
+                                Show Only term 2 questions?
+                            </ThemedText>
+                            <View style={styles.buttonGroup}>
+                                <TouchableOpacity
+                                    style={[styles.filterButton, !showAllTerms && styles.filterButtonActive]}
+                                    onPress={() => setShowAllTerms(false)}
+                                >
+                                    <ThemedText style={[styles.filterButtonText, !showAllTerms && styles.filterButtonTextActive]}>
+                                        Yes
+                                    </ThemedText>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.filterButton, showAllTerms && styles.filterButtonActive]}
+                                    onPress={() => setShowAllTerms(true)}
+                                >
+                                    <ThemedText style={[styles.filterButtonText, showAllTerms && styles.filterButtonTextActive]}>
+                                        No
+                                    </ThemedText>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </ThemedView>
+                )}
 
                 <ThemedView style={styles.content}>
                     <ThemedView style={styles.sectionCard}>
@@ -892,5 +921,57 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginTop: 24,
+    },
+    headerControls: {
+        paddingHorizontal: 20,
+        marginBottom: 16,
+    },
+    filterRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    filterLabel: {
+        fontSize: 14,
+        color: '#666666',
+        flex: 1,
+    },
+    buttonGroup: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    filterButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+            },
+        }),
+    },
+    filterButtonActive: {
+        backgroundColor: '#000000',
+        borderColor: '#000000',
+    },
+    filterButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#666666',
+    },
+    filterButtonTextActive: {
+        color: '#FFFFFF',
     },
 }); 
