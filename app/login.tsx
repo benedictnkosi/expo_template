@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View } from 'react-native';
+import { View, Image } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { ThemedText } from '@/components/ThemedText';
@@ -51,14 +51,18 @@ export default function Login() {
   };
 
   return (
-    <LinearGradient
-      colors={['#FFFFFF', '#F5F5F5']}
-      style={styles.gradient}
-    >
-      <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#FFFFFF', '#F5F5F5']}
+        style={styles.gradient}
+      >
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={styles.title}>Exam Quiz</ThemedText>
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <ThemedText style={styles.subtitle}>Sign in to continue</ThemedText>
           </View>
 
@@ -106,46 +110,39 @@ export default function Login() {
             </ThemedText>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
-    </LinearGradient>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   gradient: {
     flex: 1,
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   content: {
     flex: 1,
-    padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 24,
+    marginTop: -40,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
-    marginTop: 48,
-    paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 16,
-    textAlign: 'center',
-    includeFontPadding: false,
-    letterSpacing: 0.5,
+  logo: {
+    width: 240,
+    height: 80,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#666666',
     textAlign: 'center',
-    includeFontPadding: false,
-    letterSpacing: 0.25,
+    marginBottom: 32,
+    lineHeight: 24,
   },
   form: {
     gap: 16,

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform, ScrollView } from 'react-native';
+import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform, ScrollView, View, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { View } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '@/config/firebase';
 import { ThemedText } from '@/components/ThemedText';
@@ -79,8 +78,12 @@ export default function Register() {
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={styles.title}>Create Account</ThemedText>
-            <ThemedText style={styles.subtitle}>Register to get started</ThemedText>
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <ThemedText style={styles.subtitle}>Create your account</ThemedText>
           </View>
 
           <View style={styles.form}>
@@ -162,15 +165,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000000',
+  logo: {
+    width: 240,
+    height: 80,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#666666',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
   },
   form: {
     width: '100%',

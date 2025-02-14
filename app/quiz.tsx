@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, TextInput, ScrollView, View, Linking } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, TextInput, ScrollView, View, Linking, Platform } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkAnswer, getLearner, API_BASE_URL } from '@/services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
+import { Header } from '@/components/Header';
 
 interface Question {
     id: number;
@@ -27,6 +29,7 @@ interface Question {
     question_image_path: string | null;
     year: string;
     term: string;
+    explanation: string;
 }
 
 interface CheckAnswerResponse {
@@ -111,9 +114,14 @@ export default function QuizScreen() {
     const loadRandomQuestion = async () => {
         if (!user?.uid || !subjectId) return;
 
+        // Reset all states before loading new question
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+        setInputAnswer('');
+        setIsCorrect(null);
+
         try {
             setIsLoading(true);
-            setInputAnswer('');
             const response = await fetch(
                 `${ConfigAPI_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${user.uid}&question_id=0`
             );
@@ -153,7 +161,7 @@ export default function QuizScreen() {
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
 
-            // Scroll to bottom after a short delay to ensure feedback is rendered
+            // Longer delay and force scroll
             setTimeout(() => {
                 scrollViewRef.current?.scrollToEnd({ animated: true });
             }, 100);
@@ -248,277 +256,293 @@ export default function QuizScreen() {
     }
 
     return (
-        <ThemedView style={styles.container}>
-            <Stack.Screen options={{ headerShown: false }} />
-
-            <ThemedView style={styles.header}>
-                <TouchableOpacity
-                    onPress={() => router.push('/(tabs)')}
-                    activeOpacity={0.7}
-                >
-                    <ThemedText type="title" style={styles.appTitle}>
-                        Exam Quiz
-                    </ThemedText>
-                </TouchableOpacity>
-                <ThemedView style={styles.profileSection}>
-                    <ThemedView style={styles.userInfo}>
-                        <ThemedText style={styles.userName}>
-                            {learnerInfo?.name || 'User'}
-                        </ThemedText>
-                        <ThemedText style={styles.userGrade}>
-                            Grade {learnerInfo?.grade || ''}
-                        </ThemedText>
-                    </ThemedView>
-                    <TouchableOpacity
-                        onPress={() => router.push('/(tabs)/profile')}
-                        activeOpacity={0.7}
-                    >
-                        {user?.photoURL ? (
-                            <Image
-                                source={{ uri: user.photoURL }}
-                                style={styles.profileImage}
-                            />
-                        ) : (
-                            <View style={[styles.profileImage, styles.profilePlaceholder]}>
-                                <ThemedText style={styles.profileInitial}>
-                                    {user?.displayName?.[0]?.toUpperCase() || '?'}
-                                </ThemedText>
-                            </View>
-                        )}
-                    </TouchableOpacity>
-                </ThemedView>
-            </ThemedView>
-
+        <LinearGradient
+            colors={['#DBEAFE', '#F3E8FF']}
+            style={styles.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+        >
             <ScrollView
                 ref={scrollViewRef}
-                style={styles.scrollContainer}
-                showsVerticalScrollIndicator={false}
+                style={styles.container}
+                contentContainerStyle={{ paddingBottom: 100 }}
             >
+                <Header
+                    title="Exam Quiz"
+                    user={user}
+                    learnerInfo={learnerInfo}
+                />
+
                 <ThemedView style={styles.content}>
-                    <ThemedText style={styles.subjectTitle}>
-                        {subjectName}
-                    </ThemedText>
-
-                    {(question.year || question.term) && (
-                        <ThemedText style={styles.questionMeta}>
-                            {question.year && `${question.year}`}
-                            {question.year && question.term && ' • '}
-                            {question.term && `Term ${question.term}`}
+                    <ThemedView style={styles.sectionCard}>
+                        <ThemedText style={styles.subjectTitle}>
+                            {subjectName}
                         </ThemedText>
-                    )}
 
-                    {question.context && (
-                        <ThemedText style={styles.contextText}>
-                            {question.context}
-                        </ThemedText>
-                    )}
+                        {(question.year || question.term) && (
+                            <ThemedText style={styles.questionMeta}>
+                                {question.year && `${question.year}`}
+                                {question.year && question.term && ' • '}
+                                {question.term && `Term ${question.term}`}
+                            </ThemedText>
+                        )}
 
-                    {question.image_path && (
-                        <>
-                            <TouchableOpacity
-                                onPress={() => setIsImageVisible(true)}
-                                style={styles.imageContainer}
-                            >
-                                <Image
-                                    source={{
-                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
-                                    }}
-                                    style={styles.questionImage}
-                                    resizeMode="contain"
-                                />
-                            </TouchableOpacity>
+                        {question.context && (
+                            <ThemedText style={styles.contextText}>
+                                {question.context}
+                            </ThemedText>
+                        )}
 
-                            <Modal
-                                isVisible={isImageVisible}
-                                onBackdropPress={() => setIsImageVisible(false)}
-                                onSwipeComplete={() => setIsImageVisible(false)}
-                                swipeDirection="down"
-                                style={styles.modal}
-                            >
+                        {question.image_path && (
+                            <>
                                 <TouchableOpacity
-                                    style={styles.modalContent}
-                                    activeOpacity={1}
-                                    onPress={() => setIsImageVisible(false)}
+                                    onPress={() => setIsImageVisible(true)}
+                                    style={styles.imageContainer}
                                 >
-                                    <TouchableOpacity
-                                        style={styles.closeButton}
-                                        onPress={() => setIsImageVisible(false)}
-                                    >
-                                        <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                    </TouchableOpacity>
                                     <Image
                                         source={{
                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                         }}
-                                        style={styles.fullScreenImage}
+                                        style={styles.questionImage}
                                         resizeMode="contain"
                                     />
                                 </TouchableOpacity>
-                            </Modal>
-                        </>
-                    )}
 
-                    {question.question_image_path ? (
-                        <Image
-                            source={{
-                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
-                            }}
-                            style={styles.questionImage}
-                            resizeMode="contain"
-                        />
-                    ) : (
-                        <ThemedText style={styles.questionText}>
-                            {question.question}
-                        </ThemedText>
-                    )}
-
-                    {question.type === 'single' && (
-                        <ThemedView style={styles.singleAnswerContainer}>
-                            <TextInput
-                                style={styles.answerInput}
-                                value={inputAnswer}
-                                onChangeText={setInputAnswer}
-                                placeholder="Enter your answer"
-                                placeholderTextColor="#666"
-                                multiline={false}
-                                editable={!showFeedback}
-                            />
-                            {!showFeedback && question.type === 'single' && (
-                                <TouchableOpacity
-                                    style={[styles.footerButton, styles.submitButton]}
-                                    onPress={handleSubmit}
+                                <Modal
+                                    isVisible={isImageVisible}
+                                    onBackdropPress={() => setIsImageVisible(false)}
+                                    onSwipeComplete={() => setIsImageVisible(false)}
+                                    swipeDirection="down"
+                                    style={styles.modal}
                                 >
-                                    <ThemedText style={styles.footerButtonText}>Submit</ThemedText>
-                                </TouchableOpacity>
-                            )}
-                        </ThemedView>
-                    )}
-
-                    {question.type === 'multiple_choice' && (
-                        <ThemedView style={styles.optionsContainer}>
-                            {Object.entries(question.options)
-                                .filter(([_, value]) => value)
-                                .map(([key, value]) => (
                                     <TouchableOpacity
-                                        key={key}
-                                        style={[
-                                            styles.option,
-                                            selectedAnswer === value && styles.selectedOption,
-                                            showFeedback && selectedAnswer === value &&
-                                            (JSON.parse(question.answer).includes(value)
-                                                ? styles.correctOption
-                                                : styles.wrongOption)
-                                        ]}
-                                        onPress={() => handleAnswer(value)}
-                                        disabled={showFeedback}
+                                        style={styles.modalContent}
+                                        activeOpacity={1}
+                                        onPress={() => setIsImageVisible(false)}
                                     >
-                                        <ThemedText style={styles.optionText}>{value}</ThemedText>
-                                    </TouchableOpacity>
-                                ))}
-                        </ThemedView>
-                    )}
-
-                    {question.type === 'true_false' && (
-                        <ThemedView style={styles.optionsContainer}>
-                            {[
-                                ['true', 'True'],
-                                ['false', 'False']
-                            ]
-                                .filter(([_, value]) => value)
-                                .map(([key, value]) => (
-                                    <TouchableOpacity
-                                        key={key}
-                                        style={[
-                                            styles.option,
-                                            selectedAnswer === value && styles.selectedOption,
-                                            showFeedback && selectedAnswer === value &&
-                                            (JSON.parse(question.answer).includes(value)
-                                                ? styles.correctOption
-                                                : styles.wrongOption)
-                                        ]}
-                                        onPress={() => handleAnswer(value)}
-                                        disabled={showFeedback}
-                                    >
-                                        <ThemedText style={styles.optionText}>{value}</ThemedText>
-                                    </TouchableOpacity>
-                                ))}
-                        </ThemedView>
-                    )}
-
-                    {showFeedback && (
-                        <ThemedView style={styles.feedbackContainer}>
-                            <ThemedText style={styles.feedbackEmoji}>
-                                {isCorrect ? '🎉' : '😔'}
-                            </ThemedText>
-                            {!isCorrect && (
-                                <ThemedView style={styles.correctAnswerContainer}>
-                                    <ThemedText style={styles.correctAnswerLabel}>
-                                        Correct answer:
-                                    </ThemedText>
-                                    <ThemedText style={styles.correctAnswerText}>
-                                        {cleanAnswer(question.answer)}
-                                    </ThemedText>
-                                    {question.answer_image && (
+                                        <TouchableOpacity
+                                            style={styles.closeButton}
+                                            onPress={() => setIsImageVisible(false)}
+                                        >
+                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+                                        </TouchableOpacity>
                                         <Image
                                             source={{
-                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                             }}
-                                            style={styles.answerImage}
+                                            style={styles.fullScreenImage}
                                             resizeMode="contain"
                                         />
-                                    )}
-                                </ThemedView>
-                            )}
-                        </ThemedView>
-                    )}
+                                    </TouchableOpacity>
+                                </Modal>
+                            </>
+                        )}
 
+                        {question.question_image_path && (
+                            <Image
+                                source={{
+                                    uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
+                                }}
+                                style={styles.questionImage}
+                                resizeMode="contain"
+                            />
+                        )}
 
+                        {question.question && (
+                            <ThemedText style={styles.questionText}>
+                                {question.question}
+                            </ThemedText>
+                        )}
 
-                    <TouchableOpacity
-                        style={styles.reportButton}
-                        onPress={() => reportIssue(question.id)}
-                    >
-                        <ThemedText style={styles.reportButtonText}>
-                            ⚠️ Report Issue
-                        </ThemedText>
-                    </TouchableOpacity>
+                        {question.type === 'single' && (
+                            <ThemedView style={styles.singleAnswerContainer}>
+                                <TextInput
+                                    style={styles.answerInput}
+                                    value={inputAnswer}
+                                    onChangeText={setInputAnswer}
+                                    placeholder="Enter your answer"
+                                    placeholderTextColor="#666"
+                                    multiline={false}
+                                    editable={!showFeedback}
+                                />
+                                {!showFeedback && question.type === 'single' && (
+                                    <TouchableOpacity
+                                        style={[styles.footerButton, styles.submitButton]}
+                                        onPress={handleSubmit}
+                                    >
+                                        <ThemedText style={styles.footerButtonText}>Submit</ThemedText>
+                                    </TouchableOpacity>
+                                )}
+                            </ThemedView>
+                        )}
+
+                        {question.type === 'multiple_choice' && (
+                            <ThemedView style={styles.optionsContainer}>
+                                {Object.entries(question.options)
+                                    .filter(([_, value]) => value)
+                                    .map(([key, value]) => (
+                                        <TouchableOpacity
+                                            key={key}
+                                            style={[
+                                                styles.option,
+                                                selectedAnswer === value && styles.selectedOption,
+                                                showFeedback && selectedAnswer === value &&
+                                                (JSON.parse(question.answer).includes(value)
+                                                    ? styles.correctOption
+                                                    : styles.wrongOption)
+                                            ]}
+                                            onPress={() => handleAnswer(value)}
+                                            disabled={showFeedback}
+                                        >
+                                            <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                        </TouchableOpacity>
+                                    ))}
+                            </ThemedView>
+                        )}
+
+                        {question.type === 'true_false' && (
+                            <ThemedView style={styles.optionsContainer}>
+                                {[
+                                    ['true', 'True'],
+                                    ['false', 'False']
+                                ]
+                                    .filter(([_, value]) => value)
+                                    .map(([key, value]) => (
+                                        <TouchableOpacity
+                                            key={key}
+                                            style={[
+                                                styles.option,
+                                                selectedAnswer === value && styles.selectedOption,
+                                                showFeedback && selectedAnswer === value &&
+                                                (JSON.parse(question.answer).includes(value)
+                                                    ? styles.correctOption
+                                                    : styles.wrongOption)
+                                            ]}
+                                            onPress={() => handleAnswer(value)}
+                                            disabled={showFeedback}
+                                        >
+                                            <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                        </TouchableOpacity>
+                                    ))}
+                            </ThemedView>
+                        )}
+
+                        {showFeedback && (
+                            <ThemedView style={styles.feedbackContainer}>
+                                <ThemedText style={styles.feedbackEmoji}>
+                                    {isCorrect ? '🎉' : '😔'}
+                                </ThemedText>
+                                {!isCorrect && (
+                                    <ThemedView style={styles.correctAnswerContainer}>
+                                        <ThemedText style={styles.correctAnswerLabel}>
+                                            Correct answer:
+                                        </ThemedText>
+                                        <ThemedText style={styles.correctAnswerText}>
+                                            {cleanAnswer(question.answer)}
+                                        </ThemedText>
+                                        {question.answer_image && (
+                                            <Image
+                                                source={{
+                                                    uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                }}
+                                                style={styles.answerImage}
+                                                resizeMode="contain"
+                                            />
+                                        )}
+                                        {question.explanation && (
+                                            <ThemedText style={styles.correctAnswerText}>
+                                            {cleanAnswer(question.explanation)}
+                                        </ThemedText>
+                                        )}
+                                    </ThemedView>
+                                )}
+                            </ThemedView>
+                        )}
+
+                        <TouchableOpacity
+                            style={styles.reportButton}
+                            onPress={() => reportIssue(question.id)}
+                        >
+                            <ThemedText style={styles.reportButtonText}>
+                                ⚠️ Report Issue
+                            </ThemedText>
+                        </TouchableOpacity>
+                    </ThemedView>
                 </ThemedView>
             </ScrollView>
 
             <ThemedView style={styles.footer}>
                 {!showFeedback && (
-                    <TouchableOpacity
-                        style={[styles.footerButton]}
-                        onPress={loadRandomQuestion}
-                    >
-                        <ThemedText style={styles.footerButtonText}>Skip</ThemedText>
-                    </TouchableOpacity>
+                    <>
+                        <TouchableOpacity
+                            style={[styles.footerButton]}
+                            onPress={loadRandomQuestion}
+                        >
+                            <ThemedText style={styles.footerButtonText}>Skip</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.footerButton]}
+                            onPress={() => router.push('/(tabs)')}
+                        >
+                            <ThemedText style={styles.footerButtonText}>Quit</ThemedText>
+                        </TouchableOpacity>
+                    </>
                 )}
 
                 {showFeedback && (
-                    <TouchableOpacity
-                        style={[styles.footerButton, styles.nextButton]}
-                        onPress={handleNext}
-                    >
-                        <ThemedText style={styles.footerButtonText}>Next</ThemedText>
-                    </TouchableOpacity>
+                    <ThemedView style={styles.footerButtonGroup}>
+
+                        <TouchableOpacity
+                            style={[styles.footerButton, styles.nextButton]}
+                            onPress={handleNext}
+                        >
+                            <ThemedText style={styles.footerButtonText}>Next</ThemedText>
+                        </TouchableOpacity>
+                    </ThemedView>
                 )}
             </ThemedView>
-        </ThemedView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
+    gradient: {
+        flex: 1,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+    },
     container: {
         flex: 1,
+        backgroundColor: 'transparent',
         padding: 20,
-    },
-    scrollContainer: {
-        flex: 1,
     },
     content: {
-        padding: 20,
-        paddingBottom: 40, // Extra padding at bottom for better scrolling
+        gap: 20,
+        backgroundColor: 'transparent',
+    },
+    sectionCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 10,
+            },
+            android: {
+                elevation: 8,
+            },
+            web: {
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
+            },
+        }),
     },
     footer: {
         flexDirection: 'row',
@@ -635,9 +659,12 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     feedbackEmoji: {
-        fontSize: 96,
+        fontSize: 48,
         textAlign: 'center',
-        marginVertical: 20,
+        marginVertical: 16,
+        height: 60,
+        includeFontPadding: false,
+        lineHeight: 60,
     },
     noQuestionsContainer: {
         flex: 1,
@@ -742,6 +769,7 @@ const styles = StyleSheet.create({
     feedbackContainer: {
         alignItems: 'center',
         marginVertical: 20,
+        paddingHorizontal: 16,
     },
     correctAnswerContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -804,5 +832,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         fontWeight: '500',
+    },
+    footerButtonGroup: {
+        flexDirection: 'row',
+        gap: 12,
     },
 }); 

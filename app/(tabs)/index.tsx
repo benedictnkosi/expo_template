@@ -9,8 +9,22 @@ import { ThemedText } from '@/components/ThemedText';
 import { fetchAvailableSubjects, fetchMySubjects, removeSubject, assignSubject, getLearner } from '@/services/api';
 import { Subject } from '@/types/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { Header } from '@/components/Header';
 
 // Temporary mock data
+
+// Add type definition at the top
+interface EnrolledSubject {
+  subject: {
+    subject: {
+      id: number;
+      name: string;
+    };
+  };
+  total_questions: number;
+  answered_questions: number;
+  correct_answers: number;  // Add this field
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -21,55 +35,61 @@ export default function HomeScreen() {
   const [showAlert, setShowAlert] = useState(false);
   const [subjectToRemove, setSubjectToRemove] = useState<Subject | null>(null);
 
+  // Add useEffect for initial load
+  useEffect(() => {
+    loadData();
+  }, [user?.uid]);
+
+  // Keep useFocusEffect for tab focus
   useFocusEffect(
     useCallback(() => {
-      async function loadData() {
-        if (!user?.uid) return;
-        try {
-          // Fetch learner info
-          const learner = await getLearner(user.uid);
-          setLearnerInfo({
-            name: learner.name,
-            grade: learner.grade?.number?.toString() || ''
-          });
-
-          // If grade is set, load subjects
-          if (learner.grade?.number) {
-            setIsLoading(true);
-            try {
-              const availableResponse = await fetchAvailableSubjects(user.uid);
-              const transformedAvailableSubjects = availableResponse.subjects.map(s => ({
-                id: s.id.toString(),
-                name: s.name,
-                totalQuestions: s.totalQuestions,
-                answeredQuestions: 0,
-                correctAnswers: 0
-              }));
-              setAvailableSubjects(transformedAvailableSubjects);
-
-              const enrolledResponse = await fetchMySubjects(user.uid);
-              const transformedEnrolledSubjects = enrolledResponse.subjects.map(s => ({
-                id: s.subject.subject.id.toString(),
-                name: s.subject.subject.name,
-                totalQuestions: s.total_questions,
-                answeredQuestions: s.answered_questions,
-                correctAnswers: 0
-              }));
-              setMySubjects(transformedEnrolledSubjects);
-            } catch (error) {
-              setMySubjects([]);
-              console.error('Failed to fetch subjects:', error);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to fetch learner info:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      }
       loadData();
     }, [user?.uid])
   );
+
+  // Move loadData function outside the hooks
+  async function loadData() {
+    if (!user?.uid) return;
+    try {
+      const learner = await getLearner(user.uid);
+      setLearnerInfo({
+        name: learner.name,
+        grade: learner.grade?.number?.toString() || ''
+      });
+
+      if (learner.grade?.number) {
+        setIsLoading(true);
+        try {
+          const availableResponse = await fetchAvailableSubjects(user.uid);
+          const transformedAvailableSubjects = availableResponse.subjects.map(s => ({
+            id: s.id.toString(),
+            name: s.name,
+            totalQuestions: s.totalQuestions,
+            answeredQuestions: 0,
+            correctAnswers: 0
+          }));
+          setAvailableSubjects(transformedAvailableSubjects);
+
+          const enrolledResponse = await fetchMySubjects(user.uid);
+          const transformedEnrolledSubjects = (enrolledResponse.subjects as EnrolledSubject[]).map(s => ({
+            id: s.subject.subject.id.toString(),
+            name: s.subject.subject.name,
+            totalQuestions: s.total_questions,
+            answeredQuestions: s.answered_questions,
+            correctAnswers: s.correct_answers
+          }));
+          setMySubjects(transformedEnrolledSubjects);
+        } catch (error) {
+          setMySubjects([]);
+          console.error('Failed to fetch subjects:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch learner info:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const handleAddSubject = async (subject: Subject) => {
     if (!mySubjects.find(s => s.id === subject.id)) {
@@ -81,7 +101,7 @@ export default function HomeScreen() {
 
         // Fetch updated enrolled subjects
         const enrolledResponse = await fetchMySubjects(user.uid);
-        const transformedEnrolledSubjects = enrolledResponse.subjects.map(s => ({
+        const transformedEnrolledSubjects = (enrolledResponse.subjects as EnrolledSubject[]).map(s => ({
           id: s.subject.subject.id.toString(),
           name: s.subject.subject.name,
           totalQuestions: s.total_questions,
@@ -97,37 +117,6 @@ export default function HomeScreen() {
         Alert.alert('Error', 'Failed to add subject');
       }
     }
-  };
-
-  const handleRemoveSubject = (subjectId: string) => {
-    Alert.alert(
-      "Remove Subject",
-      "Removing subject will remove all your progress",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              if (!user?.uid) return;
-              await removeSubject(user.uid, Number(subjectId));
-              setMySubjects(prev => prev.filter(s => s.id !== subjectId));
-              const removedSubject = availableSubjects.find(s => s.id === subjectId);
-              if (removedSubject) {
-                setAvailableSubjects(prev => [...prev, removedSubject]);
-              }
-            } catch (error) {
-              console.error('Failed to remove subject:', error);
-              Alert.alert('Error', 'Failed to remove subject');
-            }
-          }
-        }
-      ]
-    );
   };
 
   const renderSubjectCard = (item: Subject, isMySubject: boolean) => {
@@ -287,43 +276,11 @@ export default function HomeScreen() {
       end={{ x: 0, y: 1 }}
     >
       <ScrollView style={styles.container}>
-        <ThemedView style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)')}
-            activeOpacity={0.7}
-          >
-            <ThemedText type="title" style={styles.appTitle}>
-              Exam Quiz
-            </ThemedText>
-          </TouchableOpacity>
-          <ThemedView style={styles.profileSection}>
-            <ThemedView style={styles.userInfo}>
-              <ThemedText style={styles.userName}>
-                {learnerInfo?.name || 'User'}
-              </ThemedText>
-              <ThemedText style={styles.userGrade}>
-                Grade {learnerInfo?.grade || ''}
-              </ThemedText>
-            </ThemedView>
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/profile')}
-              activeOpacity={0.7}
-            >
-              {user?.photoURL ? (
-                <Image
-                  source={{ uri: user.photoURL }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={[styles.profileImage, styles.profilePlaceholder]}>
-                  <ThemedText style={styles.profileInitial}>
-                    {user?.displayName?.[0]?.toUpperCase() || '👤'}
-                  </ThemedText>
-                </View>
-              )}
-            </TouchableOpacity>
-          </ThemedView>
-        </ThemedView>
+        <Header
+          title="Exam Quiz"
+          user={user}
+          learnerInfo={learnerInfo}
+        />
 
         <ThemedView style={styles.content}>
           {/* Your Subjects Section */}
@@ -450,6 +407,7 @@ const styles = StyleSheet.create({
 
   progressBarContainer: {
     height: 6,
+    backgroundColor: '#E0E0E0',
     borderRadius: 3,
     marginTop: 8,
     marginBottom: 4,
@@ -457,7 +415,9 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
+    backgroundColor: '#000000',
     borderRadius: 3,
+    minWidth: 4,
   },
   loadingContainer: {
     flex: 1,

@@ -78,3 +78,23 @@ Join our community of developers creating universal apps.
      - Android SDK Platform Tools
      - At least one Android SDK Platform (recommended: Android 13 (API Level 33))
      - Android SDK Build-Tools
+
+
+### run on android emulator
+npx expo run:android
+
+### build code
+npx expo prebuild
+
+### build apk for preview
+eas build --profile preview --platform android
+
+### build apk for production
+eas build --profile production --platform android
+
+### build apk for development
+eas build --profile development --platform android
+
+### manage credentials
+eas credentials
+px expo credentials:manager --info

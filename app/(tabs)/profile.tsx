@@ -211,28 +211,17 @@ export default function ProfileScreen() {
             onPress={() => router.push('/(tabs)')}
             activeOpacity={0.7}
           >
-            <ThemedText type="title" style={styles.appTitle}>
-              Exam Quiz
-            </ThemedText>
+            <Image
+              source={require('@/assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </ThemedView>
 
         <ThemedView style={styles.content}>
           <ThemedView style={styles.profileCard}>
-            <View style={styles.profileImageContainer}>
-              {learnerInfo?.imagePath ? (
-                <Image
-                  source={{ uri: learnerInfo.imagePath }}
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={[styles.profileImage, styles.profilePlaceholder]}>
-                  <ThemedText style={styles.profileInitial}>
-                    {learnerInfo?.name?.[0]?.toUpperCase() || '?'}
-                  </ThemedText>
-                </View>
-              )}
-            </View>
+
             <View style={styles.editForm}>
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Name</ThemedText>
@@ -300,11 +289,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  appTitle: {
+  logo: {
     marginTop: 20,
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000000',
+    width: 180,
+    height: 40,
   },
   content: {
     padding: 20,

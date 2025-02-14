@@ -1,4 +1,4 @@
-import { StyleSheet, ScrollView, Platform, TouchableOpacity } from 'react-native';
+import { StyleSheet, ScrollView, Platform, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -50,9 +50,11 @@ export default function InfoScreen() {
     >
       <ScrollView style={styles.container}>
         <ThemedView style={styles.header}>
-          <ThemedText type="title" style={styles.title}>
-            How It Works
-          </ThemedText>
+          <Image
+            source={require('@/assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </ThemedView>
 
         <TouchableOpacity
@@ -93,11 +95,11 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 20,
     paddingBottom: 16,
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000000',
+  logo: {
+    width: 180,
+    height: 40,
   },
   content: {
     padding: 20,
