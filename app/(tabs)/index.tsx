@@ -150,7 +150,7 @@ export default function HomeScreen() {
           ]}>
             {item.name}
           </ThemedText>
-          {isMySubject && (
+          {isMySubject ? (
             <TouchableOpacity
               onPress={() => {
                 if (Platform.OS === 'web') {
@@ -184,6 +184,10 @@ export default function HomeScreen() {
               style={styles.removeButton}
             >
               <ThemedText style={styles.removeButtonText}>✕</ThemedText>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.removeButton}>
+              <ThemedText style={styles.removeButtonText}>+</ThemedText>
             </TouchableOpacity>
           )}
         </View>

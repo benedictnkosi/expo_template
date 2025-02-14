@@ -136,6 +136,16 @@ export default function QuizScreen() {
                 setNoMoreQuestions(true);
                 setQuestion(null);
             } else {
+                // Shuffle the options
+                const options = data.options;
+                const entries = Object.entries(options);
+                const shuffledEntries = entries.sort(() => Math.random() - 0.5);
+                data.options = {
+                    option1: shuffledEntries[0][1],
+                    option2: shuffledEntries[1][1],
+                    option3: shuffledEntries[2][1],
+                    option4: shuffledEntries[3][1]
+                };
                 setQuestion(data);
                 setNoMoreQuestions(false);
             }
@@ -451,8 +461,8 @@ export default function QuizScreen() {
                                         )}
                                         {question.explanation && (
                                             <ThemedText style={styles.correctAnswerText}>
-                                            {cleanAnswer(question.explanation)}
-                                        </ThemedText>
+                                                {cleanAnswer(question.explanation)}
+                                            </ThemedText>
                                         )}
                                     </ThemedView>
                                 )}
