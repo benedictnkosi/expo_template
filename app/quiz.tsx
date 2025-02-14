@@ -220,32 +220,73 @@ export default function QuizScreen() {
 
     if (!question) {
         return (
-            <ThemedView style={styles.container}>
-                <ThemedView style={styles.noQuestionsContainer}>
-                    <View style={styles.emojiContainer}>
-                        <ThemedText style={styles.noQuestionsEmoji}>
-                            🎉
+            <LinearGradient
+                colors={['#DBEAFE', '#F3E8FF']}
+                style={styles.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+            >
+                <ScrollView style={styles.container}>
+                    <Header
+                        title="Exam Quiz"
+                        user={user}
+                        learnerInfo={learnerInfo}
+                    />
+
+                    {new Date().getMonth() < 6 && (
+                        <ThemedView style={styles.headerControls}>
+                            <View style={styles.filterRow}>
+                                <ThemedText style={styles.filterLabel}>
+                                    Show Only term 2 questions?
+                                </ThemedText>
+                                <View style={styles.buttonGroup}>
+                                    <TouchableOpacity
+                                        style={[styles.filterButton, !showAllTerms && styles.filterButtonActive]}
+                                        onPress={() => setShowAllTerms(false)}
+                                    >
+                                        <ThemedText style={[styles.filterButtonText, !showAllTerms && styles.filterButtonTextActive]}>
+                                            Yes
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.filterButton, showAllTerms && styles.filterButtonActive]}
+                                        onPress={() => setShowAllTerms(true)}
+                                    >
+                                        <ThemedText style={[styles.filterButtonText, showAllTerms && styles.filterButtonTextActive]}>
+                                            No
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </ThemedView>
+                    )}
+
+                    <ThemedView style={styles.noQuestionsContainer}>
+                        <View style={styles.emojiContainer}>
+                            <ThemedText style={styles.noQuestionsEmoji}>
+                                🎉
+                            </ThemedText>
+                        </View>
+                        <ThemedText style={styles.noQuestionsText}>
+                            Congratulations! You've completed all questions!
                         </ThemedText>
-                    </View>
-                    <ThemedText style={styles.noQuestionsText}>
-                        Congratulations! You've completed all questions!
-                    </ThemedText>
-                    <View style={styles.completionButtons}>
-                        <TouchableOpacity
-                            style={[styles.footerButton, styles.restartButton]}
-                            onPress={loadRandomQuestion}
-                        >
-                            <ThemedText style={styles.footerButtonText}>Restart Subject</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.footerButton, styles.nextButton]}
-                            onPress={() => router.push('/(tabs)')}
-                        >
-                            <ThemedText style={styles.footerButtonText}>Back to Subjects</ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                </ThemedView>
-            </ThemedView>
+                        <View style={styles.completionButtons}>
+                            <TouchableOpacity
+                                style={[styles.footerButton, styles.restartButton]}
+                                onPress={loadRandomQuestion}
+                            >
+                                <ThemedText style={styles.footerButtonText}>Restart Subject</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.footerButton, styles.nextButton]}
+                                onPress={() => router.push('/(tabs)')}
+                            >
+                                <ThemedText style={styles.footerButtonText}>Back to Subjects</ThemedText>
+                            </TouchableOpacity>
+                        </View>
+                    </ThemedView>
+                </ScrollView>
+            </LinearGradient>
         );
     }
 
