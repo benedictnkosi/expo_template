@@ -9,7 +9,7 @@ import WebView from 'react-native-webview';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkAnswer, getLearner, API_BASE_URL } from '@/services/api';
+import { checkAnswer, getLearner, removeResults } from '@/services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
 import { Header } from '@/components/Header';
 
@@ -95,11 +95,24 @@ function KaTeX({ latex }: { latex: string }) {
                         margin: 0;
                         padding: 8px;
                         display: flex;
-                        justify-content: center;
+                        justify-content: flex-start;
                         align-items: center;
                         min-height: 50px;
+                        overflow-x: auto;
                     }
-                    .katex { font-size: 1.5em; }
+                    #formula {
+                        min-width: fit-content;
+                        padding-right: 16px;
+                    }
+                    .katex {
+                        font-size: 1.5em;
+                        white-space: nowrap;
+                    }
+                    .katex-display {
+                        overflow-x: auto;
+                        overflow-y: hidden;
+                        padding-bottom: 5px;
+                    }
                 </style>
             </head>
             <body>
@@ -108,7 +121,9 @@ function KaTeX({ latex }: { latex: string }) {
                     document.addEventListener("DOMContentLoaded", function() {
                         katex.render(String.raw\`${latex}\`, document.getElementById("formula"), {
                             throwOnError: false,
-                            displayMode: true
+                            displayMode: true,
+                            trust: true,
+                            strict: false
                         });
                     });
                 </script>
@@ -119,9 +134,40 @@ function KaTeX({ latex }: { latex: string }) {
     return (
         <WebView
             source={{ html }}
-            style={{ height: 50, backgroundColor: 'transparent' }}
-            scrollEnabled={false}
+            style={{ height: 60, backgroundColor: 'transparent' }}
+            scrollEnabled={true}
+            showsHorizontalScrollIndicator={false}
         />
+    );
+}
+
+// Add helper function
+function renderMixedContent(text: string) {
+    const parts = text.split(/(\$[^$]+\$)/g);
+    return (
+        <View style={styles.mixedContentContainer}>
+            {parts.map((part, index) => {
+                if (part.startsWith('$') && part.endsWith('$')) {
+                    // LaTeX content
+                    return (
+                        <View key={index} style={styles.latexContainer}>
+                            <KaTeX
+                                latex={part.slice(1, -1)} // Remove $ signs
+                            />
+                        </View>
+                    );
+                }
+                // Regular text (only if not empty)
+                if (part.trim()) {
+                    return (
+                        <ThemedText key={index} style={styles.contentText}>
+                            {part.trim()}
+                        </ThemedText>
+                    );
+                }
+                return null;
+            })}
+        </View>
     );
 }
 
@@ -255,6 +301,31 @@ export default function QuizScreen() {
         handleAnswer(inputAnswer);
     };
 
+    const handleRestart = async () => {
+        if (!user?.uid || !subjectId) return;
+
+        try {
+            setIsLoading(true);
+            await removeResults(user.uid, Number(subjectId));
+            await loadRandomQuestion();
+            Toast.show({
+                type: 'success',
+                text1: 'Progress Reset',
+                position: 'bottom'
+            });
+        } catch (error) {
+            console.error('Failed to restart:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to reset progress',
+                position: 'bottom'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <ThemedView style={styles.loadingContainer}>
@@ -318,7 +389,7 @@ export default function QuizScreen() {
                         <View style={styles.completionButtons}>
                             <TouchableOpacity
                                 style={[styles.footerButton, styles.restartButton]}
-                                onPress={loadRandomQuestion}
+                                onPress={handleRestart}
                             >
                                 <ThemedText style={styles.footerButtonText}>Restart Subject</ThemedText>
                             </TouchableOpacity>
@@ -397,8 +468,7 @@ export default function QuizScreen() {
 
                         {question.context && (
                             <View style={styles.questionContainer}>
-                                <KaTeX latex={question.context.replace(/\$/g, '')} />
-
+                                {renderMixedContent(question.context)}
                             </View>
                         )}
 
@@ -462,8 +532,7 @@ export default function QuizScreen() {
 
                         {question.question && (
                             <View style={styles.questionContainer}>
-
-                                <KaTeX latex={question.question.replace(/\$/g, '')} />
+                                {renderMixedContent(question.question)}
                             </View>
                         )}
 
@@ -550,10 +619,13 @@ export default function QuizScreen() {
                                         <ThemedText style={styles.correctAnswerLabel}>
                                             Correct answer:
                                         </ThemedText>
-                                        <ThemedText style={styles.correctAnswerText}>
-                                            
+                                        {cleanAnswer(question.answer).includes('$') ? (
                                             <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
-                                        </ThemedText>
+                                        ) : (
+                                            <ThemedText style={styles.correctAnswerText}>
+                                                {cleanAnswer(question.answer)}
+                                            </ThemedText>
+                                        )}
                                         {question.answer_image && (
                                             <TouchableOpacity
                                                 onPress={() => setIsAnswerImageVisible(true)}
@@ -576,9 +648,9 @@ export default function QuizScreen() {
                                             </TouchableOpacity>
                                         )}
                                         {question.explanation && (
-                                            <ThemedText style={styles.correctAnswerText}>
-                                                {cleanAnswer(question.explanation)}
-                                            </ThemedText>
+                                            <View style={styles.questionContainer}>
+                                                {renderMixedContent(cleanAnswer(question.explanation))}
+                                            </View>
                                         )}
                                     </ThemedView>
                                 )}
@@ -717,6 +789,7 @@ const styles = StyleSheet.create({
     },
     questionContainer: {
         flex: 1,
+        marginBottom: 20,
     },
     questionText: {
         fontSize: 16,
@@ -727,6 +800,7 @@ const styles = StyleSheet.create({
     },
     optionsContainer: {
         gap: 12,
+        marginTop: 20,
     },
     optionButton: {
         padding: 16,
@@ -1062,5 +1136,18 @@ const styles = StyleSheet.create({
     },
     filterButtonTextActive: {
         color: '#FFFFFF',
+    },
+    mixedContentContainer: {
+        width: '100%',
+        gap: 12,
+    },
+    latexContainer: {
+        width: '100%',
+        marginVertical: 4,
+    },
+    contentText: {
+        fontSize: 16,
+        lineHeight: 24,
+        marginVertical: 4,
     },
 }); 

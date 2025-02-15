@@ -197,4 +197,24 @@ export async function fetchQuestion(uid: string, subjectId: number) {
   }
 
   return response.json();
+}
+
+export async function removeResults(uid: string, subjectId: number): Promise<void> {
+  const response = await fetch(
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-results`),
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid,
+        subject_id: subjectId
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to remove results');
+  }
 } 
