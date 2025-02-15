@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
+import WebView from 'react-native-webview';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -79,6 +80,50 @@ const reportIssue = (questionId: number) => {
         position: 'bottom'
     });
 };
+
+function KaTeX({ latex }: { latex: string }) {
+    const html = `
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+                <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+                <style>
+                    body {
+                        margin: 0;
+                        padding: 8px;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 50px;
+                    }
+                    .katex { font-size: 1.5em; }
+                </style>
+            </head>
+            <body>
+                <div id="formula"></div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {
+                        katex.render(String.raw\`${latex}\`, document.getElementById("formula"), {
+                            throwOnError: false,
+                            displayMode: true
+                        });
+                    });
+                </script>
+            </body>
+        </html>
+    `;
+
+    return (
+        <WebView
+            source={{ html }}
+            style={{ height: 50, backgroundColor: 'transparent' }}
+            scrollEnabled={false}
+        />
+    );
+}
 
 export default function QuizScreen() {
     const { user } = useAuth();
@@ -351,9 +396,10 @@ export default function QuizScreen() {
                         )}
 
                         {question.context && (
-                            <ThemedText style={styles.contextText}>
-                                {question.context}
-                            </ThemedText>
+                            <View style={styles.questionContainer}>
+                                <KaTeX latex={question.context.replace(/\$/g, '')} />
+
+                            </View>
                         )}
 
                         {question.image_path && (
@@ -415,9 +461,10 @@ export default function QuizScreen() {
                         )}
 
                         {question.question && (
-                            <ThemedText style={styles.questionText}>
-                                {question.question}
-                            </ThemedText>
+                            <View style={styles.questionContainer}>
+
+                                <KaTeX latex={question.question.replace(/\$/g, '')} />
+                            </View>
                         )}
 
                         {question.type === 'single' && (
@@ -504,7 +551,8 @@ export default function QuizScreen() {
                                             Correct answer:
                                         </ThemedText>
                                         <ThemedText style={styles.correctAnswerText}>
-                                            {cleanAnswer(question.answer)}
+                                            
+                                            <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
                                         </ThemedText>
                                         {question.answer_image && (
                                             <TouchableOpacity
