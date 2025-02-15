@@ -1,8 +1,9 @@
-import { View, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Image, StyleSheet, Linking, Platform, Share } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { ThemedView } from './ThemedView';
 import { router } from 'expo-router';
 import { User } from 'firebase/auth';
+import { Ionicons } from '@expo/vector-icons';
 
 interface HeaderProps {
   title: string;
@@ -14,6 +15,18 @@ interface HeaderProps {
 }
 
 export function Header({ title, user, learnerInfo }: HeaderProps) {
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check out ExamQuiz for free exam practice!',
+        url: 'https://examquiz.co.za',
+        title: 'ExamQuiz'
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
   return (
     <ThemedView style={styles.header}>
       <TouchableOpacity
@@ -26,33 +39,23 @@ export function Header({ title, user, learnerInfo }: HeaderProps) {
           resizeMode="contain"
         />
       </TouchableOpacity>
-      <ThemedView style={styles.profileSection}>
-        <ThemedView style={styles.userInfo}>
+      <View style={styles.profileSection}>
+        <View style={styles.userInfo}>
           <ThemedText style={styles.userName}>
             {learnerInfo?.name || 'User'}
           </ThemedText>
           <ThemedText style={styles.userGrade}>
             Grade {learnerInfo?.grade || ''}
           </ThemedText>
-        </ThemedView>
+        </View>
         <TouchableOpacity
-          onPress={() => router.push('/(tabs)/profile')}
+          onPress={handleShare}
           activeOpacity={0.7}
+          style={styles.shareButton}
         >
-          {user?.photoURL ? (
-            <Image
-              source={{ uri: user.photoURL }}
-              style={styles.profileImage}
-            />
-          ) : (
-            <View style={[styles.profileImage, styles.profilePlaceholder]}>
-              <ThemedText style={styles.profileInitial}>
-                {(user?.displayName?.charAt(0) || '👤').toUpperCase()}
-              </ThemedText>
-            </View>
-          )}
+          <Ionicons name="share-outline" size={24} color="#666" />
         </TouchableOpacity>
-      </ThemedView>
+      </View>
     </ThemedView>
   );
 }
@@ -92,19 +95,27 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     lineHeight: 12,
   },
-  profileImage: {
+  shareButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#000000',
-  },
-  profilePlaceholder: {
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      }
+    }),
   },
-  profileInitial: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+  shareIcon: {
+    fontSize: 24,
+    color: '#000000',
   },
 }); 

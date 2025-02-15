@@ -37,6 +37,7 @@ interface CheckAnswerResponse {
     status: string;
     is_correct: boolean;
     correct_answers: string;
+    result: string;
 }
 
 interface QuestionResponse extends Question {
@@ -264,7 +265,7 @@ export default function QuizScreen() {
             const response = await checkAnswer(user.uid, question.id, answer);
             setSelectedAnswer(answer);
             setShowFeedback(true);
-            setIsCorrect(response.is_correct);
+            setIsCorrect(response.result == "correct");
 
             // Longer delay and force scroll
             setTimeout(() => {
