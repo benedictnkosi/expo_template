@@ -120,8 +120,8 @@ export default function HomeScreen() {
   };
 
   const renderSubjectCard = (item: Subject, isMySubject: boolean) => {
-    const progress = item.totalQuestions === 0 ? 0 :
-      (item.correctAnswers / item.totalQuestions) * 100;
+    const progress = item.totalQuestions === 0 || item.answeredQuestions === 0 ? 0 :
+      (item.correctAnswers / item.answeredQuestions) * 100;
 
     const handleCardPress = () => {
       if (isMySubject) {
@@ -218,7 +218,7 @@ export default function HomeScreen() {
               />
             </ThemedView>
             <ThemedText style={styles.progressText}>
-              {progress === 0 ? '0' : Math.round(progress)}% Pass
+              {progress === 0 ? '0' : Math.round(progress)}% Mastered
             </ThemedText>
           </>
         )}

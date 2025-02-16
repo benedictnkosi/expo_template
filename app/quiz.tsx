@@ -37,7 +37,7 @@ interface CheckAnswerResponse {
     status: string;
     is_correct: boolean;
     correct_answers: string;
-    result: string;
+    result: 'correct' | 'incorrect';
 }
 
 interface QuestionResponse extends Question {
@@ -265,7 +265,7 @@ export default function QuizScreen() {
             const response = await checkAnswer(user.uid, question.id, answer);
             setSelectedAnswer(answer);
             setShowFeedback(true);
-            setIsCorrect(response.result == "correct");
+            setIsCorrect(response.is_correct);
 
             // Longer delay and force scroll
             setTimeout(() => {
@@ -683,7 +683,7 @@ export default function QuizScreen() {
                             style={[styles.footerButton]}
                             onPress={() => router.push('/(tabs)')}
                         >
-                            <ThemedText style={styles.footerButtonText}>Quit</ThemedText>
+                            <ThemedText style={styles.footerButtonText}>I'm tired</ThemedText>
                         </TouchableOpacity>
                     </>
                 )}

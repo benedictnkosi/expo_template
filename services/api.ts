@@ -35,9 +35,6 @@ export async function removeSubject(uid: string, subjectId: number): Promise<voi
     ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-subject`),
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         uid,
         subject_id: subjectId
@@ -56,9 +53,6 @@ export async function assignSubject(uid: string, subjectId: number): Promise<voi
     ensureHttps(`${API_BASE_URL}/public/learn/learner/assign-subject`),
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         uid,
         subject_id: subjectId
@@ -81,9 +75,6 @@ export async function checkAnswer(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/check-answer`),
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         uid,
         question_id: questionId,
@@ -144,9 +135,6 @@ export async function updateLearner(uid: string, data: {
     ensureHttps(`${API_BASE_URL}/public/learn/learner/update`),
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         uid,
         name: data.name,
@@ -204,9 +192,6 @@ export async function removeResults(uid: string, subjectId: number): Promise<voi
     ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-results`),
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         uid,
         subject_id: subjectId
