@@ -28,7 +28,7 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
-    const inAuthGroup = segments[0] === '(auth)';
+    const inAuthGroup = segments[0] === 'auth';
 
     if (!user && !inAuthGroup) {
       navigateToLogin();

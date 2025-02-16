@@ -4,7 +4,7 @@ import { ThemedView } from './ThemedView';
 import { router } from 'expo-router';
 import { User } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
-
+import AntDesign from '@expo/vector-icons/AntDesign';
 interface HeaderProps {
   title: string;
   user: User | null;
@@ -53,7 +53,7 @@ export function Header({ title, user, learnerInfo }: HeaderProps) {
           activeOpacity={0.7}
           style={styles.shareButton}
         >
-          <Ionicons name="share-outline" size={24} color="#666" />
+          <AntDesign name="sharealt" size={24} color="black" />
         </TouchableOpacity>
       </View>
     </ThemedView>
@@ -71,8 +71,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   logo: {
-    width: 180,
-    height: 40,
+    width: 120,
+    height: 32,
+    alignSelf: 'flex-start',
   },
   profileSection: {
     flexDirection: 'row',

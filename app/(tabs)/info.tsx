@@ -3,6 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Linking } from 'react-native';
+import { Header } from '@/components/Header';
+import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 
 interface FAQItem {
   question: string;
@@ -11,36 +14,39 @@ interface FAQItem {
 
 const FAQ_ITEMS: FAQItem[] = [
   {
-    question: "How does the quiz work?",
-    answer: "Select a subject from your enrolled subjects. You'll be presented with past exam questions one at a time. Each question includes detailed solutions and explanations. Track your progress and improve your understanding of key concepts."
+    question: "How does ExamQuiz work?",
+    answer: "ExamQuiz provides past exam questions for practice. Select your grade and subjects, then practice questions one at a time. Each question includes detailed solutions and explanations. Your progress is tracked per subject."
   },
   {
-    question: "How do I get started?",
-    answer: "After signing in with Google, select your grade and add subjects you want to practice. You can find available subjects on the home screen and tap to add them to your list."
+    question: "What subjects are available?",
+    answer: "We currently offer Mathematics, Physical Sciences, and Life Sciences for Grades 10-12. Questions are from past exam papers and are curated by subject experts."
+  },
+  {
+    question: "How do I track my progress?",
+    answer: "Each subject shows your total questions attempted, questions answered correctly, and overall progress. You can reset your progress at any time from the subject screen."
   },
   {
     question: "Can I change my grade?",
     answer: "Yes, you can change your grade in the profile section. Note that changing your grade will reset your progress as questions are grade-specific."
   },
   {
-    question: "How is my progress tracked?",
-    answer: "Each subject shows your total questions, answered questions, and correct answers. Your progress is saved automatically and you can track your improvement over time."
+    question: "What if I find a mistake?",
+    answer: "Each question has a 'Report Issue' button. Click it to report any errors via WhatsApp, and our team will review and fix it promptly."
+  },
+  {
+    question: "Is the app free to use?",
+    answer: "Yes, ExamQuiz is completely free! We believe in making quality education accessible to all South African students."
   },
   {
     question: "Need help or have suggestions?",
     answer: "We're here to help! Click the WhatsApp button above to chat with us directly. We welcome your feedback and questions."
-  },
-  {
-    question: "Can I practice offline?",
-    answer: "Currently, an internet connection is required to access questions and track your progress. We're working on offline support for future updates."
-  },
-  {
-    question: "How often are new questions added?",
-    answer: "We regularly update our question bank with new past exam papers. Questions are carefully selected and verified by subject matter experts."
   }
 ];
 
 export default function InfoScreen() {
+  const { user } = useAuth();
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
+
   return (
     <LinearGradient
       colors={['#DBEAFE', '#F3E8FF']}
@@ -49,13 +55,12 @@ export default function InfoScreen() {
       end={{ x: 0, y: 1 }}
     >
       <ScrollView style={styles.container}>
-        <ThemedView style={styles.header}>
-          <Image
-            source={require('@/assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </ThemedView>
+        <Header
+          title="Exam Quiz"
+          user={user}
+          learnerInfo={learnerInfo}
+        />
+
 
         <TouchableOpacity
           style={styles.whatsappButton}

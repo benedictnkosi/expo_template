@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, FlatList, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Image, Platform, Modal } from 'react-native';
+import { StyleSheet, FlatList, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Image, Platform, Modal, Linking } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -34,10 +34,19 @@ export default function HomeScreen() {
   const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
   const [showAlert, setShowAlert] = useState(false);
   const [subjectToRemove, setSubjectToRemove] = useState<Subject | null>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
 
   // Add useEffect for initial load
   useEffect(() => {
     loadData();
+
+    // Show review prompt after a short delay
+    // const timer = setTimeout(() => {
+    //   promptForReview();
+    // }, 1000);
+
+    // return () => clearTimeout(timer);
   }, [user?.uid]);
 
   // Keep useFocusEffect for tab focus
@@ -267,6 +276,67 @@ export default function HomeScreen() {
     </Modal>
   );
 
+  // Replace promptForReview function
+  function promptForReview() {
+    setShowRatingModal(true);
+  }
+
+  // Add RatingModal component
+  const RatingModal = () => {
+    const handleRating = (selectedRating: number) => {
+      setRating(selectedRating);
+    };
+
+    return (
+      <Modal
+        visible={showRatingModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.ratingContainer}>
+            <ThemedText style={styles.ratingTitle}>
+              How Would You Rate Our App Experience?
+            </ThemedText>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => handleRating(star)}
+                  activeOpacity={0.7}
+                >
+                  <ThemedText style={[styles.star]}>
+                    {star <= rating ? '★' : '☆'}
+                  </ThemedText>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                rating === 0 && styles.submitButtonDisabled
+              ]}
+              onPress={() => {
+                if (rating >= 4) {
+                  Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
+                }
+                setShowRatingModal(false);
+              }}
+              disabled={rating === 0}
+            >
+              <ThemedText style={styles.submitText}>Submit</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowRatingModal(false)}
+            >
+              <ThemedText style={styles.notNowText}>No, Thanks</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -304,6 +374,7 @@ export default function HomeScreen() {
         </ThemedView>
       </ScrollView>
       <CustomAlert />
+      <RatingModal />
     </LinearGradient>
   );
 }
@@ -571,5 +642,60 @@ const styles = StyleSheet.create({
   },
   mySubjectText: {
     color: '#000000',
+  },
+  ratingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    width: '80%',
+    maxWidth: 400,
+  },
+  ratingHeader: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFD700',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  headerEmoji: {
+    fontSize: 36,
+  },
+  ratingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  star: {
+    fontSize: 32,
+    color: '#FFD700',
+    marginHorizontal: 4,
+  },
+  submitButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 40,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginBottom: 12,
+  },
+  submitText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  notNowText: {
+    color: '#666666',
+    fontSize: 14,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
   },
 });

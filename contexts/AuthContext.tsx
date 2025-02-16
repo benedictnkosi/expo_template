@@ -5,6 +5,8 @@ import { useRouter, useSegments } from 'expo-router';
 import { getLearner } from '@/services/api';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -42,9 +44,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    // Check for stored session on mount
+    AsyncStorage.getItem('user').then(savedUser => {
+      if (savedUser) setUser(JSON.parse(savedUser));
+    });
+
+    // Listen for auth state changes
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setIsLoading(false);
+      if (user) {
+        AsyncStorage.setItem('user', JSON.stringify(user));
+      } else {
+        AsyncStorage.removeItem('user');
+      }
     });
 
     return unsubscribe;

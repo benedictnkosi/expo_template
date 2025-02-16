@@ -522,13 +522,51 @@ export default function QuizScreen() {
                         )}
 
                         {question.question_image_path && (
-                            <Image
-                                source={{
-                                    uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
-                                }}
-                                style={styles.questionImage}
-                                resizeMode="contain"
-                            />
+                            <>
+                                <TouchableOpacity
+                                    onPress={() => setIsImageVisible(true)}
+                                    style={styles.imageContainer}
+                                >
+                                    {isImageLoading && (
+                                        <View style={styles.imagePlaceholder}>
+                                            <ActivityIndicator color="#000000" />
+                                        </View>
+                                    )}
+                                    <Image
+                                        source={{
+                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
+                                        }}
+                                        style={styles.questionImage}
+                                        resizeMode="contain"
+                                        onLoadStart={() => setIsImageLoading(true)}
+                                        onLoadEnd={() => setIsImageLoading(false)}
+                                    />
+                                </TouchableOpacity>
+
+                                <Modal
+                                    isVisible={isImageVisible}
+                                    onBackdropPress={() => setIsImageVisible(false)}
+                                    onSwipeComplete={() => setIsImageVisible(false)}
+                                    swipeDirection="down"
+                                    style={styles.modal}
+                                >
+                                    <View style={styles.modalContent}>
+                                        <TouchableOpacity
+                                            style={styles.closeButton}
+                                            onPress={() => setIsImageVisible(false)}
+                                        >
+                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+                                        </TouchableOpacity>
+                                        <Image
+                                            source={{
+                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
+                                            }}
+                                            style={styles.fullScreenImage}
+                                            resizeMode="contain"
+                                        />
+                                    </View>
+                                </Modal>
+                            </>
                         )}
 
                         {question.question && (

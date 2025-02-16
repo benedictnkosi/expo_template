@@ -10,6 +10,10 @@ import { Picker } from '@react-native-picker/picker';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/config/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Header } from '@/components/Header';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -136,13 +140,19 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSignOut = async () => {
+  const handleLogout = async () => {
     try {
-      await signOut();
+      await signOut(auth);
+      await AsyncStorage.removeItem('user'); // Clear stored user data
       router.replace('/login');
     } catch (error) {
-      console.error('Failed to sign out:', error);
-      Alert.alert('Error', 'Failed to sign out');
+      console.error('Logout error:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to logout',
+        position: 'bottom'
+      });
     }
   };
 
@@ -206,18 +216,11 @@ export default function ProfileScreen() {
     >
       <CustomAlert />
       <ScrollView style={styles.container}>
-        <ThemedView style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)')}
-            activeOpacity={0.7}
-          >
-            <Image
-              source={require('@/assets/images/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </ThemedView>
+        <Header
+          title="Exam Quiz"
+          user={user}
+          learnerInfo={learnerInfo}
+        />
 
         <ThemedView style={styles.content}>
           <ThemedView style={styles.profileCard}>
@@ -267,7 +270,7 @@ export default function ProfileScreen() {
         <ThemedView style={styles.signOutContainer}>
           <TouchableOpacity
             style={styles.signOutButton}
-            onPress={handleSignOut}
+            onPress={handleLogout}
           >
             <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
           </TouchableOpacity>
@@ -283,11 +286,13 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    padding: 20,
   },
   header: {
+    padding: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
     alignItems: 'center',
-    marginBottom: 32,
   },
   logo: {
     marginTop: 20,

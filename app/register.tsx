@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform, ScrollView, View, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,13 +9,34 @@ import { router } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { doc, setDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
+import { fetchGrades } from '@/services/api';
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [grade, setGrade] = useState('');
+  const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadGrades() {
+      try {
+        const gradesData = await fetchGrades();
+        const sortedGrades = gradesData
+          .filter(grade => grade.active === 1)
+          .sort((a, b) => b.number - a.number);
+        setGrades(sortedGrades);
+
+        if (sortedGrades.length > 0) {
+          setGrade(sortedGrades[0].number.toString());
+        }
+      } catch (error) {
+        console.error('Failed to fetch grades:', error);
+      }
+    }
+    loadGrades();
+  }, []);
 
   const handleRegister = async () => {
     if (!email || !password || !name || !grade) {
@@ -100,9 +121,12 @@ export default function Register() {
                 onValueChange={(value) => setGrade(value)}
                 style={styles.picker}
               >
-                <Picker.Item label="Select Grade" value="" />
-                {['10', '11', '12'].map((g) => (
-                  <Picker.Item key={g} label={`Grade ${g}`} value={g} />
+                {grades.map((grade) => (
+                  <Picker.Item
+                    key={grade.id}
+                    label={`Grade ${grade.number}`}
+                    value={grade.number.toString()}
+                  />
                 ))}
               </Picker>
             </View>
