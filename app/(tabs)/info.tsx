@@ -18,10 +18,6 @@ const FAQ_ITEMS: FAQItem[] = [
     answer: "ExamQuiz provides past exam questions for practice. Select your grade and subjects, then practice questions one at a time. Each question includes detailed solutions and explanations. Your progress is tracked per subject."
   },
   {
-    question: "What subjects are available?",
-    answer: "We currently offer Mathematics, Physical Sciences, and Life Sciences for Grades 10-12. Questions are from past exam papers and are curated by subject experts."
-  },
-  {
     question: "How do I track my progress?",
     answer: "Each subject shows your total questions attempted, questions answered correctly, and overall progress. You can reset your progress at any time from the subject screen."
   },

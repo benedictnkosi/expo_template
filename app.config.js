@@ -9,13 +9,13 @@ export default {
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'za.co.examquiz',
+    bundleIdentifier: 'za.co.examquizafrica',
     buildNumber: '1.0.0',
     deploymentTarget: "15.1",
     googleServicesFile: './GoogleService-Info.plist'
   },
   android: {
-    package: 'za.co.examquiz',
+    package: 'za.co.examquizafrica',
     versionCode: 1,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
