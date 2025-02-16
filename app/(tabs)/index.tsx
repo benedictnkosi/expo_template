@@ -26,6 +26,15 @@ interface EnrolledSubject {
   correct_answers: number;  // Add this field
 }
 
+const LoadingOverlay = ({ message }: { message: string }) => (
+  <View style={styles.loadingOverlay}>
+    <View style={styles.loadingBox}>
+      <ActivityIndicator size="large" color="#000000" />
+      <ThemedText style={styles.loadingText}>{message}</ThemedText>
+    </View>
+  </View>
+);
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
@@ -36,6 +45,7 @@ export default function HomeScreen() {
   const [subjectToRemove, setSubjectToRemove] = useState<Subject | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
+  const [addingSubjectId, setAddingSubjectId] = useState<string | null>(null);
 
   // Add useEffect for initial load
   useEffect(() => {
@@ -105,6 +115,10 @@ export default function HomeScreen() {
       try {
         if (!user?.uid) return;
 
+        // Set loading state before API call
+        setAddingSubjectId(subject.id);
+        console.log('Setting loading state for subject:', subject.id); // Debug log
+
         // Call API to assign subject
         await assignSubject(user.uid, parseInt(subject.id));
 
@@ -120,10 +134,14 @@ export default function HomeScreen() {
 
         // Update UI with fresh data
         setMySubjects(transformedEnrolledSubjects);
-        setAvailableSubjects(availableSubjects.filter(s => s.id !== subject.id));
+        setAvailableSubjects(prev => prev.filter(s => s.id !== subject.id));
       } catch (error) {
         console.error('Failed to add subject:', error);
         Alert.alert('Error', 'Failed to add subject');
+      } finally {
+        // Clear loading state after operation completes
+        setAddingSubjectId(null);
+        console.log('Clearing loading state'); // Debug log
       }
     }
   };
@@ -132,17 +150,6 @@ export default function HomeScreen() {
     const progress = item.totalQuestions === 0 || item.answeredQuestions === 0 ? 0 :
       (item.correctAnswers / item.answeredQuestions) * 100;
 
-    const handleCardPress = () => {
-      if (isMySubject) {
-        router.push({
-          pathname: '/quiz',
-          params: { subjectId: item.id, subjectName: item.name }
-        });
-      } else {
-        handleAddSubject(item);
-      }
-    };
-
     return (
       <TouchableOpacity
         key={item.id}
@@ -150,7 +157,16 @@ export default function HomeScreen() {
           styles.card,
           isMySubject ? styles.mySubjectCard : styles.availableSubjectCard
         ]}
-        onPress={handleCardPress}
+        onPress={() => {
+          if (isMySubject) {
+            router.push({
+              pathname: '/quiz',
+              params: { subjectId: item.id, subjectName: item.name }
+            });
+          } else {
+            handleAddSubject(item);
+          }
+        }}
       >
         <View style={styles.cardHeader}>
           <ThemedText style={[
@@ -197,7 +213,11 @@ export default function HomeScreen() {
           ) : (
             <TouchableOpacity
               style={styles.removeButton}
-              onPress={() => handleAddSubject(item)}
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent card click
+                handleAddSubject(item);
+              }}
+              disabled={addingSubjectId === item.id}
             >
               <ThemedText style={styles.removeButtonText}>+</ThemedText>
             </TouchableOpacity>
@@ -363,18 +383,35 @@ export default function HomeScreen() {
           {/* Your Subjects Section */}
           <ThemedView style={[styles.sectionCard, styles.yourSubjectsCard]}>
             <ThemedText style={styles.sectionTitle}>Your Subjects</ThemedText>
-            {mySubjects.map(subject => renderSubjectCard(subject, true))}
+            {mySubjects.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <ThemedText style={styles.emptyStateText}>
+                  You haven't added any subjects yet. Add subjects from the list below to get started.
+                </ThemedText>
+              </View>
+            ) : (
+              mySubjects.map(subject => renderSubjectCard(subject, true))
+            )}
           </ThemedView>
 
           {/* Available Subjects Section */}
           <ThemedView style={styles.sectionCard}>
             <ThemedText style={styles.sectionTitle}>Available Subjects</ThemedText>
-            {availableSubjects.map(subject => renderSubjectCard(subject, false))}
+            {availableSubjects.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <ThemedText style={styles.emptyStateText}>
+                  No subjects available at the moment. Please check your profile.
+                </ThemedText>
+              </View>
+            ) : (
+              availableSubjects.map(subject => renderSubjectCard(subject, false))
+            )}
           </ThemedView>
         </ThemedView>
       </ScrollView>
       <CustomAlert />
       <RatingModal />
+      {addingSubjectId && <LoadingOverlay message="Adding subject..." />}
     </LinearGradient>
   );
 }
@@ -697,5 +734,55 @@ const styles = StyleSheet.create({
   },
   submitButtonDisabled: {
     opacity: 0.5,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingBox: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 200,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.25)',
+      },
+    }),
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  emptyStateContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
   },
 });
