@@ -98,3 +98,9 @@ eas build --profile development --platform android
 ### manage credentials
 eas credentials
 px expo credentials:manager --info
+
+submit to android
+
+
+
+eas submit --platform android
