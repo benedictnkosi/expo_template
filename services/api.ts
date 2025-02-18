@@ -85,10 +85,7 @@ export async function checkAnswer(
   questionId: number,
   answer: string
 ): Promise<CheckAnswerResponse> {
-  mixpanel.track(Events.ANSWER_QUESTION, {
-    "user_id": uid,
-    "question_id": questionId
-  });
+
 
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/check-answer`),

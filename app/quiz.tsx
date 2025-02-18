@@ -222,11 +222,6 @@ export default function QuizScreen() {
 
     const loadRandomQuestion = async () => {
         if (!user?.uid || !subjectId) return;
-
-        trackEvent(Events.LOAD_QUESTION, {
-            "user_id": user?.uid,
-            "subject_id": subjectId
-        });
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
@@ -357,10 +352,6 @@ export default function QuizScreen() {
     };
 
     const handleRotateImage = () => {
-        trackEvent(Events.ROTATE_IMAGE, {
-            "user_id": user?.uid,
-            "subject_id": subjectId
-        });
         setIsRotated(!isRotated);
         setRotation(isRotated ? 0 : 90);
     };
