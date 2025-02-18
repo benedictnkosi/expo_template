@@ -189,6 +189,7 @@ export default function QuizScreen() {
     const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
     const [showAllTerms, setShowAllTerms] = useState(true);
+    const [rotation, setRotation] = useState(0);
 
     useEffect(() => {
         loadRandomQuestion();
@@ -325,6 +326,10 @@ export default function QuizScreen() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleRotateImage = () => {
+        setRotation(prev => (prev + 90) % 360);
     };
 
     if (isLoading) {
@@ -497,23 +502,43 @@ export default function QuizScreen() {
 
                                 <Modal
                                     isVisible={isImageVisible}
-                                    onBackdropPress={() => setIsImageVisible(false)}
-                                    onSwipeComplete={() => setIsImageVisible(false)}
+                                    onBackdropPress={() => {
+                                        setIsImageVisible(false);
+                                        setRotation(0);
+                                    }}
+                                    onSwipeComplete={() => {
+                                        setIsImageVisible(false);
+                                        setRotation(0);
+                                    }}
                                     swipeDirection="down"
                                     style={styles.modal}
                                 >
                                     <View style={styles.modalContent}>
                                         <TouchableOpacity
                                             style={styles.closeButton}
-                                            onPress={() => setIsImageVisible(false)}
+                                            onPress={() => {
+                                                setIsImageVisible(false);
+                                                setRotation(0);
+                                            }}
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={styles.rotateButton}
+                                            onPress={handleRotateImage}
+                                        >
+                                            <ThemedText style={styles.rotateButtonText}>⟳</ThemedText>
+                                        </TouchableOpacity>
+
                                         <Image
                                             source={{
                                                 uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                             }}
-                                            style={styles.fullScreenImage}
+                                            style={[
+                                                styles.fullScreenImage,
+                                                { transform: [{ rotate: `${rotation}deg` }] }
+                                            ]}
                                             resizeMode="contain"
                                         />
                                     </View>
@@ -545,23 +570,43 @@ export default function QuizScreen() {
 
                                 <Modal
                                     isVisible={isImageVisible}
-                                    onBackdropPress={() => setIsImageVisible(false)}
-                                    onSwipeComplete={() => setIsImageVisible(false)}
+                                    onBackdropPress={() => {
+                                        setIsImageVisible(false);
+                                        setRotation(0);
+                                    }}
+                                    onSwipeComplete={() => {
+                                        setIsImageVisible(false);
+                                        setRotation(0);
+                                    }}
                                     swipeDirection="down"
                                     style={styles.modal}
                                 >
                                     <View style={styles.modalContent}>
                                         <TouchableOpacity
                                             style={styles.closeButton}
-                                            onPress={() => setIsImageVisible(false)}
+                                            onPress={() => {
+                                                setIsImageVisible(false);
+                                                setRotation(0);
+                                            }}
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
+
+                                        <TouchableOpacity
+                                            style={styles.rotateButton}
+                                            onPress={handleRotateImage}
+                                        >
+                                            <ThemedText style={styles.rotateButtonText}>⟳</ThemedText>
+                                        </TouchableOpacity>
+
                                         <Image
                                             source={{
                                                 uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
                                             }}
-                                            style={styles.fullScreenImage}
+                                            style={[
+                                                styles.fullScreenImage,
+                                                { transform: [{ rotate: `${rotation}deg` }] }
+                                            ]}
                                             resizeMode="contain"
                                         />
                                     </View>
@@ -1016,10 +1061,12 @@ const styles = StyleSheet.create({
         width: '100%',
         backgroundColor: 'black',
         justifyContent: 'center',
+        alignItems: 'center',
     },
     fullScreenImage: {
         width: '100%',
         height: '100%',
+        transform: [{ rotate: '0deg' }],
     },
     closeButton: {
         position: 'absolute',
@@ -1188,5 +1235,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
         marginVertical: 4,
+    },
+    rotateButton: {
+        position: 'absolute',
+        top: 40,
+        left: 20,
+        zIndex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    rotateButtonText: {
+        color: '#FFFFFF',
+        fontSize: 20,
+        fontWeight: 'bold',
     },
 }); 
