@@ -10,6 +10,7 @@ import { Picker } from '@react-native-picker/picker';
 import { doc, setDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
 import { fetchGrades } from '@/services/api';
+import { trackEvent, Events } from '@/services/mixpanel';
 
 export default function Register() {
   const [email, setEmail] = useState('');

@@ -1,11 +1,13 @@
 import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse } from '@/types/api';
 import { API_BASE_URL } from '@/config/api';
+import { mixpanel, Events } from '@/services/mixpanel';
 
 function ensureHttps(url: string): string {
   return url.replace('http://', 'https://');
 }
 
 export async function fetchAvailableSubjects(uid: string): Promise<SubjectsResponse> {
+
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects-not-enrolled?uid=${uid}`)
   );
@@ -19,6 +21,8 @@ export async function fetchAvailableSubjects(uid: string): Promise<SubjectsRespo
 }
 
 export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
+
+
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`)
   );
@@ -31,6 +35,11 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
 }
 
 export async function removeSubject(uid: string, subjectId: number): Promise<void> {
+  mixpanel.track(Events.REMOVE_SUBJECT, {
+    "user_id": uid,
+    "subject_id": subjectId
+  });
+
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-subject`),
     {
@@ -49,6 +58,11 @@ export async function removeSubject(uid: string, subjectId: number): Promise<voi
 }
 
 export async function assignSubject(uid: string, subjectId: number): Promise<void> {
+  mixpanel.track(Events.ADD_SUBJECT, {
+    "user_id": uid,
+    "subject_id": subjectId
+  });
+
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/assign-subject`),
     {
@@ -71,6 +85,11 @@ export async function checkAnswer(
   questionId: number,
   answer: string
 ): Promise<CheckAnswerResponse> {
+  mixpanel.track(Events.ANSWER_QUESTION, {
+    "user_id": uid,
+    "question_id": questionId
+  });
+
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/check-answer`),
     {
@@ -131,6 +150,12 @@ export async function updateLearner(uid: string, data: {
   name: string;
   grade: number;
 }) {
+  mixpanel.track(Events.UPDATE_PROFILE, {
+    "user_id": uid,
+    "name": data.name,
+    "grade": data.grade.toString()
+  });
+
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/update`),
     {

@@ -7,6 +7,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { onAuthStateChanged } from 'firebase/auth';
+import { identifyUser } from '@/services/mixpanel';
 
 interface AuthContextType {
   user: User | null;
@@ -55,6 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
       if (user) {
         AsyncStorage.setItem('user', JSON.stringify(user));
+        identifyUser(user.uid, {
+          email: user.email,
+          name: user.displayName
+        });
       } else {
         AsyncStorage.removeItem('user');
       }

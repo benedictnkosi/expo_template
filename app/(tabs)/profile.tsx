@@ -14,6 +14,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Header } from '@/components/Header';
+import { trackEvent, Events } from '@/services/mixpanel';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -132,6 +133,11 @@ export default function ProfileScreen() {
       });
       setIsEditing(false);
       handleSuccess();
+      trackEvent(Events.UPDATE_PROFILE, {
+        "user_id": user?.uid,
+        "name": editName.trim(),
+        "grade": editGrade
+      });
     } catch (error) {
       console.error('Failed to update profile:', error);
       Alert.alert('Error', 'Failed to update profile');

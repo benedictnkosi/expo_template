@@ -3,6 +3,7 @@ import { StyleSheet, FlatList, TouchableOpacity, View, Alert, ActivityIndicator,
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
+import { mixpanel, Events } from '@/services/mixpanel';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -49,6 +50,10 @@ export default function HomeScreen() {
 
   // Add useEffect for initial load
   useEffect(() => {
+    mixpanel.track(Events.VIEW_HOME, {
+      "user_id": user?.uid
+    });
+
     loadData();
 
     // Show review prompt after a short delay

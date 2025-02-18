@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { checkAnswer, getLearner, removeResults } from '@/services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
 import { Header } from '@/components/Header';
+import { trackEvent, Events } from '@/services/mixpanel';
 
 interface Question {
     id: number;
@@ -72,15 +73,7 @@ function cleanAnswer(answer: string): string {
     }
 }
 
-const reportIssue = (questionId: number) => {
-    const message = `Hi, I'd like to report an issue with question #${questionId}`;
-    Linking.openURL(`https://api.whatsapp.com/send/?phone=27837917430&text=${encodeURIComponent(message)}`);
-    Toast.show({
-        type: 'info',
-        text1: 'Opening WhatsApp',
-        position: 'bottom'
-    });
-};
+
 
 function KaTeX({ latex }: { latex: string }) {
     const html = `
@@ -192,6 +185,10 @@ export default function QuizScreen() {
     const [rotation, setRotation] = useState(0);
 
     useEffect(() => {
+        trackEvent(Events.VIEW_QUIZ, {
+            "user_id": user?.uid,
+            "subject_id": subjectId
+        });
         loadRandomQuestion();
         async function fetchLearnerInfo() {
             if (!user?.uid) return;
@@ -208,9 +205,27 @@ export default function QuizScreen() {
         fetchLearnerInfo();
     }, [subjectId, user?.uid]);
 
+    const reportIssue = (questionId: number) => {
+        trackEvent(Events.REPORT_ISSUE, {
+            "user_id": user?.uid,
+            "question_id": questionId
+        });
+        const message = `Hi, I'd like to report an issue with question #${questionId}`;
+        Linking.openURL(`https://api.whatsapp.com/send/?phone=27837917430&text=${encodeURIComponent(message)}`);
+        Toast.show({
+            type: 'info',
+            text1: 'Opening WhatsApp',
+            position: 'bottom'
+        });
+    };
+
     const loadRandomQuestion = async () => {
         if (!user?.uid || !subjectId) return;
 
+        trackEvent(Events.LOAD_QUESTION, {
+            "user_id": user?.uid,
+            "subject_id": subjectId
+        });
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
@@ -262,11 +277,19 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !question) return;
 
+
         try {
             const response = await checkAnswer(user.uid, question.id, answer);
             setSelectedAnswer(answer);
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
+
+            trackEvent(Events.SUBMIT_ANSWER, {
+                "user_id": user?.uid,
+                "subject_id": subjectId,
+                "question_id": question.id,
+                "is_correct": response.is_correct
+            });
 
             // Longer delay and force scroll
             setTimeout(() => {
@@ -306,6 +329,10 @@ export default function QuizScreen() {
     const handleRestart = async () => {
         if (!user?.uid || !subjectId) return;
 
+        trackEvent(Events.RESTART_QUIZ, {
+            "user_id": user?.uid,
+            "subject_id": subjectId
+        });
         try {
             setIsLoading(true);
             await removeResults(user.uid, Number(subjectId));
@@ -329,6 +356,10 @@ export default function QuizScreen() {
     };
 
     const handleRotateImage = () => {
+        trackEvent(Events.ROTATE_IMAGE, {
+            "user_id": user?.uid,
+            "subject_id": subjectId
+        });
         setRotation(prev => (prev + 90) % 360);
     };
 
@@ -476,6 +507,12 @@ export default function QuizScreen() {
                             <View style={styles.questionContainer}>
                                 {renderMixedContent(question.context)}
                             </View>
+                        )}
+
+                        {(question.image_path || question.question_image_path) && (
+                            <ThemedText style={styles.imageCaption}>
+                                Click image to enlarge
+                            </ThemedText>
                         )}
 
                         {question.image_path && (
@@ -758,7 +795,13 @@ export default function QuizScreen() {
                     <>
                         <TouchableOpacity
                             style={[styles.footerButton]}
-                            onPress={loadRandomQuestion}
+                            onPress={() => {
+                                trackEvent(Events.SKIP_QUESTION, {
+                                    "user_id": user?.uid,
+                                    "question_id": question.id
+                                });
+                                loadRandomQuestion();
+                            }}
                         >
                             <ThemedText style={styles.footerButtonText}>Skip</ThemedText>
                         </TouchableOpacity>
@@ -1252,5 +1295,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 20,
         fontWeight: 'bold',
+    },
+    imageCaption: {
+        fontSize: 12,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 8,
+        fontStyle: 'italic'
     },
 }); 
