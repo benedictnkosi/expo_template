@@ -183,6 +183,7 @@ export default function QuizScreen() {
     const scrollViewRef = React.useRef<ScrollView>(null);
     const [showAllTerms, setShowAllTerms] = useState(true);
     const [rotation, setRotation] = useState(0);
+    const [isRotated, setIsRotated] = useState(false);
 
     useEffect(() => {
         trackEvent(Events.VIEW_QUIZ, {
@@ -360,7 +361,8 @@ export default function QuizScreen() {
             "user_id": user?.uid,
             "subject_id": subjectId
         });
-        setRotation(prev => (prev + 90) % 360);
+        setIsRotated(!isRotated);
+        setRotation(isRotated ? 0 : 90);
     };
 
     if (isLoading) {
