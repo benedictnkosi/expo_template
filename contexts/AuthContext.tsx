@@ -21,9 +21,6 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => { }
 });
 
-const API_BASE_URL = 'https://api.examquiz.co.za';
-//const API_BASE_URL = 'http://127.0.0.1:8000';
-
 // Add function to create learner
 async function createLearner(user: User) {
   try {

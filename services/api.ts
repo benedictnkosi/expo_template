@@ -20,9 +20,7 @@ export async function fetchAvailableSubjects(grade: string): Promise<SubjectsRes
   return data;
 }
 
-export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
-
-
+export async function fetchMySubjects(uid: string): Promise<Subject[]> {
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`)
   );
@@ -31,7 +29,7 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
     throw new Error('Failed to fetch enrolled subjects');
   }
 
-  return { subjects: await response.json() };
+  return await response.json();
 }
 
 export async function removeSubject(uid: string, subjectId: number): Promise<void> {
@@ -356,6 +354,41 @@ export async function getSubjectStats(uid: string, subjectName: string): Promise
     return await response.json();
   } catch (error) {
     console.error('Error fetching subject stats:', error);
+    throw error;
+  }
+}
+
+interface RegisterResponse {
+  status: string;
+  message?: string;
+  user?: {
+    uid: string;
+    name: string;
+    grade: number;
+  };
+}
+
+export async function registerLearner(data: {
+  uid: string;
+  name: string;
+  grade: number;
+}): Promise<RegisterResponse> {
+  try {
+    const response = await fetch(
+      ensureHttps(`${API_BASE_URL}/public/learn/learner/create`),
+      {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to register learner');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error registering learner:', error);
     throw error;
   }
 } 

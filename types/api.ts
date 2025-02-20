@@ -48,17 +48,7 @@ export interface SubjectsResponse {
 }
 
 export interface MySubjectsResponse {
-  subjects: {
-    subject: {
-      subject: {
-        id: number;
-        name: string;
-      };
-    };
-    total_questions: number;
-    answered_questions: number;
-    correct_answers: number;
-  }[];
+  subjects: Subject[];
 }
 
 export interface CheckAnswerResponse {

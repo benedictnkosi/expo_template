@@ -76,7 +76,10 @@ export default function HomeScreen() {
 
   // Move loadData function outside the hooks
   async function loadData() {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      console.log('No user uid');
+      return;
+    }
     try {
       const learner = await getLearner(user.uid);
       setLearnerInfo({
@@ -90,12 +93,12 @@ export default function HomeScreen() {
           const enrolledResponse = await fetchMySubjects(user.uid);
 
           // Group subjects by base name (removing P1/P2)
-          const subjectGroups = enrolledResponse.subjects.reduce((acc, curr) => {
-            const baseName = curr.subject.subject.name.replace(/ P[12]$/, '');
+          const subjectGroups = enrolledResponse.reduce((acc, curr) => {
+            const baseName = curr.subject.name.replace(/ P[12]$/, '');
 
             if (!acc[baseName]) {
               acc[baseName] = {
-                id: curr.subject.subject.id.toString(),
+                id: curr.subject.id.toString(),
                 name: baseName,
                 totalQuestions: curr.total_questions,
                 answeredQuestions: curr.answered_questions,

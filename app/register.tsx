@@ -11,6 +11,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
 import { fetchGrades } from '@/services/api';
 import { trackEvent, Events } from '@/services/mixpanel';
+import { registerLearner } from '@/services/api';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -54,40 +55,19 @@ export default function Register() {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email, password);
       console.log('User created:', user);
-      // Call learner update API
-      const response = await fetch('https://api.examquiz.co.za/public/learn/learner/update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          uid: user.uid,
-          name,
-          grade: parseInt(grade),
-          email,
-        })
+      await registerLearner({
+        uid: user.uid,
+        name: name.trim(),
+        grade: parseInt(grade)
       });
 
-      console.log('Response:', response);
-
-      if (!response.ok) {
-        throw new Error('Failed to update learner profile');
-      }
-
-      router.replace('/(tabs)');
-    } catch (error: any) {
-      console.error('Registration error:', error.code, error.message);
-
-      const messages: { [key: string]: string } = {
-        'auth/email-already-in-use': 'An account with this email already exists',
-        'auth/invalid-email': 'Invalid email address',
-        'auth/weak-password': 'Password should be at least 6 characters'
-      };
-
+      router.replace('/');
+    } catch (error) {
+      console.error('Registration error:', error);
       Toast.show({
         type: 'error',
-        text1: 'Registration Failed',
-        text2: messages[error.code] || 'Failed to create account',
+        text1: 'Error',
+        text2: 'Failed to register',
         position: 'bottom'
       });
     } finally {
