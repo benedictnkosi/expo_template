@@ -1,122 +1,65 @@
-import { View, TouchableOpacity, Image, StyleSheet, Linking, Platform, Share } from 'react-native';
+import { StyleSheet, View, Image } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { ThemedView } from './ThemedView';
-import { router } from 'expo-router';
 import { User } from 'firebase/auth';
-import { Ionicons } from '@expo/vector-icons';
-import AntDesign from '@expo/vector-icons/AntDesign';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 interface HeaderProps {
   title: string;
   user: User | null;
-  learnerInfo?: {
+  learnerInfo: {
     name: string;
     grade: string;
   } | null;
 }
 
 export function Header({ title, user, learnerInfo }: HeaderProps) {
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: 'Check out ExamQuiz for free exam practice!',
-        url: 'https://examquiz.co.za',
-        title: 'ExamQuiz'
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
+  const insets = useSafeAreaInsets();
 
   return (
-    <ThemedView style={styles.header}>
-      <TouchableOpacity
-        onPress={() => router.push('/(tabs)')}
-        activeOpacity={0.7}
-      >
-        <Image
-          source={require('@/assets/images/logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
-      <View style={styles.profileSection}>
-        <View style={styles.userInfo}>
-          <ThemedText style={styles.userName}>
-            {learnerInfo?.name || 'User'}
-          </ThemedText>
-          <ThemedText style={styles.userGrade}>
-            Grade {learnerInfo?.grade || ''}
-          </ThemedText>
-        </View>
-        <TouchableOpacity
-          onPress={handleShare}
-          activeOpacity={0.7}
-          style={styles.shareButton}
-        >
-          <AntDesign name="sharealt" size={24} color="black" />
-        </TouchableOpacity>
+    <View style={[styles.header, { marginTop: insets.top }]}>
+      <View style={styles.greeting}>
+        <ThemedText style={styles.welcomeText}>Hi, {learnerInfo?.name || ''}</ThemedText>
+        <ThemedText style={styles.subtitle}>Let's make this day productive</ThemedText>
       </View>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    marginBottom: 24,
   },
-  logo: {
-    width: 120,
-    height: 32,
-    alignSelf: 'flex-start',
+  greeting: {
+    flex: 1,
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#999',
   },
   profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginLeft: 16,
   },
-  userInfo: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  userName: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-    lineHeight: 14,
-  },
-  userGrade: {
-    fontSize: 10,
-    color: '#666',
-    opacity: 0.8,
-    lineHeight: 12,
-  },
-  shareButton: {
+  profileImage: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#333',
+  },
+  profilePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      }
-    }),
   },
-  shareIcon: {
-    fontSize: 24,
-    color: '#000000',
+  profileInitial: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 }); 

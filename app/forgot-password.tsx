@@ -38,7 +38,12 @@ export default function ForgotPassword() {
   };
 
   return (
-    <LinearGradient colors={['#FFFFFF', '#FFFFFF']} style={styles.gradient}>
+    <LinearGradient
+      colors={['#1a1a1a', '#000000', '#000000']}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <View style={styles.header}>
@@ -85,7 +90,6 @@ export default function ForgotPassword() {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
@@ -94,31 +98,33 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
   title: {
-    color: '#000000',
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: 'bold',
   },
   subtitle: {
-    color: '#666666',
+    color: '#999',
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#333',
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
+    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#444',
   },
   button: {
-    backgroundColor: '#000000',
+    backgroundColor: '#2563EB',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -136,7 +142,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#000000',
+    color: '#FFFFFF',
     fontSize: 14,
   },
 }); 

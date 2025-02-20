@@ -10,6 +10,12 @@ mixpanel.init();
 
 // Track events
 export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
+  // Skip tracking for localhost/development
+  if (__DEV__) {
+    console.log('Development mode - skipping event:', eventName, properties);
+    return;
+  }
+
   try {
     mixpanel.track(eventName, properties);
     console.log('Tracked event:', eventName, properties);

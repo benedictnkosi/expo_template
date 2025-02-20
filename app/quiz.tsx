@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Image, TextInput, ScrollView, View, Linking, Platform } from 'react-native';
-import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Switch } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import WebView from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkAnswer, getLearner, removeResults } from '@/services/api';
+import { checkAnswer, getLearner, removeResults, trackStreak, getSubjectStats } from '@/services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
-import { Header } from '@/components/Header';
 import { trackEvent, Events } from '@/services/mixpanel';
 
 interface Question {
@@ -34,16 +34,27 @@ interface Question {
     explanation: string;
 }
 
-interface CheckAnswerResponse {
-    status: string;
-    is_correct: boolean;
-    correct_answers: string;
-    result: 'correct' | 'incorrect';
-}
 
 interface QuestionResponse extends Question {
     status: string;
     message?: string;
+}
+
+interface SubjectStats {
+    status: string;
+    data: {
+        subject: {
+            id: number;
+            name: string;
+        };
+        stats: {
+            total_answers: number;
+            correct_answers: number;
+            incorrect_answers: number;
+            correct_percentage: number;
+            incorrect_percentage: number;
+        };
+    };
 }
 
 // Helper function to clean the answer string
@@ -72,8 +83,6 @@ function cleanAnswer(answer: string): string {
         return answer;
     }
 }
-
-
 
 function KaTeX({ latex }: { latex: string }) {
     const html = `
@@ -167,9 +176,9 @@ function renderMixedContent(text: string) {
 
 export default function QuizScreen() {
     const { user } = useAuth();
-    const { subjectId, subjectName } = useLocalSearchParams();
+    const { subjectName } = useLocalSearchParams();
     const [question, setQuestion] = useState<Question | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
     const [inputAnswer, setInputAnswer] = useState('');
@@ -184,13 +193,16 @@ export default function QuizScreen() {
     const [showAllTerms, setShowAllTerms] = useState(true);
     const [rotation, setRotation] = useState(0);
     const [isRotated, setIsRotated] = useState(false);
+    const [subjectId, setSubjectId] = useState<string | null>(null);
+    const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
+    const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
 
     useEffect(() => {
         trackEvent(Events.VIEW_QUIZ, {
             "user_id": user?.uid,
             "subject_id": subjectId
         });
-        loadRandomQuestion();
+
         async function fetchLearnerInfo() {
             if (!user?.uid) return;
             try {
@@ -206,6 +218,7 @@ export default function QuizScreen() {
         fetchLearnerInfo();
     }, [subjectId, user?.uid]);
 
+
     const reportIssue = (questionId: number) => {
         trackEvent(Events.REPORT_ISSUE, {
             "user_id": user?.uid,
@@ -220,8 +233,11 @@ export default function QuizScreen() {
         });
     };
 
-    const loadRandomQuestion = async () => {
-        if (!user?.uid || !subjectId) return;
+    const loadRandomQuestion = async (paper: string) => {
+        if (!user?.uid || !subjectName) {
+            console.log("no user or subjectId");
+            return;
+        }
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
@@ -230,10 +246,11 @@ export default function QuizScreen() {
 
         try {
             setIsLoading(true);
+            console.log("before fetch", subjectName, selectedPaper);
             const response = await fetch(
-                `${ConfigAPI_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${user.uid}&question_id=0${showAllTerms ? '&show_all_questions=yes' : '&show_all_questions=no'}`
+                `${ConfigAPI_BASE_URL}/public/learn/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0${showAllTerms ? '&show_all_questions=yes' : '&show_all_questions=no'}`
             );
-
+            console.log("after fetch", response);
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
             }
@@ -257,8 +274,11 @@ export default function QuizScreen() {
                 setQuestion(data);
                 setNoMoreQuestions(false);
             }
+
+            const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
+            setStats(newStats.data.stats);
         } catch (error) {
-            console.error('Failed to load question:', error);
+            console.log('Failed to load question:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
@@ -266,6 +286,7 @@ export default function QuizScreen() {
                 position: 'bottom'
             });
         } finally {
+            console.log("finally");
             setIsLoading(false);
         }
     };
@@ -291,6 +312,8 @@ export default function QuizScreen() {
             setTimeout(() => {
                 scrollViewRef.current?.scrollToEnd({ animated: true });
             }, 100);
+
+            trackStreak(user.uid);
         } catch (error) {
             console.error('Failed to check answer:', error);
             Toast.show({
@@ -303,10 +326,11 @@ export default function QuizScreen() {
     };
 
     const handleNext = () => {
+        if (!selectedPaper) return;
         setSelectedAnswer(null);
         setShowFeedback(false);
         setInputAnswer('');
-        loadRandomQuestion();
+        loadRandomQuestion(selectedPaper);
     };
 
     const handleSubmit = () => {
@@ -332,7 +356,7 @@ export default function QuizScreen() {
         try {
             setIsLoading(true);
             await removeResults(user.uid, Number(subjectId));
-            await loadRandomQuestion();
+            await loadRandomQuestion(selectedPaper);
             Toast.show({
                 type: 'success',
                 text1: 'Progress Reset',
@@ -356,6 +380,15 @@ export default function QuizScreen() {
         setRotation(isRotated ? 0 : 90);
     };
 
+    const handleSkipQuestion = () => {
+        if (!question || !selectedPaper) return;
+        trackEvent(Events.SKIP_QUESTION, {
+            "user_id": user?.uid,
+            "question_id": question.id
+        });
+        loadRandomQuestion(selectedPaper);
+    };
+
     if (isLoading) {
         return (
             <ThemedView style={styles.loadingContainer}>
@@ -364,48 +397,69 @@ export default function QuizScreen() {
         );
     }
 
+    if (!selectedPaper) {
+        return (
+            <LinearGradient
+                colors={['#1a1a1a', '#000000', '#000000']}
+                style={styles.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+            >
+                <View style={styles.paperSelectionContainer}>
+                    <Image
+                        source={getSubjectIcon(subjectName as string)}
+                        style={styles.subjectIcon}
+                    />
+                    <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
+                    <ThemedText style={styles.paperSelectionText}>Select a paper to continue</ThemedText>
+
+                    <View style={styles.paperButtons}>
+                        <TouchableOpacity
+                            style={styles.paperButton}
+                            onPress={() => {
+                                setSelectedPaper('P1');
+                                loadRandomQuestion('P1');
+                            }}
+                        >
+                            <ThemedText style={styles.paperButtonText}>Paper 1</ThemedText>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.paperButton}
+                            onPress={() => {
+                                setSelectedPaper('P2');
+                                loadRandomQuestion('P2');
+                            }}
+                        >
+                            <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </LinearGradient>
+        );
+    }
+
     if (!question) {
         return (
             <LinearGradient
-                colors={['#DBEAFE', '#F3E8FF']}
+                colors={['#1a1a1a', '#000000', '#000000']}
                 style={styles.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
             >
                 <ScrollView style={styles.container}>
-                    <Header
-                        title="Exam Quiz"
-                        user={user}
-                        learnerInfo={learnerInfo}
-                    />
 
-                    {new Date().getMonth() < 6 && (
-                        <ThemedView style={styles.headerControls}>
-                            <View style={styles.filterRow}>
-                                <ThemedText style={styles.filterLabel}>
-                                    Show Only term 2 questions?
-                                </ThemedText>
-                                <View style={styles.buttonGroup}>
-                                    <TouchableOpacity
-                                        style={[styles.filterButton, !showAllTerms && styles.filterButtonActive]}
-                                        onPress={() => setShowAllTerms(false)}
-                                    >
-                                        <ThemedText style={[styles.filterButtonText, !showAllTerms && styles.filterButtonTextActive]}>
-                                            Yes
-                                        </ThemedText>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[styles.filterButton, showAllTerms && styles.filterButtonActive]}
-                                        onPress={() => setShowAllTerms(true)}
-                                    >
-                                        <ThemedText style={[styles.filterButtonText, showAllTerms && styles.filterButtonTextActive]}>
-                                            No
-                                        </ThemedText>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </ThemedView>
-                    )}
+                    {/* Subject Title and Meta */}
+                    <View style={styles.subjectHeader}>
+                        <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
+                        {question?.year || question?.term ? (
+                            <ThemedText style={styles.questionMeta}>
+                                {question?.year && `${question.year}`}
+                                {question?.year && question?.term && ' • '}
+                                {question?.term && `Term ${question.term}`}
+                            </ThemedText>
+                        ) : null}
+                    </View>
 
                     <ThemedView style={styles.noQuestionsContainer}>
                         <View style={styles.emojiContainer}>
@@ -438,7 +492,7 @@ export default function QuizScreen() {
 
     return (
         <LinearGradient
-            colors={['#DBEAFE', '#F3E8FF']}
+            colors={['#1a1a1a', '#000000', '#000000']}
             style={styles.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -448,53 +502,43 @@ export default function QuizScreen() {
                 style={styles.container}
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
-                <Header
-                    title="Exam Quiz"
-                    user={user}
-                    learnerInfo={learnerInfo}
-                />
-
-                {new Date().getMonth() < 6 && (
-                    <ThemedView style={styles.headerControls}>
-                        <View style={styles.filterRow}>
-                            <ThemedText style={styles.filterLabel}>
-                                Show Only term 2 questions?
-                            </ThemedText>
-                            <View style={styles.buttonGroup}>
-                                <TouchableOpacity
-                                    style={[styles.filterButton, !showAllTerms && styles.filterButtonActive]}
-                                    onPress={() => setShowAllTerms(false)}
-                                >
-                                    <ThemedText style={[styles.filterButtonText, !showAllTerms && styles.filterButtonTextActive]}>
-                                        Yes
-                                    </ThemedText>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.filterButton, showAllTerms && styles.filterButtonActive]}
-                                    onPress={() => setShowAllTerms(true)}
-                                >
-                                    <ThemedText style={[styles.filterButtonText, showAllTerms && styles.filterButtonTextActive]}>
-                                        No
-                                    </ThemedText>
-                                </TouchableOpacity>
-                            </View>
+                <View style={styles.header}>
+                    <View style={styles.scoreSection}>
+                        <View style={styles.scoreItem}>
+                            <ThemedText style={styles.scoreEmoji}>✅</ThemedText>
+                            <ThemedText style={styles.scoreValue}>{stats?.correct_answers}</ThemedText>
                         </View>
-                    </ThemedView>
-                )}
+                        <View style={styles.scoreItem}>
+                            <ThemedText style={styles.scoreEmoji}>❌</ThemedText>
+                            <ThemedText style={styles.scoreValue}>{stats?.incorrect_answers}</ThemedText>
+                        </View>
+                    </View>
+
+                    <View style={styles.toggleContainer}>
+                        <ThemedText style={styles.toggleLabel}>Term 2 only</ThemedText>
+                        <Switch
+                            value={!showAllTerms}
+                            onValueChange={(value) => setShowAllTerms(!value)}
+                            trackColor={{ false: '#333', true: '#2563EB' }}
+                            thumbColor="#FFFFFF"
+                        />
+                    </View>
+                </View>
+
+                {/* Subject Title and Meta */}
+                <View style={styles.subjectHeader}>
+                    <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
+                    {question?.year || question?.term ? (
+                        <ThemedText style={styles.questionMeta}>
+                            {question?.year && `${question.year}`}
+                            {question?.year && question?.term && ' • '}
+                            {question?.term && `Term ${question.term}`}
+                        </ThemedText>
+                    ) : null}
+                </View>
 
                 <ThemedView style={styles.content}>
                     <ThemedView style={styles.sectionCard}>
-                        <ThemedText style={styles.subjectTitle}>
-                            {subjectName}
-                        </ThemedText>
-
-                        {(question.year || question.term) && (
-                            <ThemedText style={styles.questionMeta}>
-                                {question.year && `${question.year}`}
-                                {question.year && question.term && ' • '}
-                                {question.term && `Term ${question.term}`}
-                            </ThemedText>
-                        )}
 
                         {question.context && (
                             <View style={styles.questionContainer}>
@@ -784,40 +828,25 @@ export default function QuizScreen() {
             </ScrollView>
 
             <ThemedView style={styles.footer}>
-                {!showFeedback && (
-                    <>
-                        <TouchableOpacity
-                            style={[styles.footerButton]}
-                            onPress={() => {
-                                trackEvent(Events.SKIP_QUESTION, {
-                                    "user_id": user?.uid,
-                                    "question_id": question.id
-                                });
-                                loadRandomQuestion();
-                            }}
-                        >
-                            <ThemedText style={styles.footerButtonText}>Skip</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.footerButton]}
-                            onPress={() => router.push('/(tabs)')}
-                        >
-                            <ThemedText style={styles.footerButtonText}>I'm tired</ThemedText>
-                        </TouchableOpacity>
-                    </>
-                )}
+                <TouchableOpacity
+                    style={styles.footerButton}
+                    onPress={handleSkipQuestion}
+                >
+                    <View style={styles.footerButtonContent}>
+                        <Ionicons name="play-skip-forward" size={24} color="#FFFFFF" />
+                        <ThemedText style={styles.footerButtonText}>Next Question</ThemedText>
+                    </View>
+                </TouchableOpacity>
 
-                {showFeedback && (
-                    <ThemedView style={styles.footerButtonGroup}>
-
-                        <TouchableOpacity
-                            style={[styles.footerButton, styles.nextButton]}
-                            onPress={handleNext}
-                        >
-                            <ThemedText style={styles.footerButtonText}>Next</ThemedText>
-                        </TouchableOpacity>
-                    </ThemedView>
-                )}
+                <TouchableOpacity
+                    style={styles.footerButton}
+                    onPress={() => router.push('/(tabs)')}
+                >
+                    <View style={styles.footerButtonContent}>
+                        <Ionicons name="cafe" size={24} color="#FFFFFF" />
+                        <ThemedText style={styles.footerButtonText}>Take a Break</ThemedText>
+                    </View>
+                </TouchableOpacity>
             </ThemedView>
 
             {question.answer_image && (
@@ -849,52 +878,132 @@ export default function QuizScreen() {
     );
 }
 
+// Add helper function to get subject icons
+function getSubjectIcon(subjectName: string) {
+    const icons = {
+        'Agricultural Sciences': require('@/assets/images/subjects/agriculture.png'),
+        'Economics': require('@/assets/images/subjects/economics.png'),
+        'Business Studies': require('@/assets/images/subjects/business-studies.png'),
+        'Geography': require('@/assets/images/subjects/geography.png'),
+        'Life Sciences': require('@/assets/images/subjects/life-science.png'),
+        'mathematics': require('@/assets/images/subjects/mathematics.png'),
+        'Physical Sciences': require('@/assets/images/subjects/physics.png'),
+        'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
+        'History': require('@/assets/images/subjects/history.png'),
+        'default': require('@/assets/images/subjects/mathematics.png')
+    };
+    return icons[subjectName as keyof typeof icons] || icons.default;
+}
+
 const styles = StyleSheet.create({
     gradient: {
         flex: 1,
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
     },
     container: {
         flex: 1,
-        backgroundColor: 'transparent',
-        padding: 20,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+    },
+    scoreSection: {
+        flexDirection: 'row',
+        gap: 24,
+    },
+    scoreItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    scoreEmoji: {
+        fontSize: 20,
+    },
+    scoreValue: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    avatarContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FF9F43',
+        overflow: 'hidden',
+    },
+    avatar: {
+        width: '100%',
+        height: '100%',
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        paddingHorizontal: 16,
+    },
+    toggleLabel: {
+        color: '#FFFFFF',
+        marginRight: 8,
+        fontSize: 14,
+    },
+    subjectHeader: {
+        padding: 16,
+        marginTop: 20,
+    },
+    subjectTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        marginBottom: 8,
+        flexWrap: 'wrap',
+    },
+    questionMeta: {
+        fontSize: 14,
+        color: '#999',
+        flexWrap: 'wrap',
     },
     content: {
         gap: 20,
         backgroundColor: 'transparent',
+        padding: 16,
     },
     sectionCard: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#333',
         borderRadius: 16,
-        padding: 12,
+        padding: 16,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 10,
-            },
-            android: {
-                elevation: 8,
-            },
-            web: {
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
-            },
-        }),
+        borderColor: '#444',
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        padding: 20,
-        borderTopWidth: 1,
-        borderTopColor: '#E0E0E0',
-        backgroundColor: '#FFFFFF',
+        padding: 16,
+        gap: 16,
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#1A1A1A',
+    },
+    footerButton: {
+        flex: 1,
+        backgroundColor: '#333',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    footerButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    footerButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '500',
+
     },
     progressBar: {
         height: 8,
@@ -908,77 +1017,65 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     questionContainer: {
-        flex: 1,
-        marginBottom: 20,
+        marginBottom: 16,
     },
     questionText: {
+        color: '#FFFFFF',
         fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 20,
         lineHeight: 24,
-        includeFontPadding: false,
     },
     optionsContainer: {
         gap: 12,
         marginTop: 20,
+        backgroundColor: '#00000020',
+        borderColor: '#000000',
     },
     optionButton: {
+        backgroundColor: '#444',
+        borderRadius: 12,
         padding: 16,
-        borderRadius: 8,
-        backgroundColor: '#FFFFFF',
+        marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: '#555',
     },
     selectedOption: {
         backgroundColor: '#00000020',
         borderColor: '#000000',
     },
     correctOption: {
-        backgroundColor: '#4CAF5020',
-        borderColor: '#4CAF50',
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        borderColor: '#22C55E',
     },
     wrongOption: {
-        backgroundColor: '#FF3B3020',
+        backgroundColor: 'rgba(255, 59, 48, 0.2)',
         borderColor: '#FF3B30',
     },
     optionText: {
+        color: '#FFFFFF',
         fontSize: 16,
-        lineHeight: 24,
-        includeFontPadding: false,
-    },
-    footerButton: {
-        padding: 15,
-        borderRadius: 8,
-        backgroundColor: '#E0E0E0',
-        minWidth: 100,
-        alignItems: 'center',
     },
     nextButton: {
-        backgroundColor: '#000000',
-    },
-    footerButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
+        backgroundColor: 'rgba(130, 122, 122, 0.2)'
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'black',
+        color: 'white',
     },
     contextText: {
         fontSize: 14,
         marginBottom: 16,
-        color: '#666',
+        color: '#FFFFFF',
         lineHeight: 20,
-        includeFontPadding: false,
     },
     option: {
         padding: 16,
         borderRadius: 8,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#333',
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: '#444',
     },
     questionImage: {
         width: '100%',
@@ -991,14 +1088,14 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     answerInput: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#333',
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: '#444',
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
         height: 48,
-        color: '#333',
+        color: '#FFFFFF',
     },
     submitButton: {
         backgroundColor: '#000000',
@@ -1017,6 +1114,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+        backgroundColor: 'transparent',
     },
     emojiContainer: {
         height: 80,
@@ -1034,55 +1132,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
         marginBottom: 32,
-        color: '#000000',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 24,
-        marginBottom: 12,
-        backgroundColor: 'transparent',
-    },
-    appTitle: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#000000',
-    },
-    profileImage: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#000000',
-    },
-    profilePlaceholder: {
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    profileInitial: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    profileSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    userInfo: {
-        alignItems: 'flex-end', // Right-align text
-    },
-    userName: {
-        fontSize: 12,
-        color: '#666',
-        fontWeight: '500',
-    },
-    userGrade: {
-        fontSize: 10,
-        color: '#666',
-        opacity: 0.8,
     },
     imageContainer: {
         marginBottom: 20,
@@ -1125,23 +1175,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginVertical: 20,
         paddingHorizontal: 16,
+        backgroundColor: '#00000020',
+        borderColor: '#000000',
     },
     correctAnswerContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: '#00000020',
+        borderColor: '#000000',
         padding: 16,
         borderRadius: 12,
         marginTop: 12,
         width: '100%',
+        borderWidth: 1,
     },
     correctAnswerLabel: {
         fontSize: 14,
-        color: '#666',
+        color: '#999',
         marginBottom: 4,
     },
     correctAnswerText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#4CAF50',
+        color: '#22C55E',
         lineHeight: 24,
     },
     answerImage: {
@@ -1158,119 +1212,21 @@ const styles = StyleSheet.create({
     restartButton: {
         backgroundColor: '#FF3B30',
     },
-    subjectTitle: {
-        fontSize: 24,
-        fontWeight: '600',
-        color: '#000000',
-        marginBottom: 20,
-        textAlign: 'center',
-        lineHeight: 32,
-        includeFontPadding: false,
-    },
-    questionMeta: {
-        fontSize: 12,
-        fontStyle: 'italic',
-        color: '#666',
-        textAlign: 'right',
-        marginBottom: 8,
-        lineHeight: 16,
-        includeFontPadding: false,
-    },
-    reportButton: {
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        padding: 8,
-        borderRadius: 8,
-        alignSelf: 'flex-end',
-        marginTop: 8,
-    },
-    reportButtonText: {
-        fontSize: 14,
-        color: '#666',
-        fontWeight: '500',
-    },
-    footerButtonGroup: {
-        flexDirection: 'row',
-        gap: 12,
-    },
     imagePlaceholder: {
         position: 'absolute',
         width: '100%',
         height: 200,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#333',
         borderRadius: 8,
         zIndex: 1,
+        color: 'white',
     },
     completionButtons: {
         flexDirection: 'row',
         gap: 12,
         marginTop: 24,
-    },
-    headerControls: {
-        paddingHorizontal: 20,
-        marginBottom: 16,
-    },
-    filterRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    filterLabel: {
-        fontSize: 14,
-        color: '#666666',
-        flex: 1,
-    },
-    buttonGroup: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    filterButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-            },
-            android: {
-                elevation: 2,
-            },
-            web: {
-                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-            },
-        }),
-    },
-    filterButtonActive: {
-        backgroundColor: '#000000',
-        borderColor: '#000000',
-    },
-    filterButtonText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#666666',
-    },
-    filterButtonTextActive: {
-        color: '#FFFFFF',
-    },
-    mixedContentContainer: {
-        width: '100%',
-        gap: 12,
-    },
-    latexContainer: {
-        width: '100%',
-        marginVertical: 4,
-    },
-    contentText: {
-        fontSize: 16,
-        lineHeight: 24,
-        marginVertical: 4,
     },
     rotateButton: {
         position: 'absolute',
@@ -1291,9 +1247,68 @@ const styles = StyleSheet.create({
     },
     imageCaption: {
         fontSize: 12,
-        color: '#666',
+        color: '#999',
         textAlign: 'center',
         marginBottom: 8,
         fontStyle: 'italic'
+    },
+    mixedContentContainer: {
+        width: '100%',
+        gap: 12,
+    },
+    latexContainer: {
+        width: '100%',
+        marginVertical: 4,
+        backgroundColor: '#333',
+    },
+    contentText: {
+        fontSize: 16,
+        lineHeight: 24,
+        marginVertical: 4,
+        color: '#FFFFFF',
+    },
+    reportButton: {
+        padding: 8,
+        borderRadius: 8,
+        alignSelf: 'flex-end',
+        marginTop: 8,
+    },
+    reportButtonText: {
+        fontSize: 14,
+        color: '#666',
+        fontWeight: '500',
+    },
+    paperSelectionContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    paperSelectionText: {
+        color: '#999',
+        fontSize: 16,
+        marginTop: 8,
+        marginBottom: 32,
+    },
+    paperButtons: {
+        flexDirection: 'row',
+        gap: 16,
+    },
+    paperButton: {
+        backgroundColor: '#333',
+        padding: 20,
+        borderRadius: 12,
+        width: 150,
+        alignItems: 'center',
+    },
+    paperButtonText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    subjectIcon: {
+        width: 240,
+        height: 240,
+        marginBottom: 16,
     },
 }); 

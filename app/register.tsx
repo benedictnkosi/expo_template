@@ -96,7 +96,12 @@ export default function Register() {
   };
 
   return (
-    <LinearGradient colors={['#DBEAFE', '#F3E8FF']} style={styles.gradient}>
+    <LinearGradient
+      colors={['#1a1a1a', '#000000', '#000000']}
+      style={styles.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.header}>
@@ -175,7 +180,6 @@ export default function Register() {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
@@ -184,7 +188,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
   },
   header: {
     alignItems: 'center',
@@ -197,7 +200,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: '#666666',
+    color: '#999',
     textAlign: 'center',
     marginBottom: 32,
     lineHeight: 24,
@@ -207,31 +210,32 @@ const styles = StyleSheet.create({
     marginVertical: 24,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#333',
+    color: '#FFFFFF',
+    borderColor: '#444',
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
     marginVertical: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
   },
   pickerContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#333',
     borderRadius: 12,
     marginVertical: 8,
     overflow: Platform.OS === 'ios' ? 'hidden' : 'visible',
   },
   picker: {
+    backgroundColor: '#333',
+    color: '#FFFFFF',
     height: Platform.OS === 'ios' ? 150 : 50,
     width: '100%',
-    backgroundColor: 'white',
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 0,
     elevation: 0,
   },
   button: {
-    backgroundColor: '#000000',
+    backgroundColor: '#2563EB',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -249,7 +253,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#000000',
+    color: '#FFFFFF',
     fontSize: 14,
   },
 }); 

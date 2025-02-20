@@ -57,6 +57,7 @@ export interface MySubjectsResponse {
     };
     total_questions: number;
     answered_questions: number;
+    correct_answers: number;
   }[];
 }
 

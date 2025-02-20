@@ -6,10 +6,10 @@ function ensureHttps(url: string): string {
   return url.replace('http://', 'https://');
 }
 
-export async function fetchAvailableSubjects(uid: string): Promise<SubjectsResponse> {
+export async function fetchAvailableSubjects(grade: string): Promise<SubjectsResponse> {
 
   const response = await fetch(
-    ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects-not-enrolled?uid=${uid}`)
+    ensureHttps(`${API_BASE_URL}/public/learn/learner/getSubjectsByGrade?grade=${grade}`)
   );
 
   if (!response.ok) {
@@ -107,6 +107,8 @@ export async function checkAnswer(
 
   return response.json();
 }
+
+
 
 interface Learner {
   id: number;
@@ -223,5 +225,137 @@ export async function removeResults(uid: string, subjectId: number): Promise<voi
 
   if (!response.ok) {
     throw new Error('Failed to remove results');
+  }
+}
+
+interface StreakResponse {
+  status: string;
+  data: {
+    currentStreak: number;
+    longestStreak: number;
+    questionsAnsweredToday: number;
+    questionsNeededToday: number;
+    streakMaintained: boolean;
+  };
+}
+
+export async function trackStreak(uid: string): Promise<StreakResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/streaks/track/${uid}`, {
+      method: 'POST'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to track streak');
+    }
+
+    const data: StreakResponse = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error tracking streak:', error);
+    throw error;
+  }
+}
+
+interface StreakData {
+  status: string;
+  data: {
+    currentStreak: number;
+    longestStreak: number;
+    questionsAnsweredToday: number;
+    questionsNeededToday: number;
+    streakMaintained: boolean;
+  };
+}
+
+export async function getStreak(uid: string): Promise<StreakData> {
+  try {
+    const response = await fetch(
+      ensureHttps(`${API_BASE_URL}/api/streaks/${uid}`),
+      {
+        method: 'GET'
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch streak data');
+    }
+
+    const data: StreakData = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching streak:', error);
+    throw error;
+  }
+}
+
+interface Ranking {
+  name: string;
+  score: number;
+  position: number;
+  isCurrentLearner: boolean;
+}
+
+interface RankingsResponse {
+  status: string;
+  rankings: Ranking[];
+  currentLearnerScore: number;
+  currentLearnerPosition: number;
+  totalLearners: number;
+}
+
+export async function getTopLearners(uid: string): Promise<RankingsResponse> {
+  try {
+    const response = await fetch(
+      ensureHttps(`${API_BASE_URL}/api/rankings/top-learners/${uid}`),
+      {
+        method: 'GET'
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch rankings');
+    }
+
+    const data: RankingsResponse = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching rankings:', error);
+    throw error;
+  }
+}
+
+interface SubjectStats {
+  status: string;
+  data: {
+    subject: {
+      id: number;
+      name: string;
+    };
+    stats: {
+      total_answers: number;
+      correct_answers: number;
+      incorrect_answers: number;
+      correct_percentage: number;
+      incorrect_percentage: number;
+    };
+  };
+}
+
+export async function getSubjectStats(uid: string, subjectName: string): Promise<SubjectStats> {
+  try {
+    const response = await fetch(
+      ensureHttps(`${API_BASE_URL}/public/learn/learner/subject-stats?uid=${uid}&subject_name=${subjectName}`),
+      { method: 'GET' }
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch subject stats');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching subject stats:', error);
+    throw error;
   }
 } 

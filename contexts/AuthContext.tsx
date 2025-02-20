@@ -18,7 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
-  signOut: async () => {}
+  signOut: async () => { }
 });
 
 const API_BASE_URL = 'https://api.examquiz.co.za';

@@ -4,49 +4,35 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { mixpanel, Events } from '@/services/mixpanel';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { fetchAvailableSubjects, fetchMySubjects, removeSubject, assignSubject, getLearner } from '@/services/api';
+import { fetchMySubjects, getLearner, getStreak, getTopLearners } from '@/services/api';
 import { Subject } from '@/types/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 
 // Temporary mock data
 
-// Add type definition at the top
-interface EnrolledSubject {
-  subject: {
-    subject: {
-      id: number;
-      name: string;
-    };
-  };
-  total_questions: number;
-  answered_questions: number;
-  correct_answers: number;  // Add this field
-}
 
-const LoadingOverlay = ({ message }: { message: string }) => (
-  <View style={styles.loadingOverlay}>
-    <View style={styles.loadingBox}>
-      <ActivityIndicator size="large" color="#000000" />
-      <ThemedText style={styles.loadingText}>{message}</ThemedText>
-    </View>
-  </View>
-);
+// Add a helper function to get progress bar color
+function getProgressBarColor(progress: number): string {
+  if (progress >= 70) return '#22C55E'; // Green
+  if (progress >= 40) return '#F59E0B'; // Amber
+  return '#2563EB'; // Default blue
+}
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
-  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
-  const [showAlert, setShowAlert] = useState(false);
-  const [subjectToRemove, setSubjectToRemove] = useState<Subject | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
-  const [addingSubjectId, setAddingSubjectId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
+  const [streak, setStreak] = useState(0);
+  const [ranking, setRanking] = useState(0);
 
   // Add useEffect for initial load
   useEffect(() => {
@@ -62,6 +48,23 @@ export default function HomeScreen() {
     // }, 1000);
 
     // return () => clearTimeout(timer);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      getStreak(user.uid).then((streak) => {
+        console.log(streak);
+        setStreak(streak.data.currentStreak);
+      });
+    }
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      getTopLearners(user.uid).then((ranking) => {
+        setRanking(ranking.rankings.find(r => r.isCurrentLearner)?.position || 0);
+      });
+    }
   }, [user?.uid]);
 
   // Keep useFocusEffect for tab focus
@@ -84,25 +87,31 @@ export default function HomeScreen() {
       if (learner.grade?.number) {
         setIsLoading(true);
         try {
-          const availableResponse = await fetchAvailableSubjects(user.uid);
-          const transformedAvailableSubjects = availableResponse.subjects.map(s => ({
-            id: s.id.toString(),
-            name: s.name,
-            totalQuestions: s.totalQuestions,
-            answeredQuestions: 0,
-            correctAnswers: 0
-          }));
-          setAvailableSubjects(transformedAvailableSubjects);
-
           const enrolledResponse = await fetchMySubjects(user.uid);
-          const transformedEnrolledSubjects = (enrolledResponse.subjects as EnrolledSubject[]).map(s => ({
-            id: s.subject.subject.id.toString(),
-            name: s.subject.subject.name,
-            totalQuestions: s.total_questions,
-            answeredQuestions: s.answered_questions,
-            correctAnswers: s.correct_answers
-          }));
-          setMySubjects(transformedEnrolledSubjects);
+
+          // Group subjects by base name (removing P1/P2)
+          const subjectGroups = enrolledResponse.subjects.reduce((acc, curr) => {
+            const baseName = curr.subject.subject.name.replace(/ P[12]$/, '');
+
+            if (!acc[baseName]) {
+              acc[baseName] = {
+                id: curr.subject.subject.id.toString(),
+                name: baseName,
+                totalQuestions: curr.total_questions,
+                answeredQuestions: curr.answered_questions,
+                correctAnswers: curr.correct_answers
+              };
+            } else {
+              // Sum up the stats from both papers
+              acc[baseName].totalQuestions += curr.total_questions;
+              acc[baseName].answeredQuestions += curr.answered_questions;
+              acc[baseName].correctAnswers += curr.correct_answers;
+            }
+
+            return acc;
+          }, {} as Record<string, Subject>);
+
+          setMySubjects(Object.values(subjectGroups));
         } catch (error) {
           setMySubjects([]);
           console.error('Failed to fetch subjects:', error);
@@ -115,191 +124,6 @@ export default function HomeScreen() {
     }
   }
 
-  const handleAddSubject = async (subject: Subject) => {
-    if (!mySubjects.find(s => s.id === subject.id)) {
-      try {
-        if (!user?.uid) return;
-
-        // Set loading state before API call
-        setAddingSubjectId(subject.id);
-        console.log('Setting loading state for subject:', subject.id); // Debug log
-
-        // Call API to assign subject
-        await assignSubject(user.uid, parseInt(subject.id));
-
-        // Fetch updated enrolled subjects
-        const enrolledResponse = await fetchMySubjects(user.uid);
-        const transformedEnrolledSubjects = (enrolledResponse.subjects as EnrolledSubject[]).map(s => ({
-          id: s.subject.subject.id.toString(),
-          name: s.subject.subject.name,
-          totalQuestions: s.total_questions,
-          answeredQuestions: s.answered_questions,
-          correctAnswers: 0
-        }));
-
-        // Update UI with fresh data
-        setMySubjects(transformedEnrolledSubjects);
-        setAvailableSubjects(prev => prev.filter(s => s.id !== subject.id));
-      } catch (error) {
-        console.error('Failed to add subject:', error);
-        Alert.alert('Error', 'Failed to add subject');
-      } finally {
-        // Clear loading state after operation completes
-        setAddingSubjectId(null);
-        console.log('Clearing loading state'); // Debug log
-      }
-    }
-  };
-
-  const renderSubjectCard = (item: Subject, isMySubject: boolean) => {
-    const progress = item.totalQuestions === 0 || item.answeredQuestions === 0 ? 0 :
-      (item.correctAnswers / item.answeredQuestions) * 100;
-
-    return (
-      <TouchableOpacity
-        key={item.id}
-        style={[
-          styles.card,
-          isMySubject ? styles.mySubjectCard : styles.availableSubjectCard
-        ]}
-        onPress={() => {
-          if (isMySubject) {
-            router.push({
-              pathname: '/quiz',
-              params: { subjectId: item.id, subjectName: item.name }
-            });
-          } else {
-            handleAddSubject(item);
-          }
-        }}
-      >
-        <View style={styles.cardHeader}>
-          <ThemedText style={[
-            styles.subjectName,
-            isMySubject && styles.mySubjectText
-          ]}>
-            {item.name}
-          </ThemedText>
-          {isMySubject ? (
-            <TouchableOpacity
-              onPress={() => {
-                if (Platform.OS === 'web') {
-                  setSubjectToRemove(item);
-                  setShowAlert(true);
-                } else {
-                  Alert.alert(
-                    "Remove Subject",
-                    "Are you sure you want to remove this subject? All progress will be lost.",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Remove",
-                        style: "destructive",
-                        onPress: async () => {
-                          try {
-                            if (!user?.uid) return;
-                            await removeSubject(user.uid, parseInt(item.id));
-                            setMySubjects(prev => prev.filter(s => s.id !== item.id));
-                            setAvailableSubjects(prev => [...prev, item]);
-                          } catch (error) {
-                            console.error('Failed to remove subject:', error);
-                            Alert.alert('Error', 'Failed to remove subject');
-                          }
-                        }
-                      }
-                    ]
-                  );
-                }
-              }}
-              style={styles.removeButton}
-            >
-              <ThemedText style={styles.removeButtonText}>✕</ThemedText>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={(e) => {
-                e.stopPropagation(); // Prevent card click
-                handleAddSubject(item);
-              }}
-              disabled={addingSubjectId === item.id}
-            >
-              <ThemedText style={styles.removeButtonText}>+</ThemedText>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <ThemedText style={[
-          styles.questionsText,
-          isMySubject && styles.mySubjectText
-        ]}>
-          {item.totalQuestions} questions available
-        </ThemedText>
-
-        {isMySubject && (
-          <>
-            <ThemedText style={styles.progressText}>
-              Answered: {item.answeredQuestions}
-              {'  '}
-              Correct: {item.correctAnswers}
-            </ThemedText>
-            <ThemedView style={styles.progressBarContainer}>
-              <ThemedView
-                style={[
-                  styles.progressBarFill,
-                  { width: `${progress}%` }
-                ]}
-              />
-            </ThemedView>
-            <ThemedText style={styles.progressText}>
-              {progress === 0 ? '0' : Math.round(progress)}% Mastered
-            </ThemedText>
-          </>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
-  const CustomAlert = () => (
-    <Modal
-      visible={showAlert}
-      transparent
-      animationType="fade"
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.alertContainer}>
-          <ThemedText style={styles.alertTitle}>Remove Subject</ThemedText>
-          <ThemedText style={styles.alertMessage}>
-            Are you sure you want to remove this subject? All progress will be lost.
-          </ThemedText>
-          <View style={styles.alertButtons}>
-            <TouchableOpacity
-              style={[styles.alertButton, styles.cancelButton]}
-              onPress={() => setShowAlert(false)}
-            >
-              <ThemedText style={styles.alertButtonText}>Cancel</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.alertButton, styles.confirmButton]}
-              onPress={async () => {
-                if (!user?.uid || !subjectToRemove) return;
-                try {
-                  await removeSubject(user.uid, parseInt(subjectToRemove.id));
-                  setMySubjects(prev => prev.filter(s => s.id !== subjectToRemove.id));
-                  setAvailableSubjects(prev => [...prev, subjectToRemove]);
-                } catch (error) {
-                  console.error('Failed to remove subject:', error);
-                }
-                setShowAlert(false);
-              }}
-            >
-              <ThemedText style={styles.alertButtonText}>Remove</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
 
   // Replace promptForReview function
   function promptForReview() {
@@ -372,8 +196,8 @@ export default function HomeScreen() {
 
   return (
     <LinearGradient
-      colors={['#DBEAFE', '#F3E8FF']}
-      style={styles.gradient}
+      colors={['#1a1a1a', '#000000', '#000000']}
+      style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
@@ -384,165 +208,214 @@ export default function HomeScreen() {
           learnerInfo={learnerInfo}
         />
 
-        <ThemedView style={styles.content}>
-          {/* Your Subjects Section */}
-          <ThemedView style={[styles.sectionCard, styles.yourSubjectsCard]}>
-            <ThemedText style={styles.sectionTitle}>Your Subjects</ThemedText>
-            {mySubjects.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <ThemedText style={styles.emptyStateText}>
-                  You haven't added any subjects yet. Add subjects from the list below to get started.
-                </ThemedText>
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <View style={styles.statContent}>
+              <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
+              <View style={styles.statTextContainer}>
+                <ThemedText style={styles.statLabel}>Ranking</ThemedText>
+                <ThemedText style={styles.statValue}>{ranking}</ThemedText>
               </View>
-            ) : (
-              mySubjects.map(subject => renderSubjectCard(subject, true))
-            )}
-          </ThemedView>
 
-          {/* Available Subjects Section */}
-          <ThemedView style={styles.sectionCard}>
-            <ThemedText style={styles.sectionTitle}>Available Subjects</ThemedText>
-            {availableSubjects.length === 0 ? (
-              <View style={styles.emptyStateContainer}>
-                <ThemedText style={styles.emptyStateText}>
-                  No subjects available at the moment. Please check your profile.
-                </ThemedText>
+            </View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.statItem}>
+            <View style={styles.statContent}>
+              <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} />
+              <View style={styles.statTextContainer}>
+                <ThemedText style={styles.statLabel}>Streak Days</ThemedText>
+                <ThemedText style={styles.statValue}>{streak}</ThemedText>
               </View>
-            ) : (
-              availableSubjects.map(subject => renderSubjectCard(subject, false))
-            )}
-          </ThemedView>
-        </ThemedView>
+            </View>
+          </View>
+        </View>
+
+        <ThemedText style={styles.sectionTitle}>Let's play</ThemedText>
+
+        <View style={styles.subjectsGrid}>
+          {mySubjects.map((subject) => (
+            <TouchableOpacity
+              key={subject.id}
+              style={styles.subjectCard}
+              activeOpacity={0.7}
+              onPress={() => router.push({
+                pathname: '/quiz',
+                params: {
+                  subjectName: subject.name
+                }
+              })}
+            >
+              <View style={styles.iconContainer}>
+                <Image
+                  source={getSubjectIcon(subject.name)}
+                  style={styles.subjectIcon}
+                />
+              </View>
+              <View style={styles.cardContent}>
+                <ThemedText style={styles.subjectName}>{subject.name}</ThemedText>
+                <ThemedText style={styles.questionCount}>
+                  {subject.totalQuestions} questions
+                </ThemedText>
+                <View style={styles.progressBarContainer}>
+                  {/* Calculate progress */}
+                  {(() => {
+                    const progress = subject.answeredQuestions === 0 ? 0 :
+                      Math.round((subject.answeredQuestions / subject.totalQuestions) * 100);
+
+                    return (
+                      <View
+                        style={[
+                          styles.progressBar,
+                          {
+                            width: `${progress}%`,
+                            backgroundColor: getProgressBarColor(progress)
+                          }
+                        ]}
+                      />
+                    );
+                  })()}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
-      <CustomAlert />
       <RatingModal />
-      {addingSubjectId && <LoadingOverlay message="Adding subject..." />}
     </LinearGradient>
   );
+}
+
+// Add helper function to get subject icons
+function getSubjectIcon(subjectName: string) {
+  const icons = {
+    'Agricultural Sciences': require('@/assets/images/subjects/agriculture.png'),
+    'Economics': require('@/assets/images/subjects/economics.png'),
+    'Business Studies': require('@/assets/images/subjects/business-studies.png'),
+    'Geography': require('@/assets/images/subjects/geography.png'),
+    'Life Sciences': require('@/assets/images/subjects/life-science.png'),
+    'mathematics': require('@/assets/images/subjects/mathematics.png'),
+    'Physical Sciences': require('@/assets/images/subjects/physics.png'),
+    'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
+    'History': require('@/assets/images/subjects/history.png'),
+    'default': require('@/assets/images/subjects/mathematics.png')
+  };
+  return icons[subjectName as keyof typeof icons] || icons.default;
 }
 
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
   },
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
     padding: 20,
   },
-  content: {
-    gap: 20,
-    backgroundColor: 'transparent',
+  welcomeSection: {
+    marginTop: 20,
+    marginBottom: 30,
   },
-  appTitle: {
-    fontSize: 32,
+  welcomeText: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#000000',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
-  sectionCard: {
-    // backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  welcomeSubtext: {
+    fontSize: 16,
+    color: '#999',
+    marginBottom: 20,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#333',
     borderRadius: 16,
-    padding: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
-      },
-    }),
+    padding: 16,
+    marginTop: 16,
+  },
+  statItem: {
+    flex: 1,
+  },
+  statContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  statTextContainer: {
+    marginLeft: 16,
+    alignItems: 'flex-start',
+  },
+  statIcon: {
+    width: 36,
+    height: 36,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: '#999',
+    marginBottom: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2563EB',
+  },
+  divider: {
+    width: 1,
+    backgroundColor: '#444',
+    marginHorizontal: 16,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 40,
+    marginTop: 20,
   },
-  card: {
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-      },
-    }),
-  },
-  mySubjectCard: {
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
-  },
-  availableSubjectCard: {
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
-  },
-  cardHeader: {
+  subjectsGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  subjectCard: {
+    width: '47%',
+    backgroundColor: '#333',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'flex-start',
+    paddingTop: 48,
+    position: 'relative',
+    marginBottom: 16,
+    height: 160,
+  },
+  iconContainer: {
+    position: 'absolute',
+    top: -16,
+    left: 16,
+    width: 72,
+    height: 72,
+    zIndex: 1, // Ensure icon is clickable
+  },
+  subjectIcon: {
+    width: '100%',
+    height: '100%',
   },
   subjectName: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  removeButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  questionsText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 3,
-    marginTop: 8,
+    color: '#FFFFFF',
     marginBottom: 4,
-    overflow: 'hidden',
+    marginTop: 24,
   },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#000000',
-    borderRadius: 3,
-    minWidth: 4,
+  questionCount: {
+    fontSize: 12,
+    color: '#999',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    color: '#FFFFFF',
   },
   yourSubjectsCard: {
     ...Platform.select({
@@ -789,5 +662,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     textAlign: 'center',
+  },
+  cardContent: {
+    width: '100%',
+    marginTop: 'auto',
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#444',
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#2563EB',
+    borderRadius: 2,
   },
 });

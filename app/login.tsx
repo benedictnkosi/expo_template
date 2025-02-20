@@ -59,8 +59,10 @@ export default function Login() {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#FFFFFF', '#F5F5F5']}
+        colors={['#1a1a1a', '#000000', '#000000']}
         style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
         <View style={styles.content}>
           <View style={styles.header}>
@@ -69,13 +71,15 @@ export default function Login() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText style={styles.subtitle}>Sign in to continue</ThemedText>
+            <ThemedText style={styles.title}>Welcome Back!</ThemedText>
+            <ThemedText style={styles.subtitle}>Let's ace this! 🎯</ThemedText>
           </View>
 
           <View style={styles.form}>
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="your.email@school.com"
+              placeholderTextColor="#666"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -83,38 +87,40 @@ export default function Login() {
             />
             <TextInput
               style={styles.input}
-              placeholder="Password"
+              placeholder="Your secret password"
+              placeholderTextColor="#666"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
             />
-            <TouchableOpacity
-              style={styles.forgotPassword}
-              onPress={() => router.push('/forgot-password')}
-            >
-              <ThemedText style={styles.forgotPasswordText}>
-                Forgot Password?
-              </ThemedText>
-            </TouchableOpacity>
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
             >
               <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? 'Signing in...' : 'Start Learning →'}
               </ThemedText>
             </TouchableOpacity>
-          </View>
 
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => router.replace('/register')}
-          >
-            <ThemedText style={styles.linkText}>
-              Don't have an account? Register
-            </ThemedText>
-          </TouchableOpacity>
+            <View style={styles.forgotPasswordContainer}>
+              <ThemedText style={styles.forgotPasswordText}>
+                Forgot your password? Don't worry, it happens to the best of us!
+              </ThemedText>
+              <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+                <ThemedText style={styles.resetLink}>Reset it here</ThemedText>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.registerContainer}>
+              <ThemedText style={styles.forgotPasswordText}>
+                New to Exam Quiz? Join us and start learning!
+              </ThemedText>
+              <TouchableOpacity onPress={() => router.replace('/register')}>
+                <ThemedText style={styles.resetLink}>Create an account</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -136,36 +142,42 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 48,
   },
   logo: {
-    width: 240,
-    height: 80,
+    width: 140,
+    height: 140,
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666666',
+    color: '#999',
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#333',
     padding: 16,
     borderRadius: 12,
     fontSize: 16,
+    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#444',
   },
   button: {
-    backgroundColor: '#000000',
+    backgroundColor: '#2563EB',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -175,21 +187,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  linkButton: {
+  forgotPasswordContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  registerContainer: {
     marginTop: 16,
     alignItems: 'center',
   },
-  linkText: {
-    color: '#000000',
-    fontSize: 14,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: -4,
-    marginBottom: 16,
-  },
   forgotPasswordText: {
-    color: '#000000',
+    color: '#666',
     fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  resetLink: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: '600',
   },
 }); 

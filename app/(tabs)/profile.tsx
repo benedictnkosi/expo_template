@@ -15,9 +15,10 @@ import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Header } from '@/components/Header';
 import { trackEvent, Events } from '@/services/mixpanel';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateUser } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<{
     name: string;
     grade: string;
@@ -35,6 +36,7 @@ export default function ProfileScreen() {
     message: string;
     onConfirm?: () => void;
   }>({ title: '', message: '' });
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     async function fetchLearnerInfo() {
@@ -81,51 +83,9 @@ export default function ProfileScreen() {
   };
 
   const handleSave = async () => {
-    if (!user?.uid) return;
-    if (!editName.trim()) {
-      if (Platform.OS === 'web') {
-        setAlertConfig({
-          title: 'Error',
-          message: 'Name is required'
-        });
-        setShowAlert(true);
-      } else {
-        Alert.alert('Error', 'Name is required');
-      }
-      return;
-    }
-
-    if (editGrade !== learnerInfo?.grade) {
-      if (Platform.OS === 'web') {
-        setAlertConfig({
-          title: 'Warning',
-          message: 'Changing your grade will reset all your progress. Are you sure you want to continue?',
-          onConfirm: saveProfile
-        });
-        setShowAlert(true);
-      } else {
-        Alert.alert(
-          'Warning',
-          'Changing your grade will reset all your progress. Are you sure you want to continue?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Continue', style: 'destructive', onPress: saveProfile }
-          ]
-        );
-      }
-    } else {
-      saveProfile();
-    }
-  };
-
-  const saveProfile = async () => {
-    if (!user?.uid) return;
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      await updateLearner(user.uid, {
-        name: editName.trim(),
-        grade: parseInt(editGrade),
-      });
+      await updateUser({ name: editName.trim(), grade: parseInt(editGrade) });
       setLearnerInfo({
         name: editName.trim(),
         grade: editGrade,
@@ -215,13 +175,18 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient
-      colors={['#DBEAFE', '#F3E8FF']}
+      colors={['#1a1a1a', '#000000', '#000000']}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
       <CustomAlert />
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={[
+          styles.container,
+          { paddingTop: insets.top + 20 } // Add safe area top padding plus extra spacing
+        ]}
+      >
         <Header
           title="Exam Quiz"
           user={user}
@@ -230,7 +195,6 @@ export default function ProfileScreen() {
 
         <ThemedView style={styles.content}>
           <ThemedView style={styles.profileCard}>
-
             <View style={styles.editForm}>
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Name</ThemedText>
@@ -292,7 +256,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20, // Keep horizontal padding
   },
   header: {
     padding: 20,
@@ -307,10 +271,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'transparent',
   },
   profileCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: '#333',
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -359,21 +323,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666666',
+    color: '#999',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#444',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#555',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000000',
+    color: '#FFFFFF',
     width: '100%',
   },
   button: {
-    backgroundColor: '#000000',
+    backgroundColor: '#2563EB',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -388,9 +352,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pickerContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#444',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#555',
     borderRadius: 12,
     overflow: Platform.OS === 'ios' ? 'hidden' : 'visible',
     marginVertical: 8,
@@ -398,23 +362,17 @@ const styles = StyleSheet.create({
   picker: {
     height: Platform.OS === 'ios' ? 150 : 50,
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
+    backgroundColor: '#444',
+    color: '#FFFFFF',
     paddingHorizontal: 16,
-    borderRadius: 12,
-    ...Platform.select({
-      android: {
-        borderWidth: 0,
-        elevation: 0,
-      }
-    }),
   },
   signOutContainer: {
     padding: 20,
     marginTop: 20,
+    backgroundColor: 'transparent',
   },
   signOutButton: {
-    backgroundColor: '#000000',
+    backgroundColor: '#333',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
