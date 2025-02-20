@@ -18,9 +18,9 @@ import { Header } from '@/components/Header';
 
 // Add a helper function to get progress bar color
 function getProgressBarColor(progress: number): string {
-  if (progress >= 70) return '#22C55E'; // Green
-  if (progress >= 40) return '#F59E0B'; // Amber
-  return '#2563EB'; // Default blue
+  if (progress >= 70) return '#22C55E'; // Green for high scores
+  if (progress >= 40) return '#F59E0B'; // Amber for medium scores
+  return '#FF3B30'; // Red for low scores
 }
 
 export default function HomeScreen() {

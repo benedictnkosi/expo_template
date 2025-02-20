@@ -104,3 +104,49 @@ submit to android
 
 
 eas submit --platform android
+
+
+### build aab for production locally
+First, locate your Expo keystore. It's stored in your Expo credentials. You can download it using:
+
+eas credentials --platform android
+
+Then select:
+Your build profile (production)
+"Keystore: Manage everything needed to build your project"
+"Download Keystore"
+Create a gradle.properties file in android/app/ with these credentials (you'll get the actual values after downloading the keystore):
+
+MYAPP_UPLOAD_STORE_FILE=keystore.jks
+MYAPP_UPLOAD_KEY_ALIAS=18a2509529bd69f94e3d92cb654ab2ca
+MYAPP_UPLOAD_STORE_PASSWORD=<keystore password from expo>
+MYAPP_UPLOAD_KEY_PASSWORD=<key password from expo>
+
+Move the downloaded keystore file to android/app/keystore.jks
+Update your android/app/build.gradle:
+
+android {
+    // ... existing code ...
+    
+    signingConfigs {
+        release {
+            storeFile file(MYAPP_UPLOAD_STORE_FILE)
+            storePassword MYAPP_UPLOAD_STORE_PASSWORD
+            keyAlias MYAPP_UPLOAD_KEY_ALIAS
+            keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+
+Then build your AAB:
+change the  versionCode in /Users/mac1/Documents/cursor/examquiz/android/app/build.gradle
+
+cd android
+./gradlew clean
+./gradlew bundleRelease
