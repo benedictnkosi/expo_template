@@ -18,7 +18,7 @@ import { trackEvent, Events } from '@/services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
-  const { user, signOut, updateUser } = useAuth();
+  const { user, signOut, } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<{
     name: string;
     grade: string;
@@ -85,11 +85,10 @@ export default function ProfileScreen() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      await updateUser({ name: editName.trim(), grade: parseInt(editGrade) });
+      await updateLearner(user?.uid || '', { name: editName.trim(), grade: parseInt(editGrade) });
       setLearnerInfo({
         name: editName.trim(),
-        grade: editGrade,
-        imagePath: user.photoURL || undefined
+        grade: editGrade
       });
       setIsEditing(false);
       handleSuccess();
@@ -108,7 +107,7 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await signOut();
       await AsyncStorage.removeItem('user'); // Clear stored user data
       router.replace('/login');
     } catch (error) {

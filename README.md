@@ -144,8 +144,15 @@ android {
 }
 
 
-Then build your AAB:
+## Then build your AAB:
 change the  versionCode in /Users/mac1/Documents/cursor/examquiz/android/app/build.gradle
+defaultConfig {
+        applicationId 'za.co.examquizafrica'
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 201
+        versionName "2.0.1"
+    }
 
 cd android
 ./gradlew clean
