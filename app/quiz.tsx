@@ -97,25 +97,26 @@ function KaTeX({ latex }: { latex: string }) {
                 <style>
                     body {
                         margin: 0;
-                        padding: 8px;
+                        padding: 16px;
                         display: flex;
-                        justify-content: flex-start;
+                        justify-content: center;
                         align-items: center;
-                        min-height: 50px;
-                        overflow-x: auto;
+                        min-height: 80px;
+                        background-color: #333;
                     }
                     #formula {
-                        min-width: fit-content;
-                        padding-right: 16px;
+                        width: 100%;
+                        text-align: center;
                     }
                     .katex {
-                        font-size: 1.5em;
-                        white-space: nowrap;
+                        font-size: 1.2em;
+                        color: #FFFFFF;
                     }
-                    .katex-display {
-                        overflow-x: auto;
-                        overflow-y: hidden;
-                        padding-bottom: 5px;
+                    .katex-html {
+                        color: #FFFFFF;
+                    }
+                    .katex .base, .katex .strut, .katex .mathit {
+                        color: #FFFFFF;
                     }
                 </style>
             </head>
@@ -138,9 +139,8 @@ function KaTeX({ latex }: { latex: string }) {
     return (
         <WebView
             source={{ html }}
-            style={{ height: 60, backgroundColor: 'transparent' }}
-            scrollEnabled={true}
-            showsHorizontalScrollIndicator={false}
+            style={{ height: 100, backgroundColor: 'transparent' }}
+            scrollEnabled={false}
         />
     );
 }
@@ -401,7 +401,7 @@ export default function QuizScreen() {
     if (isLoading) {
         return (
             <ThemedView style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#000000" />
+                <ActivityIndicator size="large" color="#FFFFFF" />
             </ThemedView>
         );
     }
@@ -570,7 +570,7 @@ export default function QuizScreen() {
                                 >
                                     {isImageLoading && (
                                         <View style={styles.imagePlaceholder}>
-                                            <ActivityIndicator color="#000000" />
+                                            <ActivityIndicator color="#FFFFFF" />
                                         </View>
                                     )}
                                     <Image
@@ -629,7 +629,7 @@ export default function QuizScreen() {
                                 >
                                     {isImageLoading && (
                                         <View style={styles.imagePlaceholder}>
-                                            <ActivityIndicator color="#000000" />
+                                            <ActivityIndicator color="#FFFFFF" />
                                         </View>
                                     )}
                                     <Image
@@ -725,7 +725,13 @@ export default function QuizScreen() {
                                             onPress={() => handleAnswer(value)}
                                             disabled={showFeedback}
                                         >
-                                            <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                            {cleanAnswer(question.answer).includes('$') ? (
+                                                <KaTeX latex={cleanAnswer(value).replace(/\$/g, '')} />
+                                            ) : (
+                                                <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                            )}
+
+
                                         </TouchableOpacity>
                                     ))}
                             </ThemedView>
@@ -786,7 +792,7 @@ export default function QuizScreen() {
                                                 >
                                                     {isAnswerImageLoading && (
                                                         <View style={styles.imagePlaceholder}>
-                                                            <ActivityIndicator color="#000000" />
+                                                            <ActivityIndicator color="#FFFFFF" />
                                                         </View>
                                                     )}
                                                     <Image
@@ -1090,8 +1096,8 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'black',
-        color: 'white',
+        backgroundColor: '#333',
+        color: '#FFFFFF',
     },
     contextText: {
         fontSize: 14,
@@ -1266,11 +1272,13 @@ const styles = StyleSheet.create({
     mixedContentContainer: {
         width: '100%',
         gap: 12,
+        color: '#FFFFFF',
     },
     latexContainer: {
         width: '100%',
         marginVertical: 4,
         backgroundColor: '#333',
+        color: '#FFFFFF',
     },
     contentText: {
         fontSize: 16,

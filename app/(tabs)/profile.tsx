@@ -37,6 +37,8 @@ export default function ProfileScreen() {
     onConfirm?: () => void;
   }>({ title: '', message: '' });
   const insets = useSafeAreaInsets();
+  const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
+  const [pendingGrade, setPendingGrade] = useState('');
 
   useEffect(() => {
     async function fetchLearnerInfo() {
@@ -83,9 +85,16 @@ export default function ProfileScreen() {
   };
 
   const handleSave = async () => {
+    setShowGradeChangeModal(true);
+  };
+
+  const saveChanges = async () => {
     setIsLoading(true);
     try {
-      await updateLearner(user?.uid || '', { name: editName.trim(), grade: parseInt(editGrade) });
+      await updateLearner(user?.uid || '', {
+        name: editName.trim(),
+        grade: parseInt(editGrade)
+      });
       setLearnerInfo({
         name: editName.trim(),
         grade: editGrade
@@ -210,7 +219,9 @@ export default function ProfileScreen() {
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={editGrade}
-                    onValueChange={(value) => setEditGrade(value)}
+                    onValueChange={(value) => {
+                      setEditGrade(value);
+                    }}
                     style={styles.picker}
                   >
                     {grades.map((grade) => (
@@ -245,6 +256,38 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ThemedView>
       </ScrollView>
+      <Modal
+        isVisible={showGradeChangeModal}
+        onBackdropPress={() => setShowGradeChangeModal(false)}
+        style={styles.modal}
+      >
+        <View style={styles.alertContainer}>
+          <ThemedText style={styles.alertTitle}>Change Grade?</ThemedText>
+          <ThemedText style={styles.alertMessage}>
+            Changing your grade will reset all your progress. Are you sure you want to continue?
+          </ThemedText>
+          <View style={styles.alertButtons}>
+            <TouchableOpacity
+              style={[styles.alertButton, styles.cancelButton]}
+              onPress={() => {
+                setShowGradeChangeModal(false);
+                setEditGrade(learnerInfo?.grade || '');
+              }}
+            >
+              <ThemedText style={styles.alertButtonText}>Cancel</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.alertButton, styles.confirmButton]}
+              onPress={() => {
+                setShowGradeChangeModal(false);
+                saveChanges();
+              }}
+            >
+              <ThemedText style={styles.alertButtonText}>Continue</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }

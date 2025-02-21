@@ -192,7 +192,7 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000000" />
+        <ActivityIndicator size="large" color="#FFFFFF" />
       </ThemedView>
     );
   }
@@ -204,7 +204,10 @@ export default function HomeScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+      >
         <Header
           title="Exam Quiz"
           user={user}
@@ -314,6 +317,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  contentContainer: {
+    paddingBottom: 20,
+  },
   welcomeSection: {
     marginTop: 20,
     marginBottom: 30,
@@ -385,10 +391,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     alignItems: 'flex-start',
-    paddingTop: 48,
     position: 'relative',
     marginBottom: 16,
-    height: 160,
+    height: 180,
+    justifyContent: 'space-between',
   },
   iconContainer: {
     position: 'absolute',
@@ -396,7 +402,7 @@ const styles = StyleSheet.create({
     left: 16,
     width: 72,
     height: 72,
-    zIndex: 1, // Ensure icon is clickable
+    zIndex: 1,
   },
   subjectIcon: {
     width: '100%',
@@ -406,8 +412,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 4,
-    marginTop: 24,
+    marginBottom: 8,
+    marginTop: 32,
   },
   questionCount: {
     fontSize: 12,
@@ -417,7 +423,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#333',
     color: '#FFFFFF',
   },
   yourSubjectsCard: {
@@ -669,15 +675,16 @@ const styles = StyleSheet.create({
   cardContent: {
     width: '100%',
     marginTop: 'auto',
+    paddingBottom: 12,
   },
   progressBarContainer: {
     width: '100%',
     height: 4,
     backgroundColor: '#444',
     borderRadius: 2,
-    marginTop: 8,
+    marginTop: 12,
+    marginBottom: 8,
     overflow: 'hidden',
-    marginBottom: 16,
   },
   progressBar: {
     height: '100%',
