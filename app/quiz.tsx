@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import ConfettiCannon from "react-native-confetti-cannon";
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -191,11 +192,10 @@ export default function QuizScreen() {
     const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
     const [showAllTerms, setShowAllTerms] = useState(true);
-    const [rotation, setRotation] = useState(0);
-    const [isRotated, setIsRotated] = useState(false);
     const [subjectId, setSubjectId] = useState<string | null>(null);
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     useEffect(() => {
         trackEvent(Events.VIEW_QUIZ, {
@@ -291,15 +291,23 @@ export default function QuizScreen() {
         }
     };
 
+    const triggerConfetti = () => {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2000); // Reset after 3 seconds
+    };
+
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !question) return;
-
 
         try {
             const response = await checkAnswer(user.uid, question.id, answer);
             setSelectedAnswer(answer);
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
+
+            if (response.is_correct) {
+                triggerConfetti();
+            }
 
             trackEvent(Events.SUBMIT_ANSWER, {
                 "user_id": user?.uid,
@@ -356,7 +364,7 @@ export default function QuizScreen() {
         try {
             setIsLoading(true);
             await removeResults(user.uid, Number(subjectId));
-            await loadRandomQuestion(selectedPaper);
+            await loadRandomQuestion(selectedPaper || '');
             Toast.show({
                 type: 'success',
                 text1: 'Progress Reset',
@@ -375,10 +383,6 @@ export default function QuizScreen() {
         }
     };
 
-    const handleRotateImage = () => {
-        setIsRotated(!isRotated);
-        setRotation(isRotated ? 0 : 90);
-    };
 
     const handleSkipQuestion = () => {
         if (!question || !selectedPaper) return;
@@ -387,6 +391,11 @@ export default function QuizScreen() {
             "question_id": question.id
         });
         loadRandomQuestion(selectedPaper);
+    };
+
+    const handleZoomImage = () => {
+        // TODO: Implement zoom functionality
+        console.log('Zoom not yet implemented');
     };
 
     if (isLoading) {
@@ -466,6 +475,7 @@ export default function QuizScreen() {
                             <ThemedText style={styles.noQuestionsEmoji}>
                                 🎉
                             </ThemedText>
+
                         </View>
                         <ThemedText style={styles.noQuestionsText}>
                             Congratulations! You've completed all questions!
@@ -578,11 +588,9 @@ export default function QuizScreen() {
                                     isVisible={isImageVisible}
                                     onBackdropPress={() => {
                                         setIsImageVisible(false);
-                                        setRotation(0);
                                     }}
                                     onSwipeComplete={() => {
                                         setIsImageVisible(false);
-                                        setRotation(0);
                                     }}
                                     swipeDirection="down"
                                     style={styles.modal}
@@ -592,18 +600,11 @@ export default function QuizScreen() {
                                             style={styles.closeButton}
                                             onPress={() => {
                                                 setIsImageVisible(false);
-                                                setRotation(0);
                                             }}
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
 
-                                        <TouchableOpacity
-                                            style={styles.rotateButton}
-                                            onPress={handleRotateImage}
-                                        >
-                                            <ThemedText style={styles.rotateButtonText}>⟳</ThemedText>
-                                        </TouchableOpacity>
 
                                         <Image
                                             source={{
@@ -611,7 +612,7 @@ export default function QuizScreen() {
                                             }}
                                             style={[
                                                 styles.fullScreenImage,
-                                                { transform: [{ rotate: `${rotation}deg` }] }
+                                                { transform: [{ rotate: `90deg` }] }
                                             ]}
                                             resizeMode="contain"
                                         />
@@ -646,11 +647,9 @@ export default function QuizScreen() {
                                     isVisible={isImageVisible}
                                     onBackdropPress={() => {
                                         setIsImageVisible(false);
-                                        setRotation(0);
                                     }}
                                     onSwipeComplete={() => {
                                         setIsImageVisible(false);
-                                        setRotation(0);
                                     }}
                                     swipeDirection="down"
                                     style={styles.modal}
@@ -660,17 +659,9 @@ export default function QuizScreen() {
                                             style={styles.closeButton}
                                             onPress={() => {
                                                 setIsImageVisible(false);
-                                                setRotation(0);
                                             }}
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            style={styles.rotateButton}
-                                            onPress={handleRotateImage}
-                                        >
-                                            <ThemedText style={styles.rotateButtonText}>⟳</ThemedText>
                                         </TouchableOpacity>
 
                                         <Image
@@ -679,7 +670,7 @@ export default function QuizScreen() {
                                             }}
                                             style={[
                                                 styles.fullScreenImage,
-                                                { transform: [{ rotate: `${rotation}deg` }] }
+                                                { transform: [{ rotate: `90deg` }] }
                                             ]}
                                             resizeMode="contain"
                                         />
@@ -772,6 +763,9 @@ export default function QuizScreen() {
                                 <ThemedText style={styles.feedbackEmoji}>
                                     {isCorrect ? '🎉' : '😔'}
                                 </ThemedText>
+                                {showConfetti && (
+                                    <ConfettiCannon count={200} origin={{ x: 200, y: 0 }} fadeOut={true} />
+                                )}
                                 {!isCorrect && (
                                     <ThemedView style={styles.correctAnswerContainer}>
                                         <ThemedText style={styles.correctAnswerLabel}>
@@ -785,25 +779,60 @@ export default function QuizScreen() {
                                             </ThemedText>
                                         )}
                                         {question.answer_image && (
-                                            <TouchableOpacity
-                                                onPress={() => setIsAnswerImageVisible(true)}
-                                                style={styles.imageContainer}
-                                            >
-                                                {isAnswerImageLoading && (
-                                                    <View style={styles.imagePlaceholder}>
-                                                        <ActivityIndicator color="#000000" />
-                                                    </View>
-                                                )}
-                                                <Image
-                                                    source={{
-                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                            <>
+                                                <TouchableOpacity
+                                                    onPress={() => setIsAnswerImageVisible(true)}
+                                                    style={styles.imageContainer}
+                                                >
+                                                    {isAnswerImageLoading && (
+                                                        <View style={styles.imagePlaceholder}>
+                                                            <ActivityIndicator color="#000000" />
+                                                        </View>
+                                                    )}
+                                                    <Image
+                                                        source={{
+                                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                        }}
+                                                        style={styles.answerImage}
+                                                        resizeMode="contain"
+                                                        onLoadStart={() => setIsAnswerImageLoading(true)}
+                                                        onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                    />
+                                                </TouchableOpacity>
+                                                <Modal
+                                                    isVisible={isAnswerImageVisible}
+                                                    onBackdropPress={() => {
+                                                        setIsAnswerImageVisible(false);
                                                     }}
-                                                    style={styles.answerImage}
-                                                    resizeMode="contain"
-                                                    onLoadStart={() => setIsAnswerImageLoading(true)}
-                                                    onLoadEnd={() => setIsAnswerImageLoading(false)}
-                                                />
-                                            </TouchableOpacity>
+                                                    onSwipeComplete={() => {
+                                                        setIsAnswerImageVisible(false);
+                                                    }}
+                                                    swipeDirection="down"
+                                                    style={styles.modal}
+                                                >
+                                                    <View style={styles.modalContent}>
+                                                        <TouchableOpacity
+                                                            style={styles.closeButton}
+                                                            onPress={() => {
+                                                                setIsAnswerImageVisible(false);
+                                                            }}
+                                                        >
+                                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+                                                        </TouchableOpacity>
+
+                                                        <Image
+                                                            source={{
+                                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                            }}
+                                                            style={[
+                                                                styles.fullScreenImage,
+                                                                { transform: [{ rotate: `90deg` }] }
+                                                            ]}
+                                                            resizeMode="contain"
+                                                        />
+                                                    </View>
+                                                </Modal>
+                                            </>
                                         )}
                                         {question.explanation && (
                                             <View style={styles.questionContainer}>
@@ -1150,9 +1179,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fullScreenImage: {
-        width: '100%',
+        width: '180%',
         height: '100%',
-        transform: [{ rotate: '0deg' }],
     },
     closeButton: {
         position: 'absolute',
@@ -1227,23 +1255,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginTop: 24,
-    },
-    rotateButton: {
-        position: 'absolute',
-        top: 40,
-        left: 20,
-        zIndex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    rotateButtonText: {
-        color: '#FFFFFF',
-        fontSize: 20,
-        fontWeight: 'bold',
     },
     imageCaption: {
         fontSize: 12,
