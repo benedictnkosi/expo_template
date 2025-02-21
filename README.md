@@ -157,3 +157,6 @@ defaultConfig {
 cd android
 ./gradlew clean
 ./gradlew bundleRelease
+
+## or just run the build.sh script
+./build.sh
