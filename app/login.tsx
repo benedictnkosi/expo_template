@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { trackEvent, Events } from '@/services/mixpanel';
+import { googleLogin } from '@/services/authService';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -100,6 +101,16 @@ export default function Login() {
             >
               <ThemedText style={styles.buttonText}>
                 {isLoading ? 'Signing in...' : 'Start Learning →'}
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+              onPress={googleLogin}
+              disabled={isLoading}
+            >
+              <ThemedText style={styles.buttonText}>
+                {isLoading ? 'Signing in...' : 'Continue with Google'}
               </ThemedText>
             </TouchableOpacity>
 

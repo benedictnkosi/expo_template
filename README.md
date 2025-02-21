@@ -160,3 +160,19 @@ cd android
 
 ## or just run the build.sh script
 ./build.sh
+
+
+### clean project
+npx expo prebuild --clean
+
+
+### clean build
+npx expo prebuild --clean && npx expo run:android
+
+cd android && ./gradlew clean
+
+
+### clean build
+npx expo prebuild --clean && npx expo run:android
+
+cd android && ./gradlew clean
