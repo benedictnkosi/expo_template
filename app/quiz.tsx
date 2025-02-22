@@ -703,7 +703,7 @@ export default function QuizScreen() {
                             <ThemedView style={styles.optionsContainer}>
                                 {Object.entries(question.options)
                                     .filter(([_, value]) => value)
-                                    .map(([key, value]) => (
+                                    .map(([key, value], index) => (
                                         <TouchableOpacity
                                             key={key}
                                             style={[
@@ -716,7 +716,7 @@ export default function QuizScreen() {
                                             ]}
                                             onPress={() => handleAnswer(value)}
                                             disabled={showFeedback}
-                                            testID={`option-${value}`}
+                                            testID={`option-${index}`}
                                         >
                                             {cleanAnswer(question.answer).includes('$') ? (
                                                 <KaTeX latex={cleanAnswer(value).replace(/\$/g, '')} />
@@ -737,86 +737,86 @@ export default function QuizScreen() {
                                 {showConfetti && (
                                     <ConfettiCannon count={200} origin={{ x: 200, y: 0 }} fadeOut={true} />
                                 )}
-                                {!isCorrect && (
-                                    <ThemedView style={styles.correctAnswerContainer}>
-                                        <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>
-                                            Correct answer:
+
+                                <ThemedView style={styles.correctAnswerContainer}>
+                                    <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>
+                                        Correct answer:
+                                    </ThemedText>
+                                    {cleanAnswer(question.answer).includes('$') ? (
+                                        <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
+                                    ) : (
+                                        <ThemedText style={styles.correctAnswerText} testID='correct-answer-text'>
+                                            {cleanAnswer(question.answer)}
                                         </ThemedText>
-                                        {cleanAnswer(question.answer).includes('$') ? (
-                                            <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} testID='correct-answer-latex' />
-                                        ) : (
-                                            <ThemedText style={styles.correctAnswerText} testID='correct-answer-text'>
-                                                {cleanAnswer(question.answer)}
-                                            </ThemedText>
-                                        )}
-                                        {question.answer_image && (
-                                            <>
-                                                <TouchableOpacity
-                                                    onPress={() => setIsAnswerImageVisible(true)}
-                                                    style={styles.imageContainer}
-                                                    testID='correct-answer-image-container'
-                                                >
-                                                    {isAnswerImageLoading && (
-                                                        <View style={styles.imagePlaceholder}>
-                                                            <ActivityIndicator color="#FFFFFF" />
-                                                        </View>
-                                                    )}
+                                    )}
+                                    {question.answer_image && (
+                                        <>
+                                            <TouchableOpacity
+                                                onPress={() => setIsAnswerImageVisible(true)}
+                                                style={styles.imageContainer}
+                                                testID='correct-answer-image-container'
+                                            >
+                                                {isAnswerImageLoading && (
+                                                    <View style={styles.imagePlaceholder}>
+                                                        <ActivityIndicator color="#FFFFFF" />
+                                                    </View>
+                                                )}
+                                                <Image
+                                                    source={{
+                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                    }}
+                                                    style={styles.answerImage}
+                                                    resizeMode="contain"
+                                                    onLoadStart={() => setIsAnswerImageLoading(true)}
+                                                    onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                    testID='correct-answer-image'
+                                                />
+                                            </TouchableOpacity>
+                                            <Modal
+                                                isVisible={isAnswerImageVisible}
+                                                onBackdropPress={() => {
+                                                    setIsAnswerImageVisible(false);
+                                                }}
+                                                onSwipeComplete={() => {
+                                                    setIsAnswerImageVisible(false);
+                                                }}
+                                                swipeDirection="down"
+                                                style={styles.modal}
+                                                testID='correct-answer-image-modal'
+                                            >
+                                                <View style={styles.modalContent}>
+                                                    <TouchableOpacity
+                                                        style={styles.closeButton}
+                                                        onPress={() => {
+                                                            setIsAnswerImageVisible(false);
+                                                        }}
+                                                        testID='correct-answer-image-modal-close-button'
+                                                    >
+                                                        <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+                                                    </TouchableOpacity>
+
                                                     <Image
                                                         source={{
                                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
                                                         }}
-                                                        style={styles.answerImage}
+                                                        style={[
+                                                            styles.fullScreenImage,
+                                                            { transform: [{ rotate: `90deg` }] }
+                                                        ]}
                                                         resizeMode="contain"
-                                                        onLoadStart={() => setIsAnswerImageLoading(true)}
-                                                        onLoadEnd={() => setIsAnswerImageLoading(false)}
-                                                        testID='correct-answer-image'
+                                                        testID='correct-answer-image-modal-image'
                                                     />
-                                                </TouchableOpacity>
-                                                <Modal
-                                                    isVisible={isAnswerImageVisible}
-                                                    onBackdropPress={() => {
-                                                        setIsAnswerImageVisible(false);
-                                                    }}
-                                                    onSwipeComplete={() => {
-                                                        setIsAnswerImageVisible(false);
-                                                    }}
-                                                    swipeDirection="down"
-                                                    style={styles.modal}
-                                                    testID='correct-answer-image-modal'
-                                                >
-                                                    <View style={styles.modalContent}>
-                                                        <TouchableOpacity
-                                                            style={styles.closeButton}
-                                                            onPress={() => {
-                                                                setIsAnswerImageVisible(false);
-                                                            }}
-                                                            testID='correct-answer-image-modal-close-button'
-                                                        >
-                                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                                        </TouchableOpacity>
+                                                </View>
+                                            </Modal>
+                                        </>
+                                    )}
+                                    {question.explanation && (
+                                        <View style={styles.questionContainer} testID='explanation-container'>
+                                            {renderMixedContent(cleanAnswer(question.explanation))}
+                                        </View>
+                                    )}
+                                </ThemedView>
 
-                                                        <Image
-                                                            source={{
-                                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
-                                                            }}
-                                                            style={[
-                                                                styles.fullScreenImage,
-                                                                { transform: [{ rotate: `90deg` }] }
-                                                            ]}
-                                                            resizeMode="contain"
-                                                            testID='correct-answer-image-modal-image'
-                                                        />
-                                                    </View>
-                                                </Modal>
-                                            </>
-                                        )}
-                                        {question.explanation && (
-                                            <View style={styles.questionContainer} testID='explanation-container'>
-                                                {renderMixedContent(cleanAnswer(question.explanation))}
-                                            </View>
-                                        )}
-                                    </ThemedView>
-                                )}
                             </ThemedView>
                         )}
 
@@ -1132,7 +1132,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fullScreenImage: {
-        width: '150%',
+        width: 600,
         height: '100%',
     },
     closeButton: {

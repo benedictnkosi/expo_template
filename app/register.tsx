@@ -152,7 +152,7 @@ export default function Register() {
             onPress={() => router.replace('/login')}
             testID="login-link"
           >
-            <ThemedText style={styles.linkText}>
+            <ThemedText style={styles.linkText} testID="login-link-text">
               Already have an account? Sign In
             </ThemedText>
           </TouchableOpacity>

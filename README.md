@@ -159,10 +159,8 @@ cd android
 ./gradlew bundleRelease
 
 ## or just run the build.sh script
-./build.sh
+./build-aab.sh
 
 
 ### build apk
-cd android
-./gradlew clean
-./gradlew assembleRelease
+./build-apk.sh

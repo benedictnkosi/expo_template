@@ -71,7 +71,7 @@ export default function Login() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText style={styles.title}>Welcome Back!</ThemedText>
+            <ThemedText style={styles.title} testID='welcome-back-text'>Welcome Back!</ThemedText>
             <ThemedText style={styles.subtitle}>Let's ace this! 🎯</ThemedText>
           </View>
 
