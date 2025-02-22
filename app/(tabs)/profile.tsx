@@ -1,4 +1,4 @@
-import React, { StyleSheet, TouchableOpacity, View, Image, ScrollView, TextInput, Alert, Platform } from 'react-native';
+import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,11 +7,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { useState, useEffect } from 'react';
 import { getLearner, updateLearner, fetchGrades } from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Header } from '@/components/Header';
 import { trackEvent, Events } from '@/services/mixpanel';
@@ -38,7 +35,6 @@ export default function ProfileScreen() {
   }>({ title: '', message: '' });
   const insets = useSafeAreaInsets();
   const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
-  const [pendingGrade, setPendingGrade] = useState('');
 
   useEffect(() => {
     async function fetchLearnerInfo() {
@@ -78,11 +74,6 @@ export default function ProfileScreen() {
     loadGrades();
   }, []);
 
-  const handleStartEdit = () => {
-    setEditName(learnerInfo?.name || '');
-    setEditGrade(learnerInfo?.grade || '');
-    setIsEditing(true);
-  };
 
   const handleSave = async () => {
     setShowGradeChangeModal(true);
@@ -130,49 +121,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const CustomAlert = () => (
-    <Modal
-      isVisible={showAlert}
-      onBackdropPress={() => setShowAlert(false)}
-      style={styles.modal}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.alertContainer}>
-          <ThemedText style={styles.alertTitle}>{alertConfig.title}</ThemedText>
-          <ThemedText style={styles.alertMessage}>{alertConfig.message}</ThemedText>
-          <View style={styles.alertButtons}>
-            {alertConfig.onConfirm ? (
-              <>
-                <TouchableOpacity
-                  style={[styles.alertButton, styles.cancelButton]}
-                  onPress={() => setShowAlert(false)}
-                >
-                  <ThemedText style={styles.alertButtonText}>Cancel</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.alertButton, styles.confirmButton]}
-                  onPress={() => {
-                    setShowAlert(false);
-                    alertConfig.onConfirm?.();
-                  }}
-                >
-                  <ThemedText style={styles.alertButtonText}>Continue</ThemedText>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <TouchableOpacity
-                style={[styles.alertButton, styles.confirmButton]}
-                onPress={() => setShowAlert(false)}
-              >
-                <ThemedText style={styles.alertButtonText}>OK</ThemedText>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
   const handleSuccess = () => {
     Toast.show({
       type: 'success',
@@ -188,7 +136,6 @@ export default function ProfileScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <CustomAlert />
       <ScrollView
         style={[
           styles.container,
@@ -212,6 +159,7 @@ export default function ProfileScreen() {
                   onChangeText={setEditName}
                   placeholder="Enter your name"
                   placeholderTextColor="#666"
+                  testID='profile-name-input'
                 />
               </View>
               <View style={styles.inputGroup}>
@@ -223,6 +171,7 @@ export default function ProfileScreen() {
                       setEditGrade(value);
                     }}
                     style={styles.picker}
+                    testID='profile-grade-picker'
                   >
                     {grades.map((grade) => (
                       <Picker.Item
@@ -238,6 +187,7 @@ export default function ProfileScreen() {
                 style={[styles.button, styles.saveButton]}
                 onPress={handleSave}
                 disabled={isLoading}
+                testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
                   {isLoading ? 'Saving...' : 'Save Changes'}
@@ -251,6 +201,7 @@ export default function ProfileScreen() {
           <TouchableOpacity
             style={styles.signOutButton}
             onPress={handleLogout}
+            testID='profile-sign-out-button'
           >
             <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
           </TouchableOpacity>

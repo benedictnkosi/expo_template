@@ -100,6 +100,7 @@ export default function Register() {
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+              testID="name-input"
             />
             <View style={styles.pickerContainer}>
               <Picker
@@ -123,6 +124,7 @@ export default function Register() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              testID="email-input"
             />
             <TextInput
               style={styles.input}
@@ -130,12 +132,14 @@ export default function Register() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              testID="password-input"
             />
 
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleRegister}
               disabled={isLoading}
+              testID="register-button"
             >
               <ThemedText style={styles.buttonText}>
                 {isLoading ? 'Creating Account...' : 'Register'}
@@ -146,6 +150,7 @@ export default function Register() {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.replace('/login')}
+            testID="login-link"
           >
             <ThemedText style={styles.linkText}>
               Already have an account? Sign In

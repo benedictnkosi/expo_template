@@ -84,6 +84,7 @@ export default function Login() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              testID="email-input"
             />
             <TextInput
               style={styles.input}
@@ -92,11 +93,13 @@ export default function Login() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              testID="password-input"
             />
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
+              testID="login-button"
             >
               <ThemedText style={styles.buttonText}>
                 {isLoading ? 'Signing in...' : 'Start Learning →'}
@@ -107,7 +110,7 @@ export default function Login() {
               <ThemedText style={styles.forgotPasswordText}>
                 Forgot your password? Don't worry, it happens to the best of us!
               </ThemedText>
-              <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+              <TouchableOpacity onPress={() => router.push('/forgot-password')} testID="forgot-password-link">
                 <ThemedText style={styles.resetLink}>Reset it here</ThemedText>
               </TouchableOpacity>
             </View>
@@ -116,7 +119,7 @@ export default function Login() {
               <ThemedText style={styles.forgotPasswordText}>
                 New to Exam Quiz? Join us and start learning!
               </ThemedText>
-              <TouchableOpacity onPress={() => router.replace('/register')}>
+              <TouchableOpacity onPress={() => router.replace('/register')} testID="register-link">
                 <ThemedText style={styles.resetLink}>Create an account</ThemedText>
               </TouchableOpacity>
             </View>

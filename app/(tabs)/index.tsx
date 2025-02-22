@@ -220,7 +220,7 @@ export default function HomeScreen() {
               <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
               <View style={styles.statTextContainer}>
                 <ThemedText style={styles.statLabel}>Ranking</ThemedText>
-                <ThemedText style={styles.statValue}>{ranking}</ThemedText>
+                <ThemedText style={styles.statValue} testID="ranking-value">{ranking}</ThemedText>
               </View>
 
             </View>
@@ -231,7 +231,7 @@ export default function HomeScreen() {
               <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} />
               <View style={styles.statTextContainer}>
                 <ThemedText style={styles.statLabel}>Streak Days</ThemedText>
-                <ThemedText style={styles.statValue}>{streak}</ThemedText>
+                <ThemedText style={styles.statValue} testID="streak-value">{streak}</ThemedText>
               </View>
             </View>
           </View>
@@ -251,6 +251,7 @@ export default function HomeScreen() {
                   subjectName: subject.name
                 }
               })}
+              testID={`subject-card-${subject.name}`}
             >
               <View style={styles.iconContainer}>
                 <Image
@@ -259,8 +260,8 @@ export default function HomeScreen() {
                 />
               </View>
               <View style={styles.cardContent}>
-                <ThemedText style={styles.subjectName}>{subject.name}</ThemedText>
-                <ThemedText style={styles.questionCount}>
+                <ThemedText style={styles.subjectName} testID={`subject-name-${subject.name}`}>{subject.name}</ThemedText>
+                <ThemedText style={styles.questionCount} testID={`question-count-${subject.name}`}>
                   {subject.totalQuestions} questions
                 </ThemedText>
                 <View style={styles.progressBarContainer}>

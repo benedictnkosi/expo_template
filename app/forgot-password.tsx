@@ -61,11 +61,13 @@ export default function ForgotPassword() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              testID="email-input"
             />
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleResetPassword}
               disabled={isLoading}
+              testID="reset-password-button"
             >
               <ThemedText style={styles.buttonText}>
                 {isLoading ? 'Sending...' : 'Send Reset Link'}
@@ -76,6 +78,7 @@ export default function ForgotPassword() {
           <TouchableOpacity
             style={styles.linkButton}
             onPress={() => router.replace('/login')}
+            testID="login-link"
           >
             <ThemedText style={styles.linkText}>
               Back to Login

@@ -160,3 +160,9 @@ cd android
 
 ## or just run the build.sh script
 ./build.sh
+
+
+### build apk
+cd android
+./gradlew clean
+./gradlew assembleRelease
