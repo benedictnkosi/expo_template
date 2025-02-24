@@ -1,12 +1,14 @@
 #!/bin/bash
 
+# Uninstall existing app
+adb uninstall za.co.examquizafrica || true
+
 # Navigate to android directory and run build commands
 cd /Users/mac1/Documents/cursor/examquiz/android
 ./gradlew clean
-./gradlew assembleRelease
+./gradlew assembleDebug
 
-#copy the apk and replace existing file to /Users/mac1/Documents/cursor/exam-quiz-appium/AppiumProject
-cp app/build/outputs/apk/release/app-release.apk /Users/mac1/Documents/cursor/exam-quiz-appium/AppiumProject/app-release.apk
+# Install new debug build
+adb install app/build/outputs/apk/debug/app-debug.apk
 
-
-echo "Build completed!"
+echo "Build completed and installed!"

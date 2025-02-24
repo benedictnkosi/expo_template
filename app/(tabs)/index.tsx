@@ -237,7 +237,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <ThemedText style={styles.sectionTitle}>Let's play</ThemedText>
+        <ThemedText style={styles.sectionTitle}>Let's learn</ThemedText>
 
         <View style={styles.subjectsGrid}>
           {mySubjects.map((subject) => (

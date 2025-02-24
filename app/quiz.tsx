@@ -307,6 +307,7 @@ export default function QuizScreen() {
 
             if (response.is_correct) {
                 triggerConfetti();
+                trackStreak(user.uid);
             }
 
             trackEvent(Events.SUBMIT_ANSWER, {
@@ -321,7 +322,7 @@ export default function QuizScreen() {
                 scrollViewRef.current?.scrollToEnd({ animated: true });
             }, 100);
 
-            trackStreak(user.uid);
+
         } catch (error) {
             console.error('Failed to check answer:', error);
             Toast.show({
@@ -459,25 +460,11 @@ export default function QuizScreen() {
                 end={{ x: 0, y: 1 }}
             >
                 <ScrollView style={styles.container}>
-
-                    {/* Subject Title and Meta */}
-                    <View style={styles.subjectHeader}>
-                        <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
-                        {question?.year || question?.term ? (
-                            <ThemedText style={styles.questionMeta}>
-                                {question?.year && `${question.year}`}
-                                {question?.year && question?.term && ' • '}
-                                {question?.term && `Term ${question.term}`}
-                            </ThemedText>
-                        ) : null}
-                    </View>
-
                     <ThemedView style={styles.noQuestionsContainer}>
                         <View style={styles.emojiContainer}>
                             <ThemedText style={styles.noQuestionsEmoji}>
                                 🎉
                             </ThemedText>
-
                         </View>
                         <ThemedText style={styles.noQuestionsText} testID="no-questions-text">
                             Congratulations! You've completed all questions!
