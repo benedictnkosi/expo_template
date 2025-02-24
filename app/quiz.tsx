@@ -196,6 +196,7 @@ export default function QuizScreen() {
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(1);
 
     useEffect(() => {
         trackEvent(Events.VIEW_QUIZ, {
@@ -601,6 +602,20 @@ export default function QuizScreen() {
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
 
+                                        <View style={styles.zoomControls}>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
 
                                         <Image
                                             source={{
@@ -608,7 +623,7 @@ export default function QuizScreen() {
                                             }}
                                             style={[
                                                 styles.fullScreenImage,
-                                                { transform: [{ rotate: `90deg` }] }
+                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
                                             ]}
                                             resizeMode="contain"
                                             testID='question-context-image-modal-image'
@@ -659,10 +674,25 @@ export default function QuizScreen() {
                                             onPress={() => {
                                                 setIsImageVisible(false);
                                             }}
-                                            testID='question-image-modal-close-button'
+                                            testID='question-context-image-modal-close-button'
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
+
+                                        <View style={styles.zoomControls}>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
 
                                         <Image
                                             source={{
@@ -670,10 +700,10 @@ export default function QuizScreen() {
                                             }}
                                             style={[
                                                 styles.fullScreenImage,
-                                                { transform: [{ rotate: `90deg` }] }
+                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
                                             ]}
                                             resizeMode="contain"
-                                            testID='question-image-modal-image'
+                                            testID='question-context-image-modal-image'
                                         />
                                     </View>
                                 </Modal>
@@ -782,16 +812,31 @@ export default function QuizScreen() {
                                                         <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                                     </TouchableOpacity>
 
+                                                    <View style={styles.zoomControls}>
+                                                        <TouchableOpacity
+                                                            style={styles.zoomButton}
+                                                            onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                                        >
+                                                            <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={styles.zoomButton}
+                                                            onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                                        >
+                                                            <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                                        </TouchableOpacity>
+                                                    </View>
+
                                                     <Image
                                                         source={{
                                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
                                                         }}
                                                         style={[
                                                             styles.fullScreenImage,
-                                                            { transform: [{ rotate: `90deg` }] }
+                                                            { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
                                                         ]}
                                                         resizeMode="contain"
-                                                        testID='correct-answer-image-modal-image'
+                                                        testID='question-context-image-modal-image'
                                                     />
                                                 </View>
                                             </Modal>
@@ -1119,7 +1164,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fullScreenImage: {
-        width: 600,
+        width: '100%',
         height: '100%',
     },
     closeButton: {
@@ -1263,5 +1308,26 @@ const styles = StyleSheet.create({
         width: 240,
         height: 240,
         marginBottom: 16,
+    },
+    zoomControls: {
+        position: 'absolute',
+        bottom: 40,
+        right: 20,
+        flexDirection: 'row',
+        gap: 8,
+        zIndex: 1,
+    },
+    zoomButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    zoomButtonText: {
+        color: '#FFFFFF',
+        fontSize: 24,
+        fontWeight: 'bold',
     },
 }); 

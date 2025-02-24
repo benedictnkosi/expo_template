@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, ScrollView, View, TouchableOpacity, Platform, Linking } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 
+
 interface FAQItem {
   question: string;
   answer: string;
@@ -73,6 +74,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    marginBottom: 40,
 
   },
   header: {
@@ -88,6 +90,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
   },
+
   question: {
     fontSize: 18,
     fontWeight: '600',

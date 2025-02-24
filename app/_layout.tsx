@@ -12,6 +12,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import Toast from 'react-native-toast-message';
 import AuthLayout from './_auth';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet } from 'react-native';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -72,10 +74,33 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AuthLayout />
-      <Stack screenOptions={{ headerShown: false }} />
-      <Toast />
-    </AuthProvider>
+    <GestureHandlerRootView style={styles.container}>
+      <AuthProvider>
+        <AuthLayout />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#000000' }
+          }}
+        >
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="quiz"
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal'
+            }}
+          />
+        </Stack>
+        <Toast />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  }
+});

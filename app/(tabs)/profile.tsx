@@ -250,6 +250,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20, // Keep horizontal padding
+    marginBottom: 40,
   },
   header: {
     padding: 20,
