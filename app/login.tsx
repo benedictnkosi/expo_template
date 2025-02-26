@@ -23,12 +23,6 @@ export default function Login() {
     webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
   });
 
-  useEffect(() => {
-    if (request) {
-      console.log('Redirect URL:', request.redirectUri);
-    }
-  }, [request]);
-
 
   useEffect(() => {
     handleSignInResponse();

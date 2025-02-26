@@ -7,10 +7,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from "react-native-confetti-cannon";
+import * as SecureStore from 'expo-secure-store';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { useAuth } from '@/contexts/AuthContext';
 import { checkAnswer, getLearner, removeResults, trackStreak, getSubjectStats } from '@/services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
 import { trackEvent, Events } from '@/services/mixpanel';
@@ -182,7 +182,6 @@ function renderMixedContent(text: string) {
 }
 
 export default function QuizScreen() {
-    const { user } = useAuth();
     const { subjectName } = useLocalSearchParams();
     const [question, setQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -203,28 +202,32 @@ export default function QuizScreen() {
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [showConfetti, setShowConfetti] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
+    const [user, setUser] = useState<{ uid: string } | null>(null);
 
     useEffect(() => {
-        trackEvent(Events.VIEW_QUIZ, {
-            "user_id": user?.uid,
-            "subject_id": subjectId
-        });
-
-        async function fetchLearnerInfo() {
-            if (!user?.uid) return;
+        async function loadUser() {
             try {
-                const learner = await getLearner(user.uid);
-                setLearnerInfo({
-                    name: learner.name,
-                    grade: learner.grade.number.toString()
-                });
+                const authData = await SecureStore.getItemAsync('auth');
+                if (authData) {
+                    const parsed = JSON.parse(authData);
+                    const idToken = parsed.authentication.idToken;
+                    const tokenParts = idToken.split('.');
+                    const tokenPayload = JSON.parse(atob(tokenParts[1]));
+                    const uid = tokenPayload.sub;
+
+                    setUser({ uid });
+
+                    // Load initial question after user is set
+                    if (selectedPaper) {
+                        loadRandomQuestion(selectedPaper);
+                    }
+                }
             } catch (error) {
-                console.error('Failed to fetch learner info:', error);
+                console.error('Error loading user:', error);
             }
         }
-        fetchLearnerInfo();
-    }, [subjectId, user?.uid]);
-
+        loadUser();
+    }, [selectedPaper]);
 
     const reportIssue = (questionId: number) => {
         trackEvent(Events.REPORT_ISSUE, {

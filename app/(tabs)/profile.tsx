@@ -1,5 +1,4 @@
 import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
-import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth, GoogleUser } from '@/contexts/AuthContext';

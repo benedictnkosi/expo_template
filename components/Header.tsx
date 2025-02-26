@@ -2,6 +2,7 @@ import { StyleSheet, View, Image, TouchableOpacity, Share } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleUser } from '@/contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface HeaderProps {
   title: string;
