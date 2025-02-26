@@ -1,47 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { getLearner } from '@/services/api';
+import * as SecureStore from 'expo-secure-store';
+
 
 export function useProtectedRoute() {
-  const { user } = useAuth();
-  const segments = useSegments();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasProfile, setHasProfile] = useState(false);
+  const segments = useSegments();
 
   useEffect(() => {
-    async function checkProfile() {
-      if (!user?.uid) return;
-
+    async function checkAuth() {
       try {
-        const learner = await getLearner(user.uid);
-        setHasProfile(!!learner.name && !!learner.grade);
+        const authData = await SecureStore.getItemAsync('auth');
+        const inAuthGroup = segments[0] === 'login' ||
+          segments[0] === 'register' ||
+          segments[0] === 'forgot-password';
+
+        if (!authData && !inAuthGroup) {
+          console.log('No auth data, redirecting to login');
+          router.replace('/login');
+          return;
+        }
       } catch (error) {
-        console.error('Failed to fetch learner:', error);
-      } finally {
-        setIsLoading(false);
+        console.error('Auth check error:', error);
       }
     }
 
-    checkProfile();
-  }, [user]);
+    checkAuth();
+  }, [segments]);
 
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === '(auth)' || 
-      ['login', 'register', 'forgot-password'].includes(segments.join('/'));
-
-    const inQuizPage = segments.join('/') === 'quiz';
-
-    if (!user && !inAuthGroup) {
-      router.replace('/login');
-    } else if (user && hasProfile && inAuthGroup && !inQuizPage) {
-      console.log('Replacing to /(tabs)');
-      router.replace('/(tabs)');
-    }
-  }, [user, segments, isLoading, hasProfile]);
+  return null;
 }
 
 export default function AuthLayout() {

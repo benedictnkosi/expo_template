@@ -1,57 +1,42 @@
 {
   "project_info": {
-    "project_number": "1080375994922",
-    "project_id": "aluve-learn",
-    "storage_bucket": "aluve-learn.firebasestorage.app"
+    "project_number": "962175862762",
+    "project_id": "exam-quiz-61d03",
+    "storage_bucket": "exam-quiz-61d03.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1080375994922:android:c1e91c51484e2d3686f153",
+        "mobilesdk_app_id": "1:962175862762:android:d3ffc476e8b94d94755493",
         "android_client_info": {
-          "package_name": "com.aluve.aluvelearn"
+          "package_name": "za.co.examquizafrica"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1080375994922-75d4f3pjmsmd43o91qtbuoh8pa7087pe.apps.googleusercontent.com",
+          "client_id": "962175862762-2j3qo71ghh6ar775d65j2519gbprl2vf.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.aluve.aluvelearn",
-            "certificate_hash": "02f5061767263128489391972a6d6e9e5aa75dd3"
+            "package_name": "za.co.examquizafrica",
+            "certificate_hash": "c65e7b0b54314334e9ea4690a839c10214f1db6c"
           }
         },
         {
-          "client_id": "1080375994922-7alk38ps96n7rtl9iubfa1uve544i67p.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.aluve.aluvelearn",
-            "certificate_hash": "9bbb3186b2189ef16d8f272bdab59362c395cbb4"
-          }
-        },
-        {
-          "client_id": "1080375994922-iuruq6s6derc0a0sg3vqhu8hmtevub48.apps.googleusercontent.com",
+          "client_id": "962175862762-a69fp6lmlbdaqvl45ii2jaqk77d9164u.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyChGPQf7CJf1UkQbi0U5nD8XaP59mJr5f0"
+          "current_key": "AIzaSyBOu1wE99zo0lpc7gRx5o_adqObt81JEqQ"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1080375994922-iuruq6s6derc0a0sg3vqhu8hmtevub48.apps.googleusercontent.com",
+              "client_id": "962175862762-a69fp6lmlbdaqvl45ii2jaqk77d9164u.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "1080375994922-d2envnv1rva3n32mco42h6atgur1q3na.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.aluve.aluvelearn"
-              }
             }
           ]
         }

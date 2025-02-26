@@ -1,111 +1,144 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform, ScrollView, View, Image } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Image, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '@/config/firebase';
 import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
-import { Picker } from '@react-native-picker/picker';
-import { doc, setDoc } from 'firebase/firestore';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { AntDesign } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message';
-import { fetchGrades } from '@/services/api';
-import { trackEvent, Events } from '@/services/mixpanel';
-import { registerLearner } from '@/services/api';
+import { Picker } from '@react-native-picker/picker';
+import { fetchGrades, registerLearner } from '@/services/api';
 
-export default function Register() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [grade, setGrade] = useState('');
-  const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
+WebBrowser.maybeCompleteAuthSession();
+
+export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  const [name, setName] = useState('');
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: "198572112790-07sqf0e1f0ffp6q5oe6d1g50s86r5hsm.apps.googleusercontent.com",
+    iosClientId: "123456789-xxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
+    webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
+  });
 
   useEffect(() => {
-    async function loadGrades() {
-      try {
-        const gradesData = await fetchGrades();
-        const sortedGrades = gradesData
-          .filter(grade => grade.active === 1)
-          .sort((a, b) => b.number - a.number);
-        setGrades(sortedGrades);
-
-        if (sortedGrades.length > 0) {
-          setGrade(sortedGrades[0].number.toString());
-        }
-      } catch (error) {
-        console.error('Failed to fetch grades:', error);
-      }
+    if (request) {
+      console.log('Redirect URL:', request.redirectUri);
     }
+  }, [request]);
+
+  useEffect(() => {
     loadGrades();
   }, []);
 
-  const handleRegister = async () => {
-    if (!email || !password || !name || !grade) {
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Please fill in all fields',
-        position: 'bottom'
-      });
-      return;
-    }
 
-    setIsLoading(true);
+  useEffect(() => {
+    handleRegisterResponse();
+  }, [response]);
+
+  async function loadGrades() {
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('User created:', user);
-      await registerLearner({
-        uid: user.uid,
-        name: name.trim(),
-        grade: parseInt(grade)
-      });
-
-      router.replace('/');
+      const gradesData = await fetchGrades();
+      const sortedGrades = gradesData
+        .filter(grade => grade.active === 1)
+        .sort((a, b) => b.number - a.number);
+      setGrades(sortedGrades);
+      if (sortedGrades.length > 0) {
+        setSelectedGrade(sortedGrades[0].number.toString());
+      }
     } catch (error) {
-      console.error('Registration error:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to register',
-        position: 'bottom'
-      });
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to fetch grades:', error);
     }
-  };
+  }
+
+  async function handleRegisterResponse() {
+    if (response?.type === 'success' && response.authentication) {
+      setIsLoading(true);
+      try {
+        const { authentication } = response;
+
+        const userInfoResponse = await fetch(
+          'https://www.googleapis.com/userinfo/v2/me',
+          {
+            headers: { Authorization: `Bearer ${authentication.accessToken}` },
+          }
+        );
+
+        const googleUser = await userInfoResponse.json();
+        console.log('Google user info:', googleUser);
+
+        // Register learner with sub as uid
+        const learner = await registerLearner({
+          uid: googleUser.id,
+          name: googleUser.name,
+          grade: parseInt(selectedGrade)
+        });
+
+        console.log('Learner response:', learner);
+
+        if (learner.message?.includes('Learner already exists') || learner.message?.includes('Successfully created learner')) {
+
+          // Store complete user data with correct ID fields
+          const userData = {
+            authentication,
+            userInfo: {
+              id: googleUser.sub,
+              uid: googleUser.sub,
+              email: googleUser.email,
+              name: googleUser.name,
+              picture: googleUser.picture
+            }
+          };
+
+          await SecureStore.setItemAsync('auth', JSON.stringify(userData));
+          console.log('Stored auth data:', userData);
+
+          router.replace('/(tabs)');
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: 'Learner already exists',
+            text2: 'Please login to continue',
+            position: 'bottom'
+          });
+          router.replace('/login');
+        }
+      } catch (error) {
+        console.error('Sign in error:', error);
+        setIsLoading(false);
+      }
+    }
+  }
 
   return (
-    <LinearGradient
-      colors={['#1a1a1a', '#000000', '#000000']}
-      style={styles.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-    >
-      <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#1a1a1a', '#000000', '#000000']}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <View style={styles.content}>
           <View style={styles.header}>
             <Image
               source={require('@/assets/images/logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText style={styles.subtitle}>Create your account</ThemedText>
+            <ThemedText style={styles.title}>Register to ExamQuiz</ThemedText>
+            <ThemedText style={styles.subtitle}>Let's ace this! 🎯</ThemedText>
           </View>
 
           <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              testID="name-input"
-            />
             <View style={styles.pickerContainer}>
               <Picker
-                selectedValue={grade}
-                onValueChange={(value) => setGrade(value)}
+                selectedValue={selectedGrade}
+                onValueChange={setSelectedGrade}
                 style={styles.picker}
               >
                 {grades.map((grade) => (
@@ -117,121 +150,107 @@ export default function Register() {
                 ))}
               </Picker>
             </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              testID="email-input"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              testID="password-input"
-            />
 
             <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleRegister}
-              disabled={isLoading}
-              testID="register-button"
+              style={[styles.googleButton, isLoading && styles.buttonDisabled]}
+              onPress={() => promptAsync()}
+              disabled={!request || isLoading || !selectedGrade}
             >
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Creating Account...' : 'Register'}
+              <AntDesign
+                name="google"
+                size={24}
+                color="#DB4437"
+                style={styles.googleIcon}
+              />
+              <ThemedText style={styles.googleButtonText}>
+                {isLoading ? 'Registering in...' : 'Register with Google'}
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={() => router.push('/login')}
+            >
+              <ThemedText style={styles.linkText}>
+                Already have an account? Login here
               </ThemedText>
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => router.replace('/login')}
-            testID="login-link"
-          >
-            <ThemedText style={styles.linkText} testID="login-link-text">
-              Already have an account? Sign In
-            </ThemedText>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+        </View>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
   container: {
     flex: 1,
   },
+  gradient: {
+    flex: 1,
+  },
   content: {
-    flexGrow: 1,
-    padding: 24,
+    flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: 24,
+    marginTop: -40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 48,
   },
   logo: {
-    width: 240,
-    height: 80,
+    width: 140,
+    height: 140,
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: '#999',
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
   },
   form: {
-    width: '100%',
-    marginVertical: 24,
+    gap: 16,
   },
-  input: {
-    backgroundColor: '#333',
-    color: '#FFFFFF',
-    borderColor: '#444',
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 16,
-    marginVertical: 8,
-  },
-  pickerContainer: {
-    backgroundColor: '#333',
-    borderRadius: 12,
-    marginVertical: 8,
-    overflow: Platform.OS === 'ios' ? 'hidden' : 'visible',
-  },
-  picker: {
-    backgroundColor: '#333',
-    color: '#FFFFFF',
-    height: Platform.OS === 'ios' ? 150 : 50,
-    width: '100%',
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 0,
-    elevation: 0,
-  },
-  button: {
-    backgroundColor: '#2563EB',
-    padding: 16,
-    borderRadius: 12,
+  googleButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
-  buttonText: {
-    color: '#FFFFFF',
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
+    color: '#000000',
     fontSize: 16,
     fontWeight: '600',
+  },
+  pickerContainer: {
+    backgroundColor: '#444',
+    borderWidth: 1,
+    borderColor: '#555',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden'
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    color: '#FFFFFF',
+    backgroundColor: 'transparent'
   },
   linkButton: {
     marginTop: 16,
@@ -240,5 +259,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#FFFFFF',
     fontSize: 14,
-  },
+    textDecorationLine: 'underline',
+  }
 }); 
