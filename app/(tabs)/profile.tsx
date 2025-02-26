@@ -1,24 +1,23 @@
-import React, { StyleSheet, TouchableOpacity, View, Image, ScrollView, TextInput, Alert, Platform } from 'react-native';
+import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, GoogleUser } from '@/contexts/AuthContext';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useState, useEffect } from 'react';
 import { getLearner, updateLearner, fetchGrades } from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
-import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
-import { signOut } from 'firebase/auth';
-import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Header } from '@/components/Header';
 import { trackEvent, Events } from '@/services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 
 export default function ProfileScreen() {
-  const { user, signOut, } = useAuth();
+  const [user, setUser] = useState<GoogleUser | null>(null);
+  const { signOut } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<{
     name: string;
     grade: string;
@@ -41,6 +40,32 @@ export default function ProfileScreen() {
   const [pendingGrade, setPendingGrade] = useState('');
 
   useEffect(() => {
+    async function loadUser() {
+      try {
+        const authData = await SecureStore.getItemAsync('auth');
+        if (authData) {
+          const parsed = JSON.parse(authData);
+          const idToken = parsed.authentication.idToken;
+          const tokenParts = idToken.split('.');
+          const tokenPayload = JSON.parse(atob(tokenParts[1]));
+          const uid = tokenPayload.sub;
+
+          setUser({
+            id: uid,
+            uid: uid,
+            email: parsed.userInfo.email,
+            name: parsed.userInfo.name,
+            picture: parsed.userInfo.picture
+          });
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+      }
+    }
+    loadUser();
+  }, []);
+
+  useEffect(() => {
     async function fetchLearnerInfo() {
       if (!user?.uid) return;
       try {
@@ -51,7 +76,7 @@ export default function ProfileScreen() {
         setLearnerInfo({
           name,
           grade,
-          imagePath: user.photoURL || undefined
+          imagePath: user.picture || ""
         });
         setEditName(name);
         setEditGrade(grade || grades[0]?.number.toString() || '');
@@ -60,7 +85,7 @@ export default function ProfileScreen() {
       }
     }
     fetchLearnerInfo();
-  }, [user?.uid, user?.photoURL, grades]);
+  }, [user?.uid, grades]);
 
   useEffect(() => {
     async function loadGrades() {
@@ -116,8 +141,9 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
-      await signOut();
-      await AsyncStorage.removeItem('user'); // Clear stored user data
+      setIsLoading(true);
+      await SecureStore.deleteItemAsync('auth');
+      await AsyncStorage.clear();
       router.replace('/login');
     } catch (error) {
       console.error('Logout error:', error);
@@ -127,6 +153,8 @@ export default function ProfileScreen() {
         text2: 'Failed to logout',
         position: 'bottom'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -249,10 +277,13 @@ export default function ProfileScreen() {
 
         <ThemedView style={styles.signOutContainer}>
           <TouchableOpacity
-            style={styles.signOutButton}
+            style={[styles.signOutButton, isLoading && styles.buttonDisabled]}
             onPress={handleLogout}
+            disabled={isLoading}
           >
-            <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
+            <ThemedText style={styles.signOutText}>
+              {isLoading ? 'Signing out...' : 'Sign Out'}
+            </ThemedText>
           </TouchableOpacity>
         </ThemedView>
       </ScrollView>
@@ -520,5 +551,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
     fontWeight: '500',
-  }
+  },
+  buttonDisabled: {
+    backgroundColor: '#555',
+  },
 }); 

@@ -1,16 +1,18 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { User } from 'firebase/auth';
-import { auth } from '@/config/firebase';
-import { useRouter, useSegments } from 'expo-router';
-import { getLearner } from '@/services/api';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/config/firebase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useRouter } from 'expo-router';
 import { identifyUser } from '@/services/mixpanel';
+import * as SecureStore from 'expo-secure-store';
+
+export interface GoogleUser {
+  id: string;
+  uid: string;
+  email: string;
+  name: string;
+  picture?: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  user: GoogleUser | null;
   isLoading: boolean;
   signOut: () => Promise<void>;
 }
@@ -21,68 +23,37 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => { }
 });
 
-// Add function to create learner
-async function createLearner(user: User) {
-  try {
-    await addDoc(collection(db, 'learners'), {
-      uid: user.uid,
-      email: user.email,
-      createdAt: new Date(),
-    });
-  } catch (error) {
-    console.error('Error creating learner:', error);
-    throw error;
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<GoogleUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    // Check for stored session on mount
-    AsyncStorage.getItem('user').then(savedUser => {
-      if (savedUser) setUser(JSON.parse(savedUser));
-    });
-
-    // Listen for auth state changes
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsLoading(false);
-      if (user) {
-        AsyncStorage.setItem('user', JSON.stringify(user));
-        identifyUser(user.uid, {
-          email: user.email,
-          name: user.displayName
+    // Check for stored auth on mount
+    SecureStore.getItemAsync('auth').then(savedAuth => {
+      if (savedAuth) {
+        const { userInfo } = JSON.parse(savedAuth);
+        setUser({
+          id: userInfo.id,
+          uid: userInfo.id,
+          email: userInfo.email,
+          name: userInfo.name,
+          picture: userInfo.picture
         });
-      } else {
-        AsyncStorage.removeItem('user');
+        identifyUser(userInfo.id, {
+          email: userInfo.email,
+          name: userInfo.name
+        });
       }
+      setIsLoading(false);
     });
-
-    return unsubscribe;
   }, []);
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inAuthGroup = segments[0] === '(auth)';
-    const inLoginScreen = segments.join('/') === 'login';
-    const inRegisterScreen = segments.join('/') === 'register';
-    const inForgotPasswordScreen = segments.join('/') === 'forgot-password';
-
-    if (!user && !inLoginScreen && !inRegisterScreen && !inForgotPasswordScreen) {
-      router.replace('/login');
-    } else if (user && (inAuthGroup || inLoginScreen || inRegisterScreen || inForgotPasswordScreen)) {
-      router.replace('/(tabs)');
-    }
-  }, [user, isLoading, segments]);
 
   const signOut = async () => {
     try {
-      await auth.signOut();
+      await SecureStore.deleteItemAsync('auth');
+      setUser(null);
+      router.replace('/login');
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;

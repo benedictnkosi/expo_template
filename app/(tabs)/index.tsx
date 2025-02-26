@@ -10,8 +10,9 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { fetchMySubjects, getLearner, getStreak, getTopLearners } from '@/services/api';
 import { Subject } from '@/types/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, GoogleUser } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
+import * as SecureStore from 'expo-secure-store';
 
 // Temporary mock data
 
@@ -24,7 +25,6 @@ function getProgressBarColor(progress: number): string {
 }
 
 export default function HomeScreen() {
-  const { user } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
@@ -33,53 +33,96 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [streak, setStreak] = useState(0);
   const [ranking, setRanking] = useState(0);
+  const [user, setUser] = useState<GoogleUser | null>(null);
 
-  // Add useEffect for initial load
+  // Single useEffect for initial load
   useEffect(() => {
-    mixpanel.track(Events.VIEW_HOME, {
-      "user_id": user?.uid
-    });
+    async function initializeData() {
+      try {
+        const authData = await SecureStore.getItemAsync('auth');
+        if (authData) {
+          console.log('authData', authData);
+          const parsed = JSON.parse(authData);
 
-    loadData();
+          // Extract sub from idToken as uid
+          const idToken = parsed.authentication.idToken;
+          const tokenParts = idToken.split('.');
+          const tokenPayload = JSON.parse(atob(tokenParts[1]));
+          const uid = tokenPayload.sub;
 
-    // Show review prompt after a short delay
-    // const timer = setTimeout(() => {
-    //   promptForReview();
-    // }, 1000);
+          const userData = {
+            id: uid,
+            uid: uid,
+            email: parsed.userInfo.email,
+            name: parsed.userInfo.name,
+            picture: parsed.userInfo.picture
+          };
 
-    // return () => clearTimeout(timer);
-  }, [user?.uid]);
+          console.log('Setting user with:', userData);
+          setUser(userData);
 
-  useEffect(() => {
-    if (user?.uid) {
-      getStreak(user.uid).then((streak) => {
-        console.log(streak);
-        setStreak(streak.data.currentStreak);
-      });
+          // Load data immediately after setting user
+          if (userData.uid) {
+            const learner = await getLearner(userData.uid);
+            setLearnerInfo({
+              name: learner.name,
+              grade: learner.grade?.number?.toString() || ''
+            });
+
+            if (learner.grade?.number) {
+              console.log('learner', learner);
+              const enrolledResponse = await fetchMySubjects(userData.uid);
+
+              // Group subjects by base name (removing P1/P2)
+              const subjectGroups = enrolledResponse.reduce((acc, curr) => {
+                const baseName = curr.subject.name.replace(/ P[12]$/, '');
+
+                if (!acc[baseName]) {
+                  acc[baseName] = {
+                    id: curr.subject.id.toString(),
+                    name: baseName,
+                    totalQuestions: curr.total_questions,
+                    answeredQuestions: curr.answered_questions,
+                    correctAnswers: curr.correct_answers
+                  };
+                } else {
+                  // Sum up the stats from both papers
+                  acc[baseName].totalQuestions += curr.total_questions;
+                  acc[baseName].answeredQuestions += curr.answered_questions;
+                  acc[baseName].correctAnswers += curr.correct_answers;
+                }
+
+                return acc;
+              }, {} as Record<string, Subject>);
+
+              setMySubjects(Object.values(subjectGroups));
+            } else {
+              console.log('No learner grade');
+              router.replace('/login');
+            }
+
+          } else {
+            console.log('No user uid');
+            router.replace('/login');
+          }
+        } else {
+          console.log('No auth data');
+          router.replace('/login');
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [user?.uid]);
 
-  useEffect(() => {
-    if (user?.uid) {
-      getTopLearners(user.uid).then((ranking) => {
-        setRanking(ranking.rankings.find(r => r.isCurrentLearner)?.position || 0);
-      });
-    }
-  }, [user?.uid]);
+    initializeData();
+  }, []);
 
-  // Keep useFocusEffect for tab focus
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [user?.uid])
-  );
-
-  // Move loadData function outside the hooks
-  async function loadData() {
-    if (!user?.uid) {
-      console.log('No user uid');
-      return;
-    }
+  // Add dependency tracking for loadData
+  const loadData = useCallback(async () => {
+    if (!user?.uid) return;
+    console.log('Loading data for user:', user.uid);
     try {
       const learner = await getLearner(user.uid);
       setLearnerInfo({
@@ -89,44 +132,47 @@ export default function HomeScreen() {
 
       if (learner.grade?.number) {
         setIsLoading(true);
-        try {
-          const enrolledResponse = await fetchMySubjects(user.uid);
+        const enrolledResponse = await fetchMySubjects(user.uid);
+        // Group subjects by base name (removing P1/P2)
+        const subjectGroups = enrolledResponse.reduce((acc, curr) => {
+          const baseName = curr.subject.name.replace(/ P[12]$/, '');
 
-          // Group subjects by base name (removing P1/P2)
-          const subjectGroups = enrolledResponse.reduce((acc, curr) => {
-            const baseName = curr.subject.name.replace(/ P[12]$/, '');
+          if (!acc[baseName]) {
+            acc[baseName] = {
+              id: curr.subject.id.toString(),
+              name: baseName,
+              totalQuestions: curr.total_questions,
+              answeredQuestions: curr.answered_questions,
+              correctAnswers: curr.correct_answers
+            };
+          } else {
+            // Sum up the stats from both papers
+            acc[baseName].totalQuestions += curr.total_questions;
+            acc[baseName].answeredQuestions += curr.answered_questions;
+            acc[baseName].correctAnswers += curr.correct_answers;
+          }
 
-            if (!acc[baseName]) {
-              acc[baseName] = {
-                id: curr.subject.id.toString(),
-                name: baseName,
-                totalQuestions: curr.total_questions,
-                answeredQuestions: curr.answered_questions,
-                correctAnswers: curr.correct_answers
-              };
-            } else {
-              // Sum up the stats from both papers
-              acc[baseName].totalQuestions += curr.total_questions;
-              acc[baseName].answeredQuestions += curr.answered_questions;
-              acc[baseName].correctAnswers += curr.correct_answers;
-            }
+          return acc;
+        }, {} as Record<string, Subject>);
 
-            return acc;
-          }, {} as Record<string, Subject>);
-
-          setMySubjects(Object.values(subjectGroups));
-        } catch (error) {
-          setMySubjects([]);
-          console.error('Failed to fetch subjects:', error);
-        }
+        setMySubjects(Object.values(subjectGroups));
       }
     } catch (error) {
-      console.error('Failed to fetch learner info:', error);
+      console.error('Failed to fetch data:', error);
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [user]);
 
+  // Update useFocusEffect to properly track dependencies
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Focus effect triggered, user:', user?.uid);
+      if (user?.uid) {
+        loadData();
+      }
+    }, [user, loadData])
+  );
 
   // Replace promptForReview function
   function promptForReview() {

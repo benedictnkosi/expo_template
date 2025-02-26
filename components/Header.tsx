@@ -1,11 +1,11 @@
 import { StyleSheet, View, Image } from 'react-native';
 import { ThemedText } from './ThemedText';
-import { User } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GoogleUser } from '@/contexts/AuthContext';
 
 interface HeaderProps {
   title: string;
-  user: User | null;
+  user: GoogleUser | null;
   learnerInfo: {
     name: string;
     grade: string;
