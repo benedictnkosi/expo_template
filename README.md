@@ -176,3 +176,9 @@ cd android && ./gradlew clean
 npx expo prebuild --clean && npx expo run:android
 
 cd android && ./gradlew clean
+
+./build-aab.sh
+
+
+### build apk
+./build-apk.sh

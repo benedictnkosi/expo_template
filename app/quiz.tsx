@@ -86,6 +86,8 @@ function cleanAnswer(answer: string): string {
 }
 
 function KaTeX({ latex }: { latex: string }) {
+    const [webViewHeight, setWebViewHeight] = useState(60);
+
     const html = `
         <!DOCTYPE html>
         <html>
@@ -97,26 +99,23 @@ function KaTeX({ latex }: { latex: string }) {
                 <style>
                     body {
                         margin: 0;
-                        padding: 16px;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 80px;
-                        background-color: #333;
+                        padding: 8px;
+                        background-color: transparent;
                     }
                     #formula {
                         width: 100%;
-                        text-align: center;
+                        overflow-x: auto;
+                        overflow-y: visible;
+                        padding: 5px 0;
                     }
                     .katex {
-                        font-size: 1.2em;
+                        font-size: 1.1em;
                         color: #FFFFFF;
                     }
-                    .katex-html {
-                        color: #FFFFFF;
-                    }
-                    .katex .base, .katex .strut, .katex .mathit {
-                        color: #FFFFFF;
+                    .katex-display {
+                        margin: 0;
+                        padding: 5px 0;
+                        overflow: visible;
                     }
                 </style>
             </head>
@@ -128,8 +127,11 @@ function KaTeX({ latex }: { latex: string }) {
                             throwOnError: false,
                             displayMode: true,
                             trust: true,
-                            strict: false
+                            strict: false,
+                            output: 'html'
                         });
+                        // Send height to React Native
+                        window.ReactNativeWebView.postMessage(document.documentElement.scrollHeight);
                     });
                 </script>
             </body>
@@ -139,8 +141,12 @@ function KaTeX({ latex }: { latex: string }) {
     return (
         <WebView
             source={{ html }}
-            style={{ height: 100, backgroundColor: 'transparent' }}
+            style={{ height: webViewHeight, backgroundColor: 'transparent' }}
             scrollEnabled={false}
+            onMessage={(event) => {
+                const height = parseInt(event.nativeEvent.data);
+                setWebViewHeight(height);
+            }}
         />
     );
 }
@@ -196,6 +202,7 @@ export default function QuizScreen() {
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(1);
 
     useEffect(() => {
         trackEvent(Events.VIEW_QUIZ, {
@@ -307,6 +314,7 @@ export default function QuizScreen() {
 
             if (response.is_correct) {
                 triggerConfetti();
+                trackStreak(user.uid);
             }
 
             trackEvent(Events.SUBMIT_ANSWER, {
@@ -321,7 +329,7 @@ export default function QuizScreen() {
                 scrollViewRef.current?.scrollToEnd({ animated: true });
             }, 100);
 
-            trackStreak(user.uid);
+
         } catch (error) {
             console.error('Failed to check answer:', error);
             Toast.show({
@@ -429,6 +437,7 @@ export default function QuizScreen() {
                                 setSelectedPaper('P1');
                                 loadRandomQuestion('P1');
                             }}
+                            testID="paper-1-button"
                         >
                             <ThemedText style={styles.paperButtonText}>Paper 1</ThemedText>
                         </TouchableOpacity>
@@ -439,6 +448,7 @@ export default function QuizScreen() {
                                 setSelectedPaper('P2');
                                 loadRandomQuestion('P2');
                             }}
+                            testID="paper-2-button"
                         >
                             <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
                         </TouchableOpacity>
@@ -457,39 +467,27 @@ export default function QuizScreen() {
                 end={{ x: 0, y: 1 }}
             >
                 <ScrollView style={styles.container}>
-
-                    {/* Subject Title and Meta */}
-                    <View style={styles.subjectHeader}>
-                        <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
-                        {question?.year || question?.term ? (
-                            <ThemedText style={styles.questionMeta}>
-                                {question?.year && `${question.year}`}
-                                {question?.year && question?.term && ' • '}
-                                {question?.term && `Term ${question.term}`}
-                            </ThemedText>
-                        ) : null}
-                    </View>
-
                     <ThemedView style={styles.noQuestionsContainer}>
                         <View style={styles.emojiContainer}>
                             <ThemedText style={styles.noQuestionsEmoji}>
                                 🎉
                             </ThemedText>
-
                         </View>
-                        <ThemedText style={styles.noQuestionsText}>
+                        <ThemedText style={styles.noQuestionsText} testID="no-questions-text">
                             Congratulations! You've completed all questions!
                         </ThemedText>
                         <View style={styles.completionButtons}>
                             <TouchableOpacity
                                 style={[styles.footerButton, styles.restartButton]}
                                 onPress={handleRestart}
+                                testID="restart-subject-button"
                             >
                                 <ThemedText style={styles.footerButtonText}>Restart Subject</ThemedText>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.footerButton, styles.nextButton]}
                                 onPress={() => router.push('/(tabs)')}
+                                testID="back-to-subjects-button"
                             >
                                 <ThemedText style={styles.footerButtonText}>Back to Subjects</ThemedText>
                             </TouchableOpacity>
@@ -516,30 +514,31 @@ export default function QuizScreen() {
                     <View style={styles.scoreSection}>
                         <View style={styles.scoreItem}>
                             <ThemedText style={styles.scoreEmoji}>✅</ThemedText>
-                            <ThemedText style={styles.scoreValue}>{stats?.correct_answers}</ThemedText>
+                            <ThemedText style={styles.scoreValue} testID="correct-answers-value">{stats?.correct_answers}</ThemedText>
                         </View>
                         <View style={styles.scoreItem}>
                             <ThemedText style={styles.scoreEmoji}>❌</ThemedText>
-                            <ThemedText style={styles.scoreValue}>{stats?.incorrect_answers}</ThemedText>
+                            <ThemedText style={styles.scoreValue} testID="incorrect-answers-value">{stats?.incorrect_answers}</ThemedText>
                         </View>
                     </View>
 
                     <View style={styles.toggleContainer}>
-                        <ThemedText style={styles.toggleLabel}>Term 2 only</ThemedText>
+                        <ThemedText style={styles.toggleLabel} testID="toggle-label">Term 2 only</ThemedText>
                         <Switch
                             value={!showAllTerms}
                             onValueChange={(value) => setShowAllTerms(!value)}
                             trackColor={{ false: '#333', true: '#2563EB' }}
                             thumbColor="#FFFFFF"
+                            testID="toggle-switch"
                         />
                     </View>
                 </View>
 
                 {/* Subject Title and Meta */}
                 <View style={styles.subjectHeader}>
-                    <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
+                    <ThemedText style={styles.subjectTitle} testID='subject-title'>{subjectName}</ThemedText>
                     {question?.year || question?.term ? (
-                        <ThemedText style={styles.questionMeta}>
+                        <ThemedText style={styles.questionMeta} testID='question-meta'>
                             {question?.year && `${question.year}`}
                             {question?.year && question?.term && ' • '}
                             {question?.term && `Term ${question.term}`}
@@ -551,7 +550,7 @@ export default function QuizScreen() {
                     <ThemedView style={styles.sectionCard}>
 
                         {question.context && (
-                            <View style={styles.questionContainer}>
+                            <View style={styles.questionContainer} testID='question-context'>
                                 {renderMixedContent(question.context)}
                             </View>
                         )}
@@ -567,6 +566,7 @@ export default function QuizScreen() {
                                 <TouchableOpacity
                                     onPress={() => setIsImageVisible(true)}
                                     style={styles.imageContainer}
+                                    testID='question-context-image-container'
                                 >
                                     {isImageLoading && (
                                         <View style={styles.imagePlaceholder}>
@@ -581,6 +581,7 @@ export default function QuizScreen() {
                                         resizeMode="contain"
                                         onLoadStart={() => setIsImageLoading(true)}
                                         onLoadEnd={() => setIsImageLoading(false)}
+                                        testID='question-context-image'
                                     />
                                 </TouchableOpacity>
 
@@ -594,6 +595,7 @@ export default function QuizScreen() {
                                     }}
                                     swipeDirection="down"
                                     style={styles.modal}
+                                    testID='question-context-image-modal'
                                 >
                                     <View style={styles.modalContent}>
                                         <TouchableOpacity
@@ -601,10 +603,25 @@ export default function QuizScreen() {
                                             onPress={() => {
                                                 setIsImageVisible(false);
                                             }}
+                                            testID='question-context-image-modal-close-button'
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
 
+                                        <View style={styles.zoomControls}>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
 
                                         <Image
                                             source={{
@@ -612,9 +629,10 @@ export default function QuizScreen() {
                                             }}
                                             style={[
                                                 styles.fullScreenImage,
-                                                { transform: [{ rotate: `90deg` }] }
+                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
                                             ]}
                                             resizeMode="contain"
+                                            testID='question-context-image-modal-image'
                                         />
                                     </View>
                                 </Modal>
@@ -640,6 +658,7 @@ export default function QuizScreen() {
                                         resizeMode="contain"
                                         onLoadStart={() => setIsImageLoading(true)}
                                         onLoadEnd={() => setIsImageLoading(false)}
+                                        testID='question-image'
                                     />
                                 </TouchableOpacity>
 
@@ -653,6 +672,7 @@ export default function QuizScreen() {
                                     }}
                                     swipeDirection="down"
                                     style={styles.modal}
+                                    testID='question-image-modal'
                                 >
                                     <View style={styles.modalContent}>
                                         <TouchableOpacity
@@ -660,9 +680,25 @@ export default function QuizScreen() {
                                             onPress={() => {
                                                 setIsImageVisible(false);
                                             }}
+                                            testID='question-context-image-modal-close-button'
                                         >
                                             <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
+
+                                        <View style={styles.zoomControls}>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
 
                                         <Image
                                             source={{
@@ -670,9 +706,10 @@ export default function QuizScreen() {
                                             }}
                                             style={[
                                                 styles.fullScreenImage,
-                                                { transform: [{ rotate: `90deg` }] }
+                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
                                             ]}
                                             resizeMode="contain"
+                                            testID='question-context-image-modal-image'
                                         />
                                     </View>
                                 </Modal>
@@ -680,38 +717,22 @@ export default function QuizScreen() {
                         )}
 
                         {question.question && (
-                            <View style={styles.questionContainer}>
+                            <View style={styles.questionContainer} testID='question-text'>
                                 {renderMixedContent(question.question)}
                             </View>
                         )}
 
-                        {question.type === 'single' && (
-                            <ThemedView style={styles.singleAnswerContainer}>
-                                <TextInput
-                                    style={styles.answerInput}
-                                    value={inputAnswer}
-                                    onChangeText={setInputAnswer}
-                                    placeholder="Enter your answer"
-                                    placeholderTextColor="#666"
-                                    multiline={false}
-                                    editable={!showFeedback}
-                                />
-                                {!showFeedback && question.type === 'single' && (
-                                    <TouchableOpacity
-                                        style={[styles.footerButton, styles.submitButton]}
-                                        onPress={handleSubmit}
-                                    >
-                                        <ThemedText style={styles.footerButtonText}>Submit</ThemedText>
-                                    </TouchableOpacity>
-                                )}
-                            </ThemedView>
-                        )}
+                        <View >
+                            <ThemedText style={styles.questionMeta} testID='question-meta'>
+                                Select the correct answer
+                            </ThemedText>
+                        </View>
 
                         {question.type === 'multiple_choice' && (
                             <ThemedView style={styles.optionsContainer}>
                                 {Object.entries(question.options)
                                     .filter(([_, value]) => value)
-                                    .map(([key, value]) => (
+                                    .map(([key, value], index) => (
                                         <TouchableOpacity
                                             key={key}
                                             style={[
@@ -724,135 +745,127 @@ export default function QuizScreen() {
                                             ]}
                                             onPress={() => handleAnswer(value)}
                                             disabled={showFeedback}
+                                            testID={`option-${index}`}
                                         >
-                                            {cleanAnswer(question.answer).includes('$') ? (
+                                            {cleanAnswer(value).includes('$') ? (
                                                 <KaTeX latex={cleanAnswer(value).replace(/\$/g, '')} />
                                             ) : (
                                                 <ThemedText style={styles.optionText}>{value}</ThemedText>
                                             )}
-
-
                                         </TouchableOpacity>
                                     ))}
                             </ThemedView>
                         )}
-
-                        {question.type === 'true_false' && (
-                            <ThemedView style={styles.optionsContainer}>
-                                {[
-                                    ['true', 'True'],
-                                    ['false', 'False']
-                                ]
-                                    .filter(([_, value]) => value)
-                                    .map(([key, value]) => (
-                                        <TouchableOpacity
-                                            key={key}
-                                            style={[
-                                                styles.option,
-                                                selectedAnswer === value && styles.selectedOption,
-                                                showFeedback && selectedAnswer === value &&
-                                                (JSON.parse(question.answer).includes(value)
-                                                    ? styles.correctOption
-                                                    : styles.wrongOption)
-                                            ]}
-                                            onPress={() => handleAnswer(value)}
-                                            disabled={showFeedback}
-                                        >
-                                            <ThemedText style={styles.optionText}>{value}</ThemedText>
-                                        </TouchableOpacity>
-                                    ))}
-                            </ThemedView>
-                        )}
-
                         {showFeedback && (
                             <ThemedView style={styles.feedbackContainer}>
-                                <ThemedText style={styles.feedbackEmoji}>
+                                <ThemedText style={styles.feedbackEmoji} testID='feedback-emoji'>
                                     {isCorrect ? '🎉' : '😔'}
                                 </ThemedText>
                                 {showConfetti && (
                                     <ConfettiCannon count={200} origin={{ x: 200, y: 0 }} fadeOut={true} />
                                 )}
-                                {!isCorrect && (
-                                    <ThemedView style={styles.correctAnswerContainer}>
-                                        <ThemedText style={styles.correctAnswerLabel}>
-                                            Correct answer:
+
+                                <ThemedView style={styles.correctAnswerContainer}>
+                                    <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>
+                                        Correct answer:
+                                    </ThemedText>
+                                    {cleanAnswer(question.answer).includes('$') ? (
+                                        <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
+                                    ) : (
+                                        <ThemedText style={styles.correctAnswerText} testID='correct-answer-text'>
+                                            {cleanAnswer(question.answer)}
                                         </ThemedText>
-                                        {cleanAnswer(question.answer).includes('$') ? (
-                                            <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
-                                        ) : (
-                                            <ThemedText style={styles.correctAnswerText}>
-                                                {cleanAnswer(question.answer)}
-                                            </ThemedText>
-                                        )}
-                                        {question.answer_image && (
-                                            <>
-                                                <TouchableOpacity
-                                                    onPress={() => setIsAnswerImageVisible(true)}
-                                                    style={styles.imageContainer}
-                                                >
-                                                    {isAnswerImageLoading && (
-                                                        <View style={styles.imagePlaceholder}>
-                                                            <ActivityIndicator color="#FFFFFF" />
-                                                        </View>
-                                                    )}
+                                    )}
+                                    {question.answer_image && (
+                                        <>
+                                            <TouchableOpacity
+                                                onPress={() => setIsAnswerImageVisible(true)}
+                                                style={styles.imageContainer}
+                                                testID='correct-answer-image-container'
+                                            >
+                                                {isAnswerImageLoading && (
+                                                    <View style={styles.imagePlaceholder}>
+                                                        <ActivityIndicator color="#FFFFFF" />
+                                                    </View>
+                                                )}
+                                                <Image
+                                                    source={{
+                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                    }}
+                                                    style={styles.answerImage}
+                                                    resizeMode="contain"
+                                                    onLoadStart={() => setIsAnswerImageLoading(true)}
+                                                    onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                    testID='correct-answer-image'
+                                                />
+                                            </TouchableOpacity>
+                                            <Modal
+                                                isVisible={isAnswerImageVisible}
+                                                onBackdropPress={() => {
+                                                    setIsAnswerImageVisible(false);
+                                                }}
+                                                onSwipeComplete={() => {
+                                                    setIsAnswerImageVisible(false);
+                                                }}
+                                                swipeDirection="down"
+                                                style={styles.modal}
+                                                testID='correct-answer-image-modal'
+                                            >
+                                                <View style={styles.modalContent}>
+                                                    <TouchableOpacity
+                                                        style={styles.closeButton}
+                                                        onPress={() => {
+                                                            setIsAnswerImageVisible(false);
+                                                        }}
+                                                        testID='correct-answer-image-modal-close-button'
+                                                    >
+                                                        <ThemedText style={styles.closeButtonText}>✕</ThemedText>
+                                                    </TouchableOpacity>
+
+                                                    <View style={styles.zoomControls}>
+                                                        <TouchableOpacity
+                                                            style={styles.zoomButton}
+                                                            onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                                        >
+                                                            <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={styles.zoomButton}
+                                                            onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                                        >
+                                                            <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                                        </TouchableOpacity>
+                                                    </View>
+
                                                     <Image
                                                         source={{
                                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
                                                         }}
-                                                        style={styles.answerImage}
+                                                        style={[
+                                                            styles.fullScreenImage,
+                                                            { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
+                                                        ]}
                                                         resizeMode="contain"
-                                                        onLoadStart={() => setIsAnswerImageLoading(true)}
-                                                        onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                        testID='question-context-image-modal-image'
                                                     />
-                                                </TouchableOpacity>
-                                                <Modal
-                                                    isVisible={isAnswerImageVisible}
-                                                    onBackdropPress={() => {
-                                                        setIsAnswerImageVisible(false);
-                                                    }}
-                                                    onSwipeComplete={() => {
-                                                        setIsAnswerImageVisible(false);
-                                                    }}
-                                                    swipeDirection="down"
-                                                    style={styles.modal}
-                                                >
-                                                    <View style={styles.modalContent}>
-                                                        <TouchableOpacity
-                                                            style={styles.closeButton}
-                                                            onPress={() => {
-                                                                setIsAnswerImageVisible(false);
-                                                            }}
-                                                        >
-                                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                                        </TouchableOpacity>
+                                                </View>
+                                            </Modal>
+                                        </>
+                                    )}
+                                    {question.explanation && (
+                                        <View style={styles.questionContainer} testID='explanation-container'>
+                                            {renderMixedContent(cleanAnswer(question.explanation))}
+                                        </View>
+                                    )}
+                                </ThemedView>
 
-                                                        <Image
-                                                            source={{
-                                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
-                                                            }}
-                                                            style={[
-                                                                styles.fullScreenImage,
-                                                                { transform: [{ rotate: `90deg` }] }
-                                                            ]}
-                                                            resizeMode="contain"
-                                                        />
-                                                    </View>
-                                                </Modal>
-                                            </>
-                                        )}
-                                        {question.explanation && (
-                                            <View style={styles.questionContainer}>
-                                                {renderMixedContent(cleanAnswer(question.explanation))}
-                                            </View>
-                                        )}
-                                    </ThemedView>
-                                )}
                             </ThemedView>
                         )}
 
                         <TouchableOpacity
                             style={styles.reportButton}
                             onPress={() => reportIssue(question.id)}
+                            testID='report-issue-button'
                         >
                             <ThemedText style={styles.reportButtonText}>
                                 ⚠️ Report Issue
@@ -866,6 +879,7 @@ export default function QuizScreen() {
                 <TouchableOpacity
                     style={styles.footerButton}
                     onPress={handleSkipQuestion}
+                    testID='next-question-button'
                 >
                     <View style={styles.footerButtonContent}>
                         <Ionicons name="play-skip-forward" size={24} color="#FFFFFF" />
@@ -876,6 +890,7 @@ export default function QuizScreen() {
                 <TouchableOpacity
                     style={styles.footerButton}
                     onPress={() => router.push('/(tabs)')}
+                    testID='take-a-break-button'
                 >
                     <View style={styles.footerButtonContent}>
                         <Ionicons name="cafe" size={24} color="#FFFFFF" />
@@ -883,32 +898,6 @@ export default function QuizScreen() {
                     </View>
                 </TouchableOpacity>
             </ThemedView>
-
-            {question.answer_image && (
-                <Modal
-                    isVisible={isAnswerImageVisible}
-                    onBackdropPress={() => setIsAnswerImageVisible(false)}
-                    onSwipeComplete={() => setIsAnswerImageVisible(false)}
-                    swipeDirection="down"
-                    style={styles.modal}
-                >
-                    <View style={styles.modalContent}>
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => setIsAnswerImageVisible(false)}
-                        >
-                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                        </TouchableOpacity>
-                        <Image
-                            source={{
-                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
-                            }}
-                            style={styles.fullScreenImage}
-                            resizeMode="contain"
-                        />
-                    </View>
-                </Modal>
-            )}
         </LinearGradient>
     );
 }
@@ -935,7 +924,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     container: {
-        flex: 1,
+        flex: 1
     },
     header: {
         flexDirection: 'row',
@@ -1065,13 +1054,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#00000020',
         borderColor: '#000000',
     },
-    optionButton: {
-        backgroundColor: '#444',
-        borderRadius: 12,
+    option: {
         padding: 16,
-        marginBottom: 12,
+        borderRadius: 8,
+        backgroundColor: '#333',
         borderWidth: 1,
-        borderColor: '#555',
+        borderColor: '#444',
+        width: '100%',
     },
     selectedOption: {
         backgroundColor: '#00000020',
@@ -1104,13 +1093,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         color: '#FFFFFF',
         lineHeight: 20,
-    },
-    option: {
-        padding: 16,
-        borderRadius: 8,
-        backgroundColor: '#333',
-        borderWidth: 1,
-        borderColor: '#444',
     },
     questionImage: {
         width: '100%',
@@ -1185,7 +1167,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fullScreenImage: {
-        width: '180%',
+        width: '100%',
         height: '100%',
     },
     closeButton: {
@@ -1269,17 +1251,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         fontStyle: 'italic'
     },
-    mixedContentContainer: {
-        width: '100%',
-        gap: 12,
-        color: '#FFFFFF',
-    },
-    latexContainer: {
-        width: '100%',
-        marginVertical: 4,
-        backgroundColor: '#333',
-        color: '#FFFFFF',
-    },
+
     contentText: {
         fontSize: 16,
         lineHeight: 24,
@@ -1329,5 +1301,46 @@ const styles = StyleSheet.create({
         width: 240,
         height: 240,
         marginBottom: 16,
+    },
+    zoomControls: {
+        position: 'absolute',
+        bottom: 40,
+        right: 20,
+        flexDirection: 'row',
+        gap: 8,
+        zIndex: 1,
+    },
+    zoomButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    zoomButtonText: {
+        color: '#FFFFFF',
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
+    optionContent: {
+        width: '100%',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    latexOptionContainer: {
+        width: '100%',
+        flexWrap: 'wrap',
+    },
+    latexContainer: {
+        width: '100%',
+        marginVertical: 4,
+        backgroundColor: '#333',
+        color: '#FFFFFF',
+    },
+    mixedContentContainer: {
+        width: '100%',
+        gap: 12,
+        color: '#FFFFFF',
     },
 }); 

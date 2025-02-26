@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, ScrollView, View, TouchableOpacity, Platform, Linking } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 
+
 interface FAQItem {
   question: string;
   answer: string;
@@ -13,12 +14,24 @@ const faqs: FAQItem[] = [
     answer: 'ExamQuiz provides past exam questions for practice. Select your grade and subjects, then practice questions one at a time. Each question includes detailed solutions and explanations. Your progress is tracked per subject.'
   },
   {
+    question: 'How do streaks work?',
+    answer: 'Streaks are a way to track your daily learning consistency. Get at least one question correct each day to maintain your streak. Miss a day and your streak resets to zero. Keep practicing daily to build up your streak! 🔥'
+  },
+  {
+    question: 'How does the progress bar work?',
+    answer: 'The progress bar shows your advancement in each subject. The green bar indicates correct answers, while the total bar length represents all attempted questions. For example, if you have answered 7 out of 10 questions correctly, the progress bar will be 70% green.This helps you track your mastery of each subject.'
+  },
+  {
     question: 'How do I track my progress?',
     answer: 'Each subject shows your total questions attempted, questions answered correctly, and overall progress. You can reset your progress at any time from the subject screen.'
   },
   {
     question: 'Can I change my grade?',
     answer: 'Yes, you can change your grade in the profile section. Note that changing your grade will reset your progress as questions are grade-specific.'
+  },
+  {
+    question: 'How do I reset my progress?',
+    answer: 'You can reset your progress at any time from the subject screen. This will reset your progress and start you from the beginning of the subject.'
   }
 ];
 
@@ -61,6 +74,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    marginBottom: 40
+
   },
   header: {
     fontSize: 18,
@@ -75,6 +90,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
   },
+
   question: {
     fontSize: 18,
     fontWeight: '600',

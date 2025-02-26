@@ -27,4 +27,7 @@ cd /Users/mac1/Documents/cursor/examquiz/android
 ./gradlew clean
 ./gradlew bundleRelease
 
+#copy the aab to /Users/mac1/Documents/aab
+cp app/build/outputs/bundle/release/app-release.aab /Users/mac1/Documents/aab/app-release.aab
+
 echo "Build completed!"

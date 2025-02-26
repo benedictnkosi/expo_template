@@ -1,4 +1,5 @@
 import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
+import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth, GoogleUser } from '@/contexts/AuthContext';
@@ -103,11 +104,6 @@ export default function ProfileScreen() {
     loadGrades();
   }, []);
 
-  const handleStartEdit = () => {
-    setEditName(learnerInfo?.name || '');
-    setEditGrade(learnerInfo?.grade || '');
-    setIsEditing(true);
-  };
 
   const handleSave = async () => {
     setShowGradeChangeModal(true);
@@ -216,7 +212,6 @@ export default function ProfileScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <CustomAlert />
       <ScrollView
         style={[
           styles.container,
@@ -240,6 +235,7 @@ export default function ProfileScreen() {
                   onChangeText={setEditName}
                   placeholder="Enter your name"
                   placeholderTextColor="#666"
+                  testID='profile-name-input'
                 />
               </View>
               <View style={styles.inputGroup}>
@@ -251,6 +247,7 @@ export default function ProfileScreen() {
                       setEditGrade(value);
                     }}
                     style={styles.picker}
+                    testID='profile-grade-picker'
                   >
                     {grades.map((grade) => (
                       <Picker.Item
@@ -266,6 +263,7 @@ export default function ProfileScreen() {
                 style={[styles.button, styles.saveButton]}
                 onPress={handleSave}
                 disabled={isLoading}
+                testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
                   {isLoading ? 'Saving...' : 'Save Changes'}
@@ -330,6 +328,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20, // Keep horizontal padding
+    marginBottom: 40,
   },
   header: {
     padding: 20,

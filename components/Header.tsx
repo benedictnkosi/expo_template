@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, Share } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleUser } from '@/contexts/AuthContext';
@@ -15,12 +15,27 @@ interface HeaderProps {
 export function Header({ title, user, learnerInfo }: HeaderProps) {
   const insets = useSafeAreaInsets();
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check out Exam Quiz - Your ultimate study companion! https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+        title: 'Share Exam Quiz'
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
   return (
     <View style={[styles.header, { marginTop: insets.top }]}>
       <View style={styles.greeting}>
-        <ThemedText style={styles.welcomeText}>Hi, {learnerInfo?.name || ''}</ThemedText>
+        <ThemedText style={styles.welcomeText} testID='welcome-text'>Hi, {learnerInfo?.name || ''}</ThemedText>
         <ThemedText style={styles.subtitle}>Let's make this day productive</ThemedText>
       </View>
+
+      <TouchableOpacity onPress={handleShare} style={styles.shareButton}>
+        <Ionicons name="share-outline" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -61,5 +76,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  shareButton: {
+    padding: 8,
   },
 }); 

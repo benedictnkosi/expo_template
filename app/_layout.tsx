@@ -67,10 +67,33 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AuthLayout />
-      <Stack screenOptions={{ headerShown: false }} />
-      <Toast />
-    </AuthProvider>
+    <GestureHandlerRootView style={styles.container}>
+      <AuthProvider>
+        <AuthLayout />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#000000' }
+          }}
+        >
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="quiz"
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal'
+            }}
+          />
+        </Stack>
+        <Toast />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1
+  }
+});
