@@ -86,6 +86,8 @@ function cleanAnswer(answer: string): string {
 }
 
 function KaTeX({ latex }: { latex: string }) {
+    const [webViewHeight, setWebViewHeight] = useState(60);
+
     const html = `
         <!DOCTYPE html>
         <html>
@@ -97,26 +99,23 @@ function KaTeX({ latex }: { latex: string }) {
                 <style>
                     body {
                         margin: 0;
-                        padding: 16px;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 80px;
-                        background-color: #333;
+                        padding: 8px;
+                        background-color: transparent;
                     }
                     #formula {
                         width: 100%;
-                        text-align: center;
+                        overflow-x: auto;
+                        overflow-y: visible;
+                        padding: 5px 0;
                     }
                     .katex {
-                        font-size: 1.2em;
+                        font-size: 1.1em;
                         color: #FFFFFF;
                     }
-                    .katex-html {
-                        color: #FFFFFF;
-                    }
-                    .katex .base, .katex .strut, .katex .mathit {
-                        color: #FFFFFF;
+                    .katex-display {
+                        margin: 0;
+                        padding: 5px 0;
+                        overflow: visible;
                     }
                 </style>
             </head>
@@ -128,8 +127,11 @@ function KaTeX({ latex }: { latex: string }) {
                             throwOnError: false,
                             displayMode: true,
                             trust: true,
-                            strict: false
+                            strict: false,
+                            output: 'html'
                         });
+                        // Send height to React Native
+                        window.ReactNativeWebView.postMessage(document.documentElement.scrollHeight);
                     });
                 </script>
             </body>
@@ -139,8 +141,12 @@ function KaTeX({ latex }: { latex: string }) {
     return (
         <WebView
             source={{ html }}
-            style={{ height: 100, backgroundColor: 'transparent' }}
+            style={{ height: webViewHeight, backgroundColor: 'transparent' }}
             scrollEnabled={false}
+            onMessage={(event) => {
+                const height = parseInt(event.nativeEvent.data);
+                setWebViewHeight(height);
+            }}
         />
     );
 }
@@ -716,6 +722,12 @@ export default function QuizScreen() {
                             </View>
                         )}
 
+                        <View >
+                            <ThemedText style={styles.questionMeta} testID='question-meta'>
+                                Select the correct answer
+                            </ThemedText>
+                        </View>
+
                         {question.type === 'multiple_choice' && (
                             <ThemedView style={styles.optionsContainer}>
                                 {Object.entries(question.options)
@@ -735,13 +747,11 @@ export default function QuizScreen() {
                                             disabled={showFeedback}
                                             testID={`option-${index}`}
                                         >
-                                            {cleanAnswer(question.answer).includes('$') ? (
+                                            {cleanAnswer(value).includes('$') ? (
                                                 <KaTeX latex={cleanAnswer(value).replace(/\$/g, '')} />
                                             ) : (
                                                 <ThemedText style={styles.optionText}>{value}</ThemedText>
                                             )}
-
-
                                         </TouchableOpacity>
                                     ))}
                             </ThemedView>
@@ -914,7 +924,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     container: {
-        flex: 1,
+        flex: 1
     },
     header: {
         flexDirection: 'row',
@@ -1044,13 +1054,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#00000020',
         borderColor: '#000000',
     },
-    optionButton: {
-        backgroundColor: '#444',
-        borderRadius: 12,
+    option: {
         padding: 16,
-        marginBottom: 12,
+        borderRadius: 8,
+        backgroundColor: '#333',
         borderWidth: 1,
-        borderColor: '#555',
+        borderColor: '#444',
+        width: '100%',
     },
     selectedOption: {
         backgroundColor: '#00000020',
@@ -1083,13 +1093,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         color: '#FFFFFF',
         lineHeight: 20,
-    },
-    option: {
-        padding: 16,
-        borderRadius: 8,
-        backgroundColor: '#333',
-        borderWidth: 1,
-        borderColor: '#444',
     },
     questionImage: {
         width: '100%',
@@ -1248,17 +1251,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         fontStyle: 'italic'
     },
-    mixedContentContainer: {
-        width: '100%',
-        gap: 12,
-        color: '#FFFFFF',
-    },
-    latexContainer: {
-        width: '100%',
-        marginVertical: 4,
-        backgroundColor: '#333',
-        color: '#FFFFFF',
-    },
+
     contentText: {
         fontSize: 16,
         lineHeight: 24,
@@ -1329,5 +1322,25 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 24,
         fontWeight: 'bold',
+    },
+    optionContent: {
+        width: '100%',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+    },
+    latexOptionContainer: {
+        width: '100%',
+        flexWrap: 'wrap',
+    },
+    latexContainer: {
+        width: '100%',
+        marginVertical: 4,
+        backgroundColor: '#333',
+        color: '#FFFFFF',
+    },
+    mixedContentContainer: {
+        width: '100%',
+        gap: 12,
+        color: '#FFFFFF',
     },
 }); 

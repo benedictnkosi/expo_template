@@ -132,7 +132,7 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flex: 1
   },
   gradient: {
     flex: 1,
