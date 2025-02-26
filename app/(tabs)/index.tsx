@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, FlatList, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Image, Platform, Modal, Linking } from 'react-native';
+import { StyleSheet, FlatList, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Image, Platform, Modal, Linking, Share } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { mixpanel, Events } from '@/services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -235,6 +236,18 @@ export default function HomeScreen() {
     );
   };
 
+  // Add share function
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check out Exam Quiz - Your ultimate study companion! https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+        title: 'Share Exam Quiz'
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -281,6 +294,18 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
+        </View>
+
+        <View style={styles.shareContainer}>
+          <TouchableOpacity
+            style={styles.shareButton}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-social" size={24} color="#FFFFFF" />
+            <ThemedText style={styles.shareButtonText}>
+              Help us grow, share with Friends
+            </ThemedText>
+          </TouchableOpacity>
         </View>
 
         <ThemedText style={styles.sectionTitle}>Let's learn</ThemedText>
@@ -737,5 +762,23 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#2563EB',
     borderRadius: 2,
+  },
+  shareContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  shareButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

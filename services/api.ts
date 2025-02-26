@@ -392,4 +392,37 @@ export async function registerLearner(data: {
     console.error('Error registering learner:', error);
     throw error;
   }
+}
+
+interface QuestionStatusData {
+  question_id: number;
+  status: 'approved' | 'rejected';
+  email: string;
+  uid: string;
+  comment: string;
+}
+
+export async function setQuestionStatus(data: QuestionStatusData): Promise<void> {
+  try {
+    const response = await fetch(
+      ensureHttps(`${API_BASE_URL}/public/learn/question/set-status`),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to update question status');
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Error setting question status:', error);
+    throw error;
+  }
 } 
