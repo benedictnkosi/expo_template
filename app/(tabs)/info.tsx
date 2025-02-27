@@ -1,7 +1,18 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, ScrollView, View, TouchableOpacity, Platform, Linking } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Header } from '@/components/Header';
+import { useState, useEffect } from 'react';
+import * as SecureStore from 'expo-secure-store';
 
+interface User {
+  uid: string;
+  id: string;
+  name: string;
+  email: string;
+  picture?: string;
+}
 
 interface FAQItem {
   question: string;
@@ -36,14 +47,48 @@ const faqs: FAQItem[] = [
 ];
 
 export default function InfoScreen() {
+  const insets = useSafeAreaInsets();
+  const [user, setUser] = useState<User | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const authData = await SecureStore.getItemAsync('auth');
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        const idToken = parsed.authentication.idToken;
+        const tokenParts = idToken.split('.');
+        const tokenPayload = JSON.parse(atob(tokenParts[1]));
+
+        setUser({
+          uid: tokenPayload.sub,
+          id: tokenPayload.sub,
+          name: parsed.userInfo.name || '',
+          email: parsed.userInfo.email,
+          picture: parsed.userInfo.picture
+        });
+      }
+    }
+    loadUser();
+  }, []);
+
   return (
     <LinearGradient
-      colors={['#1a1a1a', '#000000', '#000000']}
-      style={styles.gradient}
+      colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+      style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <Header
+          title="Exam Quiz"
+          user={user}
+          learnerInfo={learnerInfo}
+        />
+
         <TouchableOpacity
           style={styles.whatsappButton}
           onPress={() => Linking.openURL('https://api.whatsapp.com/send/?phone=27837917430&text=Hi')}
@@ -56,9 +101,9 @@ export default function InfoScreen() {
         <ThemedText style={styles.header}>Frequently Asked Questions</ThemedText>
 
         {faqs.map((faq, index) => (
-          <View key={index} style={styles.faqCard}>
-            <ThemedText style={styles.question}>{faq.question}</ThemedText>
-            <ThemedText style={styles.answer}>{faq.answer}</ThemedText>
+          <View key={index} style={styles.card}>
+            <ThemedText style={styles.title}>{faq.question}</ThemedText>
+            <ThemedText style={styles.text}>{faq.answer}</ThemedText>
           </View>
         ))}
 
@@ -73,33 +118,39 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
-    marginBottom: 40
-
+    paddingHorizontal: 16,
+  },
+  contentContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   header: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#1E293B',
     marginBottom: 24,
     marginTop: 20,
   },
-  faqCard: {
-    backgroundColor: '#333',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-
-  question: {
+  title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
+    color: '#1E293B',
+    marginBottom: 8,
   },
-  answer: {
+  text: {
     fontSize: 16,
-    color: '#999',
+    color: '#64748B',
     lineHeight: 24,
   },
   contactSection: {

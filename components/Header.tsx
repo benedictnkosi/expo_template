@@ -2,6 +2,7 @@ import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GoogleUser } from '@/contexts/AuthContext';
+import { router } from 'expo-router';
 
 interface HeaderProps {
   title: string;
@@ -24,20 +25,22 @@ export function Header({ title, user, learnerInfo }: HeaderProps) {
         <ThemedText style={styles.subtitle}>Let's make this day productive</ThemedText>
       </View>
 
-      <View style={styles.profileSection}>
-        {user?.picture ? (
-          <Image
-            source={{ uri: user.picture }}
-            style={styles.profileImage}
-          />
-        ) : (
-          <View style={[styles.profileImage, styles.profilePlaceholder]}>
-            <ThemedText style={styles.profileInitial}>
-              {learnerInfo?.name?.[0]?.toUpperCase() || '?'}
-            </ThemedText>
-          </View>
-        )}
-      </View>
+      <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
+        <View style={styles.profileSection}>
+          {user?.picture ? (
+            <Image
+              source={{ uri: user.picture }}
+              style={styles.profileImage}
+            />
+          ) : (
+            <View style={[styles.profileImage, styles.profilePlaceholder]}>
+              <ThemedText style={styles.profileInitial}>
+                {learnerInfo?.name?.[0]?.toUpperCase() || '?'}
+              </ThemedText>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -55,7 +58,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#999',
   },
   subtitle: {
     fontSize: 16,

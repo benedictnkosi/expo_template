@@ -15,8 +15,16 @@ import { trackEvent, Events } from '@/services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 
+interface User {
+  uid: string;
+  id: string;
+  name: string;
+  email: string;
+  picture?: string;
+}
+
 export default function ProfileScreen() {
-  const [user, setUser] = useState<GoogleUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const { signOut } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<{
     name: string;
@@ -51,10 +59,10 @@ export default function ProfileScreen() {
           const uid = tokenPayload.sub;
 
           setUser({
+            uid,
             id: uid,
-            uid: uid,
+            name: parsed.userInfo.name || '',
             email: parsed.userInfo.email,
-            name: parsed.userInfo.name,
             picture: parsed.userInfo.picture
           });
         }
@@ -206,15 +214,15 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient
-      colors={['#1a1a1a', '#000000', '#000000']}
-      style={styles.gradient}
+      colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+      style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
       <ScrollView
         style={[
           styles.container,
-          { paddingTop: insets.top + 20 } // Add safe area top padding plus extra spacing
+          { paddingTop: insets.top } // Add safe area top padding plus extra spacing
         ]}
       >
         <Header
@@ -242,11 +250,8 @@ export default function ProfileScreen() {
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={editGrade}
-                    onValueChange={(value) => {
-                      setEditGrade(value);
-                    }}
+                    onValueChange={setEditGrade}
                     style={styles.picker}
-                    testID='profile-grade-picker'
                   >
                     {grades.map((grade) => (
                       <Picker.Item
@@ -326,8 +331,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    paddingHorizontal: 20, // Keep horizontal padding
-    marginBottom: 40,
+    paddingHorizontal: 16,
   },
   header: {
     padding: 20,
@@ -345,24 +349,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   profileCard: {
-    backgroundColor: '#333',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.15)',
-      },
-    }),
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profileImageContainer: {
     marginBottom: 16,
@@ -394,28 +389,37 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#999',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#444',
     borderWidth: 1,
     borderColor: '#555',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#000000',
     width: '100%',
   },
   button: {
-    backgroundColor: '#2563EB',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
     padding: 16,
-    borderRadius: 12,
+    marginVertical: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'space-between',
   },
   saveButton: {
-    backgroundColor: '#000000',
+    backgroundColor: '#8B5CF6',
+    borderColor: '#7C3AED',
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
     color: '#FFFFFF',
@@ -423,19 +427,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pickerContainer: {
-    backgroundColor: '#444',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: '#E2E8F0',
     borderRadius: 12,
-    overflow: Platform.OS === 'ios' ? 'hidden' : 'visible',
-    marginVertical: 8,
+    marginBottom: 16,
+    overflow: 'hidden',
   },
   picker: {
-    height: Platform.OS === 'ios' ? 150 : 50,
+    height: 50,
     width: '100%',
-    backgroundColor: '#444',
-    color: '#FFFFFF',
-    paddingHorizontal: 16,
+    color: '#1E293B',
   },
   signOutContainer: {
     padding: 20,
@@ -443,10 +445,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   signOutButton: {
-    backgroundColor: '#333',
+    backgroundColor: '#F43F5E',
+    borderColor: '#E11D48',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   signOutText: {
     color: '#FFFFFF',
@@ -505,13 +511,13 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#000000',
-    marginBottom: 4,
+    color: '#1E293B',
+    marginTop: 12,
   },
   email: {
     fontSize: 16,
-    color: '#666666',
-    marginBottom: 24,
+    color: '#64748B',
+    marginTop: 4,
   },
   section: {
     backgroundColor: '#FFFFFF',
@@ -524,14 +530,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: '#1E293B',
     marginBottom: 12,
   },
   logoutButton: {
-    backgroundColor: '#000000',
+    backgroundColor: '#FEE2E2',
+    borderColor: '#DC2626',
   },
-  logoutButtonText: {
-    color: '#FFFFFF',
+  logoutText: {
+    color: '#DC2626',
   },
   infoRow: {
     flexDirection: 'row',

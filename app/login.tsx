@@ -112,14 +112,14 @@ export default function Login() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{ flex: 1 }}>
       <LinearGradient
-        colors={['#1a1a1a', '#000000', '#000000']}
+        colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        <View style={styles.content}>
+        <View style={styles.container}>
           <View style={styles.header}>
             <Image
               source={require('@/assets/images/logo.png')}
@@ -162,36 +162,35 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    paddingBottom: 40,
   },
   gradient: {
     flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    marginTop: -40,
   },
   header: {
     alignItems: 'center',
     marginBottom: 48,
   },
   logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 24,
+    width: 120,
+    height: 120,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    color: '#1E293B',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: '#64748B',
     textAlign: 'center',
+    marginBottom: 32,
   },
   form: {
     gap: 16,
@@ -203,7 +202,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
-    marginTop: 8,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -212,9 +216,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   googleButtonText: {
-    color: '#000000',
+    color: '#1E293B',
     fontSize: 16,
     fontWeight: '600',
+    marginLeft: 12,
   },
   pickerContainer: {
     backgroundColor: '#444',
@@ -235,8 +240,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#FFFFFF',
+    color: '#3B82F6',
     fontSize: 14,
     textDecorationLine: 'underline',
-  }
+  },
+  authButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  dividerText: {
+    color: '#64748B',
+    marginHorizontal: 16,
+  },
 }); 

@@ -116,22 +116,22 @@ export default function Login() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={{ flex: 1 }}>
       <LinearGradient
-        colors={['#1a1a1a', '#000000', '#000000']}
+        colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        <View style={styles.content}>
+        <View style={styles.container}>
           <View style={styles.header}>
             <Image
               source={require('@/assets/images/logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText style={styles.title}>Register to ExamQuiz</ThemedText>
-            <ThemedText style={styles.subtitle}>Let's ace this! 🎯</ThemedText>
+            <ThemedText style={styles.title}>Create Account</ThemedText>
+            <ThemedText style={styles.subtitle}>Join us and start learning! 🚀</ThemedText>
           </View>
 
           <View style={styles.form}>
@@ -152,17 +152,11 @@ export default function Login() {
             </View>
 
             <TouchableOpacity
-              style={[styles.googleButton, isLoading && styles.buttonDisabled]}
+              style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={() => promptAsync()}
               disabled={!request || isLoading || !selectedGrade}
             >
-              <AntDesign
-                name="google"
-                size={24}
-                color="#DB4437"
-                style={styles.googleIcon}
-              />
-              <ThemedText style={styles.googleButtonText}>
+              <ThemedText style={styles.buttonText}>
                 {isLoading ? 'Registering in...' : 'Register with Google'}
               </ThemedText>
             </TouchableOpacity>
@@ -185,80 +179,90 @@ export default function Login() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    paddingBottom: 40,
   },
   gradient: {
     flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    marginTop: -40,
   },
   header: {
     alignItems: 'center',
     marginBottom: 48,
   },
   logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 24,
+    width: 120,
+    height: 120,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    color: '#1E293B',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: '#64748B',
     textAlign: 'center',
+    marginBottom: 32,
   },
   form: {
     gap: 16,
   },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  inputGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  input: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     borderRadius: 12,
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  googleIcon: {
-    marginRight: 12,
-  },
-  googleButtonText: {
-    color: '#000000',
+    padding: 16,
     fontSize: 16,
-    fontWeight: '600',
+    color: '#1E293B',
   },
   pickerContainer: {
-    backgroundColor: '#444',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     marginBottom: 16,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
     width: '100%',
+    color: '#1E293B',
+  },
+  button: {
+    backgroundColor: '#3B82F6',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  buttonText: {
     color: '#FFFFFF',
-    backgroundColor: 'transparent'
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   linkButton: {
     marginTop: 16,
     alignItems: 'center',
   },
   linkText: {
-    color: '#FFFFFF',
+    color: '#3B82F6',
     fontSize: 14,
     textDecorationLine: 'underline',
-  }
+  },
 }); 

@@ -250,15 +250,16 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FFFFFF" />
-      </ThemedView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+      </View>
     );
   }
 
   return (
     <LinearGradient
-      colors={['#1a1a1a', '#000000', '#000000']}
+      colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
       style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -274,23 +275,26 @@ export default function HomeScreen() {
         />
 
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <View style={styles.statContent}>
-              <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
-              <View style={styles.statTextContainer}>
-                <ThemedText style={styles.statLabel}>Ranking</ThemedText>
-                <ThemedText style={styles.statValue} testID="ranking-value">{ranking}</ThemedText>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <View style={styles.statContent}>
+                <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
+                <View style={styles.statTextContainer}>
+                  <ThemedText style={styles.statLabel}>Ranking</ThemedText>
+                  <ThemedText style={styles.statValue} testID="ranking-value">{ranking}</ThemedText>
+                </View>
               </View>
-
             </View>
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.statItem}>
-            <View style={styles.statContent}>
-              <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} />
-              <View style={styles.statTextContainer}>
-                <ThemedText style={styles.statLabel}>Streak Days</ThemedText>
-                <ThemedText style={styles.statValue} testID="streak-value">{streak}</ThemedText>
+
+            <View style={styles.divider} />
+
+            <View style={styles.statItem}>
+              <View style={styles.statContent}>
+                <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} />
+                <View style={styles.statTextContainer}>
+                  <ThemedText style={styles.statLabel}>Streak Days</ThemedText>
+                  <ThemedText style={styles.statValue} testID="streak-value">{streak}</ThemedText>
+                </View>
               </View>
             </View>
           </View>
@@ -331,28 +335,32 @@ export default function HomeScreen() {
                 />
               </View>
               <View style={styles.cardContent}>
-                <ThemedText style={styles.subjectName} testID={`subject-name-${subject.name}`}>{subject.name}</ThemedText>
+                <ThemedText style={styles.subjectName} testID={`subject-name-${subject.name}`}>
+                  {subject.name}
+                </ThemedText>
                 <ThemedText style={styles.questionCount} testID={`question-count-${subject.name}`}>
                   {subject.totalQuestions} questions
                 </ThemedText>
-                <View style={styles.progressBarContainer}>
-                  {/* Calculate progress */}
-                  {(() => {
-                    const progress = subject.answeredQuestions === 0 ? 0 :
-                      Math.round((subject.answeredQuestions / subject.totalQuestions) * 100);
 
-                    return (
-                      <View
-                        style={[
-                          styles.progressBar,
-                          {
-                            width: `${progress}%`,
-                            backgroundColor: getProgressBarColor(progress)
-                          }
-                        ]}
-                      />
-                    );
-                  })()}
+                {/* Progress section */}
+                <View>
+                  <View style={styles.progressBarContainer}>
+                    <View
+                      style={[
+                        styles.progressBar,
+                        {
+                          width: `${subject.answeredQuestions === 0 ? 0 :
+                            Math.round((subject.correctAnswers / subject.answeredQuestions) * 100)}%`,
+                          backgroundColor: getProgressBarColor(subject.answeredQuestions === 0 ? 0 :
+                            Math.round((subject.correctAnswers / subject.answeredQuestions) * 100))
+                        }
+                      ]}
+                    />
+                  </View>
+                  <ThemedText style={styles.masteryText}>
+                    {subject.answeredQuestions === 0 ? 0 :
+                      Math.round((subject.correctAnswers / subject.answeredQuestions) * 100)}% mastered
+                  </ThemedText>
                 </View>
               </View>
             </TouchableOpacity>
@@ -387,9 +395,10 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20
+    paddingHorizontal: 16,
   },
   contentContainer: {
+    flexGrow: 1,
     paddingBottom: 20,
   },
   welcomeSection: {
@@ -408,11 +417,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#333',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
-    marginTop: 16,
+    marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   statItem: {
     flex: 1,
@@ -422,33 +440,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
   },
-  statTextContainer: {
-    marginLeft: 16,
-    alignItems: 'flex-start',
+  divider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 16,
   },
   statIcon: {
     width: 36,
     height: 36,
   },
+  statTextContainer: {
+    marginLeft: 16,
+  },
   statLabel: {
     fontSize: 14,
-    color: '#999',
+    color: '#64748B',
     marginBottom: 4,
   },
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2563EB',
-  },
-  divider: {
-    width: 1,
-    backgroundColor: '#444',
-    marginHorizontal: 16,
+    color: '#3B82F6',
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#999',
     marginBottom: 40,
     marginTop: 20,
   },
@@ -456,12 +474,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 16,
+    paddingHorizontal: 4,
   },
   subjectCard: {
     width: '47%',
-    backgroundColor: '#333',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
     alignItems: 'flex-start',
     position: 'relative',
     marginBottom: 16,
@@ -483,20 +507,24 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#1E293B',
     marginBottom: 8,
     marginTop: 32,
   },
   questionCount: {
     fontSize: 12,
-    color: '#999',
+    color: '#64748B',
   },
   loadingContainer: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#333',
-    color: '#FFFFFF',
+    zIndex: 1000,
   },
   yourSubjectsCard: {
     ...Platform.select({
@@ -676,7 +704,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   submitButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#3B82F6',
     paddingHorizontal: 40,
     paddingVertical: 12,
     borderRadius: 25,
@@ -700,10 +728,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
+    color: '#000000',
   },
   loadingBox: {
     backgroundColor: 'white',
@@ -729,8 +758,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#000000',
-    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 12,
   },
   emptyStateContainer: {
     padding: 20,
@@ -747,21 +776,26 @@ const styles = StyleSheet.create({
   cardContent: {
     width: '100%',
     marginTop: 'auto',
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   progressBarContainer: {
     width: '100%',
-    height: 4,
-    backgroundColor: '#444',
+    backgroundColor: '#E2E8F0',
     borderRadius: 2,
     marginTop: 12,
-    marginBottom: 8,
+    height: 4,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
     backgroundColor: '#2563EB',
     borderRadius: 2,
+  },
+  masteryText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    textAlign: 'right',
   },
   shareContainer: {
     padding: 20,
@@ -770,7 +804,7 @@ const styles = StyleSheet.create({
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2563EB',
+    backgroundColor: '#3B82F6',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -780,5 +814,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 16,
   },
 });
