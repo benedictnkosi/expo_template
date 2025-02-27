@@ -171,12 +171,6 @@ npx expo prebuild --clean && npx expo run:android
 
 cd android && ./gradlew clean
 
-
-### clean build
-npx expo prebuild --clean && npx expo run:android
-
-cd android && ./gradlew clean
-
 ./build-aab.sh
 
 

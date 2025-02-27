@@ -203,7 +203,7 @@ export default function QuizScreen() {
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [showConfetti, setShowConfetti] = useState(false);
-    const [zoomLevel, setZoomLevel] = useState(1);
+    const [zoomLevel, setZoomLevel] = useState(0.5);
     const [user, setUser] = useState<{ uid: string; email: string } | null>(null);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
     const [reportComment, setReportComment] = useState('');
@@ -422,18 +422,6 @@ export default function QuizScreen() {
         loadRandomQuestion(selectedPaper);
     };
 
-    const handleSubmit = () => {
-        if (!inputAnswer.trim()) {
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Please enter an answer',
-                position: 'bottom'
-            });
-            return;
-        }
-        handleAnswer(inputAnswer);
-    };
 
     const handleRestart = async () => {
         if (!user?.uid || !subjectId) return;
@@ -465,19 +453,6 @@ export default function QuizScreen() {
     };
 
 
-    const handleSkipQuestion = () => {
-        if (!question || !selectedPaper) return;
-        trackEvent(Events.SKIP_QUESTION, {
-            "user_id": user?.uid,
-            "question_id": question.id
-        });
-        loadRandomQuestion(selectedPaper);
-    };
-
-    const handleZoomImage = () => {
-        // TODO: Implement zoom functionality
-        console.log('Zoom not yet implemented');
-    };
 
     const SubjectHeader = () => (
         <LinearGradient
@@ -713,33 +688,52 @@ export default function QuizScreen() {
 
                                 <Modal
                                     isVisible={isImageVisible}
+                                    onBackdropPress={() => {
+                                        setIsImageVisible(false);
+                                    }}
+                                    onSwipeComplete={() => {
+                                        setIsImageVisible(false);
+                                    }}
+                                    swipeDirection="down"
                                     style={styles.modal}
-                                    onBackdropPress={() => setIsImageVisible(false)}
+                                    testID='question-context-image-modal'
                                 >
                                     <View style={styles.modalContent}>
                                         <TouchableOpacity
                                             style={styles.closeButton}
-                                            onPress={() => setIsImageVisible(false)}
+                                            onPress={() => {
+                                                setIsImageVisible(false);
+                                            }}
+                                            testID='question-context-image-modal-close-button'
                                         >
-                                            <Ionicons name="close" size={24} color="#FFFFFF" />
+                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
 
-                                        {isImageLoading && (
-                                            <ActivityIndicator size="large" color="#FFFFFF" />
-                                        )}
+                                        <View style={styles.zoomControls}>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.max(0.5, prev - 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
 
                                         <Image
                                             source={{
-                                                uri: question?.image_path
-                                                    ? `${ConfigAPI_BASE_URL}${question.image_path}`
-                                                    : question?.question_image_path
-                                                        ? `${ConfigAPI_BASE_URL}${question.question_image_path}`
-                                                        : undefined
+                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
                                             }}
-                                            style={styles.fullScreenImage}
+                                            style={[
+                                                styles.fullScreenImage,
+                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
+                                            ]}
                                             resizeMode="contain"
-                                            onLoadStart={() => setIsImageLoading(true)}
-                                            onLoadEnd={() => setIsImageLoading(false)}
+                                            testID='question-context-image-modal-image'
                                         />
                                     </View>
                                 </Modal>
@@ -777,33 +771,52 @@ export default function QuizScreen() {
 
                                 <Modal
                                     isVisible={isImageVisible}
+                                    onBackdropPress={() => {
+                                        setIsImageVisible(false);
+                                    }}
+                                    onSwipeComplete={() => {
+                                        setIsImageVisible(false);
+                                    }}
+                                    swipeDirection="down"
                                     style={styles.modal}
-                                    onBackdropPress={() => setIsImageVisible(false)}
+                                    testID='question-image-modal'
                                 >
                                     <View style={styles.modalContent}>
                                         <TouchableOpacity
                                             style={styles.closeButton}
-                                            onPress={() => setIsImageVisible(false)}
+                                            onPress={() => {
+                                                setIsImageVisible(false);
+                                            }}
+                                            testID='question-context-image-modal-close-button'
                                         >
-                                            <Ionicons name="close" size={24} color="#FFFFFF" />
+                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                         </TouchableOpacity>
 
-                                        {isImageLoading && (
-                                            <ActivityIndicator size="large" color="#FFFFFF" />
-                                        )}
+                                        <View style={styles.zoomControls}>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.zoomButton}
+                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                            >
+                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
 
                                         <Image
                                             source={{
-                                                uri: question?.image_path
-                                                    ? `${ConfigAPI_BASE_URL}${question.image_path}`
-                                                    : question?.question_image_path
-                                                        ? `${ConfigAPI_BASE_URL}${question.question_image_path}`
-                                                        : undefined
+                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
                                             }}
-                                            style={styles.fullScreenImage}
+                                            style={[
+                                                styles.fullScreenImage,
+                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
+                                            ]}
                                             resizeMode="contain"
-                                            onLoadStart={() => setIsImageLoading(true)}
-                                            onLoadEnd={() => setIsImageLoading(false)}
+                                            testID='question-context-image-modal-image'
                                         />
                                     </View>
                                 </Modal>
@@ -897,10 +910,15 @@ export default function QuizScreen() {
                                             </TouchableOpacity>
                                             <Modal
                                                 isVisible={isAnswerImageVisible}
-                                                style={styles.modal}
                                                 onBackdropPress={() => {
                                                     setIsAnswerImageVisible(false);
                                                 }}
+                                                onSwipeComplete={() => {
+                                                    setIsAnswerImageVisible(false);
+                                                }}
+                                                swipeDirection="down"
+                                                style={styles.modal}
+                                                testID='correct-answer-image-modal'
                                             >
                                                 <View style={styles.modalContent}>
                                                     <TouchableOpacity
@@ -908,17 +926,36 @@ export default function QuizScreen() {
                                                         onPress={() => {
                                                             setIsAnswerImageVisible(false);
                                                         }}
+                                                        testID='correct-answer-image-modal-close-button'
                                                     >
-                                                        <Ionicons name="close" size={24} color="#FFFFFF" />
+                                                        <ThemedText style={styles.closeButtonText}>✕</ThemedText>
                                                     </TouchableOpacity>
+
+                                                    <View style={styles.zoomControls}>
+                                                        <TouchableOpacity
+                                                            style={styles.zoomButton}
+                                                            onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
+                                                        >
+                                                            <ThemedText style={styles.zoomButtonText}>-</ThemedText>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={styles.zoomButton}
+                                                            onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
+                                                        >
+                                                            <ThemedText style={styles.zoomButtonText}>+</ThemedText>
+                                                        </TouchableOpacity>
+                                                    </View>
+
                                                     <Image
                                                         source={{
                                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
                                                         }}
-                                                        style={styles.fullScreenImage}
+                                                        style={[
+                                                            styles.fullScreenImage,
+                                                            { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
+                                                        ]}
                                                         resizeMode="contain"
-                                                        onLoadStart={() => setIsAnswerImageLoading(true)}
-                                                        onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                        testID='question-context-image-modal-image'
                                                     />
                                                 </View>
                                             </Modal>
@@ -1297,25 +1334,29 @@ const styles = StyleSheet.create({
     },
     modal: {
         margin: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     modalContent: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+        width: '100%',
         justifyContent: 'center',
         alignItems: 'center',
     },
     fullScreenImage: {
         width: '100%',
-        height: '100%',
+        height: '90%',
         resizeMode: 'contain',
     },
     closeButton: {
+        width: 40,
+        height: 40,
         position: 'absolute',
         top: 40,
         right: 20,
         zIndex: 2,
         padding: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
         borderRadius: 20,
     },
     feedbackContainer: {
@@ -1442,15 +1483,16 @@ const styles = StyleSheet.create({
         zIndex: 1,
     },
     zoomButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         alignItems: 'center',
         justifyContent: 'center',
+        color: '#FFFFFF',
     },
     zoomButtonText: {
-        color: '#000000',
+        color: '#FFFFFF',
         fontSize: 24,
         fontWeight: 'bold',
     },
@@ -1590,6 +1632,11 @@ const styles = StyleSheet.create({
         color: '#64748B',
         marginTop: 4,
         textAlign: 'right',
+    },
+    closeButtonText: {
+        color: '#000000',
+        fontSize: 20,
+        fontWeight: 'bold',
     },
 });
 
