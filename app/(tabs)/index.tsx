@@ -1,17 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, FlatList, TouchableOpacity, View, Alert, ActivityIndicator, ScrollView, Image, Platform, Modal, Linking, Share } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ActivityIndicator, ScrollView, Image, Platform, Modal, Linking, Share } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { mixpanel, Events } from '@/services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { fetchMySubjects, getLearner, getStreak, getTopLearners } from '@/services/api';
+import { fetchMySubjects, getLearner, registerLearner } from '@/services/api';
 import { Subject } from '@/types/api';
-import { useAuth, GoogleUser } from '@/contexts/AuthContext';
+import { GoogleUser } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import * as SecureStore from 'expo-secure-store';
 
@@ -65,12 +63,13 @@ export default function HomeScreen() {
           // Load data immediately after setting user
           if (userData.uid) {
             const learner = await getLearner(userData.uid);
-            setLearnerInfo({
-              name: learner.name,
-              grade: learner.grade?.number?.toString() || ''
-            });
+            if (learner.name && learner.grade) {
+              setLearnerInfo({
+                name: learner.name,
+                grade: learner.grade?.number?.toString() || ''
+              });
 
-            if (learner.grade?.number) {
+
               console.log('learner', learner);
               const enrolledResponse = await fetchMySubjects(userData.uid);
 
@@ -99,7 +98,7 @@ export default function HomeScreen() {
               setMySubjects(Object.values(subjectGroups));
             } else {
               console.log('No learner grade');
-              router.replace('/login');
+              router.replace('/onboarding');
             }
 
           } else {
@@ -126,12 +125,14 @@ export default function HomeScreen() {
     console.log('Loading data for user:', user.uid);
     try {
       const learner = await getLearner(user.uid);
-      setLearnerInfo({
-        name: learner.name,
-        grade: learner.grade?.number?.toString() || ''
-      });
+      if (learner.name && learner.grade) {
+        console.log('Learner name and grade found');
+        setLearnerInfo({
+          name: learner.name,
+          grade: learner.grade?.number?.toString() || ''
+        });
 
-      if (learner.grade?.number) {
+
         setIsLoading(true);
         const enrolledResponse = await fetchMySubjects(user.uid);
         // Group subjects by base name (removing P1/P2)
@@ -157,6 +158,10 @@ export default function HomeScreen() {
         }, {} as Record<string, Subject>);
 
         setMySubjects(Object.values(subjectGroups));
+      } else {
+        console.log('No learner name or grade');
+
+        router.replace('/onboarding');
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -827,3 +832,5 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 });
+
+

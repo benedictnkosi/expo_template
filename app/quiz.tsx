@@ -462,9 +462,10 @@ export default function QuizScreen() {
             style={styles.subjectHeader}
         >
             <View style={styles.headerContent}>
-                <View style={styles.iconContainer}>
-                    <Ionicons name="book" size={24} color="#FFFFFF" />
-                </View>
+                <Image
+                    source={getSubjectIcon(subjectName as string)}
+                    style={styles.subjectheaderIcon}
+                />
                 <View style={styles.titleContainer}>
                     <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
                     <View style={styles.badgeContainer}>
@@ -1474,6 +1475,13 @@ const styles = StyleSheet.create({
         height: 240,
         marginBottom: 16,
     },
+
+    subjectheaderIcon: {
+        width: 48,
+        height: 48,
+        marginBottom: 16,
+    },
+
     zoomControls: {
         position: 'absolute',
         bottom: 40,

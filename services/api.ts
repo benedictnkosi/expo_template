@@ -146,6 +146,10 @@ export async function getLearner(uid: string): Promise<LearnerResponse> {
 export async function updateLearner(uid: string, data: {
   name: string;
   grade: number;
+  school: string;
+  school_address: string;
+  school_latitude: number;
+  school_longitude: number;
 }) {
   mixpanel.track(Events.UPDATE_PROFILE, {
     "user_id": uid,
@@ -160,7 +164,11 @@ export async function updateLearner(uid: string, data: {
       body: JSON.stringify({
         uid,
         name: data.name,
-        grade: data.grade.toString()
+        grade: data.grade.toString(),
+        "school_name": data.school,
+        "school_address": data.school_address,
+        "school_latitude": data.school_latitude,
+        "school_longitude": data.school_longitude
       })
     }
   );

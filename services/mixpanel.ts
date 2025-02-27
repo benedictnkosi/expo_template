@@ -59,5 +59,6 @@ export const Events = {
   SUBMIT_ANSWER: 'Submit Answer',
   SHOW_FEEDBACK: 'Show Feedback',
   HIDE_FEEDBACK: 'Hide Feedback',
-  SKIP_QUESTION: 'Skip Question'
+  SKIP_QUESTION: 'Skip Question',
+  COMPLETE_ONBOARDING: 'Complete Onboarding'
 }; 

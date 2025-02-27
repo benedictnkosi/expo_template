@@ -11,9 +11,7 @@ export function useProtectedRoute() {
     async function checkAuth() {
       try {
         const authData = await SecureStore.getItemAsync('auth');
-        const inAuthGroup = segments[0] === 'login' ||
-          segments[0] === 'register' ||
-          segments[0] === 'forgot-password';
+        const inAuthGroup = segments[0] === 'login'
 
         if (!authData && !inAuthGroup) {
           console.log('No auth data, redirecting to login');

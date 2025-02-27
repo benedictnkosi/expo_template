@@ -9,8 +9,6 @@ import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import Toast from 'react-native-toast-message';
-import { Picker } from '@react-native-picker/picker';
-import { fetchGrades, getLearner, registerLearner } from '@/services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -80,23 +78,7 @@ export default function Login() {
 
         await SecureStore.setItemAsync('auth', JSON.stringify(userData));
         console.log('Auth data stored, user ID:', googleUser.id);
-
-        // Check learner profile with verified user ID
-        const learner = await getLearner(googleUser.id);
-        console.log('Learner response for ID', googleUser.id, ':', learner);
-
-        if (learner?.name && learner?.grade) {
-          router.replace('/(tabs)');
-        } else {
-          Toast.show({
-            type: 'error',
-            text1: 'Learner not found',
-            text2: 'Please register to continue',
-            position: 'bottom'
-          });
-          router.replace('/login');
-        }
-
+        router.replace('/(tabs)');
       } catch (error) {
         console.error('Sign in error:', error);
         Toast.show({
@@ -143,15 +125,6 @@ export default function Login() {
             />
             <ThemedText style={styles.googleButtonText}>
               {isLoading ? 'Signing in...' : 'Continue with Google'}
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => router.push('/register')}
-          >
-            <ThemedText style={styles.linkText}>
-              New user? Register here
             </ThemedText>
           </TouchableOpacity>
         </View>
