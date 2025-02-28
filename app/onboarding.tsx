@@ -9,6 +9,7 @@ import { getLearner, updateLearner } from '@/services/api';
 import { trackEvent, Events } from '@/services/mixpanel';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import SelectTime from './onboarding/select-time';
 
 const TOTAL_QUESTIONS = 18000; // Update with actual number
 const DAILY_USERS = 6000; // Update with actual number
@@ -19,19 +20,6 @@ const ILLUSTRATIONS = {
   school: require('@/assets/images/illustrations/friends.png'),
   ready: require('@/assets/images/illustrations/exam.png'),
 };
-
-const TIME_SLOTS = [
-  { label: '06:00 AM', value: 6 },
-  { label: '07:00 AM', value: 7 },
-  { label: '08:00 AM', value: 8 },
-  { label: '02:00 PM', value: 14 },
-  { label: '03:00 PM', value: 15 },
-  { label: '04:00 PM', value: 16 },
-  { label: '05:00 PM', value: 17 },
-  { label: '06:00 PM', value: 18 },
-  { label: '07:00 PM', value: 19 },
-  { label: '08:00 PM', value: 20 },
-];
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
@@ -48,28 +36,7 @@ export default function OnboardingScreen() {
     time: ''
   });
 
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      const authData = await SecureStore.getItemAsync('auth');
-      if (!authData) return;
 
-      const parsed = JSON.parse(authData);
-
-      // Extract sub from idToken as uid
-      const idToken = parsed.authentication.idToken;
-      const tokenParts = idToken.split('.');
-      const tokenPayload = JSON.parse(atob(tokenParts[1]));
-      const uid = tokenPayload.sub;
-
-      const learner = await getLearner(uid);
-      if (learner.name && learner.grade) {
-
-        router.replace('/(tabs)');
-      }
-    };
-
-    fetchUserInfo();
-  }, []);
 
   const handleComplete = async () => {
     try {
@@ -123,9 +90,9 @@ export default function OnboardingScreen() {
               resizeMode="contain"
             />
             <View style={styles.textContainer}>
-              <ThemedText style={styles.welcomeTitle}>Welcome to Exam Quiz! 🎉</ThemedText>
+              <ThemedText style={styles.welcomeTitle}>🎉 Welcome to Exam Quiz! 🚀</ThemedText>
               <ThemedText style={styles.welcomeText}>
-                We're excited to help you prepare for your exams.
+                📝 Get ready to boost your brainpower and ace your exams! 🏆
               </ThemedText>
             </View>
           </View>
@@ -180,9 +147,10 @@ export default function OnboardingScreen() {
               resizeMode="contain"
             />
             <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>Which school do you attend?</ThemedText>
+              <ThemedText style={styles.stepTitle}>🎓 Which school do you rep?</ThemedText>
+              <ThemedText style={styles.stepTitle}>Find your school and get ready to join the learning squad! 🚀📚</ThemedText>
               <GooglePlacesAutocomplete
-                placeholder="Search for your school"
+                placeholder="🔍 Search for your school..."
                 onPress={(data, details = null) => {
                   console.log('Selected place:', data);
                   console.log('Place details:', details);
@@ -229,7 +197,7 @@ export default function OnboardingScreen() {
                   selectionColor: '#4338CA',
                 }}
                 query={{
-                  key: "AIzaSyBTT4MbBVMd-hiE265POy2jkGkZlyWm7Ak",
+                  key: "AIzaSyCaJHGdAh4f7BRJxNDRNkJ_vrrG74Ur_jA",
                   components: 'country:za',
                   types: 'school',
                   language: 'en',
@@ -238,8 +206,8 @@ export default function OnboardingScreen() {
               {school && (
                 <View style={styles.selectedSchoolContainer}>
                   <View style={styles.selectedSchoolHeader}>
-                    <Ionicons name="school-outline" size={20} color="#3B82F6" />
-                    <ThemedText style={styles.selectedSchoolTitle}>Selected School</ThemedText>
+
+                    <ThemedText style={styles.selectedSchoolTitle}>🏫 Selected</ThemedText>
                   </View>
                   <ThemedText style={styles.selectedSchoolName}>{school}</ThemedText>
                 </View>
@@ -252,37 +220,19 @@ export default function OnboardingScreen() {
       case 3:
         return (
           <View style={styles.step}>
-            <Image
-              source={ILLUSTRATIONS.ready}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>When would you like to practice?</ThemedText>
-              <View style={styles.timeGrid}>
-                {TIME_SLOTS.map((slot) => (
-                  <TouchableOpacity
-                    key={slot.value}
-                    style={[
-                      styles.timeButton,
-                      preferredTime === slot.value && styles.timeButtonSelected
-                    ]}
-                    onPress={() => {
-                      setPreferredTime(slot.value);
-                      setErrors(prev => ({ ...prev, time: '' }));
-                    }}
-                  >
-                    <ThemedText style={[
-                      styles.timeButtonText,
-                      preferredTime === slot.value && styles.timeButtonTextSelected
-                    ]}>
-                      {slot.label}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {errors.time ? <ThemedText style={styles.errorText}>{errors.time}</ThemedText> : null}
+            <View style={styles.stepContent}>
+              <SelectTime
+                onTimeSelect={(time) => {
+                  const hour = parseInt(time.split(':')[0]);
+                  const isPM = time.includes('PM');
+                  const value = isPM ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
+                  setPreferredTime(value);
+                  setErrors(prev => ({ ...prev, time: '' }));
+                }}
+                selectedTime={preferredTime}
+              />
             </View>
+            {errors.time ? <ThemedText style={styles.errorText}>{errors.time}</ThemedText> : null}
           </View>
         );
 
@@ -295,11 +245,10 @@ export default function OnboardingScreen() {
               resizeMode="contain"
             />
             <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>You're all set! 🎉</ThemedText>
+              <ThemedText style={styles.stepTitle}>🎉 You're all set! 🚀</ThemedText>
+              <ThemedText style={styles.stepTitle}>Welcome to the Ultimate Exam Challenge! 🏆</ThemedText>
               <ThemedText style={styles.statsText}>
-                Join {DAILY_USERS.toLocaleString()}+ students{'\n'}
-                practicing with {TOTAL_QUESTIONS.toLocaleString()}+ questions{'\n'}
-                every day to ace their exams! 🚀
+                💡 Join 6,000+ students sharpening their skills with 18,000+ brain-boosting questions every day! 🧠🔥
               </ThemedText>
             </View>
           </View>
@@ -351,14 +300,11 @@ export default function OnboardingScreen() {
               (!canProceed() && step !== 0) && styles.buttonDisabled
             ]}
             onPress={() => {
-              if (step === 3) {
-                if (!preferredTime) {
-                  setErrors(prev => ({ ...prev, time: 'Please select your preferred time' }));
-                } else {
-                  setErrors({ grade: '', school: '', time: '' });
-                  setStep(step + 1);
-                }
-              } else if (step === 4) {
+              if (step === 3 && !preferredTime) {
+                setErrors(prev => ({ ...prev, time: 'Please select your preferred time' }));
+                return;
+              }
+              if (step === 4) {
                 handleComplete();
               } else if (step === 1 && !grade) {
                 setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
@@ -376,7 +322,7 @@ export default function OnboardingScreen() {
               styles.primaryButtonText,
               (!canProceed() && step !== 0) && styles.buttonTextDisabled
             ]}>
-              {step === 4 ? 'Get Started' : 'Next'}
+              {step === 4 ? '👉 Ace Your Exams!' : 'Let\'s Go! 🚀'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -399,10 +345,6 @@ const styles = StyleSheet.create({
   },
   step: {
     flex: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    width: '100%',
-    paddingTop: 20,
   },
   illustration: {
     width: '100%',
@@ -463,10 +405,10 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     gap: 12,
     marginTop: 'auto',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
   },
   button: {
     flex: 1,
@@ -479,25 +421,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   buttonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: '#FFFFFF',
   },
   primaryButtonText: {
-    color: '#4338CA',
+    color: '#4d5ad3',
   },
   gradeButtons: {
     width: '100%',
-    gap: 16,
-    paddingHorizontal: 16,
+    gap: 12,
+    paddingHorizontal: 20,
   },
   gradeButton: {
     width: '100%',
-    padding: 20,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -506,14 +448,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    marginBottom: 4,
   },
   gradeButtonSelected: {
     borderColor: '#FFFFFF',
-    borderWidth: 2,
     backgroundColor: 'rgba(211, 204, 204, 0.2)',
   },
   gradeButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#000',
   },
@@ -591,6 +533,9 @@ const styles = StyleSheet.create({
   },
   timeButtonTextSelected: {
     color: '#FFFFFF',
+  },
+  stepContent: {
+    flex: 1,
   },
 });
 
