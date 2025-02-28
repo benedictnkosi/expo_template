@@ -229,7 +229,7 @@ export default function OnboardingScreen() {
                   selectionColor: '#4338CA',
                 }}
                 query={{
-                  key: "AIzaSyBAQMtnKRlJ1oZKYhiP6arYVmxyEPCfbsI",
+                  key: "AIzaSyBTT4MbBVMd-hiE265POy2jkGkZlyWm7Ak",
                   components: 'country:za',
                   types: 'school',
                   language: 'en',
