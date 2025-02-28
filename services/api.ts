@@ -129,6 +129,7 @@ interface LearnerResponse {
     number: number;
     active: number;
   };
+  notification_hour: number;
 }
 
 export async function getLearner(uid: string): Promise<LearnerResponse> {
@@ -150,6 +151,7 @@ export async function updateLearner(uid: string, data: {
   school_address: string;
   school_latitude: number;
   school_longitude: number;
+  notification_hour: number;
 }) {
   mixpanel.track(Events.UPDATE_PROFILE, {
     "user_id": uid,
@@ -168,7 +170,8 @@ export async function updateLearner(uid: string, data: {
         "school_name": data.school,
         "school_address": data.school_address,
         "school_latitude": data.school_latitude,
-        "school_longitude": data.school_longitude
+        "school_longitude": data.school_longitude,
+        "notification_hour": data.notification_hour
       })
     }
   );

@@ -112,7 +112,7 @@ function KaTeX({ latex }: { latex: string }) {
                     }
                     .katex {
                         font-size: 1.1em;
-                        color: #FFFFFF;
+                        color: '#000000',
                     }
                     .katex-display {
                         margin: 0;
@@ -183,6 +183,43 @@ function renderMixedContent(text: string) {
     );
 }
 
+// Add this array at the top level
+const SUCCESS_MESSAGES = [
+    '🎉 Great Job!',
+    '🎯 You Nailed It!',
+    '🚀 Superstar Move!',
+    '🔥 You\'re on Fire!',
+    '🧠 Big Brain Energy!',
+    '🎖️ Champion Level Unlocked!',
+    '⚡ Lightning Fast Thinking!',
+    '🌟 Brilliant Answer!',
+    '🏆 Winner Vibes!',
+    '📚 Smart Cookie Alert!'
+];
+
+// Add this helper function
+function getRandomSuccessMessage(): string {
+    const randomIndex = Math.floor(Math.random() * SUCCESS_MESSAGES.length);
+    return SUCCESS_MESSAGES[randomIndex];
+}
+
+// Add with the SUCCESS_MESSAGES array
+const WRONG_ANSWER_MESSAGES = [
+    '🤔 Hmm... Let\'s Learn!',
+    '🎯 Oops! Let\'s Nail This!',
+    '🚧 Not Quite! Try Again!',
+    '🔄 Almost There! Keep Going!',
+    '🧐 Think Again, You Got This!'
+];
+
+// Add helper function
+function getRandomWrongMessage(): string {
+    const randomIndex = Math.floor(Math.random() * WRONG_ANSWER_MESSAGES.length);
+    return WRONG_ANSWER_MESSAGES[randomIndex];
+}
+
+const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
+
 export default function QuizScreen() {
     const { subjectName } = useLocalSearchParams();
     const [question, setQuestion] = useState<Question | null>(null);
@@ -211,6 +248,9 @@ export default function QuizScreen() {
     const insets = useSafeAreaInsets();
     const correctSound = useRef<Audio.Sound>();
     const incorrectSound = useRef<Audio.Sound>();
+    const [isExplanationModalVisible, setIsExplanationModalVisible] = useState(false);
+    const [aiExplanation, setAiExplanation] = useState<string>('');
+    const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
 
     useEffect(() => {
         async function loadUser() {
@@ -424,6 +464,8 @@ export default function QuizScreen() {
 
 
     const handleRestart = async () => {
+        console.log("restarting");
+        console.log(user?.uid, subjectId);
         if (!user?.uid || !subjectId) return;
 
         trackEvent(Events.RESTART_QUIZ, {
@@ -452,7 +494,28 @@ export default function QuizScreen() {
         }
     };
 
-
+    const fetchAIExplanation = async (questionId: number) => {
+        setIsLoadingExplanation(true);
+        try {
+            const response = await fetch(
+                `${ConfigAPI_BASE_URL}/public/learn/question/ai-explanation?question_id=${questionId}`
+            );
+            const data = await response.json();
+            if (data.status === "OK") {
+                setAiExplanation(data.explanation);
+                setIsExplanationModalVisible(true);
+            }
+        } catch (error) {
+            console.error('Error fetching AI explanation:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Could not load AI explanation',
+            });
+        } finally {
+            setIsLoadingExplanation(false);
+        }
+    };
 
     const SubjectHeader = () => (
         <LinearGradient
@@ -490,7 +553,7 @@ export default function QuizScreen() {
         return (
             <View style={styles.performanceContainer}>
                 <View style={styles.performanceHeader}>
-                    <ThemedText style={styles.performanceTitle}>Performance</ThemedText>
+                    <ThemedText style={styles.performanceTitle}>Your Scoreboard! 🏆</ThemedText>
                     <View style={styles.termToggle}>
                         <ThemedText style={styles.termToggleText}>
                             {showAllTerms ? 'All Terms' : 'Term 2 only'}
@@ -501,14 +564,29 @@ export default function QuizScreen() {
                         />
                     </View>
                 </View>
-                <View style={styles.statsRow}>
-                    <View style={styles.statBox}>
-                        <ThemedText style={styles.statCount}>{stats.correct_answers}</ThemedText>
-                        <ThemedText style={styles.statLabel}>Correct</ThemedText>
+                <View style={styles.statsContainer}>
+                    <View style={styles.statItem}>
+                        <View style={styles.statContent}>
+                            <View style={[styles.statIcon, { backgroundColor: '#4ADE80' }]}>
+                                <Ionicons name="checkmark" size={24} color="#FFFFFF" />
+                            </View>
+                            <View style={styles.statTextContainer}>
+                                <ThemedText style={styles.statCount}>{stats?.correct_answers || 0}</ThemedText>
+                                <ThemedText style={styles.statLabel}>🎯 Bullseyes</ThemedText>
+                            </View>
+                        </View>
                     </View>
-                    <View style={styles.statBox}>
-                        <ThemedText style={styles.statCount}>{stats.incorrect_answers}</ThemedText>
-                        <ThemedText style={styles.statLabel}>Incorrect</ThemedText>
+
+                    <View style={styles.statItem}>
+                        <View style={styles.statContent}>
+                            <View style={[styles.statIcon, { backgroundColor: '#FB7185' }]}>
+                                <Ionicons name="close" size={24} color="#FFFFFF" />
+                            </View>
+                            <View style={styles.statTextContainer}>
+                                <ThemedText style={styles.statCount}>{stats?.incorrect_answers || 0}</ThemedText>
+                                <ThemedText style={styles.statLabel}>💥 Oopsies</ThemedText>
+                            </View>
+                        </View>
                     </View>
                 </View>
 
@@ -524,7 +602,7 @@ export default function QuizScreen() {
                     />
                 </View>
                 <ThemedText style={styles.masteryText}>
-                    {progress}% mastered
+                    {progress}% goat 🐐
                 </ThemedText>
             </View>
         );
@@ -604,28 +682,37 @@ export default function QuizScreen() {
             >
                 <ScrollView style={styles.container}>
                     <ThemedView style={styles.noQuestionsContainer}>
-                        <View style={styles.emojiContainer}>
-                            <ThemedText style={styles.noQuestionsEmoji}>
-                                🎉
-                            </ThemedText>
-                        </View>
-                        <ThemedText style={styles.noQuestionsText} testID="no-questions-text">
-                            Congratulations! You've completed all questions!
+                        <Image
+                            source={NO_QUESTIONS_ILLUSTRATION}
+                            style={styles.noQuestionsIllustration}
+                            resizeMode="contain"
+                        />
+                        <ThemedText style={styles.noQuestionsText}>
+                            Oops! not sure what ate all the questions!
                         </ThemedText>
                         <View style={styles.completionButtons}>
                             <TouchableOpacity
-                                style={[styles.footerButton, styles.restartButton]}
+                                style={[styles.paperButton, { backgroundColor: '#FF3B30' }]}
                                 onPress={handleRestart}
-                                testID="restart-subject-button"
                             >
-                                <ThemedText style={styles.footerButtonText}>Restart Subject</ThemedText>
+                                <LinearGradient
+                                    colors={['#FF3B30', '#FF453A']}
+                                    style={styles.paperButtonGradient}
+                                >
+                                    <ThemedText style={styles.paperButtonText}>Restart Subject</ThemedText>
+                                </LinearGradient>
                             </TouchableOpacity>
+
                             <TouchableOpacity
-                                style={[styles.footerButton, styles.nextButton]}
-                                onPress={() => router.push('/(tabs)')}
-                                testID="back-to-subjects-button"
+                                style={[styles.paperButton, { backgroundColor: '#64748B' }]}
+                                onPress={() => router.replace('/(tabs)')}
                             >
-                                <ThemedText style={styles.footerButtonText}>Back to Subjects</ThemedText>
+                                <LinearGradient
+                                    colors={['#64748B', '#475569']}
+                                    style={styles.paperButtonGradient}
+                                >
+                                    <ThemedText style={styles.paperButtonText}>Go Home</ThemedText>
+                                </LinearGradient>
                             </TouchableOpacity>
                         </View>
                     </ThemedView>
@@ -870,7 +957,7 @@ export default function QuizScreen() {
                         {showFeedback && (
                             <ThemedView style={styles.feedbackContainer}>
                                 <ThemedText style={styles.feedbackEmoji} testID='feedback-emoji'>
-                                    {isCorrect ? '🎉' : '😔'}
+                                    {isCorrect ? getRandomSuccessMessage() : getRandomWrongMessage()}
                                 </ThemedText>
                                 {showConfetti && (
                                     <ConfettiCannon count={200} origin={{ x: 200, y: 0 }} fadeOut={true} />
@@ -878,7 +965,7 @@ export default function QuizScreen() {
 
                                 <ThemedView style={styles.correctAnswerContainer}>
                                     <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>
-                                        Correct answer:
+                                        ✅ Right Answer!
                                     </ThemedText>
                                     {cleanAnswer(question.answer).includes('$') ? (
                                         <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
@@ -967,8 +1054,18 @@ export default function QuizScreen() {
                                             {renderMixedContent(cleanAnswer(question.explanation))}
                                         </View>
                                     )}
+
                                 </ThemedView>
 
+                                <TouchableOpacity
+                                    style={styles.aiExplanationButton}
+                                    onPress={() => fetchAIExplanation(question?.id || 0)}
+                                    disabled={isLoadingExplanation}
+                                >
+                                    <ThemedText style={styles.aiExplanationButtonText}>
+                                        {isLoadingExplanation ? '🤖 Pretending to think...' : '🤖 "Break it Down for Me!"'}
+                                    </ThemedText>
+                                </TouchableOpacity>
                             </ThemedView>
                         )}
 
@@ -978,7 +1075,7 @@ export default function QuizScreen() {
                             testID='report-issue-button'
                         >
                             <ThemedText style={styles.reportButtonText}>
-                                ⚠️ Report Issue
+                                🛑 Something's Wrong?
                             </ThemedText>
                         </TouchableOpacity>
                     </ThemedView>
@@ -997,7 +1094,7 @@ export default function QuizScreen() {
                         onPress={handleNext}
                     >
                         <Ionicons name="play" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>Next Question</ThemedText>
+                        <ThemedText style={styles.footerButtonText}>🎯 Keep Going!</ThemedText>
                     </TouchableOpacity>
                 </LinearGradient>
 
@@ -1012,10 +1109,10 @@ export default function QuizScreen() {
                         onPress={() => router.push('/(tabs)')}
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>Take a Break</ThemedText>
+                        <ThemedText style={styles.footerButtonText} >Chill Time!</ThemedText>
                     </TouchableOpacity>
                 </LinearGradient>
-            </ThemedView>
+            </ThemedView >
 
             <Modal
                 isVisible={isReportModalVisible}
@@ -1052,7 +1149,34 @@ export default function QuizScreen() {
                     </View>
                 </View>
             </Modal>
-        </LinearGradient>
+
+            <Modal
+                isVisible={isExplanationModalVisible}
+                onBackdropPress={() => setIsExplanationModalVisible(false)}
+                style={styles.modal}
+            >
+                <View style={styles.explanationModal}>
+                    <View style={styles.explanationHeader}>
+                        <ThemedText style={styles.explanationTitle}>🔬 AI Science Scoop! 🤖✨</ThemedText>
+                        <TouchableOpacity
+                            onPress={() => setIsExplanationModalVisible(false)}
+                            style={styles.closeButton}
+                        >
+                            <Ionicons name="close" size={24} color="#1E293B" />
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.explanationContent}>
+                        <ThemedText style={styles.explanationText}>
+                            {aiExplanation.split('\n').map((line, index) => (
+                                line.trim().startsWith('-') ?
+                                    ` ✅ ${line.substring(1).trim()}\n\n` :  // Change bullet to rocket and add spacing
+                                    `${line}\n`
+                            ))}
+                        </ThemedText>
+                    </ScrollView>
+                </View>
+            </Modal>
+        </LinearGradient >
     );
 }
 
@@ -1301,10 +1425,9 @@ const styles = StyleSheet.create({
         marginTop: 8,
     },
     feedbackEmoji: {
-        fontSize: 48,
+        fontSize: 22,
         textAlign: 'center',
         marginVertical: 16,
-        height: 60,
         includeFontPadding: false,
         lineHeight: 60,
     },
@@ -1315,16 +1438,10 @@ const styles = StyleSheet.create({
         padding: 20,
         backgroundColor: 'transparent',
     },
-    emojiContainer: {
-        height: 80,
-        justifyContent: 'center',
-        marginBottom: 16,
-    },
-    noQuestionsEmoji: {
-        fontSize: 64,
-        textAlign: 'center',
-        includeFontPadding: false,
-        lineHeight: 80,
+    noQuestionsIllustration: {
+        width: 300,
+        height: 300,
+        marginBottom: 24,
     },
     noQuestionsText: {
         fontSize: 20,
@@ -1335,8 +1452,7 @@ const styles = StyleSheet.create({
     },
     modal: {
         margin: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
     },
     modalContent: {
         flex: 1,
@@ -1350,15 +1466,7 @@ const styles = StyleSheet.create({
         resizeMode: 'contain',
     },
     closeButton: {
-        width: 40,
-        height: 40,
-        position: 'absolute',
-        top: 40,
-        right: 20,
-        zIndex: 2,
         padding: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        borderRadius: 20,
     },
     feedbackContainer: {
         borderRadius: 12,
@@ -1411,7 +1519,8 @@ const styles = StyleSheet.create({
     },
     completionButtons: {
         flexDirection: 'row',
-        gap: 12,
+        justifyContent: 'center',
+        gap: 16,
         marginTop: 24,
     },
     imageCaption: {
@@ -1465,9 +1574,13 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         width: 150,
     },
+    paperButtonGradient: {
+        padding: 16,
+        alignItems: 'center',
+    },
     paperButtonText: {
         color: '#FFFFFF',
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '600',
     },
     subjectIcon: {
@@ -1508,15 +1621,17 @@ const styles = StyleSheet.create({
         width: '100%',
         flexDirection: 'row',
         flexWrap: 'wrap',
+        color: '#000000',
     },
     latexOptionContainer: {
         width: '100%',
         flexWrap: 'wrap',
+        color: '#000000',
     },
     latexContainer: {
         width: '100%',
         marginVertical: 4,
-        backgroundColor: '#333',
+        backgroundColor: '#FFFFFF',
         color: '#000000',
     },
     mixedContentContainer: {
@@ -1601,30 +1716,46 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#64748B',
     },
-    statsRow: {
+    statsContainer: {
         flexDirection: 'row',
+        justifyContent: 'space-around',
+        paddingVertical: 20,
+        paddingHorizontal: 16,
         gap: 16,
     },
-    statBox: {
+    statItem: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
-        padding: 12,
-        borderRadius: 8,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    statContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 12,
+    },
+    statIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statTextContainer: {
+        flex: 1,
     },
     statCount: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontWeight: '700',
         color: '#1E293B',
     },
     statLabel: {
         fontSize: 14,
-        color: '#64748B',
-    },
-    questionMeta: {
-        fontSize: 12,
         color: '#64748B',
     },
     progressBarContainer: {
@@ -1645,6 +1776,55 @@ const styles = StyleSheet.create({
         color: '#000000',
         fontSize: 20,
         fontWeight: 'bold',
+    },
+    aiExplanationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#4338CA',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        marginTop: 16,
+        gap: 8,
+    },
+    aiExplanationButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    explanationModal: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 20,
+        maxHeight: '80%',
+    },
+    explanationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+        zIndex: 1,
+    },
+    explanationTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#1E293B',
+    },
+    explanationContent: {
+        maxHeight: '100%',
+    },
+    explanationText: {
+        fontSize: 16,
+        lineHeight: 28,  // Increase line height for better spacing
+        color: '#1E293B',
+        paddingVertical: 20,
+    },
+    questionMeta: {
+        fontSize: 14,
+        color: '#64748B',
+        marginBottom: 8,
+        fontWeight: '500'
     },
 });
 

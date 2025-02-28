@@ -20,6 +20,19 @@ const ILLUSTRATIONS = {
   ready: require('@/assets/images/illustrations/exam.png'),
 };
 
+const TIME_SLOTS = [
+  { label: '06:00 AM', value: 6 },
+  { label: '07:00 AM', value: 7 },
+  { label: '08:00 AM', value: 8 },
+  { label: '02:00 PM', value: 14 },
+  { label: '03:00 PM', value: 15 },
+  { label: '04:00 PM', value: 16 },
+  { label: '05:00 PM', value: 17 },
+  { label: '06:00 PM', value: 18 },
+  { label: '07:00 PM', value: 19 },
+  { label: '08:00 PM', value: 20 },
+];
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
@@ -27,10 +40,12 @@ export default function OnboardingScreen() {
   const [schoolAddress, setSchoolAddress] = useState('');
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
+  const [preferredTime, setPreferredTime] = useState<number>(18);
   const insets = useSafeAreaInsets();
   const [errors, setErrors] = useState({
     grade: '',
-    school: ''
+    school: '',
+    time: ''
   });
 
   useEffect(() => {
@@ -77,7 +92,8 @@ export default function OnboardingScreen() {
         school,
         school_address: schoolAddress,
         school_latitude: schoolLatitude,
-        school_longitude: schoolLongitude
+        school_longitude: schoolLongitude,
+        notification_hour: preferredTime
       });
 
       if (learner.error) {
@@ -242,6 +258,43 @@ export default function OnboardingScreen() {
               resizeMode="contain"
             />
             <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle}>When would you like to practice?</ThemedText>
+              <View style={styles.timeGrid}>
+                {TIME_SLOTS.map((slot) => (
+                  <TouchableOpacity
+                    key={slot.value}
+                    style={[
+                      styles.timeButton,
+                      preferredTime === slot.value && styles.timeButtonSelected
+                    ]}
+                    onPress={() => {
+                      setPreferredTime(slot.value);
+                      setErrors(prev => ({ ...prev, time: '' }));
+                    }}
+                  >
+                    <ThemedText style={[
+                      styles.timeButtonText,
+                      preferredTime === slot.value && styles.timeButtonTextSelected
+                    ]}>
+                      {slot.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.time ? <ThemedText style={styles.errorText}>{errors.time}</ThemedText> : null}
+            </View>
+          </View>
+        );
+
+      case 4:
+        return (
+          <View style={styles.step}>
+            <Image
+              source={ILLUSTRATIONS.ready}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+            <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>You're all set! 🎉</ThemedText>
               <ThemedText style={styles.statsText}>
                 Join {DAILY_USERS.toLocaleString()}+ students{'\n'}
@@ -254,11 +307,22 @@ export default function OnboardingScreen() {
     }
   };
 
-  function canProceed() {
-    if (step === 1) return !!grade;
-    if (step === 2) return !!school;
-    return true;
-  }
+  const canProceed = () => {
+    switch (step) {
+      case 0:
+        return true;
+      case 1:
+        return !!grade;
+      case 2:
+        return !!school;
+      case 3:
+        return !!preferredTime;
+      case 4:
+        return true;
+      default:
+        return false;
+    }
+  };
 
   return (
     <LinearGradient
@@ -288,13 +352,20 @@ export default function OnboardingScreen() {
             ]}
             onPress={() => {
               if (step === 3) {
+                if (!preferredTime) {
+                  setErrors(prev => ({ ...prev, time: 'Please select your preferred time' }));
+                } else {
+                  setErrors({ grade: '', school: '', time: '' });
+                  setStep(step + 1);
+                }
+              } else if (step === 4) {
                 handleComplete();
               } else if (step === 1 && !grade) {
                 setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
               } else if (step === 2 && !school) {
                 setErrors(prev => ({ ...prev, school: 'Please select your school' }));
               } else {
-                setErrors({ grade: '', school: '' });
+                setErrors({ grade: '', school: '', time: '' });
                 setStep(step + 1);
               }
             }}
@@ -305,7 +376,7 @@ export default function OnboardingScreen() {
               styles.primaryButtonText,
               (!canProceed() && step !== 0) && styles.buttonTextDisabled
             ]}>
-              {step === 3 ? 'Get Started' : 'Next'}
+              {step === 4 ? 'Get Started' : 'Next'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -358,7 +429,7 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 40,
@@ -437,7 +508,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   gradeButtonSelected: {
-    borderColor: '#000',
+    borderColor: '#FFFFFF',
+    borderWidth: 2,
     backgroundColor: 'rgba(211, 204, 204, 0.2)',
   },
   gradeButtonText: {
@@ -491,6 +563,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.7)',
     lineHeight: 24,
+  },
+  timeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  timeButton: {
+    width: '45%',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  timeButtonSelected: {
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  timeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  timeButtonTextSelected: {
+    color: '#FFFFFF',
   },
 });
 

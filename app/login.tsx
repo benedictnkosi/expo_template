@@ -12,6 +12,8 @@ import Toast from 'react-native-toast-message';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const LOGIN_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
+
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -96,20 +98,24 @@ export default function Login() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <LinearGradient
-        colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+        colors={['#4d5ad3', '#7983e6']}
         style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
       >
         <View style={styles.container}>
+          <Image
+            source={LOGIN_ILLUSTRATION}
+            style={styles.illustration}
+            resizeMode="contain"
+          />
+
           <View style={styles.header}>
             <Image
               source={require('@/assets/images/logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />
-            <ThemedText style={styles.title}>Login to ExamQuiz</ThemedText>
-            <ThemedText style={styles.subtitle}>Let's ace this! 🎯</ThemedText>
+            <ThemedText style={styles.title}>Welcome Back, Smarty! 🎉</ThemedText>
+            <ThemedText style={styles.subtitle}>Let’s power up your brain and ace those quizzes! 🚀</ThemedText>
           </View>
 
           <TouchableOpacity
@@ -117,14 +123,9 @@ export default function Login() {
             onPress={() => promptAsync()}
             disabled={!request || isLoading}
           >
-            <AntDesign
-              name="google"
-              size={24}
-              color="#DB4437"
-              style={styles.googleIcon}
-            />
+            <AntDesign name="google" size={24} color="#DB4437" />
             <ThemedText style={styles.googleButtonText}>
-              {isLoading ? 'Signing in...' : 'Continue with Google'}
+              {isLoading ? 'Signing in...' : 'Jump In with Google! 🚀'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -134,14 +135,20 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingBottom: 40,
   },
-  gradient: {
-    flex: 1,
+  illustration: {
+    width: '100%',
+    height: 280,
+    marginBottom: 40,
   },
   header: {
     alignItems: 'center',
@@ -150,23 +157,22 @@ const styles = StyleSheet.create({
   logo: {
     width: 120,
     height: 120,
-    marginBottom: 32,
+    marginBottom: 24,
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: '#FFFFFF',
     marginBottom: 12,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#64748B',
+    fontSize: 18,
+    color: '#E2E8F0',
     textAlign: 'center',
     marginBottom: 32,
-  },
-  form: {
-    gap: 16,
+    lineHeight: 24,
   },
   googleButton: {
     flexDirection: 'row',
@@ -174,8 +180,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: 28,
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -185,12 +191,9 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.7,
   },
-  googleIcon: {
-    marginRight: 12,
-  },
   googleButtonText: {
     color: '#1E293B',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     marginLeft: 12,
   },
