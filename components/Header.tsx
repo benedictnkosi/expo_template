@@ -10,6 +10,7 @@ interface HeaderProps {
   learnerInfo: {
     name: string;
     grade: string;
+    school?: string;
   } | null;
 }
 
@@ -22,7 +23,7 @@ export function Header({ title, user, learnerInfo }: HeaderProps) {
         <ThemedText style={styles.welcomeText} testID='welcome-text'>
           Hey, {learnerInfo?.name || ''}!
         </ThemedText>
-        <ThemedText style={styles.subtitle}>Time to level up your brain! 🚀</ThemedText>
+        <ThemedText style={styles.subtitle}>{learnerInfo?.school || ''}</ThemedText>
       </View>
 
       <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
@@ -81,5 +82,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  schoolText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 4,
   },
 }); 

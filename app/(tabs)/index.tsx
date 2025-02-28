@@ -26,7 +26,7 @@ function getProgressBarColor(progress: number): string {
 export default function HomeScreen() {
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
@@ -67,7 +67,8 @@ export default function HomeScreen() {
               setLearnerInfo({
                 name: learner.name,
                 grade: learner.grade?.number?.toString() || '',
-                school_name: learner.school_name || ''
+                school_name: learner.school_name || '',
+                school: learner.school_name || ''
               });
 
               console.log('learner', learner);
@@ -130,7 +131,8 @@ export default function HomeScreen() {
         setLearnerInfo({
           name: learner.name,
           grade: learner.grade?.number?.toString() || '',
-          school_name: learner.school_name || ''
+          school_name: learner.school_name || '',
+          school: learner.school_name || ''
         });
 
 

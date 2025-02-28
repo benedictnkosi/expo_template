@@ -64,7 +64,8 @@ export default {
     },
     eas: {
       projectId: 'b4f9ab87-947e-4014-8990-0c11fa29cb2c'
-    }
+    },
+    googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || "AIzaSyCaJHGdAh4f7BRJxNDRNkJ_vrrG74Ur_jA"
   },
   owner: 'nkosib',
   runtimeVersion: {

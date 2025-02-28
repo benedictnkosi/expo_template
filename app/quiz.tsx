@@ -576,24 +576,20 @@ export default function QuizScreen() {
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
                         <View style={styles.statContent}>
-                            <View style={[styles.statIcon, { backgroundColor: '#4ADE80' }]}>
-                                <Ionicons name="checkmark" size={24} color="#FFFFFF" />
-                            </View>
+                            <ThemedText style={styles.statIcon}>🎯</ThemedText>
                             <View style={styles.statTextContainer}>
                                 <ThemedText style={styles.statCount}>{stats?.correct_answers || 0}</ThemedText>
-                                <ThemedText style={styles.statLabel}>🎯 Bullseyes</ThemedText>
+                                <ThemedText style={styles.statLabel}>Bullseyes</ThemedText>
                             </View>
                         </View>
                     </View>
 
                     <View style={styles.statItem}>
                         <View style={styles.statContent}>
-                            <View style={[styles.statIcon, { backgroundColor: '#FB7185' }]}>
-                                <Ionicons name="close" size={24} color="#FFFFFF" />
-                            </View>
+                            <ThemedText style={styles.statIcon}>💥</ThemedText>
                             <View style={styles.statTextContainer}>
                                 <ThemedText style={styles.statCount}>{stats?.incorrect_answers || 0}</ThemedText>
-                                <ThemedText style={styles.statLabel}>💥 Oopsies</ThemedText>
+                                <ThemedText style={styles.statLabel}>Oopsies</ThemedText>
                             </View>
                         </View>
                     </View>
@@ -1072,7 +1068,16 @@ export default function QuizScreen() {
                                     disabled={isLoadingExplanation}
                                 >
                                     <ThemedText style={styles.aiExplanationButtonText}>
-                                        {isLoadingExplanation ? '🤖 Pretending to think...' : '🤖 Break it Down for Me!'}
+                                        {isLoadingExplanation ? (
+                                            <View style={styles.loaderContainer}>
+                                                <ThemedText style={styles.aiExplanationButtonText}>
+                                                    🤖 Pretending to think...
+                                                </ThemedText>
+                                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                            </View>
+                                        ) : (
+                                            '🤖 Break it Down for Me!'
+                                        )}
                                     </ThemedText>
                                 </TouchableOpacity>
                             </ThemedView>
@@ -1770,11 +1775,12 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     statIcon: {
-        width: 40,
-        height: 40,
+
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        fontSize: 24,
+        fontWeight: 'bold',
     },
     statTextContainer: {
         flex: 1,
@@ -1871,6 +1877,11 @@ const styles = StyleSheet.create({
         color: '#64748B',
         marginBottom: 8,
         fontWeight: '500'
+    },
+    loaderContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
 });
 

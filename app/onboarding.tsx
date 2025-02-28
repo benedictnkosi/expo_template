@@ -10,6 +10,7 @@ import { trackEvent, Events } from '@/services/mixpanel';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import SelectTime from './onboarding/select-time';
+import Constants from 'expo-constants';
 
 const ILLUSTRATIONS = {
   welcome: require('@/assets/images/illustrations/school.png'),
@@ -25,6 +26,7 @@ export default function OnboardingScreen() {
   const [schoolAddress, setSchoolAddress] = useState('');
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
+  const [schoolName, setSchoolName] = useState('');
   const [preferredTime, setPreferredTime] = useState<number>(18);
   const insets = useSafeAreaInsets();
   const [errors, setErrors] = useState({
@@ -53,7 +55,7 @@ export default function OnboardingScreen() {
       const learner = await updateLearner(uid, {
         name: parsed.userInfo.name,
         grade: parseInt(grade),
-        school,
+        school: schoolName,
         school_address: schoolAddress,
         school_latitude: schoolLatitude,
         school_longitude: schoolLongitude,
@@ -147,6 +149,7 @@ export default function OnboardingScreen() {
                   console.log('Selected place:', data);
                   console.log('Place details:', details);
                   setSchool(data.description);
+                  setSchoolName(data.structured_formatting.main_text);
                   setSchoolAddress(data.description);
                   setErrors(prev => ({ ...prev, school: '' }));
                   if (details) {
@@ -189,7 +192,7 @@ export default function OnboardingScreen() {
                   selectionColor: '#4338CA',
                 }}
                 query={{
-                  key: "AIzaSyCaJHGdAh4f7BRJxNDRNkJ_vrrG74Ur_jA",
+                  key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "",
                   components: 'country:za',
                   types: 'school',
                   language: 'en',
