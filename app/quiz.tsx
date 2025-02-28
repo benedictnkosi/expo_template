@@ -11,7 +11,7 @@ import { Audio } from 'expo-av';
 
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { checkAnswer, getLearner, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '@/services/api';
+import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '@/services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
 import { trackEvent, Events } from '@/services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -86,7 +86,7 @@ function cleanAnswer(answer: string): string {
     }
 }
 
-function KaTeX({ latex }: { latex: string }) {
+function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
     const [webViewHeight, setWebViewHeight] = useState(60);
 
     const html = `
@@ -110,7 +110,7 @@ function KaTeX({ latex }: { latex: string }) {
                         padding: 5px 0;
                     }
                     .katex {
-                        font-size: 1.1em;
+                        font-size: ${isOption && latex.length > 70 ? '0.8em' : '1em'};
                         color: '#000000',
                     }
                     .katex-display {
@@ -218,6 +218,12 @@ function getRandomWrongMessage(): string {
 }
 
 const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
+
+interface ZoomableImageProps {
+    imageUrl: string;
+    zoomLevel: number;
+    onZoomChange: (value: number) => void;
+}
 
 export default function QuizScreen() {
     const { subjectName } = useLocalSearchParams();
@@ -761,8 +767,10 @@ export default function QuizScreen() {
                         {question.image_path && (
                             <>
                                 <TouchableOpacity
-                                    onPress={() => setIsImageVisible(true)}
-
+                                    onPress={() => router.push({
+                                        pathname: '/image-viewer',
+                                        params: { imageUrl: question.image_path }
+                                    })}
                                     testID='question-context-image-container'
                                 >
                                     {isImageLoading && (
@@ -782,57 +790,7 @@ export default function QuizScreen() {
                                     />
                                 </TouchableOpacity>
 
-                                <Modal
-                                    isVisible={isImageVisible}
-                                    onBackdropPress={() => {
-                                        setIsImageVisible(false);
-                                    }}
-                                    onSwipeComplete={() => {
-                                        setIsImageVisible(false);
-                                    }}
-                                    swipeDirection="down"
-                                    style={styles.modal}
-                                    testID='question-context-image-modal'
-                                >
-                                    <View style={styles.modalContent}>
-                                        <TouchableOpacity
-                                            style={styles.closeButton}
-                                            onPress={() => {
-                                                setIsImageVisible(false);
-                                            }}
-                                            testID='question-context-image-modal-close-button'
-                                        >
-                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                        </TouchableOpacity>
 
-                                        <View style={styles.zoomControls}>
-                                            <TouchableOpacity
-                                                style={styles.zoomButton}
-                                                onPress={() => setZoomLevel(prev => Math.max(0.5, prev - 0.2))}
-                                            >
-                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.zoomButton}
-                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
-                                            >
-                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        <Image
-                                            source={{
-                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
-                                            }}
-                                            style={[
-                                                styles.fullScreenImage,
-                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
-                                            ]}
-                                            resizeMode="contain"
-                                            testID='question-context-image-modal-image'
-                                        />
-                                    </View>
-                                </Modal>
                             </>
                         )}
 
@@ -846,7 +804,10 @@ export default function QuizScreen() {
                         {question.question_image_path && (
                             <>
                                 <TouchableOpacity
-                                    onPress={() => setIsImageVisible(true)}
+                                    onPress={() => router.push({
+                                        pathname: '/image-viewer',
+                                        params: { imageUrl: question.question_image_path }
+                                    })}
                                 >
                                     {isImageLoading && (
                                         <View style={styles.imagePlaceholder}>
@@ -865,57 +826,7 @@ export default function QuizScreen() {
                                     />
                                 </TouchableOpacity>
 
-                                <Modal
-                                    isVisible={isImageVisible}
-                                    onBackdropPress={() => {
-                                        setIsImageVisible(false);
-                                    }}
-                                    onSwipeComplete={() => {
-                                        setIsImageVisible(false);
-                                    }}
-                                    swipeDirection="down"
-                                    style={styles.modal}
-                                    testID='question-image-modal'
-                                >
-                                    <View style={styles.modalContent}>
-                                        <TouchableOpacity
-                                            style={styles.closeButton}
-                                            onPress={() => {
-                                                setIsImageVisible(false);
-                                            }}
-                                            testID='question-context-image-modal-close-button'
-                                        >
-                                            <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                        </TouchableOpacity>
 
-                                        <View style={styles.zoomControls}>
-                                            <TouchableOpacity
-                                                style={styles.zoomButton}
-                                                onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
-                                            >
-                                                <ThemedText style={styles.zoomButtonText}>-</ThemedText>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.zoomButton}
-                                                onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
-                                            >
-                                                <ThemedText style={styles.zoomButtonText}>+</ThemedText>
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        <Image
-                                            source={{
-                                                uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
-                                            }}
-                                            style={[
-                                                styles.fullScreenImage,
-                                                { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
-                                            ]}
-                                            resizeMode="contain"
-                                            testID='question-context-image-modal-image'
-                                        />
-                                    </View>
-                                </Modal>
                             </>
                         )}
 
@@ -929,8 +840,8 @@ export default function QuizScreen() {
                         )}
 
                         <View >
-                            <ThemedText style={styles.questionMeta} testID='question-meta'>
-                                Select the correct answer
+                            <ThemedText style={styles.hintText}>
+                                Double tap to select your answer
                             </ThemedText>
                         </View>
 
@@ -938,28 +849,46 @@ export default function QuizScreen() {
                             <ThemedView style={styles.optionsContainer}>
                                 {Object.entries(question.options)
                                     .filter(([_, value]) => value)
-                                    .map(([key, value], index) => (
-                                        <TouchableOpacity
-                                            key={key}
-                                            style={[
-                                                styles.option,
-                                                selectedAnswer === value && styles.selectedOption,
-                                                showFeedback && selectedAnswer === value &&
-                                                (JSON.parse(question.answer).includes(value)
-                                                    ? styles.correctOption
-                                                    : styles.wrongOption)
-                                            ]}
-                                            onPress={() => handleAnswer(value)}
-                                            disabled={showFeedback}
-                                            testID={`option-${index}`}
-                                        >
-                                            {cleanAnswer(value).includes('$') ? (
-                                                <KaTeX latex={cleanAnswer(value).replace(/\$/g, '')} />
-                                            ) : (
-                                                <ThemedText style={styles.optionText}>{value}</ThemedText>
-                                            )}
-                                        </TouchableOpacity>
-                                    ))}
+                                    .map(([key, value], index) => {
+                                        const handleDoubleTap = (() => {
+                                            let lastTap = 0;
+                                            return () => {
+                                                const now = Date.now();
+                                                const DOUBLE_TAP_DELAY = 300;
+
+                                                if (now - lastTap < DOUBLE_TAP_DELAY) {
+                                                    handleAnswer(value);
+                                                }
+                                                lastTap = now;
+                                            };
+                                        })();
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={key}
+                                                style={[
+                                                    styles.option,
+                                                    selectedAnswer === value && styles.selectedOption,
+                                                    showFeedback && selectedAnswer === value &&
+                                                    (JSON.parse(question.answer).includes(value)
+                                                        ? styles.correctOption
+                                                        : styles.wrongOption)
+                                                ]}
+                                                onPress={handleDoubleTap}
+                                                disabled={showFeedback}
+                                                testID={`option-${index}`}
+                                            >
+                                                {cleanAnswer(value).includes('$') ? (
+                                                    <KaTeX
+                                                        latex={cleanAnswer(value).replace(/\$/g, '')}
+                                                        isOption={true}
+                                                    />
+                                                ) : (
+                                                    <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                                )}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
                             </ThemedView>
                         )}
                         {showFeedback && (
@@ -982,7 +911,10 @@ export default function QuizScreen() {
                                     {question.answer_image && (
                                         <>
                                             <TouchableOpacity
-                                                onPress={() => setIsAnswerImageVisible(true)}
+                                                onPress={() => router.push({
+                                                    pathname: '/image-viewer',
+                                                    params: { imageUrl: question.answer_image }
+                                                })}
                                                 testID='correct-answer-image-container'
                                             >
                                                 {isAnswerImageLoading && (
@@ -1001,57 +933,7 @@ export default function QuizScreen() {
                                                     testID='correct-answer-image'
                                                 />
                                             </TouchableOpacity>
-                                            <Modal
-                                                isVisible={isAnswerImageVisible}
-                                                onBackdropPress={() => {
-                                                    setIsAnswerImageVisible(false);
-                                                }}
-                                                onSwipeComplete={() => {
-                                                    setIsAnswerImageVisible(false);
-                                                }}
-                                                swipeDirection="down"
-                                                style={styles.modal}
-                                                testID='correct-answer-image-modal'
-                                            >
-                                                <View style={styles.modalContent}>
-                                                    <TouchableOpacity
-                                                        style={styles.closeButton}
-                                                        onPress={() => {
-                                                            setIsAnswerImageVisible(false);
-                                                        }}
-                                                        testID='correct-answer-image-modal-close-button'
-                                                    >
-                                                        <ThemedText style={styles.closeButtonText}>✕</ThemedText>
-                                                    </TouchableOpacity>
 
-                                                    <View style={styles.zoomControls}>
-                                                        <TouchableOpacity
-                                                            style={styles.zoomButton}
-                                                            onPress={() => setZoomLevel(prev => Math.max(1, prev - 0.2))}
-                                                        >
-                                                            <ThemedText style={styles.zoomButtonText}>-</ThemedText>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={styles.zoomButton}
-                                                            onPress={() => setZoomLevel(prev => Math.min(3, prev + 0.2))}
-                                                        >
-                                                            <ThemedText style={styles.zoomButtonText}>+</ThemedText>
-                                                        </TouchableOpacity>
-                                                    </View>
-
-                                                    <Image
-                                                        source={{
-                                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
-                                                        }}
-                                                        style={[
-                                                            styles.fullScreenImage,
-                                                            { transform: [{ rotate: '90deg' }, { scale: zoomLevel }] }
-                                                        ]}
-                                                        resizeMode="contain"
-                                                        testID='question-context-image-modal-image'
-                                                    />
-                                                </View>
-                                            </Modal>
                                         </>
                                     )}
                                     {question.explanation && (
@@ -1882,6 +1764,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+    },
+    hintText: {
+        fontSize: 12,
+        color: '#64748B',
+        fontStyle: 'italic',
+        marginBottom: 8,
     },
 });
 
