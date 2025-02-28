@@ -6,7 +6,6 @@ import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
 import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
-import ConfettiCannon from "react-native-confetti-cannon";
 import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
 
@@ -239,7 +238,6 @@ export default function QuizScreen() {
     const [subjectId, setSubjectId] = useState<string | null>(null);
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
-    const [showConfetti, setShowConfetti] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(0.5);
     const [user, setUser] = useState<{ uid: string; email: string } | null>(null);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
@@ -251,6 +249,14 @@ export default function QuizScreen() {
     const [isExplanationModalVisible, setIsExplanationModalVisible] = useState(false);
     const [aiExplanation, setAiExplanation] = useState<string>('');
     const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
+
+    const scrollToBottom = () => {
+        setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({
+                animated: true
+            });
+        }, 500);
+    };
 
     useEffect(() => {
         async function loadUser() {
@@ -402,19 +408,6 @@ export default function QuizScreen() {
         }
     };
 
-    const triggerConfetti = () => {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 2000); // Reset after 3 seconds
-    };
-
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            scrollViewRef.current?.scrollToEnd({
-                animated: true
-            });
-        }, 500);
-    };
-
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !question) return;
 
@@ -426,7 +419,6 @@ export default function QuizScreen() {
 
             if (response.is_correct) {
                 await correctSound.current?.replayAsync();
-                triggerConfetti();
                 trackStreak(user.uid);
             } else {
                 await incorrectSound.current?.replayAsync();
@@ -708,7 +700,7 @@ export default function QuizScreen() {
                             🐛 Oops! Looks like the quiz gremlins ate all the questions!
                         </ThemedText>
                         <ThemedText style={styles.noQuestionsText}>
-                            🔍 We searched everywhere, but they’ve vanished into thin air! 🚀
+                            🔍 We searched everywhere, but they've vanished into thin air! 🚀
                         </ThemedText>
                         <View style={styles.completionButtons}>
                             <TouchableOpacity
@@ -979,9 +971,6 @@ export default function QuizScreen() {
                                 <ThemedText style={styles.feedbackEmoji} testID='feedback-emoji'>
                                     {isCorrect ? getRandomSuccessMessage() : getRandomWrongMessage()}
                                 </ThemedText>
-                                {showConfetti && (
-                                    <ConfettiCannon count={200} origin={{ x: 200, y: 0 }} fadeOut={true} />
-                                )}
 
                                 <ThemedView style={styles.correctAnswerContainer}>
                                     <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>

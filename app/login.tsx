@@ -23,11 +23,19 @@ export default function Login() {
     webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
   });
 
-
   useEffect(() => {
     handleSignInResponse();
   }, [response]);
 
+  useEffect(() => {
+    async function checkSession() {
+      const authData = await SecureStore.getItemAsync('auth');
+      if (authData) {
+        router.replace('/(tabs)');
+      }
+    }
+    checkSession();
+  }, []);
 
   async function handleSignInResponse() {
     if (response?.type === 'success' && response.authentication) {
@@ -111,12 +119,19 @@ export default function Login() {
           <View style={styles.header}>
             <ThemedText style={styles.appname}>Exam Quiz</ThemedText>
             <ThemedText style={styles.title}>Welcome Back, Smarty! 🎉</ThemedText>
-            <ThemedText style={styles.subtitle}>Let’s power up your brain and ace those quizzes! 🚀</ThemedText>
+            <ThemedText style={styles.subtitle}>Let's power up your brain and ace those quizzes! 🚀</ThemedText>
           </View>
 
           <TouchableOpacity
             style={[styles.googleButton, isLoading && styles.buttonDisabled]}
-            onPress={() => promptAsync()}
+            onPress={async () => {
+              const authData = await SecureStore.getItemAsync('auth');
+              if (authData) {
+                router.replace('/(tabs)');
+              } else {
+                promptAsync();
+              }
+            }}
             disabled={!request || isLoading}
           >
             <AntDesign name="google" size={24} color="#DB4437" />

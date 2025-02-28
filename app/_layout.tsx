@@ -19,37 +19,6 @@ export {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
-function RootLayoutNav() {
-  const { navigateToLogin, navigateToHome } = useAuthNavigation();
-  const { user } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    const inAuthGroup = segments[0] === 'auth';
-
-    if (!user && !inAuthGroup) {
-      navigateToLogin();
-    } else if (user && inAuthGroup) {
-      navigateToHome();
-    }
-  }, [user, segments]);
-
-  return (
-    <Stack>
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="quiz"
-        options={{
-          headerShown: false,
-          presentation: 'fullScreenModal'
-        }}
-      />
-    </Stack>
-  );
-}
-
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
