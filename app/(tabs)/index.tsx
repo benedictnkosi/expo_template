@@ -26,7 +26,7 @@ function getProgressBarColor(progress: number): string {
 export default function HomeScreen() {
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string } | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
@@ -63,12 +63,12 @@ export default function HomeScreen() {
           // Load data immediately after setting user
           if (userData.uid) {
             const learner = await getLearner(userData.uid);
-            if (learner.name && learner.grade) {
+            if (learner.name && learner.grade && learner.school_name) {
               setLearnerInfo({
                 name: learner.name,
-                grade: learner.grade?.number?.toString() || ''
+                grade: learner.grade?.number?.toString() || '',
+                school_name: learner.school_name || ''
               });
-
 
               console.log('learner', learner);
               const enrolledResponse = await fetchMySubjects(userData.uid);

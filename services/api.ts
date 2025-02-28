@@ -130,6 +130,10 @@ interface LearnerResponse {
     active: number;
   };
   notification_hour: number;
+  school_name: string;
+  school_address: string;
+  school_latitude: number;
+  school_longitude: number;
 }
 
 export async function getLearner(uid: string): Promise<LearnerResponse> {

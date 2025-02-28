@@ -20,7 +20,7 @@ export function Header({ title, user, learnerInfo }: HeaderProps) {
     <View style={[styles.header, { marginTop: insets.top }]}>
       <View style={styles.greeting}>
         <ThemedText style={styles.welcomeText} testID='welcome-text'>
-          Hey, {learnerInfo?.name || ''}! 🎉
+          Hey, {learnerInfo?.name || ''}!
         </ThemedText>
         <ThemedText style={styles.subtitle}>Time to level up your brain! 🚀</ThemedText>
       </View>

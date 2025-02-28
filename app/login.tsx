@@ -109,11 +109,7 @@ export default function Login() {
           />
 
           <View style={styles.header}>
-            <Image
-              source={require('@/assets/images/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <ThemedText style={styles.appname}>Exam Quiz</ThemedText>
             <ThemedText style={styles.title}>Welcome Back, Smarty! 🎉</ThemedText>
             <ThemedText style={styles.subtitle}>Let’s power up your brain and ace those quizzes! 🚀</ThemedText>
           </View>
@@ -166,6 +162,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: -0.5,
+  },
+  appname: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 18,
