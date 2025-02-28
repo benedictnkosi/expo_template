@@ -46,6 +46,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
   const [pendingGrade, setPendingGrade] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -117,26 +118,30 @@ export default function ProfileScreen() {
   };
 
   const saveChanges = async () => {
+    if (!user?.uid) return;
+
     setIsLoading(true);
     try {
-      await updateLearner(user?.uid || '', {
+      await updateLearner(user.uid, {
         name: editName.trim(),
         grade: parseInt(editGrade)
       });
+
       setLearnerInfo({
         name: editName.trim(),
         grade: editGrade
       });
-      setIsEditing(false);
+
       handleSuccess();
-      trackEvent(Events.UPDATE_PROFILE, {
-        "user_id": user?.uid,
-        "name": editName.trim(),
-        "grade": editGrade
-      });
+
     } catch (error) {
       console.error('Failed to update profile:', error);
-      Alert.alert('Error', 'Failed to update profile');
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update profile',
+        position: 'bottom'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -210,6 +215,11 @@ export default function ProfileScreen() {
       text1: 'Profile updated successfully',
       position: 'bottom'
     });
+  };
+
+  const handleConfirm = async () => {
+    setShowGradeChangeModal(false);
+    await saveChanges();
   };
 
   return (
@@ -294,29 +304,38 @@ export default function ProfileScreen() {
         onBackdropPress={() => setShowGradeChangeModal(false)}
         style={styles.modal}
       >
-        <View style={styles.alertContainer}>
-          <ThemedText style={styles.alertTitle}>Change Grade?</ThemedText>
-          <ThemedText style={styles.alertMessage}>
-            Changing your grade will reset all your progress. Are you sure you want to continue?
+        <View style={styles.confirmationModal}>
+          <View style={styles.confirmationHeader}>
+            <ThemedText style={styles.confirmationTitle}>🎓 Change Grade?</ThemedText>
+          </View>
+          <ThemedText style={styles.confirmationText}>
+            ⚠️ Heads up! Switching grades will wipe out your progress like a clean slate! 🧹✨
+
+            Are you super sure you want to start fresh? 🚀
           </ThemedText>
-          <View style={styles.alertButtons}>
+          <View style={styles.confirmationButtons}>
             <TouchableOpacity
-              style={[styles.alertButton, styles.cancelButton]}
-              onPress={() => {
-                setShowGradeChangeModal(false);
-                setEditGrade(learnerInfo?.grade || '');
-              }}
+              style={[styles.paperButton, { backgroundColor: '#64748B' }]}
+              onPress={() => setShowGradeChangeModal(false)}
             >
-              <ThemedText style={styles.alertButtonText}>Cancel</ThemedText>
+              <LinearGradient
+                colors={['#64748B', '#475569']}
+                style={styles.paperButtonGradient}
+              >
+                <ThemedText style={styles.paperButtonText}>❌ Nope, Go Back!</ThemedText>
+              </LinearGradient>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={[styles.alertButton, styles.confirmButton]}
-              onPress={() => {
-                setShowGradeChangeModal(false);
-                saveChanges();
-              }}
+              style={[styles.paperButton, { backgroundColor: '#9333EA' }]}
+              onPress={handleConfirm}
             >
-              <ThemedText style={styles.alertButtonText}>Continue</ThemedText>
+              <LinearGradient
+                colors={['#9333EA', '#4F46E5']}
+                style={styles.paperButtonGradient}
+              >
+                <ThemedText style={styles.paperButtonText}>✅ Yes, Let's Do It!</ThemedText>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -505,8 +524,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   modal: {
+    margin: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmationModal: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  confirmationHeader: {
+    marginBottom: 16,
+  },
+  confirmationTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1E293B',
+    textAlign: 'center',
+  },
+  confirmationText: {
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+    paddingHorizontal: 8,
+  },
+  paperButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     flex: 1,
-    backgroundColor: 'transparent',
+    maxWidth: 160,
+  },
+  paperButtonGradient: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+  },
+  paperButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   name: {
     fontSize: 24,
