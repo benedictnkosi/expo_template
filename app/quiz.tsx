@@ -465,16 +465,16 @@ export default function QuizScreen() {
 
     const handleRestart = async () => {
         console.log("restarting");
-        console.log(user?.uid, subjectId);
-        if (!user?.uid || !subjectId) return;
+        console.log(user?.uid, subjectName);
+        if (!user?.uid || !subjectName) return;
 
         trackEvent(Events.RESTART_QUIZ, {
             "user_id": user?.uid,
-            "subject_id": subjectId
+            "subject_name": subjectName
         });
         try {
             setIsLoading(true);
-            await removeResults(user.uid, Number(subjectId));
+            await removeResults(user.uid, subjectName as string);
             await loadRandomQuestion(selectedPaper || '');
             Toast.show({
                 type: 'success',
@@ -503,10 +503,20 @@ export default function QuizScreen() {
             const data = await response.json();
             if (data.status === "OK") {
                 let explanation = data.explanation
+                    .replace(/\\n/g, '\\newline')
                     .replace(/\\\(/g, '$')
                     .replace(/\\\),/g, '$')
+                    .replace(/\\\[/g, '$')
+                    .replace(/\\\]/g, '$')
                     .replace(/\\\)\./g, '$')
-                    .replace(/\\\)/g, '$');
+                    .replace(/\\\)/g, '$')
+                    .replace(/\\\\/g, '\\')
+                    .replace(/\\text\{([^}]+)\}/g, '\\text{$1}')
+                    .replace(/\[/g, '$')
+                    .replace(/\]/g, '$')
+                    .replace(/\\[\[\]]/g, '$')
+                    // Remove newlines between $ signs to keep LaTeX on one line
+                    .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $');
 
                 console.log(explanation);
                 setAiExplanation(explanation);
@@ -695,7 +705,10 @@ export default function QuizScreen() {
                             resizeMode="contain"
                         />
                         <ThemedText style={styles.noQuestionsText}>
-                            Oops! not sure what ate all the questions!
+                            🐛 Oops! Looks like the quiz gremlins ate all the questions!
+                        </ThemedText>
+                        <ThemedText style={styles.noQuestionsText}>
+                            🔍 We searched everywhere, but they’ve vanished into thin air! 🚀
                         </ThemedText>
                         <View style={styles.completionButtons}>
                             <TouchableOpacity
@@ -706,7 +719,7 @@ export default function QuizScreen() {
                                     colors={['#FF3B30', '#FF453A']}
                                     style={styles.paperButtonGradient}
                                 >
-                                    <ThemedText style={styles.paperButtonText}>Restart Subject</ThemedText>
+                                    <ThemedText style={styles.paperButtonText}>🔄 Restart the Subject</ThemedText>
                                 </LinearGradient>
                             </TouchableOpacity>
 
@@ -718,7 +731,7 @@ export default function QuizScreen() {
                                     colors={['#64748B', '#475569']}
                                     style={styles.paperButtonGradient}
                                 >
-                                    <ThemedText style={styles.paperButtonText}>Go Home</ThemedText>
+                                    <ThemedText style={styles.paperButtonText}>🏠 Go Home</ThemedText>
                                 </LinearGradient>
                             </TouchableOpacity>
                         </View>
@@ -1070,7 +1083,7 @@ export default function QuizScreen() {
                                     disabled={isLoadingExplanation}
                                 >
                                     <ThemedText style={styles.aiExplanationButtonText}>
-                                        {isLoadingExplanation ? '🤖 Pretending to think...' : '🤖 "Break it Down for Me!"'}
+                                        {isLoadingExplanation ? '🤖 Pretending to think...' : '🤖 Break it Down for Me!'}
                                     </ThemedText>
                                 </TouchableOpacity>
                             </ThemedView>
@@ -1173,22 +1186,34 @@ export default function QuizScreen() {
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={styles.explanationContent}>
-                        {aiExplanation.split('\n').map((line, index) => (
-                            <View key={index} style={styles.explanationLine}>
-                                {line.trim().startsWith('-') ? (
-                                    <>
+                        {aiExplanation.split('\n').map((line, index) => {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.startsWith('-')) {
+                                // Remove the dash and any leading/trailing spaces
+                                const content = trimmedLine.substring(1).trim();
+                                const indentLevel = line.indexOf('-') / 2; // Calculate indent level
+
+                                return (
+                                    <View
+                                        key={index}
+                                        style={[
+                                            styles.explanationLine,
+                                            { marginLeft: indentLevel * 20 } // Indent nested points
+                                        ]}
+                                    >
                                         <ThemedText style={styles.bulletPoint}>✅</ThemedText>
                                         <View style={styles.explanationTextContainer}>
-                                            {renderMixedContent(line.substring(1).trim())}
+                                            {renderMixedContent(content)}
                                         </View>
-                                    </>
-                                ) : (
-                                    <View style={styles.explanationTextContainer}>
-                                        {renderMixedContent(line)}
                                     </View>
-                                )}
-                            </View>
-                        ))}
+                                );
+                            }
+                            return (
+                                <View key={index} style={styles.explanationTextContainer}>
+                                    {renderMixedContent(line)}
+                                </View>
+                            );
+                        })}
                     </ScrollView>
                 </View>
             </Modal>
@@ -1494,7 +1519,7 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
     },
     correctAnswerContainer: {
-        backgroundColor: '#F0FDF4',
+        backgroundColor: '#FFFFFF',
         borderColor: '#22C55E',
         padding: 16,
         borderRadius: 8,
@@ -1588,7 +1613,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
-        width: 150,
+        width: 175,
     },
     paperButtonGradient: {
         padding: 16,

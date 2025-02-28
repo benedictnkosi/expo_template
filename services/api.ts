@@ -220,14 +220,14 @@ export async function fetchQuestion(uid: string, subjectId: number) {
   return response.json();
 }
 
-export async function removeResults(uid: string, subjectId: number): Promise<void> {
+export async function removeResults(uid: string, subjectName: string): Promise<void> {
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-results`),
     {
       method: 'POST',
       body: JSON.stringify({
         uid,
-        subject_id: subjectId
+        subject_name: subjectName
       })
     }
   );
