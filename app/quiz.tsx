@@ -225,6 +225,15 @@ interface ZoomableImageProps {
     onZoomChange: (value: number) => void;
 }
 
+const ImageLoadingPlaceholder = () => (
+    <View style={styles.imagePlaceholderContainer}>
+        <View style={styles.imagePlaceholderContent}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <ThemedText style={styles.loadingText}>Loading image...</ThemedText>
+        </View>
+    </View>
+);
+
 export default function QuizScreen() {
     const { subjectName } = useLocalSearchParams();
     const [question, setQuestion] = useState<Question | null>(null);
@@ -255,6 +264,7 @@ export default function QuizScreen() {
     const [isExplanationModalVisible, setIsExplanationModalVisible] = useState(false);
     const [aiExplanation, setAiExplanation] = useState<string>('');
     const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
+    const [isAnswerLoading, setIsAnswerLoading] = useState(false);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -417,6 +427,7 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !question) return;
 
+        setIsAnswerLoading(true);
         try {
             const response = await checkAnswer(user.uid, question.id, answer);
             setSelectedAnswer(answer);
@@ -449,6 +460,8 @@ export default function QuizScreen() {
                 text2: 'Failed to check answer',
                 position: 'bottom'
             });
+        } finally {
+            setIsAnswerLoading(false);
         }
     };
 
@@ -773,11 +786,7 @@ export default function QuizScreen() {
                                     })}
                                     testID='question-context-image-container'
                                 >
-                                    {isImageLoading && (
-                                        <View style={styles.imagePlaceholder}>
-                                            <ActivityIndicator color="#000000" />
-                                        </View>
-                                    )}
+                                    {isImageLoading && <ImageLoadingPlaceholder />}
                                     <Image
                                         source={{
                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
@@ -809,11 +818,7 @@ export default function QuizScreen() {
                                         params: { imageUrl: question.question_image_path }
                                     })}
                                 >
-                                    {isImageLoading && (
-                                        <View style={styles.imagePlaceholder}>
-                                            <ActivityIndicator color="#000000" />
-                                        </View>
-                                    )}
+                                    {isImageLoading && <ImageLoadingPlaceholder />}
                                     <Image
                                         source={{
                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
@@ -841,7 +846,7 @@ export default function QuizScreen() {
 
                         <View >
                             <ThemedText style={styles.hintText}>
-                                Double tap to select your answer
+                                Tap to select your answer
                             </ThemedText>
                         </View>
 
@@ -849,46 +854,36 @@ export default function QuizScreen() {
                             <ThemedView style={styles.optionsContainer}>
                                 {Object.entries(question.options)
                                     .filter(([_, value]) => value)
-                                    .map(([key, value], index) => {
-                                        const handleDoubleTap = (() => {
-                                            let lastTap = 0;
-                                            return () => {
-                                                const now = Date.now();
-                                                const DOUBLE_TAP_DELAY = 300;
-
-                                                if (now - lastTap < DOUBLE_TAP_DELAY) {
-                                                    handleAnswer(value);
-                                                }
-                                                lastTap = now;
-                                            };
-                                        })();
-
-                                        return (
-                                            <TouchableOpacity
-                                                key={key}
-                                                style={[
-                                                    styles.option,
-                                                    selectedAnswer === value && styles.selectedOption,
-                                                    showFeedback && selectedAnswer === value &&
-                                                    (JSON.parse(question.answer).includes(value)
-                                                        ? styles.correctOption
-                                                        : styles.wrongOption)
-                                                ]}
-                                                onPress={handleDoubleTap}
-                                                disabled={showFeedback}
-                                                testID={`option-${index}`}
-                                            >
-                                                {cleanAnswer(value).includes('$') ? (
+                                    .map(([key, value], index) => (
+                                        <TouchableOpacity
+                                            key={key}
+                                            style={[
+                                                styles.option,
+                                                selectedAnswer === value && styles.selectedOption,
+                                                showFeedback && selectedAnswer === value &&
+                                                (JSON.parse(question.answer).includes(value)
+                                                    ? styles.correctOption
+                                                    : styles.wrongOption)
+                                            ]}
+                                            onPress={() => handleAnswer(value)}
+                                            disabled={showFeedback || isAnswerLoading}
+                                        >
+                                            {isAnswerLoading && selectedAnswer === value ? (
+                                                <View style={styles.optionLoadingContainer}>
+                                                    <ActivityIndicator size="small" color="#4F46E5" />
+                                                </View>
+                                            ) : (
+                                                cleanAnswer(value).includes('$') ? (
                                                     <KaTeX
                                                         latex={cleanAnswer(value).replace(/\$/g, '')}
                                                         isOption={true}
                                                     />
                                                 ) : (
                                                     <ThemedText style={styles.optionText}>{value}</ThemedText>
-                                                )}
-                                            </TouchableOpacity>
-                                        );
-                                    })}
+                                                )
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
                             </ThemedView>
                         )}
                         {showFeedback && (
@@ -917,11 +912,7 @@ export default function QuizScreen() {
                                                 })}
                                                 testID='correct-answer-image-container'
                                             >
-                                                {isAnswerImageLoading && (
-                                                    <View style={styles.imagePlaceholder}>
-                                                        <ActivityIndicator color="#000000" />
-                                                    </View>
-                                                )}
+                                                {isAnswerImageLoading && <ImageLoadingPlaceholder />}
                                                 <Image
                                                     source={{
                                                         uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
@@ -944,9 +935,15 @@ export default function QuizScreen() {
 
                                 </ThemedView>
 
+                                <ThemedText style={styles.aiExplanationBugText}>
+                                    might need to press a few times
+                                </ThemedText>
                                 <TouchableOpacity
                                     style={styles.aiExplanationButton}
-                                    onPress={() => fetchAIExplanation(question?.id || 0)}
+                                    onPress={() => {
+                                        console.log('fetching ai explanation')
+                                        fetchAIExplanation(question?.id || 0)
+                                    }}
                                     disabled={isLoadingExplanation}
                                 >
                                     <ThemedText style={styles.aiExplanationButtonText}>
@@ -1423,16 +1420,25 @@ const styles = StyleSheet.create({
     restartButton: {
         backgroundColor: '#FF3B30',
     },
-    imagePlaceholder: {
-        position: 'absolute',
+    imagePlaceholderContainer: {
         width: '100%',
         height: 200,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 8,
+        overflow: 'hidden',
+        position: 'absolute',
+        zIndex: 1,
+    },
+    imagePlaceholderContent: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderRadius: 8,
-        zIndex: 1,
-        color: '#000000',
+        gap: 12,
+    },
+    loadingText: {
+        color: '#6B7280',
+        fontSize: 14,
+        fontWeight: '500',
     },
     completionButtons: {
         flexDirection: 'row',
@@ -1685,7 +1691,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     masteryText: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#64748B',
         marginTop: 4,
         textAlign: 'right',
@@ -1709,6 +1715,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    aiExplanationBugText: {
+        color: '#64748B',
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 8,
     },
     explanationModal: {
         backgroundColor: '#FFFFFF',
@@ -1770,6 +1782,11 @@ const styles = StyleSheet.create({
         color: '#64748B',
         fontStyle: 'italic',
         marginBottom: 8,
+    },
+    optionLoadingContainer: {
+        minHeight: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });
 
