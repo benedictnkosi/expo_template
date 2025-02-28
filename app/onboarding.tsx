@@ -11,9 +11,6 @@ import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import SelectTime from './onboarding/select-time';
 
-const TOTAL_QUESTIONS = 18000; // Update with actual number
-const DAILY_USERS = 6000; // Update with actual number
-
 const ILLUSTRATIONS = {
   welcome: require('@/assets/images/illustrations/school.png'),
   grade: require('@/assets/images/illustrations/stressed.png'),
@@ -141,11 +138,6 @@ export default function OnboardingScreen() {
       case 2:
         return (
           <View style={styles.step}>
-            <Image
-              source={ILLUSTRATIONS.school}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>🎓 Which school do you rep?</ThemedText>
               <ThemedText style={styles.stepTitle}>Find your school and get ready to join the learning squad! 🚀📚</ThemedText>
@@ -348,7 +340,7 @@ const styles = StyleSheet.create({
   },
   illustration: {
     width: '100%',
-    height: 280,
+    height: 150,
     marginBottom: 40,
   },
   textContainer: {

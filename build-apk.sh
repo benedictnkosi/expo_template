@@ -4,7 +4,7 @@
 adb uninstall za.co.examquizafrica || true
 
 # Navigate to android directory and run build commands
-cd /Users/mac1/Documents/cursor/examquiz/android
+cd /android
 ./gradlew clean
 ./gradlew assembleDebug
 

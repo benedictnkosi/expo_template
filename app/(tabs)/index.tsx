@@ -125,11 +125,12 @@ export default function HomeScreen() {
     console.log('Loading data for user:', user.uid);
     try {
       const learner = await getLearner(user.uid);
-      if (learner.name && learner.grade) {
+      if (learner.name && learner.grade && learner.school_name) {
         console.log('Learner name and grade found');
         setLearnerInfo({
           name: learner.name,
-          grade: learner.grade?.number?.toString() || ''
+          grade: learner.grade?.number?.toString() || '',
+          school_name: learner.school_name || ''
         });
 
 
