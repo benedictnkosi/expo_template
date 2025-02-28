@@ -502,7 +502,14 @@ export default function QuizScreen() {
             );
             const data = await response.json();
             if (data.status === "OK") {
-                setAiExplanation(data.explanation);
+                let explanation = data.explanation
+                    .replace(/\\\(/g, '$')
+                    .replace(/\\\),/g, '$')
+                    .replace(/\\\)\./g, '$')
+                    .replace(/\\\)/g, '$');
+
+                console.log(explanation);
+                setAiExplanation(explanation);
                 setIsExplanationModalVisible(true);
             }
         } catch (error) {
@@ -1166,13 +1173,22 @@ export default function QuizScreen() {
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={styles.explanationContent}>
-                        <ThemedText style={styles.explanationText}>
-                            {aiExplanation.split('\n').map((line, index) => (
-                                line.trim().startsWith('-') ?
-                                    ` ✅ ${line.substring(1).trim()}\n\n` :  // Change bullet to rocket and add spacing
-                                    `${line}\n`
-                            ))}
-                        </ThemedText>
+                        {aiExplanation.split('\n').map((line, index) => (
+                            <View key={index} style={styles.explanationLine}>
+                                {line.trim().startsWith('-') ? (
+                                    <>
+                                        <ThemedText style={styles.bulletPoint}>✅</ThemedText>
+                                        <View style={styles.explanationTextContainer}>
+                                            {renderMixedContent(line.substring(1).trim())}
+                                        </View>
+                                    </>
+                                ) : (
+                                    <View style={styles.explanationTextContainer}>
+                                        {renderMixedContent(line)}
+                                    </View>
+                                )}
+                            </View>
+                        ))}
                     </ScrollView>
                 </View>
             </Modal>
@@ -1813,6 +1829,22 @@ const styles = StyleSheet.create({
     },
     explanationContent: {
         maxHeight: '100%',
+        paddingHorizontal: 4,
+    },
+    explanationLine: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 16,
+        paddingRight: 16,
+    },
+    bulletPoint: {
+        fontSize: 16,
+        marginRight: 8,
+        marginTop: 4,
+    },
+    explanationTextContainer: {
+        flex: 1,
+        paddingRight: 8,
     },
     explanationText: {
         fontSize: 16,
