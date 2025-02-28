@@ -37,7 +37,8 @@ export default {
         android: {
           compileSdkVersion: 35,
           targetSdkVersion: 35,
-          buildToolsVersion: "34.0.0"
+          buildToolsVersion: "34.0.0",
+          enableWebP: true
         },
         ios: {
           deploymentTarget: "15.1"
