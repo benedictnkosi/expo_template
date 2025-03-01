@@ -265,6 +265,7 @@ export default function QuizScreen() {
     const [aiExplanation, setAiExplanation] = useState<string>('');
     const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
+    const [isApproving, setIsApproving] = useState(false);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -321,6 +322,15 @@ export default function QuizScreen() {
     }, []);
 
     const reportIssue = (questionId: number) => {
+        if (!showFeedback) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Please answer the question before reporting an issue',
+                position: 'bottom'
+            });
+            return;
+        }
         setIsReportModalVisible(true);
     };
 
@@ -542,6 +552,38 @@ export default function QuizScreen() {
             });
         } finally {
             setIsLoadingExplanation(false);
+        }
+    };
+
+    const handleApproveQuestion = async () => {
+        if (!question?.id || !user?.uid || !user?.email) return;
+
+        setIsApproving(true);
+        try {
+            await setQuestionStatus({
+                question_id: question.id,
+                status: 'approved',
+                email: user.email,
+                uid: user.uid,
+                comment: 'Question approved by admin'
+            });
+
+            Toast.show({
+                type: 'success',
+                text1: 'Question Approved',
+                text2: 'Thank you for your feedback!',
+                position: 'bottom'
+            });
+        } catch (error) {
+            console.error('Error approving question:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to approve question',
+                position: 'bottom'
+            });
+        } finally {
+            setIsApproving(false);
         }
     };
 
@@ -851,40 +893,52 @@ export default function QuizScreen() {
                         </View>
 
                         {question.type === 'multiple_choice' && (
-                            <ThemedView style={styles.optionsContainer}>
-                                {Object.entries(question.options)
-                                    .filter(([_, value]) => value)
-                                    .map(([key, value], index) => (
-                                        <TouchableOpacity
-                                            key={key}
-                                            style={[
-                                                styles.option,
-                                                selectedAnswer === value && styles.selectedOption,
-                                                showFeedback && selectedAnswer === value &&
-                                                (JSON.parse(question.answer).includes(value)
-                                                    ? styles.correctOption
-                                                    : styles.wrongOption)
-                                            ]}
-                                            onPress={() => handleAnswer(value)}
-                                            disabled={showFeedback || isAnswerLoading}
-                                        >
-                                            {isAnswerLoading && selectedAnswer === value ? (
-                                                <View style={styles.optionLoadingContainer}>
-                                                    <ActivityIndicator size="small" color="#4F46E5" />
-                                                </View>
-                                            ) : (
-                                                cleanAnswer(value).includes('$') ? (
-                                                    <KaTeX
-                                                        latex={cleanAnswer(value).replace(/\$/g, '')}
-                                                        isOption={true}
-                                                    />
+                            <>
+                                <ThemedView style={styles.optionsContainer}>
+                                    {Object.entries(question.options)
+                                        .filter(([_, value]) => value)
+                                        .map(([key, value], index) => (
+                                            <TouchableOpacity
+                                                key={key}
+                                                style={[
+                                                    styles.option,
+                                                    selectedAnswer === value && styles.selectedOption,
+                                                    showFeedback && selectedAnswer === value &&
+                                                    (JSON.parse(question.answer).includes(value)
+                                                        ? styles.correctOption
+                                                        : styles.wrongOption)
+                                                ]}
+                                                onPress={() => handleAnswer(value)}
+                                                disabled={showFeedback || isAnswerLoading}
+                                            >
+                                                {isAnswerLoading && selectedAnswer === value ? (
+                                                    <View style={styles.optionLoadingContainer}>
+                                                        <ActivityIndicator size="small" color="#4F46E5" />
+                                                    </View>
                                                 ) : (
-                                                    <ThemedText style={styles.optionText}>{value}</ThemedText>
-                                                )
-                                            )}
-                                        </TouchableOpacity>
-                                    ))}
-                            </ThemedView>
+                                                    cleanAnswer(value).includes('$') ? (
+                                                        <KaTeX
+                                                            latex={cleanAnswer(value).replace(/\$/g, '')}
+                                                            isOption={true}
+                                                        />
+                                                    ) : (
+                                                        <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                                    )
+                                                )}
+                                            </TouchableOpacity>
+                                        ))}
+                                </ThemedView>
+
+                                <TouchableOpacity
+                                    style={[styles.reportButton, { marginTop: 16, marginHorizontal: 16 }]}
+                                    onPress={() => reportIssue(question.id)}
+                                    testID='report-issue-button'
+                                >
+                                    <ThemedText style={styles.reportButtonText}>
+                                        🛑 Report an Issue with this Question
+                                    </ThemedText>
+                                </TouchableOpacity>
+                            </>
                         )}
                         {showFeedback && (
                             <ThemedView style={styles.feedbackContainer}>
@@ -935,6 +989,18 @@ export default function QuizScreen() {
 
                                 </ThemedView>
 
+                                <View style={styles.feedbackButtonsContainer}>
+                                    <TouchableOpacity
+                                        style={styles.approveButton}
+                                        onPress={handleApproveQuestion}
+                                        disabled={isApproving}
+                                    >
+                                        <ThemedText style={styles.approveButtonText}>
+                                            {isApproving ? '👍 Approving...' : '👍 This Question is Good!'}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                </View>
+
                                 <ThemedText style={styles.aiExplanationBugText}>
                                     might need to press a few times
                                 </ThemedText>
@@ -962,15 +1028,6 @@ export default function QuizScreen() {
                             </ThemedView>
                         )}
 
-                        <TouchableOpacity
-                            style={styles.reportButton}
-                            onPress={() => reportIssue(question.id)}
-                            testID='report-issue-button'
-                        >
-                            <ThemedText style={styles.reportButtonText}>
-                                🛑 Something's Wrong?
-                            </ThemedText>
-                        </TouchableOpacity>
                     </ThemedView>
                 </ThemedView>
             </ScrollView>
@@ -1463,8 +1520,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FEE2E2',
         padding: 8,
         borderRadius: 8,
-        alignSelf: 'flex-end',
-        marginTop: 8,
+        flex: 1,
     },
     reportButtonText: {
         color: '#DC2626',
@@ -1787,6 +1843,25 @@ const styles = StyleSheet.create({
         minHeight: 40,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    feedbackButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 16,
+        gap: 12,
+    },
+    approveButton: {
+        backgroundColor: '#DCFCE7',
+        padding: 8,
+        borderRadius: 8,
+        flex: 1,
+    },
+    approveButtonText: {
+        color: '#166534',
+        fontSize: 14,
+        fontWeight: '500',
+        textAlign: 'center',
     },
 });
 

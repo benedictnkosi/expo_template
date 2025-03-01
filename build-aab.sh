@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Path to build.gradle
-GRADLE_FILE="/android/app/build.gradle"
+GRADLE_FILE="./android/app/build.gradle"
 
 # First, fix any double quotes in build.gradle
 sed -i '' 's/versionName "[0-9]\+\.[0-9]\+\.[0-9]\+"/versionName "2.0.4"/' $GRADLE_FILE
@@ -23,7 +23,7 @@ sed -i '' "s/versionName \"$CURRENT_NAME\"/versionName \"$NEW_NAME\"/" $GRADLE_F
 echo "Updated version from $CURRENT_CODE ($CURRENT_NAME) to $NEW_CODE ($NEW_NAME)"
 
 # Navigate to android directory and run build commands
-cd /android
+cd android
 ./gradlew clean
 ./gradlew bundleRelease
 
