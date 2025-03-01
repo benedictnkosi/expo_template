@@ -7,24 +7,6 @@ export function useProtectedRoute() {
   const router = useRouter();
   const segments = useSegments();
 
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const authData = await SecureStore.getItemAsync('auth');
-        const inAuthGroup = segments[0] === 'login'
-
-        if (!authData && !inAuthGroup) {
-          router.replace('/login');
-          return;
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-      }
-    }
-
-    checkAuth();
-  }, [segments]);
-
   return null;
 }
 

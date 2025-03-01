@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { updateLearner } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trackEvent, Events } from '../services/mixpanel';
-import * as SecureStore from 'expo-secure-store';
+import { updateLearner } from '../services/api';
 import SelectTime from './onboarding/select-time';
+import * as SecureStore from 'expo-secure-store';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import Toast from 'react-native-toast-message';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const ILLUSTRATIONS = {
   welcome: require('@/assets/images/illustrations/school.png'),
@@ -26,51 +32,177 @@ export default function OnboardingScreen() {
   const [schoolLongitude, setSchoolLongitude] = useState(0);
   const [schoolName, setSchoolName] = useState('');
   const [preferredTime, setPreferredTime] = useState<number>(18);
+  const [curriculum, setCurriculum] = useState('');
   const insets = useSafeAreaInsets();
   const [errors, setErrors] = useState({
     grade: '',
     school: '',
-    time: ''
+    time: '',
+    curriculum: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: "198572112790-07sqf0e1f0ffp6q5oe6d1g50s86r5hsm.apps.googleusercontent.com",
+    iosClientId: "198572112790-4m348foju37agudmcrs7e5rp0n4ld9g2.apps.googleusercontent.com",
+    webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
   });
 
+  useEffect(() => {
+    async function checkAuthAndOnboarding() {
+      try {
+        const forcedOnboarding = await AsyncStorage.getItem('forcedOnboarding');
+        if (forcedOnboarding) {
+          // If we're forcing onboarding, just stay here
+          return;
+        }
 
+        const authData = await SecureStore.getItemAsync('auth');
+        const onboardingData = await AsyncStorage.getItem('onboardingData');
+
+        if (authData && onboardingData) {
+          const parsedOnboarding = JSON.parse(onboardingData);
+          if (parsedOnboarding.onboardingCompleted) {
+            router.replace('/(tabs)');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking auth and onboarding:', error);
+      }
+    }
+
+    checkAuthAndOnboarding();
+  }, []);
+
+  useEffect(() => {
+    handleGoogleSignInResponse();
+  }, [response]);
+
+  async function handleGoogleSignInResponse() {
+    if (response?.type === 'success' && response.authentication) {
+      setIsLoading(true);
+      try {
+        const { authentication } = response;
+        const userInfoResponse = await fetch(
+          'https://www.googleapis.com/userinfo/v2/me',
+          {
+            headers: { Authorization: `Bearer ${authentication.accessToken}` },
+          }
+        );
+
+        const googleUser = await userInfoResponse.json();
+        console.log('Full Google User Response:', googleUser);
+
+        const userId = googleUser.sub || googleUser.id;
+        console.log('User ID (sub/id):', userId);
+
+        if (!userId) {
+          throw new Error('No user ID received from Google');
+        }
+
+        // Store auth data
+        const userData = {
+          authentication,
+          userInfo: {
+            id: userId,
+            uid: userId,
+            email: googleUser.email,
+            name: googleUser.name,
+            picture: googleUser.picture
+          }
+        };
+
+        await SecureStore.setItemAsync('auth', JSON.stringify(userData));
+
+        // Create learner with onboarding data
+        const onboardingData = await AsyncStorage.getItem('onboardingData');
+        if (onboardingData) {
+          const parsedOnboarding = JSON.parse(onboardingData);
+          console.log('Onboarding data:', parsedOnboarding);
+
+          // Format the data to match the expected API structure
+          const learnerData = {
+            name: googleUser.name,
+            grade: parsedOnboarding.grade.toString(),
+            school: parsedOnboarding.school,
+            school_address: parsedOnboarding.school_address,
+            school_latitude: parsedOnboarding.school_latitude,
+            school_longitude: parsedOnboarding.school_longitude,
+            curriculum: parsedOnboarding.curriculum.join(','),
+            notification_hour: parsedOnboarding.notification_hour,
+            terms: "1,2,3,4"
+          };
+
+          console.log('Sending learner data to API:', learnerData);
+          const learner = await updateLearner(userId, learnerData);
+
+          console.log('Learner update response:', learner);
+
+          if (learner.error) {
+            throw new Error(`Failed to create learner profile: ${learner.error}`);
+          }
+
+          router.replace('/(tabs)');
+        } else {
+          console.log('No onboarding data found');
+        }
+      } catch (error: any) {
+        console.error('Sign in error:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Login Failed',
+          text2: error.message || 'Please try again',
+          position: 'bottom'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }
 
   const handleComplete = async () => {
     try {
-      const authData = await SecureStore.getItemAsync('auth');
-      if (!authData) return;
-
-      const parsed = JSON.parse(authData);
-
-      // Extract sub from idToken as uid
-      const idToken = parsed.authentication.idToken;
-      const tokenParts = idToken.split('.');
-      const tokenPayload = JSON.parse(atob(tokenParts[1]));
-      const uid = tokenPayload.sub;
-
-      const learner = await updateLearner(uid, {
-        name: parsed.userInfo.name,
+      const onboardingData = {
         grade: parseInt(grade),
         school: schoolName,
         school_address: schoolAddress,
         school_latitude: schoolLatitude,
         school_longitude: schoolLongitude,
-        notification_hour: preferredTime
-      });
+        curriculum: [curriculum],
+        notification_hour: preferredTime,
+        onboardingCompleted: true
+      };
 
-      if (learner.error) {
-        console.error('Failed to complete onboarding:', learner.error);
-        return;
-      }
+      await AsyncStorage.setItem('onboardingData', JSON.stringify(onboardingData));
+      await AsyncStorage.removeItem('forcedOnboarding');
 
       trackEvent(Events.COMPLETE_ONBOARDING, {
         grade,
-        school,
+        school: schoolName,
+        curriculum: [curriculum]
       });
 
-      router.replace('/(tabs)');
+      if (!request) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Cannot start Google sign in',
+          position: 'bottom'
+        });
+        return;
+      }
+
+      setIsLoading(true);
+      await promptAsync();
+
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to complete registration',
+        position: 'bottom'
+      });
+      setIsLoading(false);
     }
   };
 
@@ -81,13 +213,16 @@ export default function OnboardingScreen() {
           <View style={styles.step}>
             <Image
               source={ILLUSTRATIONS.welcome}
-              style={styles.illustration}
+              style={styles.bigIllustration}
               resizeMode="contain"
             />
             <View style={styles.textContainer}>
               <ThemedText style={styles.welcomeTitle}>🎉 Welcome to Exam Quiz! 🚀</ThemedText>
               <ThemedText style={styles.welcomeText}>
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
+              </ThemedText>
+              <ThemedText style={styles.statsText}>
+                💡 Join 6,000+ students sharpening their skills with 18,000+ brain-boosting questions every day! 🧠🔥
               </ThemedText>
             </View>
           </View>
@@ -109,8 +244,7 @@ export default function OnboardingScreen() {
                     key={g}
                     style={[
                       styles.gradeButton,
-                      grade === g.toString() && styles.gradeButtonSelected,
-                      { backgroundColor: getGradeColor(g) }
+                      grade === g.toString() && styles.gradeButtonSelected
                     ]}
                     onPress={() => {
                       setGrade(g.toString());
@@ -208,23 +342,68 @@ export default function OnboardingScreen() {
       case 3:
         return (
           <View style={styles.step}>
-            <View style={styles.stepContent}>
-              <SelectTime
-                onTimeSelect={(time) => {
-                  const hour = parseInt(time.split(':')[0]);
-                  const isPM = time.includes('PM');
-                  const value = isPM ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
-                  setPreferredTime(value);
-                  setErrors(prev => ({ ...prev, time: '' }));
-                }}
-                selectedTime={preferredTime}
-              />
+            <Image
+              source={ILLUSTRATIONS.school}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle}>📚 Which curriculum are you following?</ThemedText>
+              <View style={styles.curriculumButtons}>
+                {[
+                  { id: 'CAPS', label: 'CAPS', emoji: '📘' },
+                  { id: 'IEB', label: 'IEB', emoji: '📗' }
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.curriculumButton,
+                      curriculum === item.id && styles.curriculumButtonSelected
+                    ]}
+                    onPress={() => {
+                      setCurriculum(item.id);
+                      setErrors(prev => ({ ...prev, curriculum: '' }));
+                    }}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.curriculumButtonText,
+                        curriculum === item.id && styles.curriculumButtonTextSelected
+                      ]}
+                    >
+                      {item.emoji} {item.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.curriculum ? <ThemedText style={styles.errorText}>{errors.curriculum}</ThemedText> : null}
+            </View>
+          </View>
+        );
+
+      case 4:
+        return (
+          <View style={styles.step}>
+            <View style={styles.timeStepContainer}>
+              <ThemedText style={styles.stepTitle}>⏰ When do you want to practice?</ThemedText>
+              <View style={styles.timeScrollContainer}>
+                <SelectTime
+                  onTimeSelect={(time) => {
+                    const hour = parseInt(time.split(':')[0]);
+                    const isPM = time.includes('PM');
+                    const value = isPM ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
+                    setPreferredTime(value);
+                    setErrors(prev => ({ ...prev, time: '' }));
+                  }}
+                  selectedTime={preferredTime}
+                />
+              </View>
             </View>
             {errors.time ? <ThemedText style={styles.errorText}>{errors.time}</ThemedText> : null}
           </View>
         );
 
-      case 4:
+      case 5:
         return (
           <View style={styles.step}>
             <Image
@@ -253,8 +432,10 @@ export default function OnboardingScreen() {
       case 2:
         return !!school;
       case 3:
-        return !!preferredTime;
+        return !!curriculum;
       case 4:
+        return !!preferredTime;
+      case 5:
         return true;
       default:
         return false;
@@ -272,47 +453,67 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.buttonContainer}>
-          {step > 0 && (
-            <TouchableOpacity
-              style={[styles.button, styles.secondaryButton]}
-              onPress={() => setStep(step - 1)}
-            >
-              <ThemedText style={styles.buttonText}>Back</ThemedText>
-            </TouchableOpacity>
+          {step === 0 ? (
+            <>
+              <TouchableOpacity
+                style={[styles.button, styles.secondaryButton]}
+                onPress={() => router.replace('/login')}
+              >
+                <ThemedText style={styles.buttonText}>Back</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.button, styles.primaryButton]}
+                onPress={() => setStep(1)}
+              >
+                <ThemedText style={[styles.buttonText, styles.primaryButtonText]}>
+                  Start! 🚀
+                </ThemedText>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.button, styles.secondaryButton]}
+                onPress={() => setStep(step - 1)}
+              >
+                <ThemedText style={styles.buttonText}>Back</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  styles.primaryButton,
+                  (!canProceed() && step !== 0) && styles.buttonDisabled
+                ]}
+                onPress={() => {
+                  if (step === 4 && !preferredTime) {
+                    setErrors(prev => ({ ...prev, time: 'Please select your preferred time' }));
+                    return;
+                  }
+                  if (step === 5) {
+                    handleComplete();
+                  } else if (step === 1 && !grade) {
+                    setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
+                  } else if (step === 2 && !school) {
+                    setErrors(prev => ({ ...prev, school: 'Please select your school' }));
+                  } else if (step === 3 && !curriculum) {
+                    setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
+                  } else {
+                    setErrors({ grade: '', school: '', time: '', curriculum: '' });
+                    setStep(step + 1);
+                  }
+                }}
+                disabled={!canProceed() && step !== 0}
+              >
+                <ThemedText style={[
+                  styles.buttonText,
+                  styles.primaryButtonText,
+                  (!canProceed() && step !== 0) && styles.buttonTextDisabled
+                ]}>
+                  {step === 5 ? '👉 Sign-in' : 'Next! 🚀'}
+                </ThemedText>
+              </TouchableOpacity>
+            </>
           )}
-
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.primaryButton,
-              (!canProceed() && step !== 0) && styles.buttonDisabled
-            ]}
-            onPress={() => {
-              if (step === 3 && !preferredTime) {
-                setErrors(prev => ({ ...prev, time: 'Please select your preferred time' }));
-                return;
-              }
-              if (step === 4) {
-                handleComplete();
-              } else if (step === 1 && !grade) {
-                setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-              } else if (step === 2 && !school) {
-                setErrors(prev => ({ ...prev, school: 'Please select your school' }));
-              } else {
-                setErrors({ grade: '', school: '', time: '' });
-                setStep(step + 1);
-              }
-            }}
-            disabled={!canProceed() && step !== 0}
-          >
-            <ThemedText style={[
-              styles.buttonText,
-              styles.primaryButtonText,
-              (!canProceed() && step !== 0) && styles.buttonTextDisabled
-            ]}>
-              {step === 4 ? '👉 Ace Your Exams!' : 'Let\'s Go! 🚀'}
-            </ThemedText>
-          </TouchableOpacity>
         </View>
       </View>
     </LinearGradient>
@@ -336,7 +537,12 @@ const styles = StyleSheet.create({
   },
   illustration: {
     width: '100%',
-    height: 150,
+    height: 100,
+    marginBottom: 40,
+  },
+  bigIllustration: {
+    width: '100%',
+    height: 250,
     marginBottom: 40,
   },
   textContainer: {
@@ -352,6 +558,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.5,
   },
+
+  boastingText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 24,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    marginTop: 24,
+  },
+
   welcomeText: {
     fontSize: 18,
     color: '#E2E8F0',
@@ -426,29 +643,24 @@ const styles = StyleSheet.create({
   },
   gradeButton: {
     width: '100%',
-    padding: 12,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    marginBottom: 4,
   },
   gradeButtonSelected: {
     borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(211, 204, 204, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   gradeButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#000',
+    color: '#FFFFFF',
   },
   gradeButtonTextSelected: {
-    color: '#3B82F6',
+    color: '#FFFFFF',
   },
   debugText: {
     color: '#E2E8F0',
@@ -494,48 +706,39 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     lineHeight: 24,
   },
-  timeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
+  timeStepContainer: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  timeButton: {
-    width: '45%',
-    padding: 16,
+  timeScrollContainer: {
+    height: 400,
+    width: '100%',
+  },
+  curriculumButtons: {
+    width: '100%',
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  curriculumButton: {
+    width: '100%',
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  timeButtonSelected: {
+  curriculumButtonSelected: {
     borderColor: '#FFFFFF',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
-  timeButtonText: {
-    fontSize: 16,
+  curriculumButtonText: {
+    fontSize: 20,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  timeButtonTextSelected: {
+  curriculumButtonTextSelected: {
     color: '#FFFFFF',
   },
-  stepContent: {
-    flex: 1,
-  },
 });
-
-function getGradeColor(grade: number): string {
-  switch (grade) {
-    case 10:
-      return '#E0F2FE'; // Light blue
-    case 11:
-      return '#F0FDF4'; // Light green
-    case 12:
-      return '#FEF3C7'; // Light yellow
-    default:
-      return '#F1F5F9'; // Light gray
-  }
-}

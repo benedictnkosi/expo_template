@@ -8,6 +8,8 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { AntDesign } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateLearner } from '../services/api';
 import Toast from 'react-native-toast-message';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -16,6 +18,7 @@ const LOGIN_ILLUSTRATION = require('../assets/images/illustrations/stressed.png'
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isForcingOnboarding, setIsForcingOnboarding] = useState(false);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: "198572112790-07sqf0e1f0ffp6q5oe6d1g50s86r5hsm.apps.googleusercontent.com",
@@ -29,13 +32,38 @@ export default function Login() {
 
   useEffect(() => {
     async function checkSession() {
+      if (isForcingOnboarding) return; // Skip the check if we're forcing onboarding
+
       const authData = await SecureStore.getItemAsync('auth');
       if (authData) {
-        router.replace('/(tabs)');
+        const onboardingData = await AsyncStorage.getItem('onboardingData');
+        if (onboardingData && JSON.parse(onboardingData).onboardingCompleted) {
+          router.replace('/(tabs)');
+        } else {
+          router.replace('/onboarding');
+        }
       }
     }
     checkSession();
-  }, []);
+  }, [isForcingOnboarding]);
+
+  const startRegistration = async () => {
+    try {
+      // Clear any existing data
+      await AsyncStorage.removeItem('onboardingData');
+      await SecureStore.deleteItemAsync('auth');
+      // Navigate to onboarding
+      router.replace('/onboarding');
+    } catch (error) {
+      console.error('Error starting registration:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not start registration',
+        position: 'bottom'
+      });
+    }
+  };
 
   async function handleSignInResponse() {
     if (response?.type === 'success' && response.authentication) {
@@ -53,7 +81,6 @@ export default function Login() {
 
         const googleUser = await userInfoResponse.json();
 
-        // Verify we have required fields
         if (!googleUser.id) {
           console.error('No user ID received from Google');
           Toast.show({
@@ -66,7 +93,6 @@ export default function Login() {
           return;
         }
 
-        
         // Store auth data
         const userData = {
           authentication,
@@ -95,6 +121,7 @@ export default function Login() {
     }
   }
 
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <LinearGradient
@@ -110,27 +137,39 @@ export default function Login() {
 
           <View style={styles.header}>
             <ThemedText style={styles.appname}>Exam Quiz</ThemedText>
-            <ThemedText style={styles.title}>Welcome Back, Smarty! 🎉</ThemedText>
-            <ThemedText style={styles.subtitle}>Let's power up your brain and ace those quizzes! 🚀</ThemedText>
+            <ThemedText style={styles.title}>Ready to Excel? 🎯</ThemedText>
+            <ThemedText style={styles.subtitle}>Join thousands of students acing their exams! 📚</ThemedText>
           </View>
 
-          <TouchableOpacity
-            style={[styles.googleButton, isLoading && styles.buttonDisabled]}
-            onPress={async () => {
-              const authData = await SecureStore.getItemAsync('auth');
-              if (authData) {
-                router.replace('/(tabs)');
-              } else {
-                promptAsync();
-              }
-            }}
-            disabled={!request || isLoading}
-          >
-            <AntDesign name="google" size={24} color="#DB4437" />
-            <ThemedText style={styles.googleButtonText}>
-              {isLoading ? 'Signing in...' : 'Jump In with Google! 🚀'}
-            </ThemedText>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.registerButton]}
+              onPress={startRegistration}
+            >
+              <AntDesign name="google" size={24} color="#DB4437" />
+              <ThemedText style={styles.registerButtonText}>
+                Register Now 🚀
+              </ThemedText>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <ThemedText style={styles.dividerText}>or</ThemedText>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, styles.googleButton, isLoading && styles.buttonDisabled]}
+              onPress={() => promptAsync()}
+              disabled={!request || isLoading}
+            >
+              <AntDesign name="google" size={24} color="#DB4437" />
+              <ThemedText style={styles.googleButtonText}>
+                {isLoading ? 'Signing in...' : 'Login with Google'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
+
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -184,11 +223,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     lineHeight: 24,
   },
-  googleButton: {
+  buttonContainer: {
+    width: '100%',
+    paddingHorizontal: 24,
+  },
+  button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 28,
     width: '100%',
@@ -198,8 +240,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  buttonDisabled: {
-    opacity: 0.7,
+  registerButton: {
+    backgroundColor: '#4338CA',
+    marginBottom: 16,
+  },
+  registerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dividerText: {
+    color: '#FFFFFF',
+    marginHorizontal: 16,
+    fontSize: 16,
   },
   googleButtonText: {
     color: '#1E293B',
@@ -244,18 +311,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
+  buttonDisabled: {
+    opacity: 0.7,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E2E8F0',
+  debugButton: {
+    marginTop: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 12,
+    borderRadius: 8,
   },
-  dividerText: {
-    color: '#64748B',
-    marginHorizontal: 16,
+  debugButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 }); 

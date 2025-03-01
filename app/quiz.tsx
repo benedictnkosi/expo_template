@@ -389,7 +389,7 @@ export default function QuizScreen() {
         setIsCorrect(null);
 
         try {
-            setIsLoading(true);            const response = await fetch(
+            setIsLoading(true); const response = await fetch(
                 `${ConfigAPI_BASE_URL}/public/learn/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0${showAllTerms ? '&show_all_questions=yes' : '&show_all_questions=no'}`
             );
             if (!response.ok) {
@@ -1046,7 +1046,7 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => router.replace('/(tabs)')}
+                        onPress={() => router.push('/(tabs)')}
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
                         <ThemedText style={styles.footerButtonText} >Chill Time!</ThemedText>

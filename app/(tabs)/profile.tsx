@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAuth, GoogleUser } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { useState, useEffect } from 'react';
@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet } from 'react-native';
 import React from 'react';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import SelectTime from '../onboarding/select-time';
 
 interface User {
   uid: string;
@@ -23,18 +25,34 @@ interface User {
   picture?: string;
 }
 
+interface LearnerInfo {
+  name: string;
+  grade: string;
+  school?: string;
+  school_address?: string;
+  school_latitude?: number;
+  school_longitude?: number;
+  curriculum?: string;
+  terms?: string;
+  notification_hour?: number;
+  photoURL?: string;
+  imagePath?: string;
+}
+
 export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const { signOut } = useAuth();
-  const [learnerInfo, setLearnerInfo] = useState<{
-    name: string;
-    grade: string;
-    photoURL?: string;
-    imagePath?: string;
-  } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editGrade, setEditGrade] = useState('');
+  const [editSchool, setEditSchool] = useState('');
+  const [editSchoolAddress, setEditSchoolAddress] = useState('');
+  const [editSchoolLatitude, setEditSchoolLatitude] = useState(0);
+  const [editSchoolLongitude, setEditSchoolLongitude] = useState(0);
+  const [editCurriculum, setEditCurriculum] = useState<string>('');
+  const [editTerms, setEditTerms] = useState<string>('');
+  const [editNotificationHour, setEditNotificationHour] = useState(18);
   const [isLoading, setIsLoading] = useState(false);
   const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
   const [showAlert, setShowAlert] = useState(false);
@@ -47,6 +65,10 @@ export default function ProfileScreen() {
   const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
   const [pendingGrade, setPendingGrade] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Available options
+  const TERMS = [1, 2, 3, 4];
+  const CURRICULA = ['CAPS', 'IEB'];
 
   useEffect(() => {
     async function loadUser() {
@@ -85,10 +107,25 @@ export default function ProfileScreen() {
         setLearnerInfo({
           name,
           grade,
+          school: learner.school_name || '',
+          school_address: learner.school_address || '',
+          school_latitude: learner.school_latitude || 0,
+          school_longitude: learner.school_longitude || 0,
+          curriculum: learner.curriculum || '',
+          terms: learner.terms || '',
+          notification_hour: learner.notification_hour || 18,
           imagePath: user.picture || ""
         });
+
         setEditName(name);
         setEditGrade(grade || grades[0]?.number.toString() || '');
+        setEditSchool(learner.school_name || '');
+        setEditSchoolAddress(learner.school_address || '');
+        setEditSchoolLatitude(learner.school_latitude || 0);
+        setEditSchoolLongitude(learner.school_longitude || 0);
+        setEditCurriculum(learner.curriculum || '');
+        setEditTerms(learner.terms || '');
+        setEditNotificationHour(learner.notification_hour || 18);
       } catch (error) {
         console.error('Failed to fetch learner info:', error);
       }
@@ -122,19 +159,39 @@ export default function ProfileScreen() {
 
     setIsLoading(true);
     try {
+      // Clean up and format the terms and curriculum strings
+      const cleanTerms = editTerms.split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+        .join(', ');
+
+      const cleanCurriculum = editCurriculum.split(',')
+        .map(c => c.trim())
+        .filter(Boolean)
+        .join(', ');
+
       await updateLearner(user.uid, {
         name: editName.trim(),
         grade: parseInt(editGrade),
-        school: '',
-        school_address: '',
-        school_latitude: 0,
-        school_longitude: 0,
-        notification_hour: 0
+        school: editSchool,
+        school_address: editSchoolAddress,
+        school_latitude: editSchoolLatitude,
+        school_longitude: editSchoolLongitude,
+        notification_hour: editNotificationHour,
+        terms: cleanTerms,
+        curriculum: cleanCurriculum
       });
 
       setLearnerInfo({
         name: editName.trim(),
-        grade: editGrade
+        grade: editGrade,
+        school: editSchool,
+        school_address: editSchoolAddress,
+        school_latitude: editSchoolLatitude,
+        school_longitude: editSchoolLongitude,
+        curriculum: cleanCurriculum,
+        terms: cleanTerms,
+        notification_hour: editNotificationHour
       });
 
       handleSuccess();
@@ -149,6 +206,7 @@ export default function ProfileScreen() {
       });
     } finally {
       setIsLoading(false);
+      setShowGradeChangeModal(false);
     }
   };
 
@@ -227,6 +285,10 @@ export default function ProfileScreen() {
     await saveChanges();
   };
 
+  const handleGoHome = () => {
+    router.push('/(tabs)');
+  };
+
   return (
     <LinearGradient
       colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -237,7 +299,7 @@ export default function ProfileScreen() {
       <ScrollView
         style={[
           styles.container,
-          { paddingTop: insets.top } // Add safe area top padding plus extra spacing
+          { paddingTop: insets.top }
         ]}
       >
         <Header
@@ -260,6 +322,7 @@ export default function ProfileScreen() {
                   testID='profile-name-input'
                 />
               </View>
+
               <View style={styles.inputGroup}>
                 <ThemedText style={styles.label}>Grade</ThemedText>
                 <View style={styles.pickerContainer}>
@@ -280,6 +343,117 @@ export default function ProfileScreen() {
                   </Picker>
                 </View>
               </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>School</ThemedText>
+                {editSchool && (
+                  <View style={styles.selectedSchoolContainer}>
+                    <ThemedText style={styles.selectedSchoolName}>{editSchool}</ThemedText>
+                    <ThemedText style={styles.selectedSchoolAddress}>{editSchoolAddress}</ThemedText>
+                  </View>
+                )}
+                <View style={styles.searchWrapper}>
+                  <GooglePlacesAutocomplete
+                    placeholder="🔍 Search for your school..."
+                    onPress={(data, details = null) => {
+                      setEditSchool(data.structured_formatting.main_text);
+                      setEditSchoolAddress(data.description);
+                      if (details) {
+                        setEditSchoolLatitude(details.geometry.location.lat);
+                        setEditSchoolLongitude(details.geometry.location.lng);
+                      }
+                    }}
+                    fetchDetails={true}
+                    query={{
+                      key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "",
+                      components: 'country:za',
+                      types: 'school',
+                      language: 'en',
+                    }}
+                    styles={{
+                      container: styles.searchContainer,
+                      textInput: styles.searchInput,
+                      listView: styles.searchListView,
+                    }}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Show me questions from these curriculums</ThemedText>
+                <View style={styles.optionsContainer}>
+                  {CURRICULA.map((curr) => (
+                    <TouchableOpacity
+                      key={curr}
+                      style={[
+                        styles.optionButton,
+                        editCurriculum.split(',').map(c => c.trim()).includes(curr) && styles.optionButtonSelected
+                      ]}
+                      onPress={() => {
+                        const currArray = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
+                        if (currArray.includes(curr)) {
+                          setEditCurriculum(currArray.filter(c => c !== curr).join(','));
+                        } else {
+                          setEditCurriculum(currArray.concat(curr).join(','));
+                        }
+                      }}
+                    >
+                      <ThemedText style={[
+                        styles.optionButtonText,
+                        editCurriculum.split(',').map(c => c.trim()).includes(curr) && styles.optionButtonTextSelected
+                      ]}>
+                        {curr}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Show me questions from these terms</ThemedText>
+                <View style={styles.optionsContainer}>
+                  {TERMS.map((term) => (
+                    <TouchableOpacity
+                      key={term}
+                      style={[
+                        styles.optionButton,
+                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) && styles.optionButtonSelected
+                      ]}
+                      onPress={() => {
+                        const termsArray = editTerms.split(',').map(t => t.trim()).filter(Boolean);
+                        if (termsArray.includes(term.toString())) {
+                          setEditTerms(termsArray.filter(t => t !== term.toString()).join(','));
+                        } else {
+                          setEditTerms(termsArray.concat(term.toString()).join(','));
+                        }
+                      }}
+                    >
+                      <ThemedText style={[
+                        styles.optionButtonText,
+                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) && styles.optionButtonTextSelected
+                      ]}>
+                        Term {term}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <ThemedText style={styles.label}>Daily reminder time</ThemedText>
+                <View style={styles.timeContainer}>
+                  <SelectTime
+                    onTimeSelect={(time) => {
+                      const hour = parseInt(time.split(':')[0]);
+                      const isPM = time.includes('PM');
+                      const value = isPM ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
+                      setEditNotificationHour(value);
+                    }}
+                    selectedTime={editNotificationHour}
+                  />
+                </View>
+              </View>
+
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
                 onPress={handleSave}
@@ -358,6 +532,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  homeButton: {
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  homeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     padding: 20,
@@ -646,5 +837,81 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#555',
+  },
+  searchWrapper: {
+    marginTop: 8,
+  },
+  searchContainer: {
+    flex: 0,
+    width: '100%',
+  },
+  searchInput: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    color: '#1E293B',
+  },
+  searchListView: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    zIndex: 1000,
+    elevation: 3,
+    marginTop: 4,
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  optionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(226, 232, 240, 0.3)',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  optionButtonSelected: {
+    backgroundColor: '#8B5CF6',
+    borderColor: '#7C3AED',
+  },
+  optionButtonText: {
+    fontSize: 14,
+    color: '#1E293B',
+  },
+  optionButtonTextSelected: {
+    color: '#FFFFFF',
+  },
+  timeContainer: {
+    height: 300,
+    marginTop: 8,
+    backgroundColor: 'rgba(226, 232, 240, 0.3)',
+    borderRadius: 12,
+    overflow: Platform.OS === 'android' ? 'visible' : 'hidden',
+    ...(Platform.OS === 'android' && {
+      elevation: 0,
+      zIndex: 1
+    })
+  },
+  selectedSchoolContainer: {
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: 'rgba(226, 232, 240, 0.3)',
+    borderRadius: 12,
+  },
+  selectedSchoolName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  selectedSchoolAddress: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
   },
 }); 

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner, registerLearner } from '../../services/api';
@@ -39,73 +40,70 @@ export default function HomeScreen() {
     async function initializeData() {
       try {
         const authData = await SecureStore.getItemAsync('auth');
-        if (authData) {
-          const parsed = JSON.parse(authData);
-
-          // Extract sub from idToken as uid
-          const idToken = parsed.authentication.idToken;
-          const tokenParts = idToken.split('.');
-          const tokenPayload = JSON.parse(atob(tokenParts[1]));
-          const uid = tokenPayload.sub;
-
-          const userData = {
-            id: uid,
-            uid: uid,
-            email: parsed.userInfo.email,
-            name: parsed.userInfo.name,
-            picture: parsed.userInfo.picture
-          };
-
-          setUser(userData);
-
-          // Load data immediately after setting user
-          if (userData.uid) {
-            const learner = await getLearner(userData.uid);
-            if (learner.name && learner.grade && learner.school_name) {
-              setLearnerInfo({
-                name: learner.name,
-                grade: learner.grade?.number?.toString() || '',
-                school_name: learner.school_name || '',
-                school: learner.school_name || ''
-              });
-
-              const enrolledResponse = await fetchMySubjects(userData.uid);
-
-              // Group subjects by base name (removing P1/P2)
-              const subjectGroups = enrolledResponse.reduce((acc, curr) => {
-                const baseName = curr.subject.name.replace(/ P[12]$/, '');
-
-                if (!acc[baseName]) {
-                  acc[baseName] = {
-                    id: curr.subject.id.toString(),
-                    name: baseName,
-                    totalQuestions: curr.total_questions,
-                    answeredQuestions: curr.answered_questions,
-                    correctAnswers: curr.correct_answers
-                  };
-                } else {
-                  // Sum up the stats from both papers
-                  acc[baseName].totalQuestions += curr.total_questions;
-                  acc[baseName].answeredQuestions += curr.answered_questions;
-                  acc[baseName].correctAnswers += curr.correct_answers;
-                }
-
-                return acc;
-              }, {} as Record<string, Subject>);
-
-              setMySubjects(Object.values(subjectGroups));
-            } else {
-              router.replace('/onboarding');
-            }
-
-          } else {
-            router.replace('/login');
-          }
-        } else {
+        if (!authData) {
           router.replace('/login');
+          return;
+        }
+
+        const parsed = JSON.parse(authData);
+
+        // Extract sub from idToken as uid
+        const idToken = parsed.authentication.idToken;
+        const tokenParts = idToken.split('.');
+        const tokenPayload = JSON.parse(atob(tokenParts[1]));
+        const uid = tokenPayload.sub;
+
+        const userData = {
+          id: uid,
+          uid: uid,
+          email: parsed.userInfo.email,
+          name: parsed.userInfo.name,
+          picture: parsed.userInfo.picture
+        };
+
+        setUser(userData);
+
+        // Load data immediately after setting user
+        if (userData.uid) {
+          const learner = await getLearner(userData.uid);
+          if (learner.name && learner.grade && learner.school_name) {
+            setLearnerInfo({
+              name: learner.name,
+              grade: learner.grade?.number?.toString() || '',
+              school_name: learner.school_name || '',
+              school: learner.school_name || ''
+            });
+
+            const enrolledResponse = await fetchMySubjects(userData.uid);
+
+            // Group subjects by base name (removing P1/P2)
+            const subjectGroups = enrolledResponse.reduce((acc, curr) => {
+              const baseName = curr.subject.name.replace(/ P[12]$/, '');
+
+              if (!acc[baseName]) {
+                acc[baseName] = {
+                  id: curr.subject.id.toString(),
+                  name: baseName,
+                  totalQuestions: curr.total_questions,
+                  answeredQuestions: curr.answered_questions,
+                  correctAnswers: curr.correct_answers
+                };
+              } else {
+                // Sum up the stats from both papers
+                acc[baseName].totalQuestions += curr.total_questions;
+                acc[baseName].answeredQuestions += curr.answered_questions;
+                acc[baseName].correctAnswers += curr.correct_answers;
+              }
+
+              return acc;
+            }, {} as Record<string, Subject>);
+
+            setMySubjects(Object.values(subjectGroups));
+          }
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        router.replace('/login');
       } finally {
         setIsLoading(false);
       }
@@ -153,9 +151,6 @@ export default function HomeScreen() {
         }, {} as Record<string, Subject>);
 
         setMySubjects(Object.values(subjectGroups));
-      } else {
-
-        router.replace('/onboarding');
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);

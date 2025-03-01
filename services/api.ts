@@ -1,4 +1,4 @@
-import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse } from '@/types/api';
+import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse, Subject } from '@/types/api';
 import { API_BASE_URL } from '@/config/api';
 import { mixpanel, Events } from '@/services/mixpanel';
 
@@ -134,6 +134,8 @@ interface LearnerResponse {
   school_address: string;
   school_latitude: number;
   school_longitude: number;
+  curriculum: string;
+  terms: string;
 }
 
 export async function getLearner(uid: string): Promise<LearnerResponse> {
@@ -156,6 +158,8 @@ export async function updateLearner(uid: string, data: {
   school_latitude: number;
   school_longitude: number;
   notification_hour: number;
+  terms: string;
+  curriculum: string;
 }) {
   mixpanel.track(Events.UPDATE_PROFILE, {
     "user_id": uid,
@@ -167,15 +171,20 @@ export async function updateLearner(uid: string, data: {
     ensureHttps(`${API_BASE_URL}/public/learn/learner/update`),
     {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         uid,
         name: data.name,
         grade: data.grade.toString(),
-        "school_name": data.school,
-        "school_address": data.school_address,
-        "school_latitude": data.school_latitude,
-        "school_longitude": data.school_longitude,
-        "notification_hour": data.notification_hour
+        school_name: data.school,
+        school_address: data.school_address,
+        school_latitude: data.school_latitude,
+        school_longitude: data.school_longitude,
+        notification_hour: data.notification_hour,
+        terms: data.terms,
+        curriculum: data.curriculum
       })
     }
   );
