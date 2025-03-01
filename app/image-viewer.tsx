@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import ZoomableImageNew from '@/components/ZoomableImageNew';
+import ZoomableImageNew from '../components/ZoomableImageNew';
 
 export default function ImageViewer() {
     const { imageUrl } = useLocalSearchParams();

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, TouchableOpacity, View, Image, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from '../components/ThemedText';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -12,7 +12,7 @@ import Toast from 'react-native-toast-message';
 
 WebBrowser.maybeCompleteAuthSession();
 
-const LOGIN_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
+const LOGIN_ILLUSTRATION = require('../assets/images/illustrations/stressed.png');
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);

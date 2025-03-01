@@ -9,11 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
 
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
-import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '@/services/api';
-import { API_BASE_URL as ConfigAPI_BASE_URL } from '@/config/api';
-import { trackEvent, Events } from '@/services/mixpanel';
+import { ThemedView } from '../components/ThemedView';
+import { ThemedText } from '../components/ThemedText';
+import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '../services/api';
+import { API_BASE_URL as ConfigAPI_BASE_URL } from '../config/api';
+import { trackEvent, Events } from '../services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Question {

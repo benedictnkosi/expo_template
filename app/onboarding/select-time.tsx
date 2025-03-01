@@ -1,7 +1,7 @@
 import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from '../../components/ThemedText';
 import { router } from 'expo-router';
 
 const TIMES = [
@@ -27,7 +27,7 @@ export default function SelectTime({ onTimeSelect, selectedTime, onNext, onBack 
       >
         <View style={styles.container}>
           <Image
-            source={require('@/assets/images/illustrations/school.png')}
+            source={require('../../assets/images/illustrations/school.png')}
             style={styles.illustration}
             resizeMode="contain"
           />

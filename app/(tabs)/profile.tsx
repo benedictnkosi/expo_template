@@ -1,19 +1,20 @@
-import React, { StyleSheet, TouchableOpacity, View, ScrollView, TextInput, Alert, Platform } from 'react-native';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAuth, GoogleUser } from '@/contexts/AuthContext';
-import { ThemedView } from '@/components/ThemedView';
-import { ThemedText } from '@/components/ThemedText';
+import { useAuth, GoogleUser } from '../../contexts/AuthContext';
+import { ThemedView } from '../../components/ThemedView';
+import { ThemedText } from '../../components/ThemedText';
 import { useState, useEffect } from 'react';
-import { getLearner, updateLearner, fetchGrades } from '@/services/api';
+import { getLearner, updateLearner, fetchGrades } from '../../services/api';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Header } from '@/components/Header';
-import { trackEvent, Events } from '@/services/mixpanel';
+import { Header } from '../../components/Header';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
+import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet } from 'react-native';
+import React from 'react';
 
 interface User {
   uid: string;
@@ -124,7 +125,12 @@ export default function ProfileScreen() {
     try {
       await updateLearner(user.uid, {
         name: editName.trim(),
-        grade: parseInt(editGrade)
+        grade: parseInt(editGrade),
+        school: '',
+        school_address: '',
+        school_latitude: 0,
+        school_longitude: 0,
+        notification_hour: 0
       });
 
       setLearnerInfo({

@@ -1,16 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ThemedText } from '@/components/ThemedText';
+import { ThemedText } from '../components/ThemedText';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getLearner, updateLearner } from '@/services/api';
-import { trackEvent, Events } from '@/services/mixpanel';
+import { updateLearner } from '../services/api';
+import { trackEvent, Events } from '../services/mixpanel';
 import * as SecureStore from 'expo-secure-store';
-import { Ionicons } from '@expo/vector-icons';
 import SelectTime from './onboarding/select-time';
-import Constants from 'expo-constants';
 
 const ILLUSTRATIONS = {
   welcome: require('@/assets/images/illustrations/school.png'),

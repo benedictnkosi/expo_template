@@ -6,11 +6,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ThemedText } from '@/components/ThemedText';
-import { fetchMySubjects, getLearner, registerLearner } from '@/services/api';
-import { Subject } from '@/types/api';
-import { GoogleUser } from '@/contexts/AuthContext';
-import { Header } from '@/components/Header';
+import { ThemedText } from '../../components/ThemedText';
+import { fetchMySubjects, getLearner, registerLearner } from '../../services/api';
+import { Subject } from '../../types/api';
+import { GoogleUser } from '../../contexts/AuthContext';
+import { Header } from '../../components/Header';
 import * as SecureStore from 'expo-secure-store';
 
 // Temporary mock data
