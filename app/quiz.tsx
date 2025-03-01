@@ -266,6 +266,7 @@ export default function QuizScreen() {
     const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
     const [isApproving, setIsApproving] = useState(false);
+    const [feedbackMessage, setFeedbackMessage] = useState<string>('');
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -443,6 +444,7 @@ export default function QuizScreen() {
             setSelectedAnswer(answer);
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
+            setFeedbackMessage(response.is_correct ? getRandomSuccessMessage() : getRandomWrongMessage());
 
             if (response.is_correct) {
                 await correctSound.current?.replayAsync();
@@ -668,7 +670,7 @@ export default function QuizScreen() {
                     />
                 </View>
                 <ThemedText style={styles.masteryText}>
-                    {progress}% goat 🐐
+                    {progress}% GOAT 🐐
                 </ThemedText>
             </View>
         );
@@ -943,7 +945,7 @@ export default function QuizScreen() {
                         {showFeedback && (
                             <ThemedView style={styles.feedbackContainer}>
                                 <ThemedText style={styles.feedbackEmoji} testID='feedback-emoji'>
-                                    {isCorrect ? getRandomSuccessMessage() : getRandomWrongMessage()}
+                                    {feedbackMessage}
                                 </ThemedText>
 
                                 <ThemedView style={styles.correctAnswerContainer}>
@@ -1001,9 +1003,6 @@ export default function QuizScreen() {
                                     </TouchableOpacity>
                                 </View>
 
-                                <ThemedText style={styles.aiExplanationBugText}>
-                                    might need to press a few times
-                                </ThemedText>
                                 <TouchableOpacity
                                     style={styles.aiExplanationButton}
                                     onPress={() => {

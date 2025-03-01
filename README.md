@@ -176,3 +176,31 @@ cd android && ./gradlew clean
 
 ### build apk
 ./build-apk.sh
+
+
+### IOS
+ 
+## open emulator 
+open -a Simulator
+
+allow firebase on ios
+add line:
+ use_modular_headers!
+ pod 'FirebaseCore', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'FirebaseAuth', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+
+  use_frameworks! :linkage => :static
+  
+/Users/mac1/Documents/cursor/examquiz-launch/examquiz/ios/Podfile
+
+expo prebuild
+cd ios && pod install && cd ..
+npx expo run:ios
+
+
+
+#3 clean and build
+cd ios && rm -rf Pods Podfile.lock && pod deintegrate && pod cache clean --all && pod install && cd .. && npx expo run:ios
+
