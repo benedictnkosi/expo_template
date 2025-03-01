@@ -7,9 +7,19 @@ export interface Grade {
 export interface Subject {
   id: string;
   name: string;
-  totalQuestions: number;
-  answeredQuestions: number;
-  correctAnswers: number;
+  total_questions: number;
+  answered_questions: number;
+  correct_answers: number;
+}
+
+export interface APISubject {
+  subject: {
+    id: number;
+    name: string;
+  };
+  total_questions: number;
+  answered_questions: number;
+  correct_answers: number;
 }
 
 export interface LearnerSubject {

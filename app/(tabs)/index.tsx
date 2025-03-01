@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '../../components/ThemedText';
-import { fetchMySubjects, getLearner, registerLearner } from '../../services/api';
+import { fetchMySubjects, getLearner } from '../../services/api';
 import { Subject } from '../../types/api';
 import { GoogleUser } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
@@ -84,21 +84,23 @@ export default function HomeScreen() {
                 acc[baseName] = {
                   id: curr.subject.id.toString(),
                   name: baseName,
-                  totalQuestions: curr.total_questions,
-                  answeredQuestions: curr.answered_questions,
-                  correctAnswers: curr.correct_answers
+                  total_questions: curr.total_questions,
+                  answered_questions: curr.answered_questions,
+                  correct_answers: curr.correct_answers
                 };
               } else {
                 // Sum up the stats from both papers
-                acc[baseName].totalQuestions += curr.total_questions;
-                acc[baseName].answeredQuestions += curr.answered_questions;
-                acc[baseName].correctAnswers += curr.correct_answers;
+                acc[baseName].total_questions += curr.total_questions;
+                acc[baseName].answered_questions += curr.answered_questions;
+                acc[baseName].correct_answers += curr.correct_answers;
               }
 
               return acc;
             }, {} as Record<string, Subject>);
 
             setMySubjects(Object.values(subjectGroups));
+          } else {
+            router.replace('/login');
           }
         }
       } catch (error) {
@@ -136,15 +138,15 @@ export default function HomeScreen() {
             acc[baseName] = {
               id: curr.subject.id.toString(),
               name: baseName,
-              totalQuestions: curr.total_questions,
-              answeredQuestions: curr.answered_questions,
-              correctAnswers: curr.correct_answers
+              total_questions: curr.total_questions,
+              answered_questions: curr.answered_questions,
+              correct_answers: curr.correct_answers
             };
           } else {
             // Sum up the stats from both papers
-            acc[baseName].totalQuestions += curr.total_questions;
-            acc[baseName].answeredQuestions += curr.answered_questions;
-            acc[baseName].correctAnswers += curr.correct_answers;
+            acc[baseName].total_questions += curr.total_questions;
+            acc[baseName].answered_questions += curr.answered_questions;
+            acc[baseName].correct_answers += curr.correct_answers;
           }
 
           return acc;
@@ -332,7 +334,7 @@ export default function HomeScreen() {
                   {subject.name}
                 </ThemedText>
                 <ThemedText style={styles.questionCount} testID={`question-count-${subject.name}`}>
-                  {subject.totalQuestions} questions
+                  {subject.total_questions} questions
                 </ThemedText>
 
                 {/* Progress section */}
@@ -342,17 +344,17 @@ export default function HomeScreen() {
                       style={[
                         styles.progressBar,
                         {
-                          width: `${subject.answeredQuestions === 0 ? 0 :
-                            Math.round((subject.correctAnswers / subject.answeredQuestions) * 100)}%`,
-                          backgroundColor: getProgressBarColor(subject.answeredQuestions === 0 ? 0 :
-                            Math.round((subject.correctAnswers / subject.answeredQuestions) * 100))
+                          width: `${subject.answered_questions === 0 ? 0 :
+                            Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
+                          backgroundColor: getProgressBarColor(subject.answered_questions === 0 ? 0 :
+                            Math.round((subject.correct_answers / subject.answered_questions) * 100))
                         }
                       ]}
                     />
                   </View>
                   <ThemedText style={styles.masteryText}>
-                    {subject.answeredQuestions === 0 ? 0 :
-                      Math.round((subject.correctAnswers / subject.answeredQuestions) * 100)}% mastered
+                    {subject.answered_questions === 0 ? 0 :
+                      Math.round((subject.correct_answers / subject.answered_questions) * 100)}% mastered
                   </ThemedText>
                 </View>
               </View>

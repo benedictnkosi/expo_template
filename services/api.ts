@@ -1,4 +1,4 @@
-import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse, Subject } from '@/types/api';
+import { SubjectsResponse, MySubjectsResponse, CheckAnswerResponse, Subject, APISubject } from '@/types/api';
 import { API_BASE_URL } from '@/config/api';
 import { mixpanel, Events } from '@/services/mixpanel';
 
@@ -20,7 +20,7 @@ export async function fetchAvailableSubjects(grade: string): Promise<SubjectsRes
   return data;
 }
 
-export async function fetchMySubjects(uid: string): Promise<Subject[]> {
+export async function fetchMySubjects(uid: string): Promise<APISubject[]> {
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`)
   );
@@ -390,30 +390,6 @@ interface RegisterResponse {
   };
 }
 
-export async function registerLearner(data: {
-  uid: string;
-  name: string;
-  grade: number;
-}): Promise<RegisterResponse> {
-  try {
-    const response = await fetch(
-      ensureHttps(`${API_BASE_URL}/public/learn/learner/create`),
-      {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to register learner');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error registering learner:', error);
-    throw error;
-  }
-}
 
 interface QuestionStatusData {
   question_id: number;

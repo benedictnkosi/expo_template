@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../components/Header';
 import { useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { getLearner } from '../../services/api';
 
 interface User {
   uid: string;
@@ -65,7 +66,7 @@ const faqs: FAQItem[] = [
 export default function InfoScreen() {
   const insets = useSafeAreaInsets();
   const [user, setUser] = useState<User | null>(null);
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -75,6 +76,7 @@ export default function InfoScreen() {
         const idToken = parsed.authentication.idToken;
         const tokenParts = idToken.split('.');
         const tokenPayload = JSON.parse(atob(tokenParts[1]));
+        const uid = tokenPayload.sub;
 
         setUser({
           uid: tokenPayload.sub,
@@ -83,6 +85,21 @@ export default function InfoScreen() {
           email: parsed.userInfo.email,
           picture: parsed.userInfo.picture
         });
+
+        // Fetch learner info
+        try {
+          const learner = await getLearner(uid);
+          if (learner.name && learner.grade && learner.school_name) {
+            setLearnerInfo({
+              name: learner.name,
+              grade: learner.grade?.number?.toString() || '',
+              school_name: learner.school_name || '',
+              school: learner.school_name || ''
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching learner info:', error);
+        }
       }
     }
     loadUser();

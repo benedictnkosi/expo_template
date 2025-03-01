@@ -111,6 +111,7 @@ export default function OnboardingScreen() {
 
         await SecureStore.setItemAsync('auth', JSON.stringify(userData));
 
+        console.log('User data:', userData);
         // Create learner with onboarding data
         const onboardingData = await AsyncStorage.getItem('onboardingData');
         if (onboardingData) {
@@ -135,11 +136,17 @@ export default function OnboardingScreen() {
 
           console.log('Learner update response:', learner);
 
-          if (learner.error) {
-            throw new Error(`Failed to create learner profile: ${learner.error}`);
+          if (learner.status !== 'OK') {
+            //show user message
+            Toast.show({
+              type: 'error',
+              text1: 'Failed to create learner profile',
+              text2: 'Please try again',
+              position: 'bottom'
+            });
+          } else {
+            router.replace('/(tabs)');
           }
-
-          router.replace('/(tabs)');
         } else {
           console.log('No onboarding data found');
         }

@@ -323,15 +323,6 @@ export default function QuizScreen() {
     }, []);
 
     const reportIssue = (questionId: number) => {
-        if (!showFeedback) {
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Please answer the question before reporting an issue',
-                position: 'bottom'
-            });
-            return;
-        }
         setIsReportModalVisible(true);
     };
 
@@ -1071,7 +1062,10 @@ export default function QuizScreen() {
             <Modal
                 isVisible={isReportModalVisible}
                 onBackdropPress={() => setIsReportModalVisible(false)}
-                style={styles.modal}
+                onSwipeComplete={() => setIsReportModalVisible(false)}
+                swipeDirection={['down']}
+                useNativeDriver={true}
+                style={[styles.modal, { marginTop: insets.top }]}
             >
                 <View style={styles.reportModalContent}>
                     <ThemedText style={styles.reportModalTitle}>Report Issue</ThemedText>
@@ -1092,7 +1086,7 @@ export default function QuizScreen() {
                             <ThemedText style={styles.buttonText}>Cancel</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.reportModalButton, styles.submitButton]}
+                            style={[styles.reportModalButton, styles.submitButton, { backgroundColor: '#3B82F6' }]}
                             onPress={handleSubmitReport}
                             disabled={isSubmitting}
                         >
@@ -1426,8 +1420,8 @@ const styles = StyleSheet.create({
         color: '#000000',
     },
     modal: {
+        justifyContent: 'center',
         margin: 0,
-        justifyContent: 'flex-end',
     },
     modalContent: {
         flex: 1,
@@ -1622,6 +1616,12 @@ const styles = StyleSheet.create({
         gap: 12,
         color: '#000000',
     },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     reportModalContent: {
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
@@ -1631,9 +1631,9 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.25,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 5,
     },
     reportModalTitle: {
         fontSize: 18,
