@@ -389,7 +389,6 @@ export async function registerLearner(data: {
   grade: number;
 }): Promise<RegisterResponse> {
   try {
-    console.log('Registering learner:', data);
     const response = await fetch(
       ensureHttps(`${API_BASE_URL}/public/learn/learner/create`),
       {

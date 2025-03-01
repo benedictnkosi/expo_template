@@ -379,7 +379,7 @@ export default function QuizScreen() {
 
     const loadRandomQuestion = async (paper: string) => {
         if (!user?.uid || !subjectName) {
-            console.log("no user or subjectId");
+
             return;
         }
         // Reset all states before loading new question
@@ -389,12 +389,9 @@ export default function QuizScreen() {
         setIsCorrect(null);
 
         try {
-            setIsLoading(true);
-            console.log("before fetch", subjectName, selectedPaper);
-            const response = await fetch(
+            setIsLoading(true);            const response = await fetch(
                 `${ConfigAPI_BASE_URL}/public/learn/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0${showAllTerms ? '&show_all_questions=yes' : '&show_all_questions=no'}`
             );
-            console.log("after fetch", response);
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
             }
@@ -422,7 +419,6 @@ export default function QuizScreen() {
             const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
             setStats(newStats.data.stats);
         } catch (error) {
-            console.log('Failed to load question:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
@@ -430,7 +426,6 @@ export default function QuizScreen() {
                 position: 'bottom'
             });
         } finally {
-            console.log("finally");
             setIsLoading(false);
         }
     };
@@ -487,8 +482,6 @@ export default function QuizScreen() {
 
 
     const handleRestart = async () => {
-        console.log("restarting");
-        console.log(user?.uid, subjectName);
         if (!user?.uid || !subjectName) return;
 
         trackEvent(Events.RESTART_QUIZ, {
@@ -541,7 +534,6 @@ export default function QuizScreen() {
                     // Remove newlines between $ signs to keep LaTeX on one line
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $');
 
-                console.log(explanation);
                 setAiExplanation(explanation);
                 setIsExplanationModalVisible(true);
             }
@@ -1006,7 +998,6 @@ export default function QuizScreen() {
                                 <TouchableOpacity
                                     style={styles.aiExplanationButton}
                                     onPress={() => {
-                                        console.log('fetching ai explanation')
                                         fetchAIExplanation(question?.id || 0)
                                     }}
                                     disabled={isLoadingExplanation}

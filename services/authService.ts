@@ -19,9 +19,7 @@ export async function googleLogin() {
 
         if (!userInfo.idToken) {
             throw new Error('No ID token present');
-        } else {
-            console.log(userInfo.idToken);
-        }
+        } 
 
         const credential = GoogleAuthProvider.credential(userInfo.idToken);
         const result = await signInWithCredential(auth, credential);

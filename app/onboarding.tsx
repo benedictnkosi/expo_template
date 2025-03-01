@@ -48,8 +48,6 @@ export default function OnboardingScreen() {
       const tokenPayload = JSON.parse(atob(tokenParts[1]));
       const uid = tokenPayload.sub;
 
-      console.log('User ID from token:', uid);
-
       const learner = await updateLearner(uid, {
         name: parsed.userInfo.name,
         grade: parseInt(grade),
@@ -144,8 +142,6 @@ export default function OnboardingScreen() {
               <GooglePlacesAutocomplete
                 placeholder="🔍 Search for your school..."
                 onPress={(data, details = null) => {
-                  console.log('Selected place:', data);
-                  console.log('Place details:', details);
                   setSchool(data.description);
                   setSchoolName(data.structured_formatting.main_text);
                   setSchoolAddress(data.description);
@@ -157,7 +153,6 @@ export default function OnboardingScreen() {
                 }}
                 fetchDetails={true}
                 onFail={error => console.error('GooglePlaces error:', error)}
-                onNotFound={() => console.log('No results found')}
                 styles={{
                   container: styles.searchContainer,
                   textInput: styles.searchInput,

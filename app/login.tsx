@@ -66,10 +66,6 @@ export default function Login() {
           return;
         }
 
-          sub: googleUser.sub,
-          email: googleUser.email,
-          name: googleUser.name
-        });
         
         // Store auth data
         const userData = {

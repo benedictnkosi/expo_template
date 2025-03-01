@@ -40,7 +40,6 @@ export default function HomeScreen() {
       try {
         const authData = await SecureStore.getItemAsync('auth');
         if (authData) {
-          console.log('authData', authData);
           const parsed = JSON.parse(authData);
 
           // Extract sub from idToken as uid
@@ -57,7 +56,6 @@ export default function HomeScreen() {
             picture: parsed.userInfo.picture
           };
 
-          console.log('Setting user with:', userData);
           setUser(userData);
 
           // Load data immediately after setting user
@@ -71,7 +69,6 @@ export default function HomeScreen() {
                 school: learner.school_name || ''
               });
 
-              console.log('learner', learner);
               const enrolledResponse = await fetchMySubjects(userData.uid);
 
               // Group subjects by base name (removing P1/P2)
@@ -98,16 +95,13 @@ export default function HomeScreen() {
 
               setMySubjects(Object.values(subjectGroups));
             } else {
-              console.log('No learner grade');
               router.replace('/onboarding');
             }
 
           } else {
-            console.log('No user uid');
             router.replace('/login');
           }
         } else {
-          console.log('No auth data');
           router.replace('/login');
         }
       } catch (error) {
@@ -123,11 +117,9 @@ export default function HomeScreen() {
   // Add dependency tracking for loadData
   const loadData = useCallback(async () => {
     if (!user?.uid) return;
-    console.log('Loading data for user:', user.uid);
     try {
       const learner = await getLearner(user.uid);
       if (learner.name && learner.grade && learner.school_name) {
-        console.log('Learner name and grade found');
         setLearnerInfo({
           name: learner.name,
           grade: learner.grade?.number?.toString() || '',
@@ -162,7 +154,6 @@ export default function HomeScreen() {
 
         setMySubjects(Object.values(subjectGroups));
       } else {
-        console.log('No learner name or grade');
 
         router.replace('/onboarding');
       }
@@ -176,7 +167,6 @@ export default function HomeScreen() {
   // Update useFocusEffect to properly track dependencies
   useFocusEffect(
     useCallback(() => {
-      console.log('Focus effect triggered, user:', user?.uid);
       if (user?.uid) {
         loadData();
       }
