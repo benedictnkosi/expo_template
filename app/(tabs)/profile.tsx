@@ -1,4 +1,3 @@
-
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth, GoogleUser } from '../../contexts/AuthContext';
@@ -267,13 +266,15 @@ export default function ProfileScreen() {
                   <Picker
                     selectedValue={editGrade}
                     onValueChange={setEditGrade}
-                    style={styles.picker}
+                    style={[styles.picker, Platform.OS === 'ios' && styles.pickerIOS]}
+                    itemStyle={Platform.OS === 'ios' ? styles.pickerItemIOS : undefined}
                   >
                     {grades.map((grade) => (
                       <Picker.Item
                         key={grade.id}
                         label={`Grade ${grade.number}`}
                         value={grade.number.toString()}
+                        color="#1E293B"
                       />
                     ))}
                   </Picker>
@@ -457,12 +458,20 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     borderRadius: 12,
     marginBottom: 16,
-    overflow: 'hidden',
+    overflow: Platform.OS === 'android' ? 'hidden' : 'visible',
   },
   picker: {
     height: 50,
     width: '100%',
+  },
+  pickerIOS: {
+    height: 150,
+    backgroundColor: '#FFFFFF',
+  },
+  pickerItemIOS: {
+    height: 150,
     color: '#1E293B',
+    fontSize: 16,
   },
   signOutContainer: {
     padding: 20,

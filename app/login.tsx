@@ -39,7 +39,6 @@ export default function Login() {
 
   async function handleSignInResponse() {
     if (response?.type === 'success' && response.authentication) {
-      console.log('Sign in response:', response);
       setIsLoading(true);
       try {
         const { authentication } = response;
@@ -54,7 +53,6 @@ export default function Login() {
 
         const googleUser = await userInfoResponse.json();
 
-        console.log('Google user:', googleUser);
         // Verify we have required fields
         if (!googleUser.id) {
           console.error('No user ID received from Google');
@@ -68,12 +66,11 @@ export default function Login() {
           return;
         }
 
-        console.log('Google user info:', {
           sub: googleUser.sub,
           email: googleUser.email,
           name: googleUser.name
         });
-
+        
         // Store auth data
         const userData = {
           authentication,
@@ -87,7 +84,6 @@ export default function Login() {
         };
 
         await SecureStore.setItemAsync('auth', JSON.stringify(userData));
-        console.log('Auth data stored, user ID:', googleUser.id);
         router.replace('/(tabs)');
       } catch (error) {
         console.error('Sign in error:', error);

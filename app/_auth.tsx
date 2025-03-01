@@ -14,7 +14,6 @@ export function useProtectedRoute() {
         const inAuthGroup = segments[0] === 'login'
 
         if (!authData && !inAuthGroup) {
-          console.log('No auth data, redirecting to login');
           router.replace('/login');
           return;
         }

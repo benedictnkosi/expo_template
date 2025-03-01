@@ -776,7 +776,7 @@ export default function QuizScreen() {
 
                             <TouchableOpacity
                                 style={[styles.paperButton, { backgroundColor: '#64748B' }]}
-                                onPress={() => router.replace('/(tabs)')}
+                                onPress={() => router.push('/(tabs)')}
                             >
                                 <LinearGradient
                                     colors={['#64748B', '#475569']}
@@ -1055,7 +1055,7 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => router.push('/(tabs)')}
+                        onPress={() => router.replace('/(tabs)')}
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
                         <ThemedText style={styles.footerButtonText} >Chill Time!</ThemedText>
