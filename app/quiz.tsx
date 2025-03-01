@@ -751,8 +751,22 @@ export default function QuizScreen() {
                             🐛 Oops! Looks like the quiz gremlins ate all the questions!
                         </ThemedText>
                         <ThemedText style={styles.noQuestionsText}>
-                            🔍 We searched everywhere, but they've vanished into thin air! 🚀
+                            Check your profile for selected school terms and curriculum
                         </ThemedText>
+
+
+                        <TouchableOpacity
+                            style={[styles.paperButton, { backgroundColor: '#3B82F6' }]}
+                            onPress={() => router.push('/(tabs)/profile')}
+                        >
+                            <LinearGradient
+                                colors={['#3B82F6', '#2563EB']}
+                                style={styles.paperButtonGradient}
+                            >
+                                <ThemedText style={styles.paperButtonText}>⚙️ Go to Profile Settings</ThemedText>
+                            </LinearGradient>
+                        </TouchableOpacity>
+
                         <View style={styles.completionButtons}>
                             <TouchableOpacity
                                 style={[styles.paperButton, { backgroundColor: '#FF3B30' }]}
@@ -768,7 +782,7 @@ export default function QuizScreen() {
 
                             <TouchableOpacity
                                 style={[styles.paperButton, { backgroundColor: '#64748B' }]}
-                                onPress={() => router.push('/(tabs)')}
+                                onPress={() => router.replace('/(tabs)')}
                             >
                                 <LinearGradient
                                     colors={['#64748B', '#475569']}
@@ -1046,7 +1060,7 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => router.push('/(tabs)')}
+                        onPress={() => router.replace('/(tabs)')}
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
                         <ThemedText style={styles.footerButtonText} >Chill Time!</ThemedText>

@@ -21,28 +21,44 @@ interface FAQItem {
 
 const faqs: FAQItem[] = [
   {
-    question: 'How does ExamQuiz work?',
-    answer: 'ExamQuiz provides past exam questions for practice. Select your grade and subjects, then practice questions one at a time. Each question includes detailed solutions and explanations. Your progress is tracked per subject.'
+    question: "How does ExamQuiz work?",
+    answer: "ExamQuiz helps you practice with real past exam questions. Choose your subjects, select Paper 1 or Paper 2, and start practicing! Each question comes with detailed solutions and explanations. Your progress is tracked separately for each paper and subject."
   },
   {
-    question: 'How do streaks work?',
-    answer: 'Streaks are a way to track your daily learning consistency. Get at least one question correct each day to maintain your streak. Miss a day and your streak resets to zero. Keep practicing daily to build up your streak! 🔥'
+    question: "What is the difference between Paper 1 and Paper 2?",
+    answer: "Each subject is divided into Paper 1 and Paper 2, following the official exam structure. Each paper covers different topics and sections of the curriculum. You can practice both papers separately to ensure complete preparation."
   },
   {
-    question: 'How does the progress bar work?',
-    answer: 'The progress bar shows your advancement in each subject. The green bar indicates correct answers, while the total bar length represents all attempted questions. For example, if you have answered 7 out of 10 questions correctly, the progress bar will be 70% green.This helps you track your mastery of each subject.'
+    question: "How does the AI help me learn?",
+    answer: "Our AI assistant helps explain concepts in detail when you get a question wrong. It breaks down the solution step-by-step, identifies where you might have gone wrong, and provides additional examples to help you understand."
   },
   {
-    question: 'How do I track my progress?',
-    answer: 'Each subject shows your total questions attempted, questions answered correctly, and overall progress. You can reset your progress at any time from the subject screen.'
+    question: "How do I select my curriculum and terms?",
+    answer: "In your profile settings, you can choose between CAPS and IEB curricula or both, and select which terms (1-4) you want to see questions from. This helps customize your practice to match your school's curriculum and current term."
   },
   {
-    question: 'Can I change my grade?',
-    answer: 'Yes, you can change your grade in the profile section. Note that changing your grade will reset your progress as questions are grade-specific.'
+    question: "How do streaks work?",
+    answer: "To maintain your daily streak, you need to get at least 3 correct answers each day. Miss a day or fail to get 3 correct answers, and your streak resets. Keep practicing daily to build your streak! 🔥"
   },
   {
-    question: 'How do I reset my progress?',
-    answer: 'You can reset your progress at any time from the subject screen. This will reset your progress and start you from the beginning of the subject.'
+    question: "How do points work?",
+    answer: "You earn 1 point for each correct answer. Get on a roll with 3 correct answers in a row, and you'll earn double points for your next correct answers! Keep the streak going to maximize your points. 🎯"
+  },
+  {
+    question: "How does the progress tracking work?",
+    answer: "Each subject shows your performance with:\n• Total questions attempted\n• Correct answers (Bullseyes)\n• Incorrect answers (Oopsies)\n• Overall mastery percentage\nThe progress bar color indicates your performance level: green for high scores, amber for medium, and red for areas needing improvement."
+  },
+  {
+    question: "Can I change my grade or school?",
+    answer: "Yes, you can update your grade and school in the profile section. Note that changing your grade will reset your progress as questions are grade-specific. Your school information helps us provide relevant curriculum content."
+  },
+  {
+    question: "What if I find an issue with a question?",
+    answer: "You can report any issues with questions using the report button in the quiz screen. Our team will review and address the reported issues to ensure accuracy."
+  },
+  {
+    question: "How do I reset my progress?",
+    answer: "You can reset your progress for individual subjects from the subject screen. This will clear your progress for that specific subject and let you start fresh."
   }
 ];
 

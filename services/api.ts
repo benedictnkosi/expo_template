@@ -157,7 +157,6 @@ export async function updateLearner(uid: string, data: {
   school_address: string;
   school_latitude: number;
   school_longitude: number;
-  notification_hour: number;
   terms: string;
   curriculum: string;
 }) {
@@ -182,7 +181,6 @@ export async function updateLearner(uid: string, data: {
         school_address: data.school_address,
         school_latitude: data.school_latitude,
         school_longitude: data.school_longitude,
-        notification_hour: data.notification_hour,
         terms: data.terms,
         curriculum: data.curriculum
       })

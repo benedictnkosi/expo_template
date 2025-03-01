@@ -31,13 +31,11 @@ export default function OnboardingScreen() {
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
   const [schoolName, setSchoolName] = useState('');
-  const [preferredTime, setPreferredTime] = useState<number>(18);
   const [curriculum, setCurriculum] = useState('');
   const insets = useSafeAreaInsets();
   const [errors, setErrors] = useState({
     grade: '',
     school: '',
-    time: '',
     curriculum: ''
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -127,9 +125,9 @@ export default function OnboardingScreen() {
             school_address: parsedOnboarding.school_address,
             school_latitude: parsedOnboarding.school_latitude,
             school_longitude: parsedOnboarding.school_longitude,
-            curriculum: parsedOnboarding.curriculum.join(','),
-            notification_hour: parsedOnboarding.notification_hour,
-            terms: "1,2,3,4"
+            curriculum: "IEB,CAPS",
+            terms: "1,2,3,4",
+            notification_hour: 18,
           };
 
           console.log('Sending learner data to API:', learnerData);
@@ -168,7 +166,6 @@ export default function OnboardingScreen() {
         school_latitude: schoolLatitude,
         school_longitude: schoolLongitude,
         curriculum: [curriculum],
-        notification_hour: preferredTime,
         onboardingCompleted: true
       };
 
@@ -328,7 +325,6 @@ export default function OnboardingScreen() {
               {school && (
                 <View style={styles.selectedSchoolContainer}>
                   <View style={styles.selectedSchoolHeader}>
-
                     <ThemedText style={styles.selectedSchoolTitle}>🏫 Selected</ThemedText>
                   </View>
                   <ThemedText style={styles.selectedSchoolName}>{school}</ThemedText>
@@ -384,28 +380,6 @@ export default function OnboardingScreen() {
       case 4:
         return (
           <View style={styles.step}>
-            <View style={styles.timeStepContainer}>
-              <ThemedText style={styles.stepTitle}>⏰ When do you want to practice?</ThemedText>
-              <View style={styles.timeScrollContainer}>
-                <SelectTime
-                  onTimeSelect={(time) => {
-                    const hour = parseInt(time.split(':')[0]);
-                    const isPM = time.includes('PM');
-                    const value = isPM ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
-                    setPreferredTime(value);
-                    setErrors(prev => ({ ...prev, time: '' }));
-                  }}
-                  selectedTime={preferredTime}
-                />
-              </View>
-            </View>
-            {errors.time ? <ThemedText style={styles.errorText}>{errors.time}</ThemedText> : null}
-          </View>
-        );
-
-      case 5:
-        return (
-          <View style={styles.step}>
             <Image
               source={ILLUSTRATIONS.ready}
               style={styles.illustration}
@@ -434,8 +408,6 @@ export default function OnboardingScreen() {
       case 3:
         return !!curriculum;
       case 4:
-        return !!preferredTime;
-      case 5:
         return true;
       default:
         return false;
@@ -485,11 +457,7 @@ export default function OnboardingScreen() {
                   (!canProceed() && step !== 0) && styles.buttonDisabled
                 ]}
                 onPress={() => {
-                  if (step === 4 && !preferredTime) {
-                    setErrors(prev => ({ ...prev, time: 'Please select your preferred time' }));
-                    return;
-                  }
-                  if (step === 5) {
+                  if (step === 4) {
                     handleComplete();
                   } else if (step === 1 && !grade) {
                     setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
@@ -498,7 +466,7 @@ export default function OnboardingScreen() {
                   } else if (step === 3 && !curriculum) {
                     setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
                   } else {
-                    setErrors({ grade: '', school: '', time: '', curriculum: '' });
+                    setErrors({ grade: '', school: '', curriculum: '' });
                     setStep(step + 1);
                   }
                 }}
@@ -509,7 +477,7 @@ export default function OnboardingScreen() {
                   styles.primaryButtonText,
                   (!canProceed() && step !== 0) && styles.buttonTextDisabled
                 ]}>
-                  {step === 5 ? '👉 Sign-in' : 'Next! 🚀'}
+                  {step === 4 ? '👉 Sign-in' : 'Next! 🚀'}
                 </ThemedText>
               </TouchableOpacity>
             </>

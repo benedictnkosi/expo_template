@@ -34,7 +34,6 @@ interface LearnerInfo {
   school_longitude?: number;
   curriculum?: string;
   terms?: string;
-  notification_hour?: number;
   photoURL?: string;
   imagePath?: string;
 }
@@ -52,7 +51,6 @@ export default function ProfileScreen() {
   const [editSchoolLongitude, setEditSchoolLongitude] = useState(0);
   const [editCurriculum, setEditCurriculum] = useState<string>('');
   const [editTerms, setEditTerms] = useState<string>('');
-  const [editNotificationHour, setEditNotificationHour] = useState(18);
   const [isLoading, setIsLoading] = useState(false);
   const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
   const [showAlert, setShowAlert] = useState(false);
@@ -113,7 +111,6 @@ export default function ProfileScreen() {
           school_longitude: learner.school_longitude || 0,
           curriculum: learner.curriculum || '',
           terms: learner.terms || '',
-          notification_hour: learner.notification_hour || 18,
           imagePath: user.picture || ""
         });
 
@@ -125,7 +122,6 @@ export default function ProfileScreen() {
         setEditSchoolLongitude(learner.school_longitude || 0);
         setEditCurriculum(learner.curriculum || '');
         setEditTerms(learner.terms || '');
-        setEditNotificationHour(learner.notification_hour || 18);
       } catch (error) {
         console.error('Failed to fetch learner info:', error);
       }
@@ -177,7 +173,6 @@ export default function ProfileScreen() {
         school_address: editSchoolAddress,
         school_latitude: editSchoolLatitude,
         school_longitude: editSchoolLongitude,
-        notification_hour: editNotificationHour,
         terms: cleanTerms,
         curriculum: cleanCurriculum
       });
@@ -190,8 +185,7 @@ export default function ProfileScreen() {
         school_latitude: editSchoolLatitude,
         school_longitude: editSchoolLongitude,
         curriculum: cleanCurriculum,
-        terms: cleanTerms,
-        notification_hour: editNotificationHour
+        terms: cleanTerms
       });
 
       handleSuccess();
@@ -312,7 +306,7 @@ export default function ProfileScreen() {
           <ThemedView style={styles.profileCard}>
             <View style={styles.editForm}>
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Name</ThemedText>
+                <ThemedText style={styles.label}>🔹 What do we call our quiz champion?</ThemedText>
                 <TextInput
                   style={styles.input}
                   value={editName}
@@ -324,7 +318,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Grade</ThemedText>
+                <ThemedText style={styles.label}>🏆 Grade</ThemedText>
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={editGrade}
@@ -345,7 +339,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>School</ThemedText>
+                <ThemedText style={styles.label}>🏫 School</ThemedText>
                 {editSchool && (
                   <View style={styles.selectedSchoolContainer}>
                     <ThemedText style={styles.selectedSchoolName}>{editSchool}</ThemedText>
@@ -380,7 +374,9 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Show me questions from these curriculums</ThemedText>
+                <ThemedText style={styles.label}>📖 Choose Your Curriculums</ThemedText>
+                <ThemedText style={styles.smallLabel}>Only questions from the selected curriculum\s will appear in the quiz.</ThemedText>
+
                 <View style={styles.optionsContainer}>
                   {CURRICULA.map((curr) => (
                     <TouchableOpacity
@@ -410,7 +406,9 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Show me questions from these terms</ThemedText>
+                <ThemedText style={styles.label}>🔹 Which terms are you mastering today? Choose wisely! 💡</ThemedText>
+                <ThemedText style={styles.smallLabel}>Only questions from the selected terms will appear in the quiz.</ThemedText>
+
                 <View style={styles.optionsContainer}>
                   {TERMS.map((term) => (
                     <TouchableOpacity
@@ -439,21 +437,6 @@ export default function ProfileScreen() {
                 </View>
               </View>
 
-              <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>Daily reminder time</ThemedText>
-                <View style={styles.timeContainer}>
-                  <SelectTime
-                    onTimeSelect={(time) => {
-                      const hour = parseInt(time.split(':')[0]);
-                      const isPM = time.includes('PM');
-                      const value = isPM ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
-                      setEditNotificationHour(value);
-                    }}
-                    selectedTime={editNotificationHour}
-                  />
-                </View>
-              </View>
-
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
                 onPress={handleSave}
@@ -461,7 +444,7 @@ export default function ProfileScreen() {
                 testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
-                  {isLoading ? 'Saving...' : 'Save Changes'}
+                  {isLoading ? 'Saving...' : 'Lock in your settings! 🔒'}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -606,6 +589,12 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
+    marginBottom: 12,
+    marginVertical: 12,
+  },
+  smallLabel: {
+    fontSize: 10,
+    fontWeight: '400',
     marginBottom: 8,
   },
   input: {
