@@ -1,35 +1,56 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ZoomableImageNew from '../components/ZoomableImageNew';
 
 export default function ImageViewer() {
     const { imageUrl } = useLocalSearchParams();
+    console.log('inside image viewer', imageUrl)
 
     return (
-        <View style={styles.container}>
-            <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => router.back()}
-            >
-                <Ionicons name="close" size={28} color="#FF3B30" />
-            </TouchableOpacity>
-            <ZoomableImageNew imageUrl={imageUrl as string} />
-        </View>
+        <SafeAreaView style={styles.safeArea}>
+            <View style={styles.container}>
+                <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => router.back()}
+                >
+                    <Ionicons name="close" size={28} color="#FF3B30" />
+                </TouchableOpacity>
+                <View style={styles.imageContainer}>
+                    <ZoomableImageNew imageUrl={imageUrl as string} />
+                </View>
+            </View>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    safeArea: {
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+        position: 'relative',
+    },
+    imageContainer: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 10,
+    },
     closeButton: {
         position: 'absolute',
-        top: 50,
+        top: 20,
         right: 20,
-        zIndex: 1,
+        zIndex: 10,
         padding: 8,
         backgroundColor: '#FFFFFF',
         borderRadius: 20,

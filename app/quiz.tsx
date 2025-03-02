@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Switch } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Switch, Dimensions } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
@@ -8,6 +8,7 @@ import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
+import ZoomableImageNew from '../components/ZoomableImageNew';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
@@ -268,6 +269,8 @@ export default function QuizScreen() {
     const [isAnswerLoading, setIsAnswerLoading] = useState(false);
     const [isApproving, setIsApproving] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+    const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+    const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -821,12 +824,15 @@ export default function QuizScreen() {
                         )}
 
                         {currentQuestion.image_path && (
-                            <>
+                            <View style={styles.imageWrapper}>
                                 <TouchableOpacity
-                                    onPress={() => router.push({
-                                        pathname: '/image-viewer',
-                                        params: { imageUrl: currentQuestion.image_path }
-                                    })}
+                                    style={styles.touchableImage}
+                                    onPress={() => {
+                                        setZoomImageUrl(currentQuestion.image_path);
+                                        setIsZoomModalVisible(true);
+                                    }}
+                                    activeOpacity={0.7}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     testID='question-context-image-container'
                                 >
                                     {isImageLoading && <ImageLoadingPlaceholder />}
@@ -841,9 +847,7 @@ export default function QuizScreen() {
                                         testID='question-context-image'
                                     />
                                 </TouchableOpacity>
-
-
-                            </>
+                            </View>
                         )}
 
                         {currentQuestion.question && (
@@ -854,29 +858,30 @@ export default function QuizScreen() {
 
 
                         {currentQuestion.question_image_path && (
-                            <>
+                            <View style={styles.imageWrapper}>
                                 <TouchableOpacity
-
-                                    onPress={() => router.push({
-                                        pathname: '/image-viewer',
-                                        params: { imageUrl: currentQuestion.question_image_path }
-                                    })}
+                                    style={styles.touchableImage}
+                                    onPress={() => {
+                                        setZoomImageUrl(currentQuestion.question_image_path);
+                                        setIsZoomModalVisible(true);
+                                    }}
+                                    activeOpacity={0.7}
+                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    testID='question-additional-image-container'
                                 >
-                                    {isImageLoading && <ImageLoadingPlaceholder />}
                                     <Image
                                         source={{
                                             uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.question_image_path}`
                                         }}
-                                        style={styles.questionImage}
+                                        style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
                                         resizeMode="contain"
                                         onLoadStart={() => setIsImageLoading(true)}
                                         onLoadEnd={() => setIsImageLoading(false)}
                                         testID='question-image'
                                     />
+                                    {isImageLoading && <ImageLoadingPlaceholder />}
                                 </TouchableOpacity>
-
-
-                            </>
+                            </View>
                         )}
 
                         {currentQuestion.question && (
@@ -960,28 +965,25 @@ export default function QuizScreen() {
                                         </ThemedText>
                                     )}
                                     {currentQuestion.answer_image && (
-                                        <>
-                                            <TouchableOpacity
-                                                onPress={() => router.push({
-                                                    pathname: '/image-viewer',
-                                                    params: { imageUrl: currentQuestion.answer_image }
-                                                })}
-                                                testID='correct-answer-image-container'
-                                            >
-                                                {isAnswerImageLoading && <ImageLoadingPlaceholder />}
-                                                <Image
-                                                    source={{
-                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.answer_image}`
-                                                    }}
-                                                    style={styles.answerImage}
-                                                    resizeMode="contain"
-                                                    onLoadStart={() => setIsAnswerImageLoading(true)}
-                                                    onLoadEnd={() => setIsAnswerImageLoading(false)}
-                                                    testID='correct-answer-image'
-                                                />
-                                            </TouchableOpacity>
-
-                                        </>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                setZoomImageUrl(currentQuestion.answer_image);
+                                                setIsZoomModalVisible(true);
+                                            }}
+                                            testID='correct-answer-image-container'
+                                        >
+                                            {isAnswerImageLoading && <ImageLoadingPlaceholder />}
+                                            <Image
+                                                source={{
+                                                    uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.answer_image}`
+                                                }}
+                                                style={styles.answerImage}
+                                                resizeMode="contain"
+                                                onLoadStart={() => setIsAnswerImageLoading(true)}
+                                                onLoadEnd={() => setIsAnswerImageLoading(false)}
+                                                testID='correct-answer-image'
+                                            />
+                                        </TouchableOpacity>
                                     )}
                                     {currentQuestion.explanation && (
                                         <View style={styles.questionContainer} testID='explanation-container'>
@@ -1146,6 +1148,32 @@ export default function QuizScreen() {
                             );
                         })}
                     </ScrollView>
+                </View>
+            </Modal>
+
+            <Modal
+                isVisible={isZoomModalVisible}
+                onBackdropPress={() => setIsZoomModalVisible(false)}
+                onSwipeComplete={() => setIsZoomModalVisible(false)}
+                swipeDirection={['down']}
+                useNativeDriver={true}
+                style={styles.zoomModal}
+                animationIn="fadeIn"
+                animationOut="fadeOut"
+                backdropOpacity={1}
+                statusBarTranslucent
+            >
+                <View style={styles.zoomModalContent}>
+                    <TouchableOpacity
+                        style={styles.zoomCloseButton}
+                        onPress={() => setIsZoomModalVisible(false)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="close" size={28} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    {zoomImageUrl && (
+                        <ZoomableImageNew imageUrl={zoomImageUrl} />
+                    )}
                 </View>
             </Modal>
         </LinearGradient >
@@ -1377,6 +1405,12 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 200,
         borderRadius: 8,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 3,
     },
     singleAnswerContainer: {
         gap: 16,
@@ -1478,6 +1512,24 @@ const styles = StyleSheet.create({
     restartButton: {
         backgroundColor: '#FF3B30',
     },
+    imageWrapper: {
+        width: '100%',
+        height: 200,
+        marginVertical: 10,
+        borderRadius: 8,
+        overflow: 'hidden',
+        backgroundColor: '#F8FAFC',
+        position: 'relative',
+        zIndex: 1
+    },
+    touchableImage: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+        zIndex: 2
+    },
     imagePlaceholderContainer: {
         width: '100%',
         height: 200,
@@ -1485,7 +1537,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         overflow: 'hidden',
         position: 'absolute',
-        zIndex: 1,
+        zIndex: 4,
+        justifyContent: 'center',
+        alignItems: 'center'
     },
     imagePlaceholderContent: {
         flex: 1,
@@ -1862,6 +1916,30 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
         textAlign: 'center',
+    },
+    zoomModal: {
+        margin: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomModalContent: {
+        width: Dimensions.get('window').width,
+        height: Dimensions.get('window').height,
+        backgroundColor: 'black',
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    zoomCloseButton: {
+        position: 'absolute',
+        top: 40,
+        right: 20,
+        zIndex: 10,
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
