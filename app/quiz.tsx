@@ -856,6 +856,7 @@ export default function QuizScreen() {
                         {currentQuestion.question_image_path && (
                             <>
                                 <TouchableOpacity
+
                                     onPress={() => router.push({
                                         pathname: '/image-viewer',
                                         params: { imageUrl: currentQuestion.question_image_path }

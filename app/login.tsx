@@ -39,8 +39,6 @@ export default function Login() {
         const onboardingData = await AsyncStorage.getItem('onboardingData');
         if (onboardingData && JSON.parse(onboardingData).onboardingCompleted) {
           router.replace('/(tabs)');
-        } else {
-          router.replace('/onboarding');
         }
       }
     }
