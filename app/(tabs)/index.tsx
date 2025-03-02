@@ -276,7 +276,7 @@ export default function HomeScreen() {
               <View style={styles.statContent}>
                 <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={styles.statLabel}>Your Scoreboard</ThemedText>
+                  <ThemedText style={styles.statLabel}>Scoreboard</ThemedText>
                   <ThemedText style={styles.statValue} testID="ranking-value">{ranking}</ThemedText>
                 </View>
               </View>

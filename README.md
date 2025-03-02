@@ -129,16 +129,17 @@ android {
     // ... existing code ...
     
     signingConfigs {
-        release {
-            storeFile file(MYAPP_UPLOAD_STORE_FILE)
-            storePassword MYAPP_UPLOAD_STORE_PASSWORD
-            keyAlias MYAPP_UPLOAD_KEY_ALIAS
-            keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
         }
-    }
-    buildTypes {
         release {
-            signingConfig signingConfigs.release
+            storeFile file('keystore.jks')
+            storePassword "c4ea0fa65c00c133a38786b86790a73e"
+            keyAlias "18a2509529bd69f94e3d92cb654ab2ca"
+            keyPassword "291654a144e727dac362827c1344cc54"
         }
     }
 }

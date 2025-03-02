@@ -365,6 +365,7 @@ export default function QuizScreen() {
             });
             setIsReportModalVisible(false);
             setReportComment('');
+            loadRandomQuestion(selectedPaper || '');
         } catch (error) {
             console.error('Error reporting issue:', error);
             Toast.show({
@@ -1076,6 +1077,15 @@ export default function QuizScreen() {
             >
                 <View style={styles.reportModalContent}>
                     <ThemedText style={styles.reportModalTitle}>Report Issue</ThemedText>
+                    <TouchableOpacity
+                        style={[styles.reportModalButton, styles.submitButton, { backgroundColor: '#3B82F6' }]}
+                        onPress={handleSubmitReport}
+                        disabled={isSubmitting}
+                    >
+                        <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
+                        </ThemedText>
+                    </TouchableOpacity>
                     <TextInput
                         style={styles.reportInput}
                         placeholder="Describe the issue..."
@@ -1092,15 +1102,7 @@ export default function QuizScreen() {
                         >
                             <ThemedText style={styles.buttonText}>Cancel</ThemedText>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.reportModalButton, styles.submitButton, { backgroundColor: '#3B82F6' }]}
-                            onPress={handleSubmitReport}
-                            disabled={isSubmitting}
-                        >
-                            <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
-                                {isSubmitting ? 'Submitting...' : 'Submit'}
-                            </ThemedText>
-                        </TouchableOpacity>
+
                     </View>
                 </View>
             </Modal>

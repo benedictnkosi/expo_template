@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
@@ -277,7 +277,7 @@ export default function OnboardingScreen() {
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
               </ThemedText>
               <ThemedText style={styles.statsText}>
-                💡 Join 6,000+ students sharpening their skills with 18,000+ brain-boosting questions every day! 🧠🔥
+                💡 Join 4,000+ students sharpening their skills with 8,000+ brain-boosting questions every day! 🧠🔥
               </ThemedText>
             </View>
           </View>
@@ -479,26 +479,6 @@ export default function OnboardingScreen() {
               <TouchableOpacity
                 style={[
                   styles.planOption,
-                  selectedPlan === 'yearly' && styles.selectedPlan
-                ]}
-                onPress={() => setSelectedPlan('yearly')}
-              >
-                <View style={styles.planOptionHeader}>
-                  <View>
-                    <ThemedText style={styles.planLabel}>🟢 Yearly Plan – R299</ThemedText>
-                    <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
-                  </View>
-                  <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceAmount}>R299</ThemedText>
-                    <ThemedText style={styles.pricePeriod}>per year</ThemedText>
-                  </View>
-                </View>
-                <ThemedText style={styles.savingsText}>💰 Save R289 vs. Monthly! More savings = More Snacks! 🍕</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.planOption,
                   selectedPlan === 'monthly' && styles.selectedPlan
                 ]}
                 onPress={() => setSelectedPlan('monthly')}
@@ -509,7 +489,7 @@ export default function OnboardingScreen() {
                     <ThemedText style={styles.planSubLabel}>Season cramming!</ThemedText>
                   </View>
                   <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceAmount}>R49</ThemedText>
+                    <ThemedText style={styles.priceAmount}>R{prices.monthly}</ThemedText>
                     <ThemedText style={styles.pricePeriod}>per month</ThemedText>
                   </View>
                 </View>
@@ -528,10 +508,30 @@ export default function OnboardingScreen() {
                     <ThemedText style={styles.planSubLabel}>Last-minute study warriors!</ThemedText>
                   </View>
                   <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceAmount}>R19</ThemedText>
+                    <ThemedText style={styles.priceAmount}>R{prices.weekly}</ThemedText>
                     <ThemedText style={styles.pricePeriod}>per week</ThemedText>
                   </View>
                 </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.planOption,
+                  selectedPlan === 'yearly' && styles.selectedPlan
+                ]}
+                onPress={() => setSelectedPlan('yearly')}
+              >
+                <View style={styles.planOptionHeader}>
+                  <View>
+                    <ThemedText style={styles.planLabel}>🟢 Yearly Plan – R{prices.yearly}</ThemedText>
+                    <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
+                  </View>
+                  <View style={styles.priceContainer}>
+                    <ThemedText style={styles.priceAmount}>R{prices.yearly}</ThemedText>
+                    <ThemedText style={styles.pricePeriod}>per year</ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={styles.savingsText}>💰 Save R{(prices.monthly * 12) - prices.yearly} vs. Monthly! More savings = More Snacks! 🍕</ThemedText>
               </TouchableOpacity>
 
               <ThemedText style={styles.cancelText}>
@@ -589,6 +589,17 @@ export default function OnboardingScreen() {
       setStep(step + 1);
     }
   };
+
+  const getPrices = () => {
+    const isIOS = Platform.OS === 'ios';
+    return {
+      weekly: isIOS ? 29 : 19,
+      monthly: isIOS ? 59 : 49,
+      yearly: isIOS ? 309 : 299
+    };
+  };
+
+  const prices = getPrices();
 
   return (
     <LinearGradient
