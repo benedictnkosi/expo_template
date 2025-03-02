@@ -13,6 +13,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,10 +24,21 @@ const ILLUSTRATIONS = {
   ready: require('@/assets/images/illustrations/exam.png'),
 };
 
+// Add checkmark component for plan features
+const CheckmarkItem = ({ text }: { text: string }) => (
+  <View style={styles.checkmarkItem}>
+    <View style={styles.checkmarkCircle}>
+      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+    </View>
+    <ThemedText style={styles.checkmarkText}>{text}</ThemedText>
+  </View>
+);
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
   const [school, setSchool] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState('yearly');
   const [schoolAddress, setSchoolAddress] = useState('');
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
@@ -121,7 +133,7 @@ export default function OnboardingScreen() {
           // Format the data to match the expected API structure
           const learnerData = {
             name: googleUser.name,
-            grade: parsedOnboarding.grade.toString(),
+            grade: parseInt(parsedOnboarding.grade),
             school: parsedOnboarding.school,
             school_address: parsedOnboarding.school_address,
             school_latitude: parsedOnboarding.school_latitude,
@@ -185,6 +197,45 @@ export default function OnboardingScreen() {
         curriculum: [curriculum]
       });
 
+      // Check if user is already logged in
+      const existingAuth = await SecureStore.getItemAsync('auth');
+      if (existingAuth) {
+        // User is already logged in, update their profile and redirect
+        const parsed = JSON.parse(existingAuth);
+        const idToken = parsed.authentication.idToken;
+        const tokenParts = idToken.split('.');
+        const tokenPayload = JSON.parse(atob(tokenParts[1]));
+        const uid = tokenPayload.sub;
+
+        // Update learner profile with onboarding data
+        const learnerData = {
+          name: parsed.userInfo.name,
+          grade: parseInt(grade),
+          school: schoolName,
+          school_address: schoolAddress,
+          school_latitude: schoolLatitude,
+          school_longitude: schoolLongitude,
+          curriculum: "IEB,CAPS",
+          terms: "1,2,3,4",
+          notification_hour: 18,
+        };
+
+        const learner = await updateLearner(uid, learnerData);
+        if (learner.status !== 'OK') {
+          Toast.show({
+            type: 'error',
+            text1: 'Failed to update learner profile',
+            text2: 'Please try again',
+            position: 'bottom'
+          });
+          return;
+        }
+
+        router.replace('/(tabs)');
+        return;
+      }
+
+      // If not logged in, proceed with Google sign in
       if (!request) {
         Toast.show({
           type: 'error',
@@ -395,12 +446,112 @@ export default function OnboardingScreen() {
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>🎉 You're all set! 🚀</ThemedText>
               <ThemedText style={styles.stepTitle}>Welcome to the Ultimate Exam Challenge! 🏆</ThemedText>
-              <ThemedText style={styles.statsText}>
-                💡 Join 6,000+ students sharpening their skills with 18,000+ brain-boosting questions every day! 🧠🔥
-              </ThemedText>
+              <View style={styles.testimonialContainer}>
+                <ThemedText style={styles.testimonialRating}>⭐⭐⭐⭐⭐</ThemedText>
+                <ThemedText style={styles.testimonialTitle}>"Great for Exam Prep!"</ThemedText>
+                <ThemedText style={styles.testimonialText}>
+                  "This app is a lifesaver! The questions are well-structured, and I love how it tracks my progress. The image-based questions make studying more interactive!"
+                </ThemedText>
+              </View>
+
             </View>
           </View>
         );
+
+      case 5:
+        return (
+          <View style={styles.step}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setStep(4)}
+            >
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <View style={styles.planContainer}>
+              <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
+              <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
+
+              <View style={styles.trialBadge}>
+                <ThemedText style={styles.trialText}>🎁 14-Day Free Trial - No Risk, Just Learning!</ThemedText>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.planOption,
+                  selectedPlan === 'yearly' && styles.selectedPlan
+                ]}
+                onPress={() => setSelectedPlan('yearly')}
+              >
+                <View style={styles.planOptionHeader}>
+                  <View>
+                    <ThemedText style={styles.planLabel}>🟢 Yearly Plan – R299</ThemedText>
+                    <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
+                  </View>
+                  <View style={styles.priceContainer}>
+                    <ThemedText style={styles.priceAmount}>R299</ThemedText>
+                    <ThemedText style={styles.pricePeriod}>per year</ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={styles.savingsText}>💰 Save R289 vs. Monthly! More savings = More Snacks! 🍕</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.planOption,
+                  selectedPlan === 'monthly' && styles.selectedPlan
+                ]}
+                onPress={() => setSelectedPlan('monthly')}
+              >
+                <View style={styles.planOptionHeader}>
+                  <View>
+                    <ThemedText style={styles.planLabel}>🔵 Monthly Plan</ThemedText>
+                    <ThemedText style={styles.planSubLabel}>Season cramming!</ThemedText>
+                  </View>
+                  <View style={styles.priceContainer}>
+                    <ThemedText style={styles.priceAmount}>R49</ThemedText>
+                    <ThemedText style={styles.pricePeriod}>per month</ThemedText>
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.planOption,
+                  selectedPlan === 'weekly' && styles.selectedPlan
+                ]}
+                onPress={() => setSelectedPlan('weekly')}
+              >
+                <View style={styles.planOptionHeader}>
+                  <View>
+                    <ThemedText style={styles.planLabel}>🟡 Weekly Plan</ThemedText>
+                    <ThemedText style={styles.planSubLabel}>Last-minute study warriors!</ThemedText>
+                  </View>
+                  <View style={styles.priceContainer}>
+                    <ThemedText style={styles.priceAmount}>R19</ThemedText>
+                    <ThemedText style={styles.pricePeriod}>per week</ThemedText>
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <ThemedText style={styles.cancelText}>
+                🚫 Cancel Anytime – No Stress!
+              </ThemedText>
+
+              <TouchableOpacity
+                style={styles.subscribeButton}
+                onPress={handleComplete}
+              >
+                <ThemedText style={styles.subscribeButtonText}>
+                  Try Free Trial
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -415,15 +566,33 @@ export default function OnboardingScreen() {
       case 3:
         return !!curriculum;
       case 4:
+      case 5:
         return true;
       default:
         return false;
     }
   };
 
+  const handleNextStep = () => {
+    if (step === 4) {
+      setStep(5);
+    } else if (step === 5) {
+      handleComplete();
+    } else if (step === 1 && !grade) {
+      setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
+    } else if (step === 2 && !school) {
+      setErrors(prev => ({ ...prev, school: 'Please select your school' }));
+    } else if (step === 3 && !curriculum) {
+      setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
+    } else {
+      setErrors({ grade: '', school: '', curriculum: '' });
+      setStep(step + 1);
+    }
+  };
+
   return (
     <LinearGradient
-      colors={['#4d5ad3', '#7983e6']}
+      colors={['#1B1464', '#2B2F77']}
       style={[styles.container, { paddingTop: insets.top }]}
     >
       <View style={styles.content}>
@@ -431,65 +600,54 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        <View style={styles.buttonContainer}>
-          {step === 0 ? (
-            <>
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={() => router.replace('/login')}
-              >
-                <ThemedText style={styles.buttonText}>Back</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.primaryButton]}
-                onPress={() => setStep(1)}
-              >
-                <ThemedText style={[styles.buttonText, styles.primaryButtonText]}>
-                  Start! 🚀
-                </ThemedText>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={() => setStep(step - 1)}
-              >
-                <ThemedText style={styles.buttonText}>Back</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.button,
-                  styles.primaryButton,
-                  (!canProceed() && step !== 0) && styles.buttonDisabled
-                ]}
-                onPress={() => {
-                  if (step === 4) {
-                    handleComplete();
-                  } else if (step === 1 && !grade) {
-                    setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-                  } else if (step === 2 && !school) {
-                    setErrors(prev => ({ ...prev, school: 'Please select your school' }));
-                  } else if (step === 3 && !curriculum) {
-                    setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
-                  } else {
-                    setErrors({ grade: '', school: '', curriculum: '' });
-                    setStep(step + 1);
-                  }
-                }}
-                disabled={!canProceed() && step !== 0}
-              >
-                <ThemedText style={[
-                  styles.buttonText,
-                  styles.primaryButtonText,
-                  (!canProceed() && step !== 0) && styles.buttonTextDisabled
-                ]}>
-                  {step === 4 ? '👉 Sign-in' : 'Next! 🚀'}
-                </ThemedText>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+        {step !== 5 && (
+          <View style={styles.buttonContainer}>
+            {step === 0 ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={() => router.replace('/login')}
+                >
+                  <ThemedText style={styles.buttonText}>Back</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, styles.primaryButton]}
+                  onPress={() => setStep(1)}
+                >
+                  <ThemedText style={[styles.buttonText, styles.primaryButtonText]}>
+                    Start! 🚀
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={[styles.button, styles.secondaryButton]}
+                  onPress={() => setStep(step - 1)}
+                >
+                  <ThemedText style={styles.buttonText}>Back</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.button,
+                    styles.primaryButton,
+                    (!canProceed() && step !== 0) && styles.buttonDisabled
+                  ]}
+                  onPress={handleNextStep}
+                  disabled={!canProceed() && step !== 0}
+                >
+                  <ThemedText style={[
+                    styles.buttonText,
+                    styles.primaryButtonText,
+                    (!canProceed() && step !== 0) && styles.buttonTextDisabled
+                  ]}>
+                    {step === 4 ? 'Start Trial' : 'Next! 🚀'}
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        )}
       </View>
     </LinearGradient>
   );
@@ -715,5 +873,156 @@ const styles = StyleSheet.create({
   },
   curriculumButtonTextSelected: {
     color: '#FFFFFF',
+  },
+  testimonialContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 16,
+    marginVertical: 20,
+    alignItems: 'center',
+  },
+  testimonialRating: {
+    fontSize: 24,
+    color: '#FFD700',
+    marginBottom: 8,
+  },
+  testimonialTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  testimonialText: {
+    fontSize: 16,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    lineHeight: 24,
+    fontStyle: 'italic',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 1,
+  },
+  planContainer: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  planTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  unlockText: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginBottom: 24,
+  },
+  trialBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  trialText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  planOption: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  selectedPlan: {
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  planOptionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  planLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  planSubLabel: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.7,
+  },
+  priceContainer: {
+    alignItems: 'flex-end',
+  },
+  priceAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  pricePeriod: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.7,
+  },
+  savingsText: {
+    fontSize: 14,
+    color: '#4CAF50',
+    marginTop: 8,
+  },
+  featuresContainer: {
+    width: '100%',
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  checkmarkItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  checkmarkCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkmarkText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    flex: 1,
+  },
+  cancelText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.8,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  subscribeButton: {
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 28,
+    alignItems: 'center',
+  },
+  subscribeButtonText: {
+    color: '#1B1464',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

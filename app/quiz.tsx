@@ -221,11 +221,6 @@ function getRandomWrongMessage(): string {
 
 const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
 
-interface ZoomableImageProps {
-    imageUrl: string;
-    zoomLevel: number;
-    onZoomChange: (value: number) => void;
-}
 
 const ImageLoadingPlaceholder = () => (
     <View style={styles.imagePlaceholderContainer}>
@@ -237,7 +232,7 @@ const ImageLoadingPlaceholder = () => (
 );
 
 export default function QuizScreen() {
-    const { subjectName } = useLocalSearchParams();
+    const { subjectName, learnerRole, learnerName, learnerGrade, learnerSchool } = useLocalSearchParams();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -245,7 +240,7 @@ export default function QuizScreen() {
     const [inputAnswer, setInputAnswer] = useState('');
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [noMoreQuestions, setNoMoreQuestions] = useState(false);
-    const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string } | null>(null);
+    const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; role: string } | null>(null);
     const [isImageVisible, setIsImageVisible] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
     const [isAnswerImageVisible, setIsAnswerImageVisible] = useState(false);
@@ -281,6 +276,15 @@ export default function QuizScreen() {
     };
 
     useEffect(() => {
+        console.log('Learner Information:', {
+            name: learnerName,
+            role: learnerRole,
+            grade: learnerGrade,
+            school: learnerSchool
+        });
+    }, [learnerName, learnerRole, learnerGrade, learnerSchool]);
+
+    useEffect(() => {
         async function loadUser() {
             try {
                 const authData = await SecureStore.getItemAsync('auth');
@@ -291,6 +295,7 @@ export default function QuizScreen() {
                     const tokenPayload = JSON.parse(atob(tokenParts[1]));
                     const uid = tokenPayload.sub;
 
+                    console.log('user', uid, parsed.userInfo.email, parsed.userInfo.role)
                     setUser({
                         uid,
                         email: parsed.userInfo.email,
@@ -327,7 +332,7 @@ export default function QuizScreen() {
         };
     }, []);
 
-    const reportIssue = (questionId: number) => {
+    const reportIssue = () => {
         setIsReportModalVisible(true);
     };
 
@@ -546,7 +551,10 @@ export default function QuizScreen() {
     };
 
     const handleApproveQuestion = async () => {
-        if (!currentQuestion?.id || !user?.uid || !user?.email || user?.role !== 'admin' || !subjectId) return;
+        if (!currentQuestion?.id || !user?.uid || !user?.email || learnerRole !== 'admin') {
+            console.log('Not an admin - ' + learnerRole)
+            return;
+        }
 
         setIsApproving(true);
         try {
@@ -563,7 +571,7 @@ export default function QuizScreen() {
                 text2: 'The question has been approved successfully.',
                 position: 'bottom'
             });
-            await loadRandomQuestion(subjectId);
+            await loadRandomQuestion(selectedPaper || '');
         } catch (error) {
             Toast.show({
                 type: 'error',
@@ -743,49 +751,42 @@ export default function QuizScreen() {
                             style={styles.noQuestionsIllustration}
                             resizeMode="contain"
                         />
-                        <ThemedText style={styles.noQuestionsText}>
+                        <ThemedText style={styles.noQuestionsTitle}>
                             🐛 Oops! Looks like the quiz gremlins ate all the questions!
                         </ThemedText>
-                        <ThemedText style={styles.noQuestionsText}>
+                        <ThemedText style={styles.noQuestionsSubtitle}>
                             Check your profile for selected school terms and curriculum
                         </ThemedText>
 
-
                         <TouchableOpacity
-                            style={[styles.paperButton, { backgroundColor: '#3B82F6' }]}
+                            style={styles.profileSettingsButton}
                             onPress={() => router.push('/(tabs)/profile')}
                         >
-                            <LinearGradient
-                                colors={['#3B82F6', '#2563EB']}
-                                style={styles.paperButtonGradient}
-                            >
-                                <ThemedText style={styles.paperButtonText}>⚙️ Go to Profile Settings</ThemedText>
-                            </LinearGradient>
+                            <View style={styles.buttonContent}>
+                                <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
+                                <ThemedText style={styles.buttonText}>Go to Profile Settings</ThemedText>
+                            </View>
                         </TouchableOpacity>
 
-                        <View style={styles.completionButtons}>
+                        <View style={styles.buttonGroup}>
                             <TouchableOpacity
-                                style={[styles.paperButton, { backgroundColor: '#FF3B30' }]}
+                                style={styles.restartButton}
                                 onPress={handleRestart}
                             >
-                                <LinearGradient
-                                    colors={['#FF3B30', '#FF453A']}
-                                    style={styles.paperButtonGradient}
-                                >
-                                    <ThemedText style={styles.paperButtonText}>🔄 Restart the Subject</ThemedText>
-                                </LinearGradient>
+                                <View style={styles.buttonContent}>
+                                    <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
+                                    <ThemedText style={styles.buttonText}>Restart Subject</ThemedText>
+                                </View>
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.paperButton, { backgroundColor: '#64748B' }]}
+                                style={styles.goHomeButton}
                                 onPress={() => router.replace('/(tabs)')}
                             >
-                                <LinearGradient
-                                    colors={['#64748B', '#475569']}
-                                    style={styles.paperButtonGradient}
-                                >
-                                    <ThemedText style={styles.paperButtonText}>🏠 Go Home</ThemedText>
-                                </LinearGradient>
+                                <View style={styles.buttonContent}>
+                                    <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+                                    <ThemedText style={styles.buttonText}>Go Home</ThemedText>
+                                </View>
                             </TouchableOpacity>
                         </View>
                     </ThemedView>
@@ -904,7 +905,7 @@ export default function QuizScreen() {
                                 <ThemedView style={styles.optionsContainer}>
                                     {Object.entries(currentQuestion.options)
                                         .filter(([_, value]) => value)
-                                        .map(([key, value], index) => (
+                                        .map(([key, value]) => (
                                             <TouchableOpacity
                                                 key={key}
                                                 style={[
@@ -938,7 +939,7 @@ export default function QuizScreen() {
 
                                 <TouchableOpacity
                                     style={[styles.reportButton, { marginTop: 16, marginHorizontal: 16 }]}
-                                    onPress={() => reportIssue(currentQuestion.id)}
+                                    onPress={reportIssue}
                                     testID='report-issue-button'
                                 >
                                     <ThemedText style={styles.reportButtonText}>
@@ -993,9 +994,10 @@ export default function QuizScreen() {
 
                                 </ThemedView>
 
-                                {user?.role === 'admin' && (
+                                {/* Question approval button - only show for admin users */}
+                                {learnerRole === 'admin' && showFeedback && currentQuestion && (
                                     <TouchableOpacity
-                                        style={[styles.approveButton]}
+                                        style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
                                         onPress={handleApproveQuestion}
                                         disabled={isApproving}
                                     >
@@ -1441,20 +1443,62 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
-        backgroundColor: 'transparent',
+        padding: 24,
+        backgroundColor: '#FFFFFF',
     },
     noQuestionsIllustration: {
-        width: 300,
-        height: 300,
-        marginBottom: 24,
+        width: 280,
+        height: 280,
+        marginBottom: 32,
     },
-    noQuestionsText: {
-        fontSize: 20,
-        fontWeight: '600',
+    noQuestionsTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        textAlign: 'center',
+        marginBottom: 16,
+        color: '#1E293B',
+        lineHeight: 32,
+        paddingHorizontal: 20,
+    },
+    noQuestionsSubtitle: {
+        fontSize: 16,
         textAlign: 'center',
         marginBottom: 32,
-        color: '#000000',
+        color: '#64748B',
+        lineHeight: 24,
+        paddingHorizontal: 20,
+    },
+    profileSettingsButton: {
+        backgroundColor: '#4F46E5',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        width: '100%',
+        marginBottom: 24,
+    },
+    buttonGroup: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    restartButton: {
+        flex: 1,
+        backgroundColor: '#EF4444',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+    },
+    goHomeButton: {
+        flex: 1,
+        backgroundColor: '#64748B',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
     modal: {
         justifyContent: 'center',
@@ -1508,9 +1552,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         marginTop: 32,
-    },
-    restartButton: {
-        backgroundColor: '#FF3B30',
     },
     imageWrapper: {
         width: '100%',
@@ -1725,11 +1766,7 @@ const styles = StyleSheet.create({
     cancelButton: {
         backgroundColor: '#E2E8F0',
     },
-    buttonText: {
-        color: '#1E293B',
-        fontSize: 14,
-        fontWeight: '600',
-    },
+
     performanceContainer: {
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
@@ -1906,16 +1943,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     approveButton: {
-        backgroundColor: '#DCFCE7',
-        padding: 8,
+        backgroundColor: '#4F46E5',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
         borderRadius: 8,
-        flex: 1,
+        marginTop: 16,
+        alignItems: 'center',
+    },
+    approveButtonDisabled: {
+        opacity: 0.5,
     },
     approveButtonText: {
-        color: '#166534',
-        fontSize: 14,
-        fontWeight: '500',
-        textAlign: 'center',
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
     zoomModal: {
         margin: 0,

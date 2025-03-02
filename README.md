@@ -195,6 +195,9 @@ add line:
   
 /Users/mac1/Documents/cursor/examquiz-launch/examquiz/ios/Podfile
 
+or
+move the Podfile into the ios folder
+
 expo prebuild
 cd ios && pod install && cd ..
 npx expo run:ios
@@ -206,3 +209,30 @@ cd ios && rm -rf Pods Podfile.lock && pod deintegrate && pod cache clean --all &
 
 ## using xcode build
 xcodebuild -workspace examquiz.xcworkspace -scheme examquiz -configuration Release clean build | grep -E "error:|warning:" || echo "Build completed successfully with no errors"
+
+
+
+## Steps
+cd ios && rm -rf Pods build && cd ..
+
+rm -rf node_modules && npm cache clean --force && npm install
+
+npx expo run:ios
+
+## Failed?
+
+d ios && rm -rf build/ DerivedData/ && cd ..
+
+cd ios && rm -rf Pods/ Podfile.lock && cd ..
+
+rm -rf node_modules/ && npm cache clean --force && npm install
+
+cd ios && pod install --repo-update && cd ..
+
+npx expo run:ios
+
+
+## xcode
+xcode open workspace
+
+menu - > Product -> archive

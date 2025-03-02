@@ -26,7 +26,7 @@ function getProgressBarColor(progress: number): string {
 export default function HomeScreen() {
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string; role: string } | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
@@ -70,7 +70,8 @@ export default function HomeScreen() {
               name: learner.name,
               grade: learner.grade?.number?.toString() || '',
               school_name: learner.school_name || '',
-              school: learner.school_name || ''
+              school: learner.school_name || '',
+              role: learner.role || ''
             });
 
             const enrolledResponse = await fetchMySubjects(userData.uid);
@@ -99,7 +100,7 @@ export default function HomeScreen() {
 
             setMySubjects(Object.values(subjectGroups));
           } else {
-            router.replace('/login');
+            router.replace('/onboarding');
           }
         }
       } catch (error) {
@@ -123,7 +124,8 @@ export default function HomeScreen() {
           name: learner.name,
           grade: learner.grade?.number?.toString() || '',
           school_name: learner.school_name || '',
-          school: learner.school_name || ''
+          school: learner.school_name || '',
+          role: learner.role || ''
         });
 
 
@@ -317,7 +319,11 @@ export default function HomeScreen() {
               onPress={() => router.push({
                 pathname: '/quiz',
                 params: {
-                  subjectName: subject.name
+                  subjectName: subject.name,
+                  learnerRole: learnerInfo?.role || '',
+                  learnerName: learnerInfo?.name || '',
+                  learnerGrade: learnerInfo?.grade || '',
+                  learnerSchool: learnerInfo?.school || ''
                 }
               })}
               testID={`subject-card-${subject.name}`}

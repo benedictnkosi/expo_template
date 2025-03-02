@@ -136,6 +136,7 @@ interface LearnerResponse {
   school_longitude: number;
   curriculum: string;
   terms: string;
+  role?: string;
 }
 
 export async function getLearner(uid: string): Promise<LearnerResponse> {

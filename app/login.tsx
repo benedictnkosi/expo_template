@@ -123,7 +123,7 @@ export default function Login() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <LinearGradient
-        colors={['#4d5ad3', '#7983e6']}
+        colors={['#1B1464', '#2B2F77']}
         style={styles.gradient}
       >
         <View style={styles.container}>
