@@ -34,6 +34,7 @@ interface Question {
     year: string;
     term: string;
     explanation: string;
+    curriculum?: string;
 }
 
 
@@ -381,7 +382,7 @@ export default function QuizScreen() {
 
         try {
             setIsLoading(true); const response = await fetch(
-                `${ConfigAPI_BASE_URL}/public/learn/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0${showAllTerms ? '&show_all_questions=yes' : '&show_all_questions=no'}`
+                `${ConfigAPI_BASE_URL}/public/learn/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
@@ -587,12 +588,21 @@ export default function QuizScreen() {
                 <View style={styles.titleContainer}>
                     <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
                     <View style={styles.badgeContainer}>
-                        <View style={styles.badge}>
-                            <ThemedText style={styles.badgeText}>2024</ThemedText>
-                        </View>
-                        <View style={styles.badge}>
-                            <ThemedText style={styles.badgeText}>Term 2</ThemedText>
-                        </View>
+                        {question && (
+                            <>
+                                <View style={styles.badge}>
+                                    <ThemedText style={styles.badgeText}>{question.year}</ThemedText>
+                                </View>
+                                <View style={styles.badge}>
+                                    <ThemedText style={styles.badgeText}>Term {question.term}</ThemedText>
+                                </View>
+                                {question.curriculum && (
+                                    <View style={styles.badge}>
+                                        <ThemedText style={styles.badgeText}>{question.curriculum}</ThemedText>
+                                    </View>
+                                )}
+                            </>
+                        )}
                     </View>
                 </View>
             </View>
@@ -609,15 +619,7 @@ export default function QuizScreen() {
             <View style={styles.performanceContainer}>
                 <View style={styles.performanceHeader}>
                     <ThemedText style={styles.performanceTitle}>Your Scoreboard! 🏆</ThemedText>
-                    <View style={styles.termToggle}>
-                        <ThemedText style={styles.termToggleText}>
-                            {showAllTerms ? 'All Terms' : 'Term 2 only'}
-                        </ThemedText>
-                        <Switch
-                            value={!showAllTerms}
-                            onValueChange={(value) => setShowAllTerms(!value)}
-                        />
-                    </View>
+
                 </View>
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
@@ -1051,7 +1053,7 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => router.replace('/(tabs)')}
+                        onPress={() => router.back()}
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
                         <ThemedText style={styles.footerButtonText} >Chill Time!</ThemedText>

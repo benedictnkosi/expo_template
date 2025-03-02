@@ -354,7 +354,7 @@ export default function HomeScreen() {
                   </View>
                   <ThemedText style={styles.masteryText}>
                     {subject.answered_questions === 0 ? 0 :
-                      Math.round((subject.correct_answers / subject.answered_questions) * 100)}% mastered
+                      Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
                   </ThemedText>
                 </View>
               </View>
