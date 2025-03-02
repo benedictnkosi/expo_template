@@ -12,7 +12,10 @@ export default {
     bundleIdentifier: 'za.co.examquizafrica',
     buildNumber: '1.0.0',
     deploymentTarget: "15.1",
-    googleServicesFile: './GoogleService-Info.plist'
+    googleServicesFile: './GoogleService-Info.plist',
+    infoPlist: {
+      "ITSAppUsesNonExemptEncryption": false
+    }
   },
   android: {
     package: 'za.co.examquizafrica',

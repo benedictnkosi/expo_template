@@ -201,6 +201,8 @@ npx expo run:ios
 
 
 
-#3 clean and build
+## 3 clean and build
 cd ios && rm -rf Pods Podfile.lock && pod deintegrate && pod cache clean --all && pod install && cd .. && npx expo run:ios
 
+## using xcode build
+xcodebuild -workspace examquiz.xcworkspace -scheme examquiz -configuration Release clean build | grep -E "error:|warning:" || echo "Build completed successfully with no errors"

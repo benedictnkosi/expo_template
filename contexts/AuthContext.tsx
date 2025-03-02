@@ -9,6 +9,7 @@ export interface GoogleUser {
   email: string;
   name: string;
   picture?: string;
+  role?: 'admin' | 'learner';
 }
 
 interface AuthContextType {
@@ -38,11 +39,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           uid: userInfo.id,
           email: userInfo.email,
           name: userInfo.name,
-          picture: userInfo.picture
+          picture: userInfo.picture,
+          role: userInfo.email.endsWith('@admin.com') ? 'admin' : 'learner' // Simple role check based on email
         });
         identifyUser(userInfo.id, {
           email: userInfo.email,
-          name: userInfo.name
+          name: userInfo.name,
+          role: userInfo.email.endsWith('@admin.com') ? 'admin' : 'learner'
         });
       }
       setIsLoading(false);

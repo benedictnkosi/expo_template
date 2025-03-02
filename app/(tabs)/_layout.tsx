@@ -2,13 +2,15 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'react-native';
+import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 
 import { HapticTab } from '../../components/HapticTab';
 import TabBarBackground from '../../components/ui/TabBarBackground';
-import { useColorScheme } from '../../hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
     <Tabs
@@ -33,6 +35,9 @@ export default function TabLayout() {
           },
           default: {},
         }),
+        headerStyle: {
+          backgroundColor: theme.colors.background,
+        },
       }}>
       <Tabs.Screen
         name="index"

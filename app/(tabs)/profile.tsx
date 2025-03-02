@@ -15,7 +15,6 @@ import * as SecureStore from 'expo-secure-store';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import SelectTime from '../onboarding/select-time';
 
 interface User {
   uid: string;
@@ -39,8 +38,7 @@ interface LearnerInfo {
 }
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState<User | null>(null);
-  const { signOut } = useAuth();
+  const { user } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
@@ -69,30 +67,13 @@ export default function ProfileScreen() {
   const CURRICULA = ['CAPS', 'IEB'];
 
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const authData = await SecureStore.getItemAsync('auth');
-        if (authData) {
-          const parsed = JSON.parse(authData);
-          const idToken = parsed.authentication.idToken;
-          const tokenParts = idToken.split('.');
-          const tokenPayload = JSON.parse(atob(tokenParts[1]));
-          const uid = tokenPayload.sub;
-
-          setUser({
-            uid,
-            id: uid,
-            name: parsed.userInfo.name || '',
-            email: parsed.userInfo.email,
-            picture: parsed.userInfo.picture
-          });
-        }
-      } catch (error) {
-        console.error('Error loading user:', error);
-      }
+    if (user) {
+      setLearnerInfo(prevInfo => ({
+        ...prevInfo,
+        picture: user.picture
+      }));
     }
-    loadUser();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     async function fetchLearnerInfo() {

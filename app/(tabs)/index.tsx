@@ -5,14 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner } from '../../services/api';
 import { Subject } from '../../types/api';
 import { GoogleUser } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
-import * as SecureStore from 'expo-secure-store';
 
 // Temporary mock data
 
@@ -31,8 +30,8 @@ export default function HomeScreen() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
-  const [streak, setStreak] = useState(0);
-  const [ranking, setRanking] = useState(0);
+  const [streak] = useState(0);
+  const [ranking] = useState(0);
   const [user, setUser] = useState<GoogleUser | null>(null);
 
   // Single useEffect for initial load

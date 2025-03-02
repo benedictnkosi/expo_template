@@ -237,7 +237,7 @@ const ImageLoadingPlaceholder = () => (
 
 export default function QuizScreen() {
     const { subjectName } = useLocalSearchParams();
-    const [question, setQuestion] = useState<Question | null>(null);
+    const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
@@ -255,7 +255,7 @@ export default function QuizScreen() {
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [zoomLevel, setZoomLevel] = useState(0.5);
-    const [user, setUser] = useState<{ uid: string; email: string } | null>(null);
+    const [user, setUser] = useState<{ uid: string; email: string; role: string } | null>(null);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
     const [reportComment, setReportComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -290,7 +290,8 @@ export default function QuizScreen() {
 
                     setUser({
                         uid,
-                        email: parsed.userInfo.email
+                        email: parsed.userInfo.email,
+                        role: parsed.userInfo.role
                     });
 
                     if (selectedPaper) {
@@ -341,7 +342,7 @@ export default function QuizScreen() {
         try {
             setIsSubmitting(true);
             await setQuestionStatus({
-                question_id: question?.id || 0,
+                question_id: currentQuestion?.id || 0,
                 status: 'rejected',
                 email: user?.email || '',
                 uid: user?.uid || '',
@@ -392,7 +393,7 @@ export default function QuizScreen() {
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
-                setQuestion(null);
+                setCurrentQuestion(null);
             } else {
                 // Shuffle the options
                 const options = data.options;
@@ -404,7 +405,7 @@ export default function QuizScreen() {
                     option3: shuffledEntries[2][1],
                     option4: shuffledEntries[3][1]
                 };
-                setQuestion(data);
+                setCurrentQuestion(data);
                 setNoMoreQuestions(false);
             }
 
@@ -423,11 +424,11 @@ export default function QuizScreen() {
     };
 
     const handleAnswer = async (answer: string) => {
-        if (!user?.uid || !question) return;
+        if (!user?.uid || !currentQuestion) return;
 
         setIsAnswerLoading(true);
         try {
-            const response = await checkAnswer(user.uid, question.id, answer);
+            const response = await checkAnswer(user.uid, currentQuestion.id, answer);
             setSelectedAnswer(answer);
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
@@ -443,7 +444,7 @@ export default function QuizScreen() {
             trackEvent(Events.SUBMIT_ANSWER, {
                 "user_id": user?.uid,
                 "subject_id": subjectId,
-                "question_id": question.id,
+                "question_id": currentQuestion.id,
                 "is_correct": response.is_correct
             });
 
@@ -542,30 +543,29 @@ export default function QuizScreen() {
     };
 
     const handleApproveQuestion = async () => {
-        if (!question?.id || !user?.uid || !user?.email) return;
+        if (!currentQuestion?.id || !user?.uid || !user?.email || user?.role !== 'admin' || !subjectId) return;
 
         setIsApproving(true);
         try {
             await setQuestionStatus({
-                question_id: question.id,
+                question_id: currentQuestion.id,
                 status: 'approved',
                 email: user.email,
                 uid: user.uid,
                 comment: 'Question approved by admin'
             });
-
             Toast.show({
                 type: 'success',
                 text1: 'Question Approved',
-                text2: 'Thank you for your feedback!',
+                text2: 'The question has been approved successfully.',
                 position: 'bottom'
             });
+            await loadRandomQuestion(subjectId);
         } catch (error) {
-            console.error('Error approving question:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: 'Failed to approve question',
+                text2: 'Failed to approve question.',
                 position: 'bottom'
             });
         } finally {
@@ -588,17 +588,17 @@ export default function QuizScreen() {
                 <View style={styles.titleContainer}>
                     <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
                     <View style={styles.badgeContainer}>
-                        {question && (
+                        {currentQuestion && (
                             <>
                                 <View style={styles.badge}>
-                                    <ThemedText style={styles.badgeText}>{question.year}</ThemedText>
+                                    <ThemedText style={styles.badgeText}>{currentQuestion.year}</ThemedText>
                                 </View>
                                 <View style={styles.badge}>
-                                    <ThemedText style={styles.badgeText}>Term {question.term}</ThemedText>
+                                    <ThemedText style={styles.badgeText}>Term {currentQuestion.term}</ThemedText>
                                 </View>
-                                {question.curriculum && (
+                                {currentQuestion.curriculum && (
                                     <View style={styles.badge}>
-                                        <ThemedText style={styles.badgeText}>{question.curriculum}</ThemedText>
+                                        <ThemedText style={styles.badgeText}>{currentQuestion.curriculum}</ThemedText>
                                     </View>
                                 )}
                             </>
@@ -725,7 +725,7 @@ export default function QuizScreen() {
         );
     }
 
-    if (!question) {
+    if (!currentQuestion) {
         return (
             <LinearGradient
                 colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -804,35 +804,35 @@ export default function QuizScreen() {
                 <ThemedView style={styles.content}>
                     <ThemedView style={styles.sectionCard}>
 
-                        {question.context && (
+                        {currentQuestion.context && (
                             <><ThemedText style={styles.questionMeta} testID='question-meta'>
                                 Context
                             </ThemedText>
                                 <View style={styles.questionContainer} testID='question-context'>
-                                    {renderMixedContent(question.context)}
+                                    {renderMixedContent(currentQuestion.context)}
                                 </View>
                             </>
                         )}
 
-                        {(question.image_path || question.question_image_path) && (
+                        {(currentQuestion.image_path || currentQuestion.question_image_path) && (
                             <ThemedText style={styles.imageCaption}>
                                 Click image to enlarge
                             </ThemedText>
                         )}
 
-                        {question.image_path && (
+                        {currentQuestion.image_path && (
                             <>
                                 <TouchableOpacity
                                     onPress={() => router.push({
                                         pathname: '/image-viewer',
-                                        params: { imageUrl: question.image_path }
+                                        params: { imageUrl: currentQuestion.image_path }
                                     })}
                                     testID='question-context-image-container'
                                 >
                                     {isImageLoading && <ImageLoadingPlaceholder />}
                                     <Image
                                         source={{
-                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.image_path}`
+                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.image_path}`
                                         }}
                                         style={styles.questionImage}
                                         resizeMode="contain"
@@ -846,25 +846,25 @@ export default function QuizScreen() {
                             </>
                         )}
 
-                        {question.question && (
+                        {currentQuestion.question && (
                             <ThemedText style={styles.questionMeta} testID='question-meta'>
                                 Question
                             </ThemedText>
                         )}
 
 
-                        {question.question_image_path && (
+                        {currentQuestion.question_image_path && (
                             <>
                                 <TouchableOpacity
                                     onPress={() => router.push({
                                         pathname: '/image-viewer',
-                                        params: { imageUrl: question.question_image_path }
+                                        params: { imageUrl: currentQuestion.question_image_path }
                                     })}
                                 >
                                     {isImageLoading && <ImageLoadingPlaceholder />}
                                     <Image
                                         source={{
-                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.question_image_path}`
+                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.question_image_path}`
                                         }}
                                         style={styles.questionImage}
                                         resizeMode="contain"
@@ -878,11 +878,11 @@ export default function QuizScreen() {
                             </>
                         )}
 
-                        {question.question && (
+                        {currentQuestion.question && (
 
 
                             <View style={styles.questionContainer} testID='question-text'>
-                                {renderMixedContent(question.question)}
+                                {renderMixedContent(currentQuestion.question)}
                             </View>
 
                         )}
@@ -893,10 +893,10 @@ export default function QuizScreen() {
                             </ThemedText>
                         </View>
 
-                        {question.type === 'multiple_choice' && (
+                        {currentQuestion.type === 'multiple_choice' && (
                             <>
                                 <ThemedView style={styles.optionsContainer}>
-                                    {Object.entries(question.options)
+                                    {Object.entries(currentQuestion.options)
                                         .filter(([_, value]) => value)
                                         .map(([key, value], index) => (
                                             <TouchableOpacity
@@ -905,7 +905,7 @@ export default function QuizScreen() {
                                                     styles.option,
                                                     selectedAnswer === value && styles.selectedOption,
                                                     showFeedback && selectedAnswer === value &&
-                                                    (JSON.parse(question.answer).includes(value)
+                                                    (JSON.parse(currentQuestion.answer).includes(value)
                                                         ? styles.correctOption
                                                         : styles.wrongOption)
                                                 ]}
@@ -932,7 +932,7 @@ export default function QuizScreen() {
 
                                 <TouchableOpacity
                                     style={[styles.reportButton, { marginTop: 16, marginHorizontal: 16 }]}
-                                    onPress={() => reportIssue(question.id)}
+                                    onPress={() => reportIssue(currentQuestion.id)}
                                     testID='report-issue-button'
                                 >
                                     <ThemedText style={styles.reportButtonText}>
@@ -951,26 +951,26 @@ export default function QuizScreen() {
                                     <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>
                                         ✅ Right Answer!
                                     </ThemedText>
-                                    {cleanAnswer(question.answer).includes('$') ? (
-                                        <KaTeX latex={cleanAnswer(question.answer).replace(/\$/g, '')} />
+                                    {cleanAnswer(currentQuestion.answer).includes('$') ? (
+                                        <KaTeX latex={cleanAnswer(currentQuestion.answer).replace(/\$/g, '')} />
                                     ) : (
                                         <ThemedText style={styles.correctAnswerText} testID='correct-answer-text'>
-                                            {cleanAnswer(question.answer)}
+                                            {cleanAnswer(currentQuestion.answer)}
                                         </ThemedText>
                                     )}
-                                    {question.answer_image && (
+                                    {currentQuestion.answer_image && (
                                         <>
                                             <TouchableOpacity
                                                 onPress={() => router.push({
                                                     pathname: '/image-viewer',
-                                                    params: { imageUrl: question.answer_image }
+                                                    params: { imageUrl: currentQuestion.answer_image }
                                                 })}
                                                 testID='correct-answer-image-container'
                                             >
                                                 {isAnswerImageLoading && <ImageLoadingPlaceholder />}
                                                 <Image
                                                     source={{
-                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${question.answer_image}`
+                                                        uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.answer_image}`
                                                     }}
                                                     style={styles.answerImage}
                                                     resizeMode="contain"
@@ -982,30 +982,30 @@ export default function QuizScreen() {
 
                                         </>
                                     )}
-                                    {question.explanation && (
+                                    {currentQuestion.explanation && (
                                         <View style={styles.questionContainer} testID='explanation-container'>
-                                            {renderMixedContent(cleanAnswer(question.explanation))}
+                                            {renderMixedContent(cleanAnswer(currentQuestion.explanation))}
                                         </View>
                                     )}
 
                                 </ThemedView>
 
-                                <View style={styles.feedbackButtonsContainer}>
+                                {user?.role === 'admin' && (
                                     <TouchableOpacity
-                                        style={styles.approveButton}
+                                        style={[styles.approveButton]}
                                         onPress={handleApproveQuestion}
                                         disabled={isApproving}
                                     >
                                         <ThemedText style={styles.approveButtonText}>
-                                            {isApproving ? '👍 Approving...' : '👍 This Question is Good!'}
+                                            {isApproving ? 'Approving...' : 'Question looks good'}
                                         </ThemedText>
                                     </TouchableOpacity>
-                                </View>
+                                )}
 
                                 <TouchableOpacity
                                     style={styles.aiExplanationButton}
                                     onPress={() => {
-                                        fetchAIExplanation(question?.id || 0)
+                                        fetchAIExplanation(currentQuestion?.id || 0)
                                     }}
                                     disabled={isLoadingExplanation}
                                 >
@@ -1849,13 +1849,6 @@ const styles = StyleSheet.create({
         minHeight: 40,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    feedbackButtonsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 16,
-        gap: 12,
     },
     approveButton: {
         backgroundColor: '#DCFCE7',
