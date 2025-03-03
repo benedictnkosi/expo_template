@@ -266,6 +266,7 @@ export default function QuizScreen() {
     const [feedbackMessage, setFeedbackMessage] = useState<string>('');
     const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
     const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+    const [isRestartModalVisible, setIsRestartModalVisible] = useState(false);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -484,6 +485,7 @@ export default function QuizScreen() {
 
 
     const handleRestart = async () => {
+        setIsRestartModalVisible(false);
         if (!user?.uid || !subjectName) return;
 
         trackEvent(Events.RESTART_QUIZ, {
@@ -492,7 +494,7 @@ export default function QuizScreen() {
         });
         try {
             setIsLoading(true);
-            await removeResults(user.uid, subjectName as string);
+            await removeResults(user.uid, subjectName + " " + selectedPaper);
             await loadRandomQuestion(selectedPaper || '');
             Toast.show({
                 type: 'success',
@@ -617,6 +619,7 @@ export default function QuizScreen() {
                         )}
                     </View>
                 </View>
+
             </View>
         </LinearGradient>
     );
@@ -631,7 +634,14 @@ export default function QuizScreen() {
             <View style={styles.performanceContainer}>
                 <View style={styles.performanceHeader}>
                     <ThemedText style={styles.performanceTitle}>Your Scoreboard! 🏆</ThemedText>
-
+                    <TouchableOpacity
+                        style={styles.restartIconButton}
+                        onPress={() => {
+                            setIsRestartModalVisible(true);
+                        }}
+                    >
+                        <Ionicons name="refresh-circle" size={28} color="#EF4444" />
+                    </TouchableOpacity>
                 </View>
                 <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
@@ -690,6 +700,12 @@ export default function QuizScreen() {
                 end={{ x: 0, y: 1 }}
             >
                 <View style={styles.paperSelectionContainer}>
+                    <TouchableOpacity
+                        style={styles.closeHeaderButton}
+                        onPress={() => router.back()}
+                    >
+                        <Ionicons name="close" size={24} color="#000000" />
+                    </TouchableOpacity>
                     <Image
                         source={getSubjectIcon(subjectName as string)}
                         style={styles.subjectIcon}
@@ -772,7 +788,9 @@ export default function QuizScreen() {
                         <View style={styles.buttonGroup}>
                             <TouchableOpacity
                                 style={styles.restartButton}
-                                onPress={handleRestart}
+                                onPress={() => {
+                                    setIsRestartModalVisible(true);
+                                }}
                             >
                                 <View style={styles.buttonContent}>
                                     <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
@@ -1180,6 +1198,39 @@ export default function QuizScreen() {
                     )}
                 </View>
             </Modal>
+
+            <Modal
+                isVisible={isRestartModalVisible}
+                onBackdropPress={() => setIsRestartModalVisible(false)}
+                onSwipeComplete={() => setIsRestartModalVisible(false)}
+                swipeDirection={['down']}
+                useNativeDriver={true}
+                style={styles.modal}
+                animationIn="fadeIn"
+                animationOut="fadeOut"
+                backdropOpacity={0.5}
+            >
+                <View style={styles.restartModalContent}>
+                    <ThemedText style={styles.restartModalTitle}>Reset Progress</ThemedText>
+                    <ThemedText style={styles.restartModalText}>
+                        Are you sure you want to reset your progress for this paper? This action cannot be undone.
+                    </ThemedText>
+                    <View style={styles.restartModalButtons}>
+                        <TouchableOpacity
+                            style={[styles.restartModalButton, styles.cancelButton]}
+                            onPress={() => setIsRestartModalVisible(false)}
+                        >
+                            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.restartModalButton, styles.resetButton]}
+                            onPress={handleRestart}
+                        >
+                            <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>Reset</ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </LinearGradient >
     );
 }
@@ -1522,8 +1573,6 @@ const styles = StyleSheet.create({
     },
     feedbackContainer: {
         borderRadius: 12,
-        padding: 16,
-        margin: 16,
         shadowColor: '#FFFFFF',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -1532,7 +1581,6 @@ const styles = StyleSheet.create({
     correctAnswerContainer: {
         backgroundColor: '#FFFFFF',
         borderColor: '#22C55E',
-        padding: 16,
         borderRadius: 8,
         marginTop: 12,
     },
@@ -1540,6 +1588,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#999',
         marginBottom: 4,
+        marginLeft: 16,
     },
     correctAnswerText: {
         color: '#166534',
@@ -1852,10 +1901,18 @@ const styles = StyleSheet.create({
         marginTop: 4,
         textAlign: 'right',
     },
-    closeButtonText: {
-        color: '#000000',
-        fontSize: 20,
-        fontWeight: 'bold',
+    closeHeaderButton: {
+        position: 'absolute',
+        right: 16,
+        top: 16,
+        padding: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        borderRadius: 20,
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
     },
     aiExplanationButton: {
         flexDirection: 'row',
@@ -1884,6 +1941,7 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 24,
         padding: 20,
         maxHeight: '80%',
+        width: '100%',
     },
     explanationHeader: {
         flexDirection: 'row',
@@ -1899,13 +1957,15 @@ const styles = StyleSheet.create({
     },
     explanationContent: {
         maxHeight: '100%',
-        paddingHorizontal: 4,
+        paddingHorizontal: 8,
+        width: '100%',
     },
     explanationLine: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         marginBottom: 16,
-        paddingRight: 16,
+        paddingRight: 8,
+        width: '100%',
     },
     bulletPoint: {
         fontSize: 16,
@@ -1914,13 +1974,15 @@ const styles = StyleSheet.create({
     },
     explanationTextContainer: {
         flex: 1,
-        paddingRight: 8,
+        paddingRight: 4,
+        width: '100%',
     },
     explanationText: {
         fontSize: 16,
-        lineHeight: 28,  // Increase line height for better spacing
+        lineHeight: 28,
         color: '#1E293B',
         paddingVertical: 20,
+        width: '100%',
     },
     questionMeta: {
         fontSize: 14,
@@ -1981,6 +2043,47 @@ const styles = StyleSheet.create({
         padding: 8,
         borderRadius: 20,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    restartModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 20,
+        width: '90%',
+        maxWidth: 400,
+        alignSelf: 'center',
+    },
+    restartModalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#1E293B',
+        marginBottom: 12,
+    },
+    restartModalText: {
+        fontSize: 16,
+        color: '#64748B',
+        marginBottom: 24,
+        lineHeight: 24,
+    },
+    restartModalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    restartModalButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 6,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    resetButton: {
+        backgroundColor: '#EF4444',
+    },
+    restartIconButton: {
+        padding: 8,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
     },

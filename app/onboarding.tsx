@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image, Platform } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, Platform, ActivityIndicator, ScrollView, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
@@ -35,15 +35,17 @@ const CheckmarkItem = ({ text }: { text: string }) => (
 );
 
 export default function OnboardingScreen() {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
   const [school, setSchool] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('yearly');
+  const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [schoolAddress, setSchoolAddress] = useState('');
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
   const [schoolName, setSchoolName] = useState('');
   const [curriculum, setCurriculum] = useState('');
+  const [difficultSubject, setDifficultSubject] = useState('');
   const insets = useSafeAreaInsets();
   const [errors, setErrors] = useState({
     grade: '',
@@ -56,6 +58,19 @@ export default function OnboardingScreen() {
     iosClientId: "198572112790-4m348foju37agudmcrs7e5rp0n4ld9g2.apps.googleusercontent.com",
     webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
   });
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+
+  // Calculate dynamic sizes with safe minimum values
+  const illustrationHeight = Math.max(80, screenHeight * 0.12);
+  const bigIllustrationHeight = Math.max(160, screenHeight * 0.2);
+  const buttonHeight = 56;
+  const contentPadding = 20;
+  const fontSize = {
+    small: Math.min(14, screenWidth * 0.035),
+    medium: Math.min(16, screenWidth * 0.04),
+    large: Math.min(18, screenWidth * 0.045),
+    xlarge: Math.min(22, screenWidth * 0.055),
+  };
 
   useEffect(() => {
     async function checkAuthAndOnboarding() {
@@ -86,6 +101,16 @@ export default function OnboardingScreen() {
   useEffect(() => {
     handleGoogleSignInResponse();
   }, [response]);
+
+  useEffect(() => {
+    if (step === 5) {
+      setIsLoadingPlans(true);
+      const timer = setTimeout(() => {
+        setIsLoadingPlans(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   async function handleGoogleSignInResponse() {
     if (response?.type === 'success' && response.authentication) {
@@ -265,18 +290,22 @@ export default function OnboardingScreen() {
     switch (step) {
       case 0:
         return (
-          <View style={styles.step}>
-            <Image
-              source={ILLUSTRATIONS.welcome}
-              style={styles.bigIllustration}
-              resizeMode="contain"
-            />
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.welcomeTitle}>🎉 Welcome to Exam Quiz! 🚀</ThemedText>
-              <ThemedText style={styles.welcomeText}>
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]}>
+            <View style={{ width: '100%', height: 200, marginBottom: 40 }}>
+              <Image
+                source={ILLUSTRATIONS.welcome}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+              />
+            </View>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]}>
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 28, marginBottom: 24 }]}>
+                🎉 Welcome to Exam Quiz! 🚀
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]}>
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
               </ThemedText>
-              <ThemedText style={styles.statsText}>
+              <ThemedText style={[styles.statsText, { fontSize: 18, lineHeight: 28 }]}>
                 💡 Join 4,000+ students sharpening their skills with 8,000+ brain-boosting questions every day! 🧠🔥
               </ThemedText>
             </View>
@@ -439,6 +468,191 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.step}>
             <Image
+              source={ILLUSTRATIONS.school}
+              style={styles.illustration}
+              resizeMode="contain"
+            />
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle}>
+                🤔 Which subject challenges you the most?
+              </ThemedText>
+              <ThemedText style={styles.stepSubtitle}>
+                We'll give extra attention to this one! 💪
+              </ThemedText>
+            </View>
+            <ScrollView
+              style={styles.subjectsScrollView}
+              contentContainerStyle={styles.subjectsScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.subjectButtons}>
+                {[
+                  { id: 'mathematics', label: 'Mathematics', emoji: '1️⃣' },
+                  { id: 'physics', label: 'Physical Sciences', emoji: '⚡' },
+                  { id: 'life_sciences', label: 'Life Sciences', emoji: '🧬' },
+                  { id: 'accounting', label: 'Accounting', emoji: '📊' },
+                  { id: 'geography', label: 'Geography', emoji: '🌍' },
+                  { id: 'english', label: 'English', emoji: '📚' }
+                ].map((subject) => (
+                  <TouchableOpacity
+                    key={subject.id}
+                    style={[
+                      styles.subjectButton,
+                      difficultSubject === subject.id && styles.subjectButtonSelected
+                    ]}
+                    onPress={() => setDifficultSubject(subject.id)}
+                  >
+                    <View style={styles.subjectContent}>
+                      <ThemedText style={styles.subjectEmoji}>{subject.emoji}</ThemedText>
+                      <ThemedText
+                        style={[
+                          styles.subjectButtonText,
+                          difficultSubject === subject.id && styles.subjectButtonTextSelected
+                        ]}
+                      >
+                        {subject.label}
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        );
+
+      case 5:
+        return (
+          <View style={styles.step}>
+            {!isLoadingPlans && (
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={handleComplete}
+              >
+                <Ionicons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            )}
+
+            {isLoadingPlans ? (
+              <View style={styles.loadingPlansContainer}>
+                <View style={styles.loadingPlansCard}>
+                  <View style={styles.loadingIconContainer}>
+                    <ActivityIndicator size="large" color="#4d5ad3" style={styles.loadingSpinner} />
+                    <View style={styles.emojiContainer}>
+                      <ThemedText style={styles.loadingPlansEmoji}>🧮</ThemedText>
+                      <View style={styles.sparkleContainer}>
+                        <ThemedText style={styles.sparkleEmoji}>✨</ThemedText>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.loadingTextContainer}>
+                    <ThemedText style={styles.loadingPlansText}>Crunching the numbers</ThemedText>
+                    <View style={styles.loadingDotsContainer}>
+                      <View style={[styles.loadingDot, styles.loadingDot1]} />
+                      <View style={[styles.loadingDot, styles.loadingDot2]} />
+                      <View style={[styles.loadingDot, styles.loadingDot3]} />
+                    </View>
+                  </View>
+                  <View style={styles.loadingStepsContainer}>
+
+                    <View style={styles.loadingStep}>
+                      <ThemedText style={styles.loadingStepEmoji}>🎯</ThemedText>
+                      <ThemedText style={styles.loadingStepText}>Optimizing for your goals</ThemedText>
+                    </View>
+                    <View style={styles.loadingStep}>
+                      <ThemedText style={styles.loadingStepEmoji}>💫</ThemedText>
+                      <ThemedText style={styles.loadingStepText}>Creating your perfect match</ThemedText>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.planContainer}>
+                <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
+                <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
+
+                <View style={styles.trialBadge}>
+                  <ThemedText style={styles.trialText}>🎁 14-Day Free Trial - No Risk, Just Learning!</ThemedText>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.planOption,
+                    selectedPlan === 'monthly' && styles.selectedPlan
+                  ]}
+                  onPress={() => setSelectedPlan('monthly')}
+                >
+                  <View style={styles.planOptionHeader}>
+                    <View>
+                      <ThemedText style={styles.planLabel}>🔵 Monthly Plan</ThemedText>
+                      <ThemedText style={styles.planSubLabel}>Season cramming!</ThemedText>
+                    </View>
+                    <View style={styles.priceContainer}>
+                      <ThemedText style={styles.priceAmount}>R{prices.monthly}</ThemedText>
+                      <ThemedText style={styles.pricePeriod}>per month</ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.planOption,
+                    selectedPlan === 'weekly' && styles.selectedPlan
+                  ]}
+                  onPress={() => setSelectedPlan('weekly')}
+                >
+                  <View style={styles.planOptionHeader}>
+                    <View>
+                      <ThemedText style={styles.planLabel}>🟡 Weekly Plan</ThemedText>
+                      <ThemedText style={styles.planSubLabel}>Last-minute study warriors!</ThemedText>
+                    </View>
+                    <View style={styles.priceContainer}>
+                      <ThemedText style={styles.priceAmount}>R{prices.weekly}</ThemedText>
+                      <ThemedText style={styles.pricePeriod}>per week</ThemedText>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.planOption,
+                    selectedPlan === 'yearly' && styles.selectedPlan
+                  ]}
+                  onPress={() => setSelectedPlan('yearly')}
+                >
+                  <View style={styles.planOptionHeader}>
+                    <View>
+                      <ThemedText style={styles.planLabel}>🟢 Yearly Plan – R{prices.yearly}</ThemedText>
+                      <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
+                    </View>
+                    <View style={styles.priceContainer}>
+                      <ThemedText style={styles.priceAmount}>R{prices.yearly}</ThemedText>
+                      <ThemedText style={styles.pricePeriod}>per year</ThemedText>
+                    </View>
+                  </View>
+                  <ThemedText style={styles.savingsText}>💰 Save R{(prices.monthly * 12) - prices.yearly} vs. Monthly! More savings = More Snacks! 🍕</ThemedText>
+                </TouchableOpacity>
+
+                <ThemedText style={styles.cancelText}>
+                  🚫 Cancel Anytime – No Stress!
+                </ThemedText>
+
+                <TouchableOpacity
+                  style={styles.subscribeButton}
+                  onPress={handleComplete}
+                >
+                  <ThemedText style={styles.subscribeButtonText}>
+                    Start Free Trial
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        );
+
+      case 6:
+        return (
+          <View style={styles.step}>
+            <Image
               source={ILLUSTRATIONS.ready}
               style={styles.illustration}
               resizeMode="contain"
@@ -454,98 +668,6 @@ export default function OnboardingScreen() {
                 </ThemedText>
               </View>
 
-            </View>
-          </View>
-        );
-
-      case 5:
-        return (
-          <View style={styles.step}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setStep(4)}
-            >
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <View style={styles.planContainer}>
-              <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
-              <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
-
-              <View style={styles.trialBadge}>
-                <ThemedText style={styles.trialText}>🎁 14-Day Free Trial - No Risk, Just Learning!</ThemedText>
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.planOption,
-                  selectedPlan === 'monthly' && styles.selectedPlan
-                ]}
-                onPress={() => setSelectedPlan('monthly')}
-              >
-                <View style={styles.planOptionHeader}>
-                  <View>
-                    <ThemedText style={styles.planLabel}>🔵 Monthly Plan</ThemedText>
-                    <ThemedText style={styles.planSubLabel}>Season cramming!</ThemedText>
-                  </View>
-                  <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceAmount}>R{prices.monthly}</ThemedText>
-                    <ThemedText style={styles.pricePeriod}>per month</ThemedText>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.planOption,
-                  selectedPlan === 'weekly' && styles.selectedPlan
-                ]}
-                onPress={() => setSelectedPlan('weekly')}
-              >
-                <View style={styles.planOptionHeader}>
-                  <View>
-                    <ThemedText style={styles.planLabel}>🟡 Weekly Plan</ThemedText>
-                    <ThemedText style={styles.planSubLabel}>Last-minute study warriors!</ThemedText>
-                  </View>
-                  <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceAmount}>R{prices.weekly}</ThemedText>
-                    <ThemedText style={styles.pricePeriod}>per week</ThemedText>
-                  </View>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.planOption,
-                  selectedPlan === 'yearly' && styles.selectedPlan
-                ]}
-                onPress={() => setSelectedPlan('yearly')}
-              >
-                <View style={styles.planOptionHeader}>
-                  <View>
-                    <ThemedText style={styles.planLabel}>🟢 Yearly Plan – R{prices.yearly}</ThemedText>
-                    <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
-                  </View>
-                  <View style={styles.priceContainer}>
-                    <ThemedText style={styles.priceAmount}>R{prices.yearly}</ThemedText>
-                    <ThemedText style={styles.pricePeriod}>per year</ThemedText>
-                  </View>
-                </View>
-                <ThemedText style={styles.savingsText}>💰 Save R{(prices.monthly * 12) - prices.yearly} vs. Monthly! More savings = More Snacks! 🍕</ThemedText>
-              </TouchableOpacity>
-
-              <ThemedText style={styles.cancelText}>
-                🚫 Cancel Anytime – No Stress!
-              </ThemedText>
-
-              <TouchableOpacity
-                style={styles.subscribeButton}
-                onPress={handleComplete}
-              >
-                <ThemedText style={styles.subscribeButtonText}>
-                  Try Free Trial
-                </ThemedText>
-              </TouchableOpacity>
             </View>
           </View>
         );
@@ -566,7 +688,9 @@ export default function OnboardingScreen() {
       case 3:
         return !!curriculum;
       case 4:
+        return !!difficultSubject;
       case 5:
+      case 6:
         return true;
       default:
         return false;
@@ -574,9 +698,9 @@ export default function OnboardingScreen() {
   };
 
   const handleNextStep = () => {
-    if (step === 4) {
-      setStep(5);
-    } else if (step === 5) {
+    if (step === 6) {
+      setStep(7);
+    } else if (step === 7) {
       handleComplete();
     } else if (step === 1 && !grade) {
       setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
@@ -584,6 +708,8 @@ export default function OnboardingScreen() {
       setErrors(prev => ({ ...prev, school: 'Please select your school' }));
     } else if (step === 3 && !curriculum) {
       setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
+    } else if (step === 4 && !difficultSubject) {
+      setErrors(prev => ({ ...prev, curriculum: 'Please select your most challenging subject' }));
     } else {
       setErrors({ grade: '', school: '', curriculum: '' });
       setStep(step + 1);
@@ -611,7 +737,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step !== 5 && (
+        {step !== 6 && (step !== 5 || !isLoadingPlans) && (
           <View style={styles.buttonContainer}>
             {step === 0 ? (
               <>
@@ -652,7 +778,7 @@ export default function OnboardingScreen() {
                     styles.primaryButtonText,
                     (!canProceed() && step !== 0) && styles.buttonTextDisabled
                   ]}>
-                    {step === 4 ? 'Start Trial' : 'Next! 🚀'}
+                    {step === 5 ? 'Start Trial' : 'Next! 🚀'}
                   </ThemedText>
                 </TouchableOpacity>
               </>
@@ -670,29 +796,30 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
   },
   stepContainer: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 20,
   },
   step: {
     flex: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   illustration: {
     width: '100%',
-    height: 100,
-    marginBottom: 40,
+    height: 200,
+    marginBottom: 24,
   },
   bigIllustration: {
     width: '100%',
-    height: 250,
     marginBottom: 40,
   },
   textContainer: {
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    marginBottom: 24,
   },
   welcomeTitle: {
     fontSize: 24,
@@ -723,7 +850,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 40,
+    marginTop: 12,
+    marginBottom: 12,
     textAlign: 'center',
     letterSpacing: -0.5,
   },
@@ -1035,5 +1163,146 @@ const styles = StyleSheet.create({
     color: '#1B1464',
     fontSize: 18,
     fontWeight: '600',
+  },
+  loadingPlansContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  loadingPlansCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    alignItems: 'center',
+    backdropFilter: 'blur(10px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  loadingIconContainer: {
+    position: 'relative',
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  loadingSpinner: {
+    marginBottom: 20,
+  },
+  emojiContainer: {
+    position: 'relative',
+    marginTop: 16,
+  },
+  sparkleContainer: {
+    position: 'absolute',
+    top: -10,
+    right: -15,
+    transform: [{ rotate: '15deg' }],
+  },
+  sparkleEmoji: {
+    fontSize: 24,
+  },
+  loadingPlansEmoji: {
+    fontSize: 56,
+    marginBottom: 8,
+  },
+  loadingTextContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  loadingPlansText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  loadingDotsContainer: {
+    flexDirection: 'row',
+    height: 8,
+    alignItems: 'center',
+  },
+  loadingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4d5ad3',
+    marginHorizontal: 4,
+  },
+  loadingDot1: {
+    opacity: 0.3,
+  },
+  loadingDot2: {
+    opacity: 0.6,
+  },
+  loadingDot3: {
+    opacity: 0.9,
+  },
+  loadingStepsContainer: {
+    width: '100%',
+    gap: 16,
+  },
+  loadingStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 12,
+  },
+  loadingStepEmoji: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  loadingStepText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    flex: 1,
+  },
+  stepSubtitle: {
+    fontSize: 18,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  subjectsScrollView: {
+    flex: 1,
+    marginTop: 16,
+  },
+  subjectsScrollContent: {
+    paddingBottom: 32,
+  },
+  subjectButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  subjectButton: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 12,
+  },
+  subjectButtonSelected: {
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  subjectContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  subjectEmoji: {
+    fontSize: 24,
+  },
+  subjectButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  subjectButtonTextSelected: {
+    color: '#FFFFFF',
+    opacity: 1,
   },
 });

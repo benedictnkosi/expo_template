@@ -311,60 +311,71 @@ export default function HomeScreen() {
         <ThemedText style={styles.sectionTitle}>📚 Let's Dive into Fun Learning!</ThemedText>
 
         <View style={styles.subjectsGrid}>
-          {mySubjects.map((subject) => (
-            <TouchableOpacity
-              key={subject.id}
-              style={styles.subjectCard}
-              activeOpacity={0.7}
-              onPress={() => router.push({
-                pathname: '/quiz',
-                params: {
-                  subjectName: subject.name,
-                  learnerRole: learnerInfo?.role || '',
-                  learnerName: learnerInfo?.name || '',
-                  learnerGrade: learnerInfo?.grade || '',
-                  learnerSchool: learnerInfo?.school || ''
-                }
-              })}
-              testID={`subject-card-${subject.name}`}
-            >
-              <View style={styles.iconContainer}>
-                <Image
-                  source={getSubjectIcon(subject.name)}
-                  style={styles.subjectIcon}
-                />
-              </View>
-              <View style={styles.cardContent}>
-                <ThemedText style={styles.subjectName} testID={`subject-name-${subject.name}`}>
-                  {subject.name}
-                </ThemedText>
-                <ThemedText style={styles.questionCount} testID={`question-count-${subject.name}`}>
-                  {subject.total_questions} questions
-                </ThemedText>
-
-                {/* Progress section */}
-                <View>
-                  <View style={styles.progressBarContainer}>
-                    <View
-                      style={[
-                        styles.progressBar,
-                        {
-                          width: `${subject.answered_questions === 0 ? 0 :
-                            Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
-                          backgroundColor: getProgressBarColor(subject.answered_questions === 0 ? 0 :
-                            Math.round((subject.correct_answers / subject.answered_questions) * 100))
-                        }
-                      ]}
-                    />
-                  </View>
-                  <ThemedText style={styles.masteryText}>
-                    {subject.answered_questions === 0 ? 0 :
-                      Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
-                  </ThemedText>
+          {mySubjects.map((subject) => {
+            const isDisabled = subject.total_questions === 0;
+            return (
+              <TouchableOpacity
+                key={subject.id}
+                style={[
+                  styles.subjectCard,
+                  isDisabled && styles.disabledSubjectCard
+                ]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (!isDisabled) {
+                    router.push({
+                      pathname: '/quiz',
+                      params: {
+                        subjectName: subject.name,
+                        learnerRole: learnerInfo?.role || '',
+                        learnerName: learnerInfo?.name || '',
+                        learnerGrade: learnerInfo?.grade || '',
+                        learnerSchool: learnerInfo?.school || ''
+                      }
+                    });
+                  }
+                }}
+                disabled={isDisabled}
+                testID={`subject-card-${subject.name}`}
+              >
+                <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]}>
+                  <Image
+                    source={getSubjectIcon(subject.name)}
+                    style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
+                  />
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.cardContent}>
+                  <ThemedText style={[styles.subjectName, isDisabled && styles.disabledText]} testID={`subject-name-${subject.name}`}>
+                    {subject.name}
+                  </ThemedText>
+                  <ThemedText style={[styles.questionCount, isDisabled && styles.disabledText]} testID={`question-count-${subject.name}`}>
+                    {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
+                  </ThemedText>
+
+                  {/* Progress section */}
+                  <View style={isDisabled && styles.disabledProgress}>
+                    <View style={styles.progressBarContainer}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          {
+                            width: `${subject.answered_questions === 0 ? 0 :
+                              Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
+                            backgroundColor: isDisabled ? '#D1D5DB' : getProgressBarColor(subject.answered_questions === 0 ? 0 :
+                              Math.round((subject.correct_answers / subject.answered_questions) * 100))
+                          }
+                        ]}
+                      />
+                    </View>
+                    <ThemedText style={[styles.masteryText, isDisabled && styles.disabledText]}>
+                      {subject.answered_questions === 0 ? 0 :
+                        Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                    </ThemedText>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
       <RatingModal />
@@ -825,6 +836,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
     marginBottom: 16,
+  },
+  disabledSubjectCard: {
+    opacity: 8,
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  disabledIconContainer: {
+    opacity: 0.5,
+  },
+  disabledIcon: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: '#9CA3AF',
+  },
+  disabledProgress: {
+    opacity: 0.5,
   },
 });
 
