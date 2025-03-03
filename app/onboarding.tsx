@@ -649,29 +649,6 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 6:
-        return (
-          <View style={styles.step}>
-            <Image
-              source={ILLUSTRATIONS.ready}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>🎉 You're all set! 🚀</ThemedText>
-              <ThemedText style={styles.stepTitle}>Welcome to the Ultimate Exam Challenge! 🏆</ThemedText>
-              <View style={styles.testimonialContainer}>
-                <ThemedText style={styles.testimonialRating}>⭐⭐⭐⭐⭐</ThemedText>
-                <ThemedText style={styles.testimonialTitle}>"Great for Exam Prep!"</ThemedText>
-                <ThemedText style={styles.testimonialText}>
-                  "This app is a lifesaver! The questions are well-structured, and I love how it tracks my progress. The image-based questions make studying more interactive!"
-                </ThemedText>
-              </View>
-
-            </View>
-          </View>
-        );
-
       default:
         return null;
     }
@@ -690,7 +667,6 @@ export default function OnboardingScreen() {
       case 4:
         return !!difficultSubject;
       case 5:
-      case 6:
         return true;
       default:
         return false;
@@ -698,18 +674,16 @@ export default function OnboardingScreen() {
   };
 
   const handleNextStep = () => {
-    if (step === 6) {
-      setStep(7);
-    } else if (step === 7) {
-      handleComplete();
-    } else if (step === 1 && !grade) {
+    if (step === 1 && !grade) {
       setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
     } else if (step === 2 && !school) {
       setErrors(prev => ({ ...prev, school: 'Please select your school' }));
     } else if (step === 3 && !curriculum) {
       setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
     } else if (step === 4 && !difficultSubject) {
-      setErrors(prev => ({ ...prev, curriculum: 'Please select your most challenging subject' }));
+      setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
+    } else if (step === 5) {
+      handleComplete();
     } else {
       setErrors({ grade: '', school: '', curriculum: '' });
       setStep(step + 1);
@@ -737,7 +711,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step !== 6 && (step !== 5 || !isLoadingPlans) && (
+        {step < 5 && (
           <View style={styles.buttonContainer}>
             {step === 0 ? (
               <>
@@ -778,7 +752,7 @@ export default function OnboardingScreen() {
                     styles.primaryButtonText,
                     (!canProceed() && step !== 0) && styles.buttonTextDisabled
                   ]}>
-                    {step === 5 ? 'Start Trial' : 'Next! 🚀'}
+                    Next! 🚀
                   </ThemedText>
                 </TouchableOpacity>
               </>
