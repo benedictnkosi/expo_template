@@ -237,3 +237,7 @@ npx expo run:ios
 xcode open workspace
 
 menu - > Product -> archive
+
+
+## run on real IOS device
+npx expo run:ios --device

@@ -1,13 +1,47 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSegments } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
-
+import { useAuth } from '@/contexts/AuthContext';
+import { getLearner } from '@/services/api';
 
 export function useProtectedRoute() {
-  const router = useRouter();
+  const { user } = useAuth();
   const segments = useSegments();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasProfile, setHasProfile] = useState(false);
 
-  return null;
+  useEffect(() => {
+    async function checkProfile() {
+      if (!user?.uid) return;
+
+      try {
+        const learner = await getLearner(user.uid);
+        setHasProfile(!!learner.name && !!learner.grade);
+      } catch (error) {
+        console.error('Failed to fetch learner:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    checkProfile();
+  }, [user]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)' ||
+      ['login', 'register', 'forgot-password'].includes(segments.join('/'));
+
+    const inQuizPage = segments.join('/') === 'quiz';
+
+    if (!user && !inAuthGroup) {
+      //router.replace('/login');
+    } else if (user && hasProfile && inAuthGroup && !inQuizPage) {
+      console.log('Replacing to /(tabs)');
+      //router.replace('/(tabs)');
+    }
+  }, [user, segments, isLoading, hasProfile]);
 }
 
 export default function AuthLayout() {

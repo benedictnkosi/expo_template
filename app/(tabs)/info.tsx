@@ -4,8 +4,8 @@ import { ThemedText } from '../../components/ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../components/Header';
 import { useState, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { getLearner } from '../../services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface User {
   uid: string;
@@ -64,31 +64,20 @@ const faqs: FAQItem[] = [
 ];
 
 export default function InfoScreen() {
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
-  const [user, setUser] = useState<User | null>(null);
+
   const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
 
   useEffect(() => {
     async function loadUser() {
-      const authData = await SecureStore.getItemAsync('auth');
-      if (authData) {
-        const parsed = JSON.parse(authData);
-        const idToken = parsed.authentication.idToken;
-        const tokenParts = idToken.split('.');
-        const tokenPayload = JSON.parse(atob(tokenParts[1]));
-        const uid = tokenPayload.sub;
 
-        setUser({
-          uid: tokenPayload.sub,
-          id: tokenPayload.sub,
-          name: parsed.userInfo.name || '',
-          email: parsed.userInfo.email,
-          picture: parsed.userInfo.picture
-        });
+      if (user) {
+
 
         // Fetch learner info
         try {
-          const learner = await getLearner(uid);
+          const learner = await getLearner(user.uid);
           if (learner.name && learner.grade && learner.school_name) {
             setLearnerInfo({
               name: learner.name,

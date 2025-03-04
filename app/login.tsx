@@ -1,173 +1,124 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, TouchableOpacity, View, Image, TextInput } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ThemedText } from '../components/ThemedText';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../config/firebase';
+import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { AntDesign } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { updateLearner } from '../services/api';
 import Toast from 'react-native-toast-message';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const LOGIN_ILLUSTRATION = require('../assets/images/illustrations/stressed.png');
+import { trackEvent, Events } from '@/services/mixpanel';
 
 export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isForcingOnboarding, setIsForcingOnboarding] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: "198572112790-07sqf0e1f0ffp6q5oe6d1g50s86r5hsm.apps.googleusercontent.com",
-    iosClientId: "198572112790-4m348foju37agudmcrs7e5rp0n4ld9g2.apps.googleusercontent.com",
-    webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
-  });
-
-  useEffect(() => {
-    handleSignInResponse();
-  }, [response]);
-
-  useEffect(() => {
-    async function checkSession() {
-      if (isForcingOnboarding) return; // Skip the check if we're forcing onboarding
-
-      const authData = await SecureStore.getItemAsync('auth');
-      if (authData) {
-        const onboardingData = await AsyncStorage.getItem('onboardingData');
-        if (onboardingData && JSON.parse(onboardingData).onboardingCompleted) {
-          router.replace('/(tabs)');
-        }
-      }
-    }
-    checkSession();
-  }, [isForcingOnboarding]);
-
-  const startRegistration = async () => {
-    try {
-      // Clear any existing data
-      await AsyncStorage.removeItem('onboardingData');
-      await SecureStore.deleteItemAsync('auth');
-      // Navigate to onboarding
-      router.replace('/onboarding');
-    } catch (error) {
-      console.error('Error starting registration:', error);
+  const handleLogin = async () => {
+    if (!email || !password) {
       Toast.show({
         type: 'error',
         text1: 'Error',
-        text2: 'Could not start registration',
+        text2: 'Please fill in all fields',
         position: 'bottom'
       });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      const user = auth.currentUser;
+      trackEvent(Events.LOGIN, {
+        "user_id": user?.uid,
+        "email": email
+      });
+    } catch (error: any) {
+      console.error('Login error:', error.code, error.message);
+
+      const messages: { [key: string]: string } = {
+        'auth/invalid-email': 'Invalid email address',
+        'auth/user-not-found': 'No account found with this email',
+        'auth/wrong-password': 'Incorrect email or password',
+        'auth/invalid-credential': 'Incorrect email or password',
+        'auth/too-many-requests': 'Too many attempts. Please try again later'
+      };
+
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: messages[error.code] || 'Invalid email or password',
+        position: 'bottom'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  async function handleSignInResponse() {
-    if (response?.type === 'success' && response.authentication) {
-      setIsLoading(true);
-      try {
-        const { authentication } = response;
-
-        // Get and verify Google user info
-        const userInfoResponse = await fetch(
-          'https://www.googleapis.com/userinfo/v2/me',
-          {
-            headers: { Authorization: `Bearer ${authentication.accessToken}` },
-          }
-        );
-
-        const googleUser = await userInfoResponse.json();
-
-        if (!googleUser.id) {
-          console.error('No user ID received from Google');
-          Toast.show({
-            type: 'error',
-            text1: 'Login Failed',
-            text2: 'Could not get user information',
-            position: 'bottom'
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        // Store auth data
-        const userData = {
-          authentication,
-          userInfo: {
-            id: googleUser.sub,
-            uid: googleUser.sub,
-            email: googleUser.email,
-            name: googleUser.name,
-            picture: googleUser.picture
-          }
-        };
-
-        await SecureStore.setItemAsync('auth', JSON.stringify(userData));
-        router.replace('/(tabs)');
-      } catch (error) {
-        console.error('Sign in error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Login Failed',
-          text2: 'Please try again',
-          position: 'bottom'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }
-
-
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={styles.container}>
       <LinearGradient
         colors={['#1B1464', '#2B2F77']}
         style={styles.gradient}
       >
-        <View style={styles.container}>
-          <Image
-            source={LOGIN_ILLUSTRATION}
-            style={styles.illustration}
-            resizeMode="contain"
-          />
-
+        <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={styles.appname}>Exam Quiz</ThemedText>
-            <ThemedText style={styles.title}>Ready to Excel? 🎯</ThemedText>
-            <ThemedText style={styles.subtitle}>Join thousands of students acing their exams! 📚</ThemedText>
+            <ThemedText style={styles.title}>Exam Quiz 👋</ThemedText>
+            <ThemedText style={styles.subtitle}>Ready to ace those exams? Let's get started! 🚀</ThemedText>
           </View>
 
-          <View style={styles.buttonContainer}>
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#94A3B8"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#94A3B8"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
             <TouchableOpacity
-              style={[styles.button, styles.registerButton]}
-              onPress={startRegistration}
+              style={[styles.button, isLoading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading}
             >
-              <AntDesign name="google" size={24} color="#DB4437" />
-              <ThemedText style={styles.registerButtonText}>
-                Register Now 🚀
+              <ThemedText style={styles.buttonText}>
+                {isLoading ? 'Signing in...' : 'Start Learning →'}
               </ThemedText>
             </TouchableOpacity>
 
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <ThemedText style={styles.dividerText}>or</ThemedText>
-              <View style={styles.dividerLine} />
+            <View style={styles.forgotPasswordContainer}>
+              <ThemedText style={styles.helperText}>
+                Forgot your password? Don't worry, it happens to the best of us! 😅
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => router.push('/forgot-password')}
+              >
+                <ThemedText style={styles.linkText}>Reset it here</ThemedText>
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={[styles.button, styles.googleButton, isLoading && styles.buttonDisabled]}
-              onPress={() => promptAsync()}
-              disabled={!request || isLoading}
-            >
-              <AntDesign name="google" size={24} color="#DB4437" />
-              <ThemedText style={styles.googleButtonText}>
-                {isLoading ? 'Signing in...' : 'Login with Google'}
+            <View style={styles.registerContainer}>
+              <ThemedText style={styles.helperText}>
+                New to Exam Quiz? Join thousands of students acing their exams! 🎯
               </ThemedText>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => router.push('/onboarding')}
+              >
+                <ThemedText style={styles.linkText}>Create an account</ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
-
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -175,151 +126,88 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   gradient: {
     flex: 1,
   },
-  container: {
+  content: {
     flex: 1,
-    paddingHorizontal: 24,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 40,
-  },
-  illustration: {
-    width: '100%',
-    height: 280,
-    marginBottom: 40,
+    paddingHorizontal: 24,
+    paddingTop: 40,
   },
   header: {
     alignItems: 'center',
     marginBottom: 48,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 24,
+    width: '100%',
+    paddingHorizontal: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  appname: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 12,
+    marginBottom: 16,
     textAlign: 'center',
+    width: '100%',
+    letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#E2E8F0',
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
+    lineHeight: 28,
+    paddingHorizontal: 8,
   },
-  buttonContainer: {
-    width: '100%',
-    paddingHorizontal: 24,
+  form: {
+    gap: 16,
+  },
+  input: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginBottom: 12,
   },
   button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 28,
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  registerButton: {
-    backgroundColor: '#4338CA',
-    marginBottom: 16,
-  },
-  registerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
-  googleButton: {
-    backgroundColor: '#FFFFFF',
-  },
-  divider: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  dividerText: {
-    color: '#FFFFFF',
-    marginHorizontal: 16,
-    fontSize: 16,
-  },
-  googleButtonText: {
-    color: '#1E293B',
-    fontSize: 18,
-    fontWeight: '600',
-    marginLeft: 12,
-  },
-  pickerContainer: {
-    backgroundColor: '#444',
-    borderWidth: 1,
-    borderColor: '#555',
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden'
-  },
-  picker: {
-    height: 50,
-    width: '100%',
-    color: '#FFFFFF',
-    backgroundColor: 'transparent'
-  },
-  linkButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#3B82F6',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  authButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 8,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
-  debugButton: {
-    marginTop: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 12,
-    borderRadius: 8,
+  buttonText: {
+    color: '#1B1464',
+    fontSize: 18,
+    fontWeight: '600',
   },
-  debugButtonText: {
+  forgotPasswordContainer: {
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  registerContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  helperText: {
+    color: '#E2E8F0',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  linkButton: {
+    padding: 8,
+  },
+  linkText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 }); 

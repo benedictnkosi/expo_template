@@ -1,23 +1,23 @@
 import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCjV86H9STLEy1SyWVyedLUlUFQB7ABIJ8",
-  authDomain: "aluve-learn.firebaseapp.com",
-  projectId: "aluve-learn",
-  storageBucket: "aluve-learn.firebasestorage.app",
-  messagingSenderId: "1080375994922",
-  appId: "1:1080375994922:web:a05f433ac96eb4c086f153",
-  measurementId: "G-RL0R1HKD66"
+  apiKey: "AIzaSyA19oZVV-JIleL-XlEbDK8k-KPNk1vod8E",
+  authDomain: "exam-quiz-b615e.firebaseapp.com",
+  projectId: "exam-quiz-b615e",
+  storageBucket: "exam-quiz-b615e.firebasestorage.app",
+  messagingSenderId: "619089624841",
+  appId: "1:619089624841:web:8cdb542ea7c8eb22681dd8",
+  measurementId: "G-MR80CKN8H9"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-
+// Initialize Auth with AsyncStorage persistence
+const auth = getAuth(app);
 
 const db = getFirestore(app);
 
-export {
-  db
-}; 
+export { auth, db }; 

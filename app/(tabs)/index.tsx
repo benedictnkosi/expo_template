@@ -5,12 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner } from '../../services/api';
 import { Subject } from '../../types/api';
-import { GoogleUser } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
 
 // Temporary mock data
@@ -24,6 +23,7 @@ function getProgressBarColor(progress: number): string {
 }
 
 export default function HomeScreen() {
+  const { user } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string; role: string } | null>(null);
@@ -32,39 +32,17 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const [streak] = useState(0);
   const [ranking] = useState(0);
-  const [user, setUser] = useState<GoogleUser | null>(null);
+
 
   // Single useEffect for initial load
   useEffect(() => {
     async function initializeData() {
       try {
-        const authData = await SecureStore.getItemAsync('auth');
-        if (!authData) {
-          router.replace('/login');
-          return;
-        }
-
-        const parsed = JSON.parse(authData);
-
-        // Extract sub from idToken as uid
-        const idToken = parsed.authentication.idToken;
-        const tokenParts = idToken.split('.');
-        const tokenPayload = JSON.parse(atob(tokenParts[1]));
-        const uid = tokenPayload.sub;
-
-        const userData = {
-          id: uid,
-          uid: uid,
-          email: parsed.userInfo.email,
-          name: parsed.userInfo.name,
-          picture: parsed.userInfo.picture
-        };
-
-        setUser(userData);
 
         // Load data immediately after setting user
-        if (userData.uid) {
-          const learner = await getLearner(userData.uid);
+        console.log('user', user);
+        if (user?.uid) {
+          const learner = await getLearner(user.uid);
           if (learner.name && learner.grade && learner.school_name) {
             setLearnerInfo({
               name: learner.name,
@@ -74,7 +52,7 @@ export default function HomeScreen() {
               role: learner.role || ''
             });
 
-            const enrolledResponse = await fetchMySubjects(userData.uid);
+            const enrolledResponse = await fetchMySubjects(user.uid);
 
             // Group subjects by base name (removing P1/P2)
             const subjectGroups = enrolledResponse.reduce((acc, curr) => {

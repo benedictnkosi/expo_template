@@ -1,7 +1,6 @@
 import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GoogleUser } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 
 interface HeaderProps {

@@ -16,6 +16,7 @@ import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionSt
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '../config/api';
 import { trackEvent, Events } from '../services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Question {
     id: number;
@@ -232,6 +233,7 @@ const ImageLoadingPlaceholder = () => (
 );
 
 export default function QuizScreen() {
+    const { user } = useAuth();
     const { subjectName, learnerRole, learnerName, learnerGrade, learnerSchool } = useLocalSearchParams();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -251,7 +253,6 @@ export default function QuizScreen() {
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [zoomLevel, setZoomLevel] = useState(0.5);
-    const [user, setUser] = useState<{ uid: string; email: string; role: string } | null>(null);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
     const [reportComment, setReportComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -285,34 +286,6 @@ export default function QuizScreen() {
         });
     }, [learnerName, learnerRole, learnerGrade, learnerSchool]);
 
-    useEffect(() => {
-        async function loadUser() {
-            try {
-                const authData = await SecureStore.getItemAsync('auth');
-                if (authData) {
-                    const parsed = JSON.parse(authData);
-                    const idToken = parsed.authentication.idToken;
-                    const tokenParts = idToken.split('.');
-                    const tokenPayload = JSON.parse(atob(tokenParts[1]));
-                    const uid = tokenPayload.sub;
-
-                    console.log('user', uid, parsed.userInfo.email, parsed.userInfo.role)
-                    setUser({
-                        uid,
-                        email: parsed.userInfo.email,
-                        role: parsed.userInfo.role
-                    });
-
-                    if (selectedPaper) {
-                        loadRandomQuestion(selectedPaper);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading user:', error);
-            }
-        }
-        loadUser();
-    }, [selectedPaper]);
 
     useEffect(() => {
         async function loadSounds() {

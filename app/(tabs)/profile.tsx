@@ -8,14 +8,12 @@ import { getLearner, updateLearner, fetchGrades } from '../../services/api';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Header } from '../../components/Header';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as SecureStore from 'expo-secure-store';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import SelectTime from '../onboarding/select-time';
+
 
 interface User {
   uid: string;
@@ -39,7 +37,7 @@ interface LearnerInfo {
 }
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const { signOut } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -68,31 +66,7 @@ export default function ProfileScreen() {
   const TERMS = [1, 2, 3, 4];
   const CURRICULA = ['CAPS', 'IEB'];
 
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const authData = await SecureStore.getItemAsync('auth');
-        if (authData) {
-          const parsed = JSON.parse(authData);
-          const idToken = parsed.authentication.idToken;
-          const tokenParts = idToken.split('.');
-          const tokenPayload = JSON.parse(atob(tokenParts[1]));
-          const uid = tokenPayload.sub;
 
-          setUser({
-            uid,
-            id: uid,
-            name: parsed.userInfo.name || '',
-            email: parsed.userInfo.email,
-            picture: parsed.userInfo.picture
-          });
-        }
-      } catch (error) {
-        console.error('Error loading user:', error);
-      }
-    }
-    loadUser();
-  }, []);
 
   useEffect(() => {
     async function fetchLearnerInfo() {
@@ -111,7 +85,7 @@ export default function ProfileScreen() {
           school_longitude: learner.school_longitude || 0,
           curriculum: learner.curriculum || '',
           terms: learner.terms || '',
-          imagePath: user.picture || ""
+          imagePath: user.photoURL || ""
         });
 
         setEditName(name);
@@ -147,6 +121,20 @@ export default function ProfileScreen() {
 
 
   const handleSave = async () => {
+    // Validate curriculum and terms selection
+    const selectedCurricula = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
+    const selectedTerms = editTerms.split(',').map(t => t.trim()).filter(Boolean);
+
+    if (selectedCurricula.length === 0 || selectedTerms.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Selection',
+        text2: 'Please select at least one curriculum and one term',
+        position: 'bottom'
+      });
+      return;
+    }
+
     setShowGradeChangeModal(true);
   };
 
@@ -207,8 +195,7 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     try {
       setIsLoading(true);
-      await SecureStore.deleteItemAsync('auth');
-      await AsyncStorage.clear();
+      await signOut();
       router.replace('/login');
     } catch (error) {
       console.error('Logout error:', error);
@@ -286,7 +273,7 @@ export default function ProfileScreen() {
   return (
     <LinearGradient
       colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={[styles.gradient, { paddingTop: insets.top }]}
+      style={[styles.gradient]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
@@ -438,9 +425,13 @@ export default function ProfileScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.button, styles.saveButton]}
+                style={[
+                  styles.button,
+                  styles.saveButton,
+                  (!editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length) && styles.buttonDisabled
+                ]}
                 onPress={handleSave}
-                disabled={isLoading}
+                disabled={isLoading || !editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length}
                 testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
@@ -520,7 +511,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
   },
   homeButton: {
     backgroundColor: '#8B5CF6',
@@ -535,12 +525,10 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 20,
     paddingBottom: 16,
     alignItems: 'center',
   },
   logo: {
-    marginTop: 20,
     width: 180,
     height: 40,
   },

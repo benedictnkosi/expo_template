@@ -14,6 +14,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
+import RegisterForm from './components/RegisterForm';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -74,21 +75,21 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     async function checkAuthAndOnboarding() {
+      console.log('Checking auth and onboarding');
       try {
-        const forcedOnboarding = await AsyncStorage.getItem('forcedOnboarding');
-        if (forcedOnboarding) {
-          // If we're forcing onboarding, just stay here
-          return;
-        }
-
         const authData = await SecureStore.getItemAsync('auth');
         const onboardingData = await AsyncStorage.getItem('onboardingData');
 
         if (authData && onboardingData) {
+          console.log('authData', authData);
+          console.log('onboardingData', onboardingData);
           const parsedOnboarding = JSON.parse(onboardingData);
-          if (parsedOnboarding.onboardingCompleted) {
+          if (parsedOnboarding.onboardingCompleted && !router.canGoBack()) {
+            console.log('Replacing to /(tabs)');
             router.replace('/(tabs)');
           }
+        } else {
+          console.log('No auth or onboarding data found');
         }
       } catch (error) {
         console.error('Error checking auth and onboarding:', error);
@@ -98,9 +99,6 @@ export default function OnboardingScreen() {
     checkAuthAndOnboarding();
   }, []);
 
-  useEffect(() => {
-    handleGoogleSignInResponse();
-  }, [response]);
 
   useEffect(() => {
     if (step === 5) {
@@ -112,167 +110,23 @@ export default function OnboardingScreen() {
     }
   }, [step]);
 
-  async function handleGoogleSignInResponse() {
-    if (response?.type === 'success' && response.authentication) {
-      setIsLoading(true);
-      try {
-        const { authentication } = response;
-        const userInfoResponse = await fetch(
-          'https://www.googleapis.com/userinfo/v2/me',
-          {
-            headers: { Authorization: `Bearer ${authentication.accessToken}` },
-          }
-        );
 
-        const googleUser = await userInfoResponse.json();
-        console.log('Full Google User Response:', googleUser);
-
-        const userId = googleUser.sub || googleUser.id;
-        console.log('User ID (sub/id):', userId);
-
-        if (!userId) {
-          throw new Error('No user ID received from Google');
-        }
-
-        // Store auth data
-        const userData = {
-          authentication,
-          userInfo: {
-            id: userId,
-            uid: userId,
-            email: googleUser.email,
-            name: googleUser.name,
-            picture: googleUser.picture
-          }
-        };
-
-        await SecureStore.setItemAsync('auth', JSON.stringify(userData));
-
-        console.log('User data:', userData);
-        // Create learner with onboarding data
-        const onboardingData = await AsyncStorage.getItem('onboardingData');
-        if (onboardingData) {
-          const parsedOnboarding = JSON.parse(onboardingData);
-          console.log('Onboarding data:', parsedOnboarding);
-
-          // Format the data to match the expected API structure
-          const learnerData = {
-            name: googleUser.name,
-            grade: parseInt(parsedOnboarding.grade),
-            school: parsedOnboarding.school,
-            school_address: parsedOnboarding.school_address,
-            school_latitude: parsedOnboarding.school_latitude,
-            school_longitude: parsedOnboarding.school_longitude,
-            curriculum: "IEB,CAPS",
-            terms: "1,2,3,4",
-            notification_hour: 18,
-          };
-
-          console.log('Sending learner data to API:', learnerData);
-          const learner = await updateLearner(userId, learnerData);
-
-          console.log('Learner update response:', learner);
-
-          if (learner.status !== 'OK') {
-            //show user message
-            Toast.show({
-              type: 'error',
-              text1: 'Failed to create learner profile',
-              text2: 'Please try again',
-              position: 'bottom'
-            });
-          } else {
-            router.replace('/(tabs)');
-          }
-        } else {
-          console.log('No onboarding data found');
-        }
-      } catch (error: any) {
-        console.error('Sign in error:', error);
-        Toast.show({
-          type: 'error',
-          text1: 'Login Failed',
-          text2: error.message || 'Please try again',
-          position: 'bottom'
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  }
 
   const handleComplete = async () => {
     try {
-      const onboardingData = {
-        grade: parseInt(grade),
-        school: schoolName,
-        school_address: schoolAddress,
-        school_latitude: schoolLatitude,
-        school_longitude: schoolLongitude,
-        curriculum: [curriculum],
-        onboardingCompleted: true
-      };
-
-      await AsyncStorage.setItem('onboardingData', JSON.stringify(onboardingData));
-      await AsyncStorage.removeItem('forcedOnboarding');
-
-      trackEvent(Events.COMPLETE_ONBOARDING, {
-        grade,
-        school: schoolName,
-        curriculum: [curriculum]
-      });
-
-      // Check if user is already logged in
-      const existingAuth = await SecureStore.getItemAsync('auth');
-      if (existingAuth) {
-        // User is already logged in, update their profile and redirect
-        const parsed = JSON.parse(existingAuth);
-        const idToken = parsed.authentication.idToken;
-        const tokenParts = idToken.split('.');
-        const tokenPayload = JSON.parse(atob(tokenParts[1]));
-        const uid = tokenPayload.sub;
-
-        // Update learner profile with onboarding data
-        const learnerData = {
-          name: parsed.userInfo.name,
-          grade: parseInt(grade),
-          school: schoolName,
-          school_address: schoolAddress,
-          school_latitude: schoolLatitude,
-          school_longitude: schoolLongitude,
-          curriculum: "IEB,CAPS",
-          terms: "1,2,3,4",
-          notification_hour: 18,
-        };
-
-        const learner = await updateLearner(uid, learnerData);
-        if (learner.status !== 'OK') {
-          Toast.show({
-            type: 'error',
-            text1: 'Failed to update learner profile',
-            text2: 'Please try again',
-            position: 'bottom'
-          });
-          return;
-        }
-
-        router.replace('/(tabs)');
-        return;
-      }
-
-      // If not logged in, proceed with Google sign in
-      if (!request) {
-        Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: 'Cannot start Google sign in',
-          position: 'bottom'
-        });
-        return;
-      }
-
       setIsLoading(true);
-      await promptAsync();
+
+      // Navigate to registration screen with onboarding data
+      router.replace({
+        pathname: '/register',
+        params: {
+          grade,
+          school,
+          curriculum,
+          difficultSubject,
+          selectedPlan
+        }
+      });
 
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
@@ -282,6 +136,7 @@ export default function OnboardingScreen() {
         text2: 'Failed to complete registration',
         position: 'bottom'
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -526,7 +381,7 @@ export default function OnboardingScreen() {
             {!isLoadingPlans && (
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={handleComplete}
+                onPress={() => router.replace('/login')}
               >
                 <Ionicons name="close" size={24} color="#FFFFFF" />
               </TouchableOpacity>
@@ -566,7 +421,7 @@ export default function OnboardingScreen() {
                 </View>
               </View>
             ) : (
-              <View style={styles.planContainer}>
+              <ScrollView style={styles.planContainer}>
                 <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
                 <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
 
@@ -638,14 +493,68 @@ export default function OnboardingScreen() {
 
                 <TouchableOpacity
                   style={styles.subscribeButton}
-                  onPress={handleComplete}
+                  onPress={async () => {
+                    try {
+                      // Save onboarding progress
+                      const onboardingData = {
+                        grade,
+                        school: schoolName,
+                        curriculum,
+                        difficultSubject,
+                        selectedPlan,
+                        onboardingInProgress: true
+                      };
+                      await AsyncStorage.setItem('onboardingData', JSON.stringify(onboardingData));
+
+                      // Move to registration step
+                      setStep(6);
+                    } catch (error) {
+                      console.error('Error saving onboarding data:', error);
+                      Toast.show({
+                        type: 'error',
+                        text1: 'Error',
+                        text2: 'Failed to proceed to registration',
+                        position: 'bottom'
+                      });
+                    }
+                  }}
                 >
                   <ThemedText style={styles.subscribeButtonText}>
                     Start Free Trial
                   </ThemedText>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             )}
+          </View>
+        );
+      case 6:
+        return (
+          <View style={styles.step}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setStep(5)}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <ScrollView style={styles.registrationContainer}>
+              <View style={styles.registrationHeader}>
+                <ThemedText style={styles.registrationTitle}>Create Your Account</ThemedText>
+                <ThemedText style={styles.registrationSubtitle}>
+                  🎯 Almost there! Set up your account to start your learning journey.
+                </ThemedText>
+              </View>
+
+              <RegisterForm
+                onboardingData={{
+                  grade,
+                  school: schoolName,
+                  curriculum,
+                  difficultSubject,
+                  selectedPlan
+                }}
+              />
+            </ScrollView>
           </View>
         );
 
@@ -1022,9 +931,8 @@ const styles = StyleSheet.create({
   },
   planContainer: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingHorizontal: 24,
-    alignItems: 'center',
   },
   planTitle: {
     fontSize: 24,
@@ -1278,5 +1186,27 @@ const styles = StyleSheet.create({
   subjectButtonTextSelected: {
     color: '#FFFFFF',
     opacity: 1,
+  },
+  registrationContainer: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 24,
+  },
+  registrationHeader: {
+    marginBottom: 32,
+    alignItems: 'center',
+  },
+  registrationTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  registrationSubtitle: {
+    fontSize: 16,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
