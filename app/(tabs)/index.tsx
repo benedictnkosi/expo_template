@@ -40,7 +40,6 @@ export default function HomeScreen() {
       try {
 
         // Load data immediately after setting user
-        console.log('user', user);
         if (user?.uid) {
           const learner = await getLearner(user.uid);
           if (learner.name && learner.grade && learner.school_name) {
@@ -54,31 +53,36 @@ export default function HomeScreen() {
 
             const enrolledResponse = await fetchMySubjects(user.uid);
 
-            // Group subjects by base name (removing P1/P2)
-            const subjectGroups = enrolledResponse.reduce((acc, curr) => {
-              const baseName = curr.subject.name.replace(/ P[12]$/, '');
+            // Check if enrolledResponse and subjects array exists
+            if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+              // Group subjects by base name (removing P1/P2)
+              const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+                const baseName = curr.name.replace(/ P[12]$/, '');
 
-              if (!acc[baseName]) {
-                acc[baseName] = {
-                  id: curr.subject.id.toString(),
-                  name: baseName,
-                  total_questions: curr.total_questions,
-                  answered_questions: curr.answered_questions,
-                  correct_answers: curr.correct_answers
-                };
-              } else {
-                // Sum up the stats from both papers
-                acc[baseName].total_questions += curr.total_questions;
-                acc[baseName].answered_questions += curr.answered_questions;
-                acc[baseName].correct_answers += curr.correct_answers;
-              }
+                if (!acc[baseName]) {
+                  acc[baseName] = {
+                    id: curr.id.toString(),
+                    name: baseName,
+                    total_questions: curr.totalSubjectQuestions || 0,
+                    answered_questions: curr.totalResults || 0,
+                    correct_answers: 0
+                  };
+                } else {
+                  // Sum up the stats from both papers
+                  acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+                  acc[baseName].answered_questions += curr.totalResults || 0;
+                }
 
-              return acc;
-            }, {} as Record<string, Subject>);
+                return acc;
+              }, {});
 
-            setMySubjects(Object.values(subjectGroups));
+              setMySubjects(Object.values(subjectGroups));
+            } else {
+              // Handle case where no subjects are enrolled
+              setMySubjects([]);
+            }
           } else {
-            router.replace('/onboarding');
+            router.replace('/login');
           }
         }
       } catch (error) {
@@ -106,35 +110,41 @@ export default function HomeScreen() {
           role: learner.role || ''
         });
 
-
         setIsLoading(true);
         const enrolledResponse = await fetchMySubjects(user.uid);
-        // Group subjects by base name (removing P1/P2)
-        const subjectGroups = enrolledResponse.reduce((acc, curr) => {
-          const baseName = curr.subject.name.replace(/ P[12]$/, '');
 
-          if (!acc[baseName]) {
-            acc[baseName] = {
-              id: curr.subject.id.toString(),
-              name: baseName,
-              total_questions: curr.total_questions,
-              answered_questions: curr.answered_questions,
-              correct_answers: curr.correct_answers
-            };
-          } else {
-            // Sum up the stats from both papers
-            acc[baseName].total_questions += curr.total_questions;
-            acc[baseName].answered_questions += curr.answered_questions;
-            acc[baseName].correct_answers += curr.correct_answers;
-          }
+        // Check if enrolledResponse and subjects array exists
+        if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+          // Group subjects by base name (removing P1/P2)
+          const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+            const baseName = curr.name.replace(/ P[12]$/, '');
 
-          return acc;
-        }, {} as Record<string, Subject>);
+            if (!acc[baseName]) {
+              acc[baseName] = {
+                id: curr.id.toString(),
+                name: baseName,
+                total_questions: curr.totalSubjectQuestions || 0,
+                answered_questions: curr.totalResults || 0,
+                correct_answers: 0
+              };
+            } else {
+              // Sum up the stats from both papers
+              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+              acc[baseName].answered_questions += curr.totalResults || 0;
+            }
 
-        setMySubjects(Object.values(subjectGroups));
+            return acc;
+          }, {});
+
+          setMySubjects(Object.values(subjectGroups));
+        } else {
+          // Handle case where no subjects are enrolled
+          setMySubjects([]);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
+      setMySubjects([]);
     } finally {
       setIsLoading(false);
     }
@@ -805,7 +815,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#1E293B',
     marginBottom: 8,

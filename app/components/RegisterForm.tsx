@@ -8,6 +8,9 @@ import Toast from 'react-native-toast-message';
 import { updateLearner } from '@/services/api';
 
 interface OnboardingData {
+    school_address: string;
+    school_latitude: string;
+    school_longitude: string;
     grade: string;
     school: string;
     curriculum: string;
@@ -51,7 +54,6 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
         try {
             // Register the user
             const user = await signUp(email, password);
-            console.log('Successfully registered user:', user.uid);
 
             // If we have onboarding data, update the learner profile
             if (onboardingData) {
@@ -59,12 +61,14 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                     name: email.split('@')[0], // Use email username as initial name
                     grade: parseInt(onboardingData.grade),
                     school: onboardingData.school,
-                    school_address: onboardingData.school_address,
-                    school_latitude: onboardingData.school_latitude,
-                    school_longitude: onboardingData.school_longitude,
+                    school_address: onboardingData.school_address || '',
+                    school_latitude: parseFloat(onboardingData.school_latitude as string) || 0,
+                    school_longitude: parseFloat(onboardingData.school_longitude as string) || 0,
                     curriculum: onboardingData.curriculum,
-                    terms: "1,2,3,4"
+                    terms: "1,2,3,4",
+                    email: email,
                 };
+
 
                 const learner = await updateLearner(user.uid, learnerData);
                 if (learner.status !== 'OK') {

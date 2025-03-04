@@ -12,6 +12,9 @@ export default function RegisterScreen() {
     const onboardingData = {
         grade: Array.isArray(params.grade) ? params.grade[0] : params.grade,
         school: Array.isArray(params.school) ? params.school[0] : params.school,
+        school_address: Array.isArray(params.school_address) ? params.school_address[0] : params.school_address,
+        school_latitude: Array.isArray(params.school_latitude) ? parseFloat(params.school_latitude[0]) : parseFloat(params.school_latitude as string),
+        school_longitude: Array.isArray(params.school_longitude) ? parseFloat(params.school_longitude[0]) : parseFloat(params.school_longitude as string),
         curriculum: Array.isArray(params.curriculum) ? params.curriculum[0] : params.curriculum,
         difficultSubject: Array.isArray(params.difficultSubject) ? params.difficultSubject[0] : params.difficultSubject,
         selectedPlan: Array.isArray(params.selectedPlan) ? params.selectedPlan[0] : params.selectedPlan

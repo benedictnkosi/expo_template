@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Switch, Dimensions } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Switch, Dimensions, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
@@ -8,6 +8,7 @@ import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
+import * as StoreReview from 'expo-store-review';
 import ZoomableImageNew from '../components/ZoomableImageNew';
 
 import { ThemedView } from '../components/ThemedView';
@@ -268,6 +269,8 @@ export default function QuizScreen() {
     const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
     const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
     const [isRestartModalVisible, setIsRestartModalVisible] = useState(false);
+    const [showRatingModal, setShowRatingModal] = useState(false);
+    const [hasShownRating, setHasShownRating] = useState(false);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -276,15 +279,6 @@ export default function QuizScreen() {
             });
         }, 500);
     };
-
-    useEffect(() => {
-        console.log('Learner Information:', {
-            name: learnerName,
-            role: learnerRole,
-            grade: learnerGrade,
-            school: learnerSchool
-        });
-    }, [learnerName, learnerRole, learnerGrade, learnerSchool]);
 
 
     useEffect(() => {
@@ -528,7 +522,6 @@ export default function QuizScreen() {
 
     const handleApproveQuestion = async () => {
         if (!currentQuestion?.id || !user?.uid || !user?.email || learnerRole !== 'admin') {
-            console.log('Not an admin - ' + learnerRole)
             return;
         }
 
@@ -655,6 +648,43 @@ export default function QuizScreen() {
             </View>
         );
     };
+
+    // Add this function to handle rating
+    const handleRating = async () => {
+        if (await StoreReview.hasAction()) {
+            await StoreReview.requestReview();
+        } else {
+            // Fallback to store URLs if StoreReview is not available
+            const storeUrl = Platform.select({
+                ios: 'https://apps.apple.com/app/6742684696',
+                android: 'https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+            });
+            if (storeUrl) {
+                await Linking.openURL(storeUrl);
+            }
+        }
+        setShowRatingModal(false);
+        await SecureStore.setItemAsync('has_shown_rating', 'true');
+    };
+
+    // Add this effect to check and show rating prompt
+    useEffect(() => {
+        async function checkAndShowRating() {
+            try {
+                const hasRated = await SecureStore.getItemAsync('has_shown_rating');
+                if (!hasRated && !hasShownRating) {
+                    // Wait for 2 seconds before showing the rating modal
+                    setTimeout(() => {
+                        setShowRatingModal(true);
+                        setHasShownRating(true);
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error checking rating status:', error);
+            }
+        }
+        //checkAndShowRating();
+    }, [hasShownRating]);
 
     if (isLoading) {
         return (
@@ -1204,6 +1234,36 @@ export default function QuizScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Add Rating Modal */}
+            <Modal
+                isVisible={showRatingModal}
+                onBackdropPress={() => setShowRatingModal(false)}
+                style={styles.modal}
+                animationIn="fadeIn"
+                animationOut="fadeOut"
+            >
+                <View style={styles.ratingModalContent}>
+                    <ThemedText style={styles.ratingTitle}>Enjoying Exam Quiz? 🌟</ThemedText>
+                    <ThemedText style={styles.ratingText}>
+                        Your feedback helps us improve! Would you mind taking a moment to rate us?
+                    </ThemedText>
+                    <View style={styles.ratingButtons}>
+                        <TouchableOpacity
+                            style={[styles.ratingButton, styles.ratingSecondaryButton]}
+                            onPress={() => setShowRatingModal(false)}
+                        >
+                            <ThemedText style={styles.ratingSecondaryButtonText}>Maybe Later</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.ratingButton, styles.ratingPrimaryButton]}
+                            onPress={handleRating}
+                        >
+                            <ThemedText style={styles.ratingPrimaryButtonText}>Rate Now!</ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </LinearGradient >
     );
 }
@@ -1571,11 +1631,6 @@ const styles = StyleSheet.create({
         height: 200,
         marginTop: 8,
         borderRadius: 8,
-    },
-    buttonContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 32,
     },
     imageWrapper: {
         width: '100%',
@@ -2059,6 +2114,56 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    ratingModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        width: '90%',
+        maxWidth: 400,
+        alignSelf: 'center',
+    },
+    ratingTitle: {
+        fontSize: 24,
+        fontWeight: '700',
+        color: '#1E293B',
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    ratingText: {
+        fontSize: 16,
+        color: '#64748B',
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 24,
+    },
+    ratingButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    ratingButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    ratingPrimaryButton: {
+        backgroundColor: '#8B5CF6',
+    },
+    ratingSecondaryButton: {
+        backgroundColor: '#E2E8F0',
+    },
+    ratingPrimaryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    ratingSecondaryButtonText: {
+        color: '#1E293B',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

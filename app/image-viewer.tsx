@@ -6,7 +6,6 @@ import ZoomableImageNew from '../components/ZoomableImageNew';
 
 export default function ImageViewer() {
     const { imageUrl } = useLocalSearchParams();
-    console.log('inside image viewer', imageUrl)
 
     return (
         <SafeAreaView style={styles.safeArea}>

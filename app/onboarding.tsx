@@ -61,35 +61,18 @@ export default function OnboardingScreen() {
   });
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
 
-  // Calculate dynamic sizes with safe minimum values
-  const illustrationHeight = Math.max(80, screenHeight * 0.12);
-  const bigIllustrationHeight = Math.max(160, screenHeight * 0.2);
-  const buttonHeight = 56;
-  const contentPadding = 20;
-  const fontSize = {
-    small: Math.min(14, screenWidth * 0.035),
-    medium: Math.min(16, screenWidth * 0.04),
-    large: Math.min(18, screenWidth * 0.045),
-    xlarge: Math.min(22, screenWidth * 0.055),
-  };
-
   useEffect(() => {
     async function checkAuthAndOnboarding() {
-      console.log('Checking auth and onboarding');
       try {
         const authData = await SecureStore.getItemAsync('auth');
         const onboardingData = await AsyncStorage.getItem('onboardingData');
 
         if (authData && onboardingData) {
-          console.log('authData', authData);
-          console.log('onboardingData', onboardingData);
+
           const parsedOnboarding = JSON.parse(onboardingData);
           if (parsedOnboarding.onboardingCompleted && !router.canGoBack()) {
-            console.log('Replacing to /(tabs)');
             router.replace('/(tabs)');
           }
-        } else {
-          console.log('No auth or onboarding data found');
         }
       } catch (error) {
         console.error('Error checking auth and onboarding:', error);
@@ -121,10 +104,13 @@ export default function OnboardingScreen() {
         pathname: '/register',
         params: {
           grade,
-          school,
+          school: schoolName,
+          school_address: schoolAddress,
+          school_latitude: schoolLatitude.toString(),
+          school_longitude: schoolLongitude.toString(),
           curriculum,
           difficultSubject,
-          selectedPlan
+          selectedPlan,
         }
       });
 
@@ -408,7 +394,6 @@ export default function OnboardingScreen() {
                     </View>
                   </View>
                   <View style={styles.loadingStepsContainer}>
-
                     <View style={styles.loadingStep}>
                       <ThemedText style={styles.loadingStepEmoji}>🎯</ThemedText>
                       <ThemedText style={styles.loadingStepText}>Optimizing for your goals</ThemedText>
@@ -422,8 +407,13 @@ export default function OnboardingScreen() {
               </View>
             ) : (
               <ScrollView style={styles.planContainer}>
-                <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
-                <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
+                <View style={styles.planHeaderContainer}>
+
+                  <View style={styles.planTitleContainer}>
+                    <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
+                    <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
+                  </View>
+                </View>
 
                 <View style={styles.trialBadge}>
                   <ThemedText style={styles.trialText}>🎁 14-Day Free Trial - No Risk, Just Learning!</ThemedText>
@@ -476,7 +466,7 @@ export default function OnboardingScreen() {
                 >
                   <View style={styles.planOptionHeader}>
                     <View>
-                      <ThemedText style={styles.planLabel}>🟢 Yearly Plan – R{prices.yearly}</ThemedText>
+                      <ThemedText style={styles.planLabel}>🟢 Yearly Plan</ThemedText>
                       <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
                     </View>
                     <View style={styles.priceContainer}>
@@ -499,6 +489,9 @@ export default function OnboardingScreen() {
                       const onboardingData = {
                         grade,
                         school: schoolName,
+                        school_address: schoolAddress,
+                        school_latitude: schoolLatitude,
+                        school_longitude: schoolLongitude,
                         curriculum,
                         difficultSubject,
                         selectedPlan,
@@ -549,6 +542,9 @@ export default function OnboardingScreen() {
                 onboardingData={{
                   grade,
                   school: schoolName,
+                  school_address: schoolAddress,
+                  school_latitude: schoolLatitude.toString(),
+                  school_longitude: schoolLongitude.toString(),
                   curriculum,
                   difficultSubject,
                   selectedPlan
@@ -602,9 +598,9 @@ export default function OnboardingScreen() {
   const getPrices = () => {
     const isIOS = Platform.OS === 'ios';
     return {
-      weekly: isIOS ? 29 : 19,
+      weekly: isIOS ? 19 : 19,
       monthly: isIOS ? 59 : 49,
-      yearly: isIOS ? 309 : 299
+      yearly: isIOS ? 399 : 299
     };
   };
 
@@ -705,7 +701,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   welcomeTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 16,
@@ -714,7 +710,7 @@ const styles = StyleSheet.create({
   },
 
   boastingText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 24,
@@ -905,7 +901,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   testimonialRating: {
-    fontSize: 24,
+    fontSize: 22,
     color: '#FFD700',
     marginBottom: 8,
   },
@@ -927,23 +923,40 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     left: 20,
-    zIndex: 1,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   planContainer: {
     flex: 1,
     paddingTop: 20,
+  },
+  planHeaderContainer: {
     paddingHorizontal: 24,
+    paddingTop: 20,
+    marginBottom: 24,
+    position: 'relative',
+  },
+  planTitleContainer: {
+    alignItems: 'center',
+    marginTop: 40,
   },
   planTitle: {
     fontSize: 24,
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 8,
+    textAlign: 'center',
   },
   unlockText: {
     fontSize: 20,
     color: '#FFFFFF',
     marginBottom: 24,
+    textAlign: 'center',
   },
   trialBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -989,7 +1002,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   priceAmount: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -1081,7 +1094,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '15deg' }],
   },
   sparkleEmoji: {
-    fontSize: 24,
+    fontSize: 22,
   },
   loadingPlansEmoji: {
     fontSize: 56,

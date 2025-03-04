@@ -95,6 +95,18 @@ export default function Login() {
               </ThemedText>
             </TouchableOpacity>
 
+            <View style={styles.registerContainer}>
+              <ThemedText style={styles.helperText}>
+                New to Exam Quiz? Join thousands of students acing their exams! 🎯
+              </ThemedText>
+              <TouchableOpacity
+                style={styles.createAccountButton}
+                onPress={() => router.push('/onboarding')}
+              >
+                <ThemedText style={styles.createAccountButtonText}>Create an account</ThemedText>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.forgotPasswordContainer}>
               <ThemedText style={styles.helperText}>
                 Forgot your password? Don't worry, it happens to the best of us! 😅
@@ -104,18 +116,6 @@ export default function Login() {
                 onPress={() => router.push('/forgot-password')}
               >
                 <ThemedText style={styles.linkText}>Reset it here</ThemedText>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.registerContainer}>
-              <ThemedText style={styles.helperText}>
-                New to Exam Quiz? Join thousands of students acing their exams! 🎯
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.linkButton}
-                onPress={() => router.push('/onboarding')}
-              >
-                <ThemedText style={styles.linkText}>Create an account</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 16,
@@ -186,11 +186,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  forgotPasswordContainer: {
+  registerContainer: {
     marginTop: 32,
     alignItems: 'center',
+    width: '100%',
   },
-  registerContainer: {
+  createAccountButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  createAccountButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  forgotPasswordContainer: {
     marginTop: 24,
     alignItems: 'center',
   },

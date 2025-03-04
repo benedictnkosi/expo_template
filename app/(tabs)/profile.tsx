@@ -266,10 +266,6 @@ export default function ProfileScreen() {
     await saveChanges();
   };
 
-  const handleGoHome = () => {
-    router.push('/(tabs)');
-  };
-
   return (
     <LinearGradient
       colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}

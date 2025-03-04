@@ -35,12 +35,6 @@ export function useProtectedRoute() {
 
     const inQuizPage = segments.join('/') === 'quiz';
 
-    if (!user && !inAuthGroup) {
-      //router.replace('/login');
-    } else if (user && hasProfile && inAuthGroup && !inQuizPage) {
-      console.log('Replacing to /(tabs)');
-      //router.replace('/(tabs)');
-    }
   }, [user, segments, isLoading, hasProfile]);
 }
 

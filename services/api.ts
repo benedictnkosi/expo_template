@@ -20,7 +20,7 @@ export async function fetchAvailableSubjects(grade: string): Promise<SubjectsRes
   return data;
 }
 
-export async function fetchMySubjects(uid: string): Promise<APISubject[]> {
+export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
   const response = await fetch(
     ensureHttps(`${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`)
   );
@@ -160,6 +160,7 @@ export async function updateLearner(uid: string, data: {
   school_longitude: number;
   terms: string;
   curriculum: string;
+  email: string;
 }) {
   mixpanel.track(Events.UPDATE_PROFILE, {
     "user_id": uid,
@@ -183,7 +184,8 @@ export async function updateLearner(uid: string, data: {
         school_latitude: data.school_latitude,
         school_longitude: data.school_longitude,
         terms: data.terms,
-        curriculum: data.curriculum
+        curriculum: data.curriculum,
+        email: data.email
       })
     }
   );

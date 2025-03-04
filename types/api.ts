@@ -13,13 +13,11 @@ export interface Subject {
 }
 
 export interface APISubject {
-  subject: {
-    id: number;
-    name: string;
-  };
-  total_questions: number;
-  answered_questions: number;
-  correct_answers: number;
+  id: number;
+  name: string;
+  active: boolean;
+  totalResults: number;
+  totalSubjectQuestions: number;
 }
 
 export interface LearnerSubject {
@@ -58,7 +56,8 @@ export interface SubjectsResponse {
 }
 
 export interface MySubjectsResponse {
-  subjects: Subject[];
+  status: string;
+  subjects: APISubject[];
 }
 
 export interface CheckAnswerResponse {
