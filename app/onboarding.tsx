@@ -6,9 +6,6 @@ import { ThemedText } from '../components/ThemedText';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { trackEvent, Events } from '../services/mixpanel';
-import { updateLearner } from '../services/api';
-import SelectTime from './onboarding/select-time';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -40,7 +37,6 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
   const [school, setSchool] = useState('');
-  const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [schoolAddress, setSchoolAddress] = useState('');
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
@@ -59,7 +55,6 @@ export default function OnboardingScreen() {
     iosClientId: "198572112790-4m348foju37agudmcrs7e5rp0n4ld9g2.apps.googleusercontent.com",
     webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
   });
-  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
 
   useEffect(() => {
     async function checkAuthAndOnboarding() {
@@ -68,7 +63,6 @@ export default function OnboardingScreen() {
         const onboardingData = await AsyncStorage.getItem('onboardingData');
 
         if (authData && onboardingData) {
-
           const parsedOnboarding = JSON.parse(onboardingData);
           if (parsedOnboarding.onboardingCompleted && !router.canGoBack()) {
             router.replace('/(tabs)');
@@ -81,19 +75,6 @@ export default function OnboardingScreen() {
 
     checkAuthAndOnboarding();
   }, []);
-
-
-  useEffect(() => {
-    if (step === 5) {
-      setIsLoadingPlans(true);
-      const timer = setTimeout(() => {
-        setIsLoadingPlans(false);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
-
-
 
   const handleComplete = async () => {
     try {
@@ -110,7 +91,6 @@ export default function OnboardingScreen() {
           school_longitude: schoolLongitude.toString(),
           curriculum,
           difficultSubject,
-          selectedPlan,
         }
       });
 
@@ -364,168 +344,9 @@ export default function OnboardingScreen() {
       case 5:
         return (
           <View style={styles.step}>
-            {!isLoadingPlans && (
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => router.replace('/login')}
-              >
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-
-            {isLoadingPlans ? (
-              <View style={styles.loadingPlansContainer}>
-                <View style={styles.loadingPlansCard}>
-                  <View style={styles.loadingIconContainer}>
-                    <ActivityIndicator size="large" color="#4d5ad3" style={styles.loadingSpinner} />
-                    <View style={styles.emojiContainer}>
-                      <ThemedText style={styles.loadingPlansEmoji}>🧮</ThemedText>
-                      <View style={styles.sparkleContainer}>
-                        <ThemedText style={styles.sparkleEmoji}>✨</ThemedText>
-                      </View>
-                    </View>
-                  </View>
-                  <View style={styles.loadingTextContainer}>
-                    <ThemedText style={styles.loadingPlansText}>Crunching the numbers</ThemedText>
-                    <View style={styles.loadingDotsContainer}>
-                      <View style={[styles.loadingDot, styles.loadingDot1]} />
-                      <View style={[styles.loadingDot, styles.loadingDot2]} />
-                      <View style={[styles.loadingDot, styles.loadingDot3]} />
-                    </View>
-                  </View>
-                  <View style={styles.loadingStepsContainer}>
-                    <View style={styles.loadingStep}>
-                      <ThemedText style={styles.loadingStepEmoji}>🎯</ThemedText>
-                      <ThemedText style={styles.loadingStepText}>Optimizing for your goals</ThemedText>
-                    </View>
-                    <View style={styles.loadingStep}>
-                      <ThemedText style={styles.loadingStepEmoji}>💫</ThemedText>
-                      <ThemedText style={styles.loadingStepText}>Creating your perfect match</ThemedText>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              <ScrollView style={styles.planContainer}>
-                <View style={styles.planHeaderContainer}>
-
-                  <View style={styles.planTitleContainer}>
-                    <ThemedText style={styles.planTitle}>Your plan is ready.</ThemedText>
-                    <ThemedText style={styles.unlockText}>Unlock Exam Quiz</ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.trialBadge}>
-                  <ThemedText style={styles.trialText}>🎁 14-Day Free Trial - No Risk, Just Learning!</ThemedText>
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.planOption,
-                    selectedPlan === 'monthly' && styles.selectedPlan
-                  ]}
-                  onPress={() => setSelectedPlan('monthly')}
-                >
-                  <View style={styles.planOptionHeader}>
-                    <View>
-                      <ThemedText style={styles.planLabel}>🔵 Monthly Plan</ThemedText>
-                      <ThemedText style={styles.planSubLabel}>Season cramming!</ThemedText>
-                    </View>
-                    <View style={styles.priceContainer}>
-                      <ThemedText style={styles.priceAmount}>R{prices.monthly}</ThemedText>
-                      <ThemedText style={styles.pricePeriod}>per month</ThemedText>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.planOption,
-                    selectedPlan === 'weekly' && styles.selectedPlan
-                  ]}
-                  onPress={() => setSelectedPlan('weekly')}
-                >
-                  <View style={styles.planOptionHeader}>
-                    <View>
-                      <ThemedText style={styles.planLabel}>🟡 Weekly Plan</ThemedText>
-                      <ThemedText style={styles.planSubLabel}>Last-minute study warriors!</ThemedText>
-                    </View>
-                    <View style={styles.priceContainer}>
-                      <ThemedText style={styles.priceAmount}>R{prices.weekly}</ThemedText>
-                      <ThemedText style={styles.pricePeriod}>per week</ThemedText>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.planOption,
-                    selectedPlan === 'yearly' && styles.selectedPlan
-                  ]}
-                  onPress={() => setSelectedPlan('yearly')}
-                >
-                  <View style={styles.planOptionHeader}>
-                    <View>
-                      <ThemedText style={styles.planLabel}>🟢 Yearly Plan</ThemedText>
-                      <ThemedText style={styles.planSubLabel}>🎯 Best Deal!</ThemedText>
-                    </View>
-                    <View style={styles.priceContainer}>
-                      <ThemedText style={styles.priceAmount}>R{prices.yearly}</ThemedText>
-                      <ThemedText style={styles.pricePeriod}>per year</ThemedText>
-                    </View>
-                  </View>
-                  <ThemedText style={styles.savingsText}>💰 Save R{(prices.monthly * 12) - prices.yearly} vs. Monthly! More savings = More Snacks! 🍕</ThemedText>
-                </TouchableOpacity>
-
-                <ThemedText style={styles.cancelText}>
-                  🚫 Cancel Anytime – No Stress!
-                </ThemedText>
-
-                <TouchableOpacity
-                  style={styles.subscribeButton}
-                  onPress={async () => {
-                    try {
-                      // Save onboarding progress
-                      const onboardingData = {
-                        grade,
-                        school: schoolName,
-                        school_address: schoolAddress,
-                        school_latitude: schoolLatitude,
-                        school_longitude: schoolLongitude,
-                        curriculum,
-                        difficultSubject,
-                        selectedPlan,
-                        onboardingInProgress: true
-                      };
-                      await AsyncStorage.setItem('onboardingData', JSON.stringify(onboardingData));
-
-                      // Move to registration step
-                      setStep(6);
-                    } catch (error) {
-                      console.error('Error saving onboarding data:', error);
-                      Toast.show({
-                        type: 'error',
-                        text1: 'Error',
-                        text2: 'Failed to proceed to registration',
-                        position: 'bottom'
-                      });
-                    }
-                  }}
-                >
-                  <ThemedText style={styles.subscribeButtonText}>
-                    Start Free Trial
-                  </ThemedText>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
-          </View>
-        );
-      case 6:
-        return (
-          <View style={styles.step}>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setStep(5)}
+              onPress={() => setStep(4)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -547,7 +368,6 @@ export default function OnboardingScreen() {
                   school_longitude: schoolLongitude.toString(),
                   curriculum,
                   difficultSubject,
-                  selectedPlan
                 }}
               />
             </ScrollView>
@@ -594,17 +414,6 @@ export default function OnboardingScreen() {
       setStep(step + 1);
     }
   };
-
-  const getPrices = () => {
-    const isIOS = Platform.OS === 'ios';
-    return {
-      weekly: isIOS ? 19 : 19,
-      monthly: isIOS ? 59 : 49,
-      yearly: isIOS ? 399 : 299
-    };
-  };
-
-  const prices = getPrices();
 
   return (
     <LinearGradient

@@ -8,14 +8,14 @@ import Toast from 'react-native-toast-message';
 import { updateLearner } from '@/services/api';
 
 interface OnboardingData {
+    grade: string;
+    school: string;
     school_address: string;
     school_latitude: string;
     school_longitude: string;
-    grade: string;
-    school: string;
     curriculum: string;
     difficultSubject: string;
-    selectedPlan: string;
+    selectedPlan?: string;
 }
 
 interface RegisterFormProps {
