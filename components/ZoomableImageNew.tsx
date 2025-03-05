@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Dimensions } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { API_BASE_URL } from '@/config/api';
 
 interface Props {

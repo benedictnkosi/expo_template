@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image, Platform, ActivityIndicator, ScrollView, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, ScrollView, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
@@ -12,6 +12,8 @@ import * as Google from 'expo-auth-session/providers/google';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import RegisterForm from './components/RegisterForm';
+import { Analytics, logEvent } from 'firebase/analytics';
+import { analytics } from '../config/firebase';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -32,6 +34,14 @@ const CheckmarkItem = ({ text }: { text: string }) => (
   </View>
 );
 
+// Helper function for safe analytics logging
+function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+  if (analytics) {
+    const analyticsInstance = analytics as Analytics;
+    logEvent(analyticsInstance, eventName, eventParams);
+  }
+}
+
 export default function OnboardingScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [step, setStep] = useState(0);
@@ -49,13 +59,6 @@ export default function OnboardingScreen() {
     school: '',
     curriculum: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: "198572112790-07sqf0e1f0ffp6q5oe6d1g50s86r5hsm.apps.googleusercontent.com",
-    iosClientId: "198572112790-4m348foju37agudmcrs7e5rp0n4ld9g2.apps.googleusercontent.com",
-    webClientId: "198572112790-1mqjuhlehqga7m67lkka2b3cfbj8dqjk.apps.googleusercontent.com"
-  });
-
   useEffect(() => {
     async function checkAuthAndOnboarding() {
       try {
@@ -68,6 +71,11 @@ export default function OnboardingScreen() {
             router.replace('/(tabs)');
           }
         }
+
+        logAnalyticsEvent('onboarding_step_started', {
+          step_number: step + 1,
+          step_name: getStepName(step)
+        });
       } catch (error) {
         console.error('Error checking auth and onboarding:', error);
       }
@@ -76,12 +84,75 @@ export default function OnboardingScreen() {
     checkAuthAndOnboarding();
   }, []);
 
+  const handleNextStep = () => {
+    logAnalyticsEvent('onboarding_step_complete', {
+      step_number: step + 1,
+      step_name: getStepName(step)
+    });
+    if (step === 1 && !grade) {
+      setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
+    } else if (step === 2 && !school) {
+      setErrors(prev => ({ ...prev, school: 'Please select your school' }));
+    } else if (step === 3 && !curriculum) {
+      setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
+    } else if (step === 4 && !difficultSubject) {
+      setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
+    } else if (step === 5) {
+      handleComplete();
+    } else {
+      setErrors({ grade: '', school: '', curriculum: '' });
+      setStep(step + 1);
+    }
+  };
+
+  const getStepName = (step: number): string => {
+    switch (step) {
+      case 0:
+        return 'welcome';
+      case 1:
+        return 'grade_selection';
+      case 2:
+        return 'school_selection';
+      case 3:
+        return 'curriculum_selection';
+      case 4:
+        return 'difficult_subject_selection';
+      case 5:
+        return 'registration';
+      default:
+        return 'unknown';
+    }
+  };
+
+
   const handleComplete = async () => {
     try {
-      setIsLoading(true);
 
-      // Navigate to registration screen with onboarding data
-      router.replace({
+      // Store onboarding data
+      await AsyncStorage.setItem('onboardingData', JSON.stringify({
+        grade,
+        school: schoolName,
+        school_address: schoolAddress,
+        school_latitude: schoolLatitude,
+        school_longitude: schoolLongitude,
+        curriculum,
+        difficultSubject,
+        onboardingCompleted: true
+      }));
+
+      // Log onboarding completion event
+      logAnalyticsEvent('onboarding_complete', {
+        grade,
+        school_name: schoolName,
+        school_address: schoolAddress,
+        school_latitude: schoolLatitude,
+        school_longitude: schoolLongitude,
+        curriculum,
+        difficult_subject: difficultSubject
+      });
+
+      // Navigate to registration screen
+      router.push({
         pathname: '/register',
         params: {
           grade,
@@ -102,8 +173,6 @@ export default function OnboardingScreen() {
         text2: 'Failed to complete registration',
         position: 'bottom'
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -395,23 +464,6 @@ export default function OnboardingScreen() {
         return true;
       default:
         return false;
-    }
-  };
-
-  const handleNextStep = () => {
-    if (step === 1 && !grade) {
-      setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-    } else if (step === 2 && !school) {
-      setErrors(prev => ({ ...prev, school: 'Please select your school' }));
-    } else if (step === 3 && !curriculum) {
-      setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
-    } else if (step === 4 && !difficultSubject) {
-      setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
-    } else if (step === 5) {
-      handleComplete();
-    } else {
-      setErrors({ grade: '', school: '', curriculum: '' });
-      setStep(step + 1);
     }
   };
 

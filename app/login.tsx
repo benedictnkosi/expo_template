@@ -7,7 +7,6 @@ import { auth } from '../config/firebase';
 import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
-import { trackEvent, Events } from '@/services/mixpanel';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -28,11 +27,6 @@ export default function Login() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      const user = auth.currentUser;
-      trackEvent(Events.LOGIN, {
-        "user_id": user?.uid,
-        "email": email
-      });
     } catch (error: any) {
       console.error('Login error:', error.code, error.message);
 

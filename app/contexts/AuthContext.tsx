@@ -5,8 +5,7 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut as firebaseSignOut,
-    onAuthStateChanged,
-    User as FirebaseUser
+    onAuthStateChanged
 } from 'firebase/auth';
 
 export interface User {

@@ -1,4 +1,4 @@
-import { GoogleSignin, type User, type SignInResponse } from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 
@@ -8,9 +8,6 @@ GoogleSignin.configure({
     offlineAccess: true // Add this
 });
 
-interface GoogleSignInResult extends User {
-    idToken: string | null;
-}
 
 export async function googleLogin() {
     try {
@@ -19,7 +16,7 @@ export async function googleLogin() {
 
         if (!userInfo.idToken) {
             throw new Error('No ID token present');
-        } 
+        }
 
         const credential = GoogleAuthProvider.credential(userInfo.idToken);
         const result = await signInWithCredential(auth, credential);

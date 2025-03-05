@@ -5,6 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { logEvent, Analytics } from 'firebase/analytics';
+import { analytics } from '../../config/firebase';
+
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner } from '../../services/api';
@@ -22,11 +25,19 @@ function getProgressBarColor(progress: number): string {
   return '#FF3B30'; // Red for low scores
 }
 
+// Helper function for safe analytics logging
+function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+  if (analytics) {
+    const analyticsInstance = analytics as Analytics;
+    logEvent(analyticsInstance, eventName, eventParams);
+  }
+}
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string; role: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
@@ -47,8 +58,7 @@ export default function HomeScreen() {
               name: learner.name,
               grade: learner.grade?.number?.toString() || '',
               school_name: learner.school_name || '',
-              school: learner.school_name || '',
-              role: learner.role || ''
+              school: learner.school_name || ''
             });
 
             const enrolledResponse = await fetchMySubjects(user.uid);
@@ -106,8 +116,7 @@ export default function HomeScreen() {
           name: learner.name,
           grade: learner.grade?.number?.toString() || '',
           school_name: learner.school_name || '',
-          school: learner.school_name || '',
-          role: learner.role || ''
+          school: learner.school_name || ''
         });
 
         setIsLoading(true);
@@ -159,15 +168,64 @@ export default function HomeScreen() {
     }, [user, loadData])
   );
 
-  // Replace promptForReview function
-  function promptForReview() {
-    setShowRatingModal(true);
-  }
 
-  // Add RatingModal component
+  // Update screen view tracking
+  useEffect(() => {
+    logAnalyticsEvent('screen_view', {
+      screen_name: 'home',
+      user_id: user?.uid
+    });
+  }, []);
+
+  // Add stats view tracking
+  useEffect(() => {
+    logAnalyticsEvent('view_stats', {
+      user_id: user?.uid,
+      ranking,
+      streak
+    });
+  }, [ranking, streak]);
+
+  // Update share function with analytics
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check out Exam Quiz - Your ultimate study companion! https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+        title: 'Share Exam Quiz'
+      });
+
+      // Log share event
+      logAnalyticsEvent('share_app', {
+        user_id: user?.uid,
+        platform: Platform.OS
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  // Update RatingModal component
   const RatingModal = () => {
     const handleRating = (selectedRating: number) => {
       setRating(selectedRating);
+    };
+
+    const handleSubmitRating = () => {
+      if (rating >= 4) {
+        Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
+        logAnalyticsEvent('submit_rating', {
+          user_id: user?.uid,
+          rating
+        });
+      }
+      setShowRatingModal(false);
+    };
+
+    const handleDismissRating = () => {
+      logAnalyticsEvent('dismiss_rating', {
+        user_id: user?.uid
+      });
+      setShowRatingModal(false);
     };
 
     return (
@@ -199,37 +257,21 @@ export default function HomeScreen() {
                 styles.submitButton,
                 rating === 0 && styles.submitButtonDisabled
               ]}
-              onPress={() => {
-                if (rating >= 4) {
-                  Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
-                }
-                setShowRatingModal(false);
-              }}
+              onPress={handleSubmitRating}
               disabled={rating === 0}
             >
-              <ThemedText style={styles.submitText}>Submit</ThemedText>
+              <ThemedText style={styles.submitButtonText}>Submit Rating</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setShowRatingModal(false)}
+              style={styles.dismissButton}
+              onPress={handleDismissRating}
             >
-              <ThemedText style={styles.notNowText}>No, Thanks</ThemedText>
+              <ThemedText style={styles.dismissButtonText}>Maybe Later</ThemedText>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
     );
-  };
-
-  // Add share function
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: 'Check out Exam Quiz - Your ultimate study companion! https://play.google.com/store/apps/details?id=za.co.examquizafrica',
-        title: 'Share Exam Quiz'
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
   };
 
   if (isLoading) {
@@ -311,11 +353,21 @@ export default function HomeScreen() {
                 activeOpacity={0.7}
                 onPress={() => {
                   if (!isDisabled) {
+                    // Log subject selection
+                    logAnalyticsEvent('select_subject', {
+                      user_id: user?.uid,
+                      subject_name: subject.name,
+                      subject_id: subject.id,
+                      total_questions: subject.total_questions,
+                      answered_questions: subject.answered_questions,
+                      mastery_percentage: subject.answered_questions === 0 ? 0 :
+                        Math.round((subject.correct_answers / subject.answered_questions) * 100)
+                    });
+
                     router.push({
                       pathname: '/quiz',
                       params: {
                         subjectName: subject.name,
-                        learnerRole: learnerInfo?.role || '',
                         learnerName: learnerInfo?.name || '',
                         learnerGrade: learnerInfo?.grade || '',
                         learnerSchool: learnerInfo?.school || ''
@@ -367,7 +419,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <RatingModal />
-    </LinearGradient>
+    </LinearGradient >
   );
 }
 
@@ -709,7 +761,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     marginBottom: 12,
   },
-  submitText: {
+  submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
@@ -841,6 +893,14 @@ const styles = StyleSheet.create({
   },
   disabledProgress: {
     opacity: 0.5,
+  },
+  dismissButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  dismissButtonText: {
+    color: '#666666',
+    fontSize: 14,
   },
 });
 

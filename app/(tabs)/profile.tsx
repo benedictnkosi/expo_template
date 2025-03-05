@@ -13,7 +13,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
+import { Analytics, logEvent } from 'firebase/analytics';
+import { analytics } from '../../config/firebase';
+import { API_BASE_URL as ConfigAPI_BASE_URL } from '../../config/api';
+import { deleteUser } from 'firebase/auth';
+import { auth } from '../../config/firebase';
 
+// Helper function for safe analytics logging
+function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+  if (analytics) {
+    const analyticsInstance = analytics as Analytics;
+    logEvent(analyticsInstance, eventName, eventParams);
+  }
+}
 
 interface User {
   uid: string;
@@ -61,6 +73,9 @@ export default function ProfileScreen() {
   const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
   const [pendingGrade, setPendingGrade] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   // Available options
   const TERMS = [1, 2, 3, 4];
@@ -154,6 +169,18 @@ export default function ProfileScreen() {
         .filter(Boolean)
         .join(', ');
 
+      // Log profile update event
+      logAnalyticsEvent('profile_update', {
+        user_id: user.uid,
+        updated_fields: {
+          name: editName.trim() !== learnerInfo?.name,
+          grade: parseInt(editGrade) !== parseInt(learnerInfo?.grade || '0'),
+          school: editSchool !== learnerInfo?.school,
+          curriculum: cleanCurriculum !== learnerInfo?.curriculum,
+          terms: cleanTerms !== learnerInfo?.terms
+        }
+      });
+
       await updateLearner(user.uid, {
         name: editName.trim(),
         grade: parseInt(editGrade),
@@ -162,7 +189,8 @@ export default function ProfileScreen() {
         school_latitude: editSchoolLatitude,
         school_longitude: editSchoolLongitude,
         terms: cleanTerms,
-        curriculum: cleanCurriculum
+        curriculum: cleanCurriculum,
+        email: user.email || ''
       });
 
       setLearnerInfo({
@@ -207,6 +235,73 @@ export default function ProfileScreen() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user?.uid) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${ConfigAPI_BASE_URL}/public/learn/learner/delete?uid=${user.uid}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error('Failed to delete account');
+      }
+
+      if (data.message === 'Learner and associated data deleted successfully') {
+        // Delete Firebase user account
+        try {
+          await deleteUser(auth.currentUser!);
+
+          // Log account deletion event
+          logAnalyticsEvent('account_deleted', {
+            user_id: user.uid
+          });
+
+          // Sign out after successful deletion
+          //show toast the wait 3 seconds and then sign out
+          Toast.show({
+            type: 'info',
+            text1: 'Account deleted successfully',
+            position: 'bottom'
+          });
+
+          setTimeout(async () => {
+            await signOut();
+          }, 3000);
+        } catch (firebaseError) {
+          console.error('Error deleting Firebase account:', firebaseError);
+          // Continue with sign out even if Firebase deletion fails
+        }
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: data.message,
+          position: 'bottom'
+        });
+      }
+
+
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to delete account',
+        position: 'bottom'
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -333,6 +428,14 @@ export default function ProfileScreen() {
                   <GooglePlacesAutocomplete
                     placeholder="🔍 Search for your school..."
                     onPress={(data, details = null) => {
+                      // Log school change event
+                      logAnalyticsEvent('school_change', {
+                        user_id: user?.uid,
+                        old_school: editSchool,
+                        new_school: data.structured_formatting.main_text,
+                        school_address: data.description
+                      });
+
                       setEditSchool(data.structured_formatting.main_text);
                       setEditSchoolAddress(data.description);
                       if (details) {
@@ -375,6 +478,14 @@ export default function ProfileScreen() {
                         } else {
                           setEditCurriculum(currArray.concat(curr).join(','));
                         }
+
+                        // Log curriculum change event
+                        logAnalyticsEvent('curriculum_change', {
+                          user_id: user?.uid,
+                          curriculum: currArray.includes(curr) ?
+                            currArray.filter(c => c !== curr).join(',') :
+                            currArray.concat(curr).join(',')
+                        });
                       }}
                     >
                       <ThemedText style={[
@@ -407,6 +518,14 @@ export default function ProfileScreen() {
                         } else {
                           setEditTerms(termsArray.concat(term.toString()).join(','));
                         }
+
+                        // Log terms change event
+                        logAnalyticsEvent('terms_change', {
+                          user_id: user?.uid,
+                          terms: termsArray.includes(term.toString()) ?
+                            termsArray.filter(t => t !== term.toString()).join(',') :
+                            termsArray.concat(term.toString()).join(',')
+                        });
                       }}
                     >
                       <ThemedText style={[
@@ -448,6 +567,16 @@ export default function ProfileScreen() {
               {isLoading ? 'Signing out...' : 'Sign Out'}
             </ThemedText>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.deleteAccountButton, isLoading && styles.buttonDisabled]}
+            onPress={() => setShowDeleteModal(true)}
+            disabled={isLoading}
+          >
+            <ThemedText style={styles.deleteAccountText}>
+              Delete Account
+            </ThemedText>
+          </TouchableOpacity>
         </ThemedView>
       </ScrollView>
       <Modal
@@ -486,6 +615,71 @@ export default function ProfileScreen() {
                 style={styles.paperButtonGradient}
               >
                 <ThemedText style={styles.paperButtonText}>✅ Yes, Let's Do It!</ThemedText>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        isVisible={showDeleteModal}
+        onBackdropPress={() => setShowDeleteModal(false)}
+        style={styles.modal}
+      >
+        <View style={styles.confirmationModal}>
+          <View style={styles.confirmationHeader}>
+            <ThemedText style={styles.confirmationTitle}>⚠️ Delete Account?</ThemedText>
+          </View>
+          <ThemedText style={styles.confirmationText}>
+            This action cannot be undone. All your data, including progress, settings, and history will be permanently deleted.
+          </ThemedText>
+
+          <View style={styles.deleteConfirmationContainer}>
+            <ThemedText style={styles.deleteConfirmationText}>
+              Type <ThemedText style={styles.deleteConfirmationHighlight}>delete</ThemedText> to confirm
+            </ThemedText>
+            <TextInput
+              style={styles.deleteConfirmationInput}
+              value={deleteConfirmation}
+              onChangeText={setDeleteConfirmation}
+              placeholder="Type 'delete'"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.confirmationButtons}>
+            <TouchableOpacity
+              style={[styles.paperButton, { backgroundColor: '#64748B' }]}
+              onPress={() => {
+                setShowDeleteModal(false);
+                setDeleteConfirmation('');
+              }}
+            >
+              <LinearGradient
+                colors={['#64748B', '#475569']}
+                style={styles.paperButtonGradient}
+              >
+                <ThemedText style={styles.paperButtonText}>Cancel</ThemedText>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.paperButton,
+                { backgroundColor: '#DC2626' },
+                deleteConfirmation !== 'delete' && styles.paperButtonDisabled
+              ]}
+              onPress={handleDeleteAccount}
+              disabled={isDeleting || deleteConfirmation !== 'delete'}
+            >
+              <LinearGradient
+                colors={['#DC2626', '#B91C1C']}
+                style={styles.paperButtonGradient}
+              >
+                <ThemedText style={styles.paperButtonText}>
+                  {isDeleting ? 'Deleting...' : 'Delete Account'}
+                </ThemedText>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -886,5 +1080,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     marginTop: 4,
+  },
+  deleteAccountButton: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#DC2626',
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteAccountText: {
+    color: '#DC2626',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteConfirmationContainer: {
+    marginVertical: 16,
+    width: '100%',
+  },
+  deleteConfirmationText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  deleteConfirmationHighlight: {
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  deleteConfirmationInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: '#1E293B',
+    width: '100%',
+  },
+  paperButtonDisabled: {
+    opacity: 0.5,
   },
 }); 

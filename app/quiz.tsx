@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Switch, Dimensions, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Dimensions, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
@@ -15,9 +15,18 @@ import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
 import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '../services/api';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '../config/api';
-import { trackEvent, Events } from '../services/mixpanel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Analytics, logEvent } from 'firebase/analytics';
+import { analytics } from '../config/firebase';
+
+// Helper function for safe analytics logging
+function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+    if (analytics) {
+        const analyticsInstance = analytics as Analytics;
+        logEvent(analyticsInstance, eventName, eventParams);
+    }
+}
 
 interface Question {
     id: number;
@@ -235,25 +244,18 @@ const ImageLoadingPlaceholder = () => (
 
 export default function QuizScreen() {
     const { user } = useAuth();
-    const { subjectName, learnerRole, learnerName, learnerGrade, learnerSchool } = useLocalSearchParams();
+    const { subjectName, learnerRole } = useLocalSearchParams();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
-    const [inputAnswer, setInputAnswer] = useState('');
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [noMoreQuestions, setNoMoreQuestions] = useState(false);
-    const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; role: string } | null>(null);
-    const [isImageVisible, setIsImageVisible] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
-    const [isAnswerImageVisible, setIsAnswerImageVisible] = useState(false);
     const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
-    const [showAllTerms, setShowAllTerms] = useState(true);
-    const [subjectId, setSubjectId] = useState<string | null>(null);
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
-    const [zoomLevel, setZoomLevel] = useState(0.5);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
     const [reportComment, setReportComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -298,6 +300,14 @@ export default function QuizScreen() {
             correctSound.current?.unloadAsync();
             incorrectSound.current?.unloadAsync();
         };
+    }, []);
+
+    useEffect(() => {
+        logAnalyticsEvent('quiz_screen_view', {
+            user_id: user?.uid,
+            subject_name: subjectName,
+            learner_role: learnerRole
+        });
     }, []);
 
     const reportIssue = () => {
@@ -355,7 +365,6 @@ export default function QuizScreen() {
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
-        setInputAnswer('');
         setIsCorrect(null);
 
         try {
@@ -403,10 +412,18 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !currentQuestion) return;
 
-        setIsAnswerLoading(true);
         try {
-            const response = await checkAnswer(user.uid, currentQuestion.id, answer);
+            setIsLoading(true);
             setSelectedAnswer(answer);
+
+            // Log answer submission
+            logAnalyticsEvent('submit_answer', {
+                user_id: user.uid,
+                question_id: currentQuestion.id,
+                answer: answer
+            });
+
+            const response = await checkAnswer(user.uid, currentQuestion.id, answer);
             setShowFeedback(true);
             setIsCorrect(response.is_correct);
             setFeedbackMessage(response.is_correct ? getRandomSuccessMessage() : getRandomWrongMessage());
@@ -414,31 +431,61 @@ export default function QuizScreen() {
             if (response.is_correct) {
                 await correctSound.current?.replayAsync();
                 trackStreak(user.uid);
+
+                // Check if we should show rating prompt after correct answer
+                try {
+                    const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
+                    const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
+
+                    if (!hasRated && !hasShownRating) {
+                        if (nextPromptDateStr) {
+                            const nextPromptDate = new Date(nextPromptDateStr);
+                            const now = new Date();
+
+                            // Only show if we've passed the next prompt date
+                            if (now >= nextPromptDate) {
+                                setTimeout(() => {
+                                    setShowRatingModal(true);
+                                    setHasShownRating(true);
+                                }, 2000);
+                            }
+                        } else {
+                            // First time showing the prompt
+                            setTimeout(() => {
+                                setShowRatingModal(true);
+                                setHasShownRating(true);
+                            }, 2000);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking rating status:', error);
+                }
             } else {
                 await incorrectSound.current?.replayAsync();
             }
 
-            trackEvent(Events.SUBMIT_ANSWER, {
-                "user_id": user?.uid,
-                "subject_id": subjectId,
-                "question_id": currentQuestion.id,
-                "is_correct": response.is_correct
-            });
+            if (analytics) {
+                logAnalyticsEvent('submit_answer', {
+                    user_id: user?.uid,
+                    question_id: currentQuestion?.id,
+                    is_correct: response.is_correct
+                });
+            }
 
             requestAnimationFrame(() => {
                 scrollToBottom();
             });
 
         } catch (error) {
-            console.error('Failed to check answer:', error);
+            console.error('Error submitting answer:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: 'Failed to check answer',
+                text2: 'Failed to submit answer',
                 position: 'bottom'
             });
         } finally {
-            setIsAnswerLoading(false);
+            setIsLoading(false);
         }
     };
 
@@ -446,21 +493,27 @@ export default function QuizScreen() {
         if (!selectedPaper) return;
         setSelectedAnswer(null);
         setShowFeedback(false);
-        setInputAnswer('');
         loadRandomQuestion(selectedPaper);
     };
 
 
     const handleRestart = async () => {
-        setIsRestartModalVisible(false);
         if (!user?.uid || !subjectName) return;
 
-        trackEvent(Events.RESTART_QUIZ, {
-            "user_id": user?.uid,
-            "subject_name": subjectName
-        });
         try {
             setIsLoading(true);
+            setCurrentQuestion(null);
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            setIsCorrect(null);
+            setNoMoreQuestions(false);
+
+            // Log quiz restart
+            logAnalyticsEvent('restart_quiz', {
+                user_id: user.uid,
+                subject_name: subjectName
+            });
+
             await removeResults(user.uid, subjectName + " " + selectedPaper);
             await loadRandomQuestion(selectedPaper || '');
             Toast.show({
@@ -469,11 +522,11 @@ export default function QuizScreen() {
                 position: 'bottom'
             });
         } catch (error) {
-            console.error('Failed to restart:', error);
+            console.error('Error restarting quiz:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: 'Failed to reset progress',
+                text2: 'Failed to restart quiz',
                 position: 'bottom'
             });
         } finally {
@@ -664,27 +717,18 @@ export default function QuizScreen() {
             }
         }
         setShowRatingModal(false);
-        await SecureStore.setItemAsync('has_shown_rating', 'true');
+        // Store that user has reviewed
+        await SecureStore.setItemAsync('has_reviewed_app', 'true');
     };
 
-    // Add this effect to check and show rating prompt
-    useEffect(() => {
-        async function checkAndShowRating() {
-            try {
-                const hasRated = await SecureStore.getItemAsync('has_shown_rating');
-                if (!hasRated && !hasShownRating) {
-                    // Wait for 2 seconds before showing the rating modal
-                    setTimeout(() => {
-                        setShowRatingModal(true);
-                        setHasShownRating(true);
-                    }, 2000);
-                }
-            } catch (error) {
-                console.error('Error checking rating status:', error);
-            }
-        }
-        //checkAndShowRating();
-    }, [hasShownRating]);
+    // Add this function to handle postponing the rating
+    const handlePostponeRating = async () => {
+        setShowRatingModal(false);
+        // Store the current date for next prompt
+        const nextPromptDate = new Date();
+        nextPromptDate.setDate(nextPromptDate.getDate() + 10); // Add 10 days
+        await SecureStore.setItemAsync('next_rating_prompt_date', nextPromptDate.toISOString());
+    };
 
     if (isLoading) {
         return (
@@ -1235,23 +1279,23 @@ export default function QuizScreen() {
                 </View>
             </Modal>
 
-            {/* Add Rating Modal */}
+            {/* Update Rating Modal */}
             <Modal
                 isVisible={showRatingModal}
-                onBackdropPress={() => setShowRatingModal(false)}
+                onBackdropPress={handlePostponeRating}
                 style={styles.modal}
                 animationIn="fadeIn"
                 animationOut="fadeOut"
             >
                 <View style={styles.ratingModalContent}>
-                    <ThemedText style={styles.ratingTitle}>Enjoying Exam Quiz? 🌟</ThemedText>
+                    <ThemedText style={styles.ratingTitle}>Loving Exam Quiz? 🎉✨</ThemedText>
                     <ThemedText style={styles.ratingText}>
-                        Your feedback helps us improve! Would you mind taking a moment to rate us?
+                        Hey superstar! 🌟 Your opinion matters! Give us a quick rating and help make Exam Quiz even more awesome! 🚀💡
                     </ThemedText>
                     <View style={styles.ratingButtons}>
                         <TouchableOpacity
                             style={[styles.ratingButton, styles.ratingSecondaryButton]}
-                            onPress={() => setShowRatingModal(false)}
+                            onPress={handlePostponeRating}
                         >
                             <ThemedText style={styles.ratingSecondaryButtonText}>Maybe Later</ThemedText>
                         </TouchableOpacity>
@@ -1625,6 +1669,7 @@ const styles = StyleSheet.create({
     },
     correctAnswerText: {
         color: '#166534',
+        marginLeft: 16,
     },
     answerImage: {
         width: '100%',

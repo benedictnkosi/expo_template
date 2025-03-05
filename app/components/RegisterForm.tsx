@@ -72,11 +72,18 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
 
                 const learner = await updateLearner(user.uid, learnerData);
                 if (learner.status !== 'OK') {
+
                     Toast.show({
                         type: 'error',
                         text1: 'Warning',
                         text2: 'Account created but failed to save preferences',
                         position: 'bottom'
+                    });
+
+                    logAnalyticsEvent('register_failed', {
+                        user_id: user.uid,
+                        email: email,
+                        error: learner.status
                     });
                 }
             }
@@ -168,4 +175,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-}); 
+});
+
+function logAnalyticsEvent(arg0: string, arg1: { user_id: string; email: string; error: string; }) {
+    throw new Error('Function not implemented.');
+}

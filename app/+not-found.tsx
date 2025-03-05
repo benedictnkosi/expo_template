@@ -1,7 +1,6 @@
-import { Link, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
 import { StyleSheet, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ThemedText } from '../components/ThemedText';
 import { ThemedView } from '../components/ThemedView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';

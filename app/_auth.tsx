@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { useSegments } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLearner } from '@/services/api';
 
 export function useProtectedRoute() {
   const { user } = useAuth();
   const segments = useSegments();
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [hasProfile, setHasProfile] = useState(false);
 

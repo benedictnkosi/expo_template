@@ -1,11 +1,10 @@
 import '../utils/crypto-polyfill';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack,  } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
 import 'react-native-reanimated';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { useAuthNavigation } from './auth/navigation';
+import { AuthProvider } from '@/contexts/AuthContext';
 import AuthLayout from './_auth';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
