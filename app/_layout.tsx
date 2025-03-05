@@ -1,14 +1,16 @@
 import '../utils/crypto-polyfill';
 import { useFonts } from 'expo-font';
-import { Stack,  } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from '@/contexts/AuthContext';
 import AuthLayout from './_auth';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { addNotificationListener, addNotificationResponseListener, removeNotificationListener, initializeNotifications } from '../services/notifications';
+import { router } from 'expo-router';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -23,6 +25,9 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  const notificationListener = useRef<any>();
+  const responseListener = useRef<any>();
+
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -32,6 +37,37 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [loaded]);
+
+  useEffect(() => {
+    // Set up notification listeners
+    notificationListener.current = addNotificationListener(notification => {
+      console.log('Received notification:', notification);
+    });
+
+    responseListener.current = addNotificationResponseListener(response => {
+      const data = response.notification.request.content.data;
+
+      // Handle notification tap
+      if (data?.screen) {
+        router.push(data.screen);
+      }
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      if (notificationListener.current) {
+        removeNotificationListener(notificationListener.current);
+      }
+      if (responseListener.current) {
+        removeNotificationListener(responseListener.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    // Initialize notifications when app starts
+    initializeNotifications();
+  }, []);
 
   if (!loaded) {
     return null;

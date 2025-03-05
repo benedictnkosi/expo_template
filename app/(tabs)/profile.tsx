@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
 import { Header } from '../../components/Header';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { Analytics, logEvent } from 'firebase/analytics';
@@ -18,6 +18,8 @@ import { analytics } from '../../config/firebase';
 import { API_BASE_URL as ConfigAPI_BASE_URL } from '../../config/api';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../../config/firebase';
+import { requestNotificationPermissions, scheduleDailyReminder, cancelAllNotifications } from '../../services/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Helper function for safe analytics logging
 function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -45,7 +47,6 @@ export default function ProfileScreen() {
   const { user } = useAuth();
   const { signOut } = useAuth();
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editGrade, setEditGrade] = useState('');
   const [editSchool, setEditSchool] = useState('');
@@ -54,7 +55,8 @@ export default function ProfileScreen() {
   const [editSchoolLongitude, setEditSchoolLongitude] = useState(0);
   const [editCurriculum, setEditCurriculum] = useState<string>('');
   const [editTerms, setEditTerms] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
   const [showAlert, setShowAlert] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
@@ -67,6 +69,7 @@ export default function ProfileScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   // Available options
   const TERMS = [1, 2, 3, 4];
@@ -107,7 +110,7 @@ export default function ProfileScreen() {
       }
     }
     fetchLearnerInfo();
-  }, [user?.uid, grades]);
+  }, [user?.uid]);
 
   useEffect(() => {
     async function loadGrades() {
@@ -125,6 +128,12 @@ export default function ProfileScreen() {
     loadGrades();
   }, []);
 
+  useEffect(() => {
+    // Check if notifications are enabled
+    AsyncStorage.getItem('notificationsEnabled').then(value => {
+      setNotificationsEnabled(value === 'true');
+    });
+  }, []);
 
   const handleSave = async () => {
     // Validate curriculum and terms selection
@@ -147,7 +156,7 @@ export default function ProfileScreen() {
   const saveChanges = async () => {
     if (!user?.uid) return;
 
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       // Clean up and format the terms and curriculum strings
       const cleanTerms = editTerms.split(',')
@@ -206,14 +215,14 @@ export default function ProfileScreen() {
         position: 'bottom'
       });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
       setShowGradeChangeModal(false);
     }
   };
 
   const handleLogout = async () => {
     try {
-      setIsLoading(true);
+      setIsLoggingOut(true);
       await signOut();
       router.replace('/login');
     } catch (error) {
@@ -225,7 +234,7 @@ export default function ProfileScreen() {
         position: 'bottom'
       });
     } finally {
-      setIsLoading(false);
+      setIsLoggingOut(false);
     }
   };
 
@@ -352,19 +361,42 @@ export default function ProfileScreen() {
     await saveChanges();
   };
 
+  const toggleNotifications = async () => {
+    try {
+      if (!notificationsEnabled) {
+        // Request permissions and enable notifications
+        const hasPermission = await requestNotificationPermissions();
+        if (hasPermission) {
+          await AsyncStorage.setItem('notificationsEnabled', 'true');
+          setNotificationsEnabled(true);
+          // Schedule daily reminder at 18:00
+          await scheduleDailyReminder();
+        }
+      } else {
+        // Disable notifications
+        await cancelAllNotifications();
+        await AsyncStorage.setItem('notificationsEnabled', 'false');
+        setNotificationsEnabled(false);
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update notification settings',
+        position: 'bottom'
+      });
+    }
+  };
+
   return (
     <LinearGradient
       colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-      style={[styles.gradient]}
+      style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ScrollView
-        style={[
-          styles.container,
-          { paddingTop: insets.top }
-        ]}
-      >
+      <ScrollView style={styles.container}>
         <Header
           title="Exam Quiz"
           user={user}
@@ -537,32 +569,50 @@ export default function ProfileScreen() {
                   (!editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length) && styles.buttonDisabled
                 ]}
                 onPress={handleSave}
-                disabled={isLoading || !editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length}
+                disabled={isSaving || !editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length}
                 testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
-                  {isLoading ? 'Saving...' : 'Lock in your settings! 🔒'}
+                  {isSaving ? 'Saving...' : 'Lock in your settings! 🔒'}
                 </ThemedText>
               </TouchableOpacity>
             </View>
           </ThemedView>
         </ThemedView>
 
+        <ThemedView style={styles.sectionCard}>
+          <ThemedText style={styles.sectionTitle}>Notifications</ThemedText>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <ThemedText style={styles.settingTitle}>Daily Reminders</ThemedText>
+              <ThemedText style={styles.settingDescription}>
+                Get daily reminders to practice and maintain your streak
+              </ThemedText>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={toggleNotifications}
+              trackColor={{ false: '#E2E8F0', true: '#4F46E5' }}
+              thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
+            />
+          </View>
+        </ThemedView>
+
         <ThemedView style={styles.signOutContainer}>
           <TouchableOpacity
-            style={[styles.signOutButton, isLoading && styles.buttonDisabled]}
+            style={[styles.signOutButton, isLoggingOut && styles.buttonDisabled]}
             onPress={handleLogout}
-            disabled={isLoading}
+            disabled={isLoggingOut}
           >
             <ThemedText style={styles.signOutText}>
-              {isLoading ? 'Signing out...' : 'Sign Out'}
+              {isLoggingOut ? 'Signing out...' : 'Sign Out'}
             </ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.deleteAccountButton, isLoading && styles.buttonDisabled]}
+            style={[styles.deleteAccountButton, isLoggingOut && styles.buttonDisabled]}
             onPress={() => setShowDeleteModal(true)}
-            disabled={isLoading}
+            disabled={isLoggingOut}
           >
             <ThemedText style={styles.deleteAccountText}>
               Delete Account
@@ -955,7 +1005,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
-  section: {
+  sectionCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
@@ -968,6 +1018,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
     marginBottom: 12,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 20,
   },
   logoutButton: {
     backgroundColor: '#FEE2E2',

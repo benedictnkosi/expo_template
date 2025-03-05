@@ -48,52 +48,50 @@ export default function HomeScreen() {
   // Single useEffect for initial load
   useEffect(() => {
     async function initializeData() {
+      if (!user?.uid) return;
+
       try {
+        setIsLoading(true);
+        const learner = await getLearner(user.uid);
+        if (learner.name && learner.grade && learner.school_name) {
+          setLearnerInfo({
+            name: learner.name,
+            grade: learner.grade?.number?.toString() || '',
+            school_name: learner.school_name || '',
+            school: learner.school_name || ''
+          });
 
-        // Load data immediately after setting user
-        if (user?.uid) {
-          const learner = await getLearner(user.uid);
-          if (learner.name && learner.grade && learner.school_name) {
-            setLearnerInfo({
-              name: learner.name,
-              grade: learner.grade?.number?.toString() || '',
-              school_name: learner.school_name || '',
-              school: learner.school_name || ''
-            });
+          const enrolledResponse = await fetchMySubjects(user.uid);
 
-            const enrolledResponse = await fetchMySubjects(user.uid);
+          // Check if enrolledResponse and subjects array exists
+          if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+            // Group subjects by base name (removing P1/P2)
+            const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+              const baseName = curr.name.replace(/ P[12]$/, '');
 
-            // Check if enrolledResponse and subjects array exists
-            if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
-              // Group subjects by base name (removing P1/P2)
-              const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
-                const baseName = curr.name.replace(/ P[12]$/, '');
+              if (!acc[baseName]) {
+                acc[baseName] = {
+                  id: curr.id.toString(),
+                  name: baseName,
+                  total_questions: curr.totalSubjectQuestions || 0,
+                  answered_questions: curr.totalResults || 0,
+                  correct_answers: 0
+                };
+              } else {
+                // Sum up the stats from both papers
+                acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+                acc[baseName].answered_questions += curr.totalResults || 0;
+              }
 
-                if (!acc[baseName]) {
-                  acc[baseName] = {
-                    id: curr.id.toString(),
-                    name: baseName,
-                    total_questions: curr.totalSubjectQuestions || 0,
-                    answered_questions: curr.totalResults || 0,
-                    correct_answers: 0
-                  };
-                } else {
-                  // Sum up the stats from both papers
-                  acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-                  acc[baseName].answered_questions += curr.totalResults || 0;
-                }
+              return acc;
+            }, {});
 
-                return acc;
-              }, {});
-
-              setMySubjects(Object.values(subjectGroups));
-            } else {
-              // Handle case where no subjects are enrolled
-              setMySubjects([]);
-            }
+            setMySubjects(Object.values(subjectGroups));
           } else {
-            router.replace('/login');
+            setMySubjects([]);
           }
+        } else {
+          router.replace('/login');
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -104,70 +102,7 @@ export default function HomeScreen() {
     }
 
     initializeData();
-  }, []);
-
-  // Add dependency tracking for loadData
-  const loadData = useCallback(async () => {
-    if (!user?.uid) return;
-    try {
-      const learner = await getLearner(user.uid);
-      if (learner.name && learner.grade && learner.school_name) {
-        setLearnerInfo({
-          name: learner.name,
-          grade: learner.grade?.number?.toString() || '',
-          school_name: learner.school_name || '',
-          school: learner.school_name || ''
-        });
-
-        setIsLoading(true);
-        const enrolledResponse = await fetchMySubjects(user.uid);
-
-        // Check if enrolledResponse and subjects array exists
-        if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
-          // Group subjects by base name (removing P1/P2)
-          const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
-            const baseName = curr.name.replace(/ P[12]$/, '');
-
-            if (!acc[baseName]) {
-              acc[baseName] = {
-                id: curr.id.toString(),
-                name: baseName,
-                total_questions: curr.totalSubjectQuestions || 0,
-                answered_questions: curr.totalResults || 0,
-                correct_answers: 0
-              };
-            } else {
-              // Sum up the stats from both papers
-              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-              acc[baseName].answered_questions += curr.totalResults || 0;
-            }
-
-            return acc;
-          }, {});
-
-          setMySubjects(Object.values(subjectGroups));
-        } else {
-          // Handle case where no subjects are enrolled
-          setMySubjects([]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      setMySubjects([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  // Update useFocusEffect to properly track dependencies
-  useFocusEffect(
-    useCallback(() => {
-      if (user?.uid) {
-        loadData();
-      }
-    }, [user, loadData])
-  );
-
+  }, [user?.uid]);
 
   // Update screen view tracking
   useEffect(() => {

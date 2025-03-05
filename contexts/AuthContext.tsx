@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
         };
+        // Store in SecureStore as backup
         await SecureStore.setItemAsync('auth', JSON.stringify({ user: userData }));
         setUser(userData);
       } else {
@@ -52,6 +53,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     });
 
+    // Attempt to restore from SecureStore if Firebase auth hasn't initialized yet
+    async function restoreFromSecureStore() {
+      try {
+        const storedAuth = await SecureStore.getItemAsync('auth');
+        if (storedAuth && !user) {
+          const { user: storedUser } = JSON.parse(storedAuth);
+          setUser(storedUser);
+        }
+      } catch (error) {
+        console.error('Error restoring auth from SecureStore:', error);
+      }
+    }
+
+    restoreFromSecureStore();
     return unsubscribe;
   }, []);
 

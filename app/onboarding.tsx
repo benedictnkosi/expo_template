@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image, ScrollView, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import RegisterForm from './components/RegisterForm';
@@ -43,7 +42,6 @@ function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>)
 }
 
 export default function OnboardingScreen() {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
   const [school, setSchool] = useState('');
@@ -82,7 +80,7 @@ export default function OnboardingScreen() {
     }
 
     checkAuthAndOnboarding();
-  }, []);
+  });
 
   const handleNextStep = () => {
     logAnalyticsEvent('onboarding_step_complete', {

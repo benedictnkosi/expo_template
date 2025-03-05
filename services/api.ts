@@ -18,6 +18,7 @@ export async function fetchAvailableSubjects(grade: string): Promise<SubjectsRes
 }
 
 export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
+  console.log('fetchMySubjects', uid);
   const response = await fetch(
     `${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`
   );
@@ -30,6 +31,7 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
 }
 
 export async function removeSubject(uid: string, subjectId: number): Promise<void> {
+  console.log('removeSubject', uid, subjectId);
   const response = await fetch(
     `${API_BASE_URL}/public/learn/learner/remove-subject`,
     {
@@ -48,6 +50,7 @@ export async function removeSubject(uid: string, subjectId: number): Promise<voi
 }
 
 export async function assignSubject(uid: string, subjectId: number): Promise<void> {
+  console.log('assignSubject', uid, subjectId);
   const response = await fetch(
     `${API_BASE_URL}/public/learn/learner/assign-subject`,
     {
@@ -108,6 +111,7 @@ export async function getLearner(uid: string): Promise<{
   terms: string;
   email: string;
 }> {
+  console.log('getLearner', uid);
   const response = await fetch(
     `${API_BASE_URL}/public/learn/learner?uid=${uid}`
   );
@@ -130,6 +134,7 @@ export async function updateLearner(uid: string, data: {
   curriculum: string;
   email: string;
 }): Promise<{ status: string }> {
+  console.log('updateLearner', uid, data);
   const response = await fetch(
     `${API_BASE_URL}/public/learn/learner/update`,
     {

@@ -249,6 +249,8 @@ export default function QuizScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
+    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+    const [noMoreQuestions, setNoMoreQuestions] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
     const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
@@ -263,7 +265,7 @@ export default function QuizScreen() {
     const [isExplanationModalVisible, setIsExplanationModalVisible] = useState(false);
     const [aiExplanation, setAiExplanation] = useState<string>('');
     const [isLoadingExplanation, setIsLoadingExplanation] = useState(false);
-
+    const [isAnswerLoading, setIsAnswerLoading] = useState(false);
     const [isApproving, setIsApproving] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState<string>('');
     const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
@@ -363,6 +365,7 @@ export default function QuizScreen() {
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
+        setIsCorrect(null);
 
         try {
             setIsLoading(true); const response = await fetch(
@@ -375,6 +378,7 @@ export default function QuizScreen() {
             const data: QuestionResponse = await response.json();
 
             if (data.status === "NOK" && data.message === "No more questions available") {
+                setNoMoreQuestions(true);
                 setCurrentQuestion(null);
             } else {
                 // Shuffle the options
@@ -388,6 +392,7 @@ export default function QuizScreen() {
                     option4: shuffledEntries[3][1]
                 };
                 setCurrentQuestion(data);
+                setNoMoreQuestions(false);
             }
 
             const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
@@ -396,7 +401,7 @@ export default function QuizScreen() {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: error instanceof Error ? error.message : 'Failed to load question',
+                text2: 'Failed to load question',
                 position: 'bottom'
             });
         } finally {
@@ -420,6 +425,7 @@ export default function QuizScreen() {
 
             const response = await checkAnswer(user.uid, currentQuestion.id, answer);
             setShowFeedback(true);
+            setIsCorrect(response.is_correct);
             setFeedbackMessage(response.is_correct ? getRandomSuccessMessage() : getRandomWrongMessage());
 
             if (response.is_correct) {
@@ -499,6 +505,8 @@ export default function QuizScreen() {
             setCurrentQuestion(null);
             setSelectedAnswer(null);
             setShowFeedback(false);
+            setIsCorrect(null);
+            setNoMoreQuestions(false);
 
             // Log quiz restart
             logAnalyticsEvent('restart_quiz', {
@@ -590,7 +598,7 @@ export default function QuizScreen() {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: error instanceof Error ? error.message : 'Failed to approve question',
+                text2: 'Failed to approve question.',
                 position: 'bottom'
             });
         } finally {
@@ -866,14 +874,18 @@ export default function QuizScreen() {
                 <ThemedView style={styles.content}>
                     <ThemedView style={styles.sectionCard}>
 
-                        {currentQuestion.context && (
-                            <><ThemedText style={styles.questionMeta} testID='question-meta'>
+                        {(currentQuestion.context || currentQuestion.image_path) && (
+                            <ThemedText style={styles.questionMeta} testID='question-meta'>
                                 Context
                             </ThemedText>
-                                <View style={styles.questionContainer} testID='question-context'>
-                                    {renderMixedContent(currentQuestion.context)}
-                                </View>
-                            </>
+                        )}
+
+                        {currentQuestion.context && (
+
+                            <View style={styles.questionContainer} testID='question-context'>
+                                {renderMixedContent(currentQuestion.context)}
+                            </View>
+
                         )}
 
                         {(currentQuestion.image_path || currentQuestion.question_image_path) && (
@@ -909,12 +921,11 @@ export default function QuizScreen() {
                             </View>
                         )}
 
-                        {currentQuestion.question && (
+                        {(currentQuestion.question || currentQuestion.question_image_path) && (
                             <ThemedText style={styles.questionMeta} testID='question-meta'>
                                 Question
                             </ThemedText>
                         )}
-
 
                         {currentQuestion.question_image_path && (
                             <View style={styles.imageWrapper}>
@@ -943,13 +954,12 @@ export default function QuizScreen() {
                             </View>
                         )}
 
+
+
                         {currentQuestion.question && (
-
-
                             <View style={styles.questionContainer} testID='question-text'>
                                 {renderMixedContent(currentQuestion.question)}
                             </View>
-
                         )}
 
                         <View >
@@ -975,9 +985,9 @@ export default function QuizScreen() {
                                                         : styles.wrongOption)
                                                 ]}
                                                 onPress={() => handleAnswer(value)}
-                                                disabled={showFeedback}
+                                                disabled={showFeedback || isAnswerLoading}
                                             >
-                                                {selectedAnswer === value ? (
+                                                {isAnswerLoading && selectedAnswer === value ? (
                                                     <View style={styles.optionLoadingContainer}>
                                                         <ActivityIndicator size="small" color="#4F46E5" />
                                                     </View>

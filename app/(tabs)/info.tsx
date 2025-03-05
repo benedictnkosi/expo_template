@@ -7,14 +7,6 @@ import { useState, useEffect } from 'react';
 import { getLearner } from '../../services/api';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface User {
-  uid: string;
-  id: string;
-  name: string;
-  email: string;
-  picture?: string;
-}
-
 interface FAQItem {
   question: string;
   answer: string;
@@ -71,10 +63,7 @@ export default function InfoScreen() {
 
   useEffect(() => {
     async function loadUser() {
-
       if (user) {
-
-
         // Fetch learner info
         try {
           const learner = await getLearner(user.uid);
@@ -92,7 +81,7 @@ export default function InfoScreen() {
       }
     }
     loadUser();
-  }, []);
+  }, [user]);
 
   return (
     <LinearGradient

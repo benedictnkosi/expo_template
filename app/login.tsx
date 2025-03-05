@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, Alert, Platform, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { signInWithEmailAndPassword } from 'firebase/auth';
