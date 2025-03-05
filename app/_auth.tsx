@@ -28,12 +28,6 @@ export function useProtectedRoute() {
 
   useEffect(() => {
     if (isLoading) return;
-
-    const inAuthGroup = segments[0] === '(auth)' ||
-      ['login', 'register', 'forgot-password'].includes(segments.join('/'));
-
-    const inQuizPage = segments.join('/') === 'quiz';
-
   }, [user, segments, isLoading, hasProfile]);
 }
 

@@ -27,13 +27,6 @@ function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>)
   }
 }
 
-interface User {
-  uid: string;
-  id: string;
-  name: string;
-  email: string;
-  picture?: string;
-}
 
 interface LearnerInfo {
   name: string;
@@ -71,8 +64,6 @@ export default function ProfileScreen() {
   }>({ title: '', message: '' });
   const insets = useSafeAreaInsets();
   const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
-  const [pendingGrade, setPendingGrade] = useState('');
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
