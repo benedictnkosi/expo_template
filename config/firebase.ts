@@ -20,11 +20,12 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Auth with React Native persistence
 const auth = getAuth(app);
-auth.setPersistence(getReactNativePersistence(AsyncStorage))
+setPersistence(auth, getReactNativePersistence(AsyncStorage))
   .catch((error) => {
     console.error("Error setting auth persistence:", error);
   });
 
+// Initialize Firestore
 const db = getFirestore(app);
 
 // Initialize Analytics conditionally

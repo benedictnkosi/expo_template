@@ -35,7 +35,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Attempt to restore from SecureStore first
+    async function restoreFromSecureStore() {
+      try {
+        const storedAuth = await SecureStore.getItemAsync('auth');
+        if (storedAuth && !user && isMounted) {
+          const { user: storedUser } = JSON.parse(storedAuth);
+          setUser(storedUser);
+        }
+      } catch (error) {
+        console.error('Error restoring auth from SecureStore:', error);
+      }
+    }
+
+    // Then set up Firebase auth listener
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!isMounted) return;
+
       if (firebaseUser) {
         const userData: AuthUser = {
           uid: firebaseUser.uid,
@@ -47,27 +65,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await SecureStore.setItemAsync('auth', JSON.stringify({ user: userData }));
         setUser(userData);
       } else {
-        await SecureStore.deleteItemAsync('auth');
-        setUser(null);
+        // Only clear auth if we're sure there's no user
+        const storedAuth = await SecureStore.getItemAsync('auth');
+        if (!storedAuth) {
+          setUser(null);
+          await SecureStore.deleteItemAsync('auth');
+        }
       }
       setIsLoading(false);
     });
 
-    // Attempt to restore from SecureStore if Firebase auth hasn't initialized yet
-    async function restoreFromSecureStore() {
-      try {
-        const storedAuth = await SecureStore.getItemAsync('auth');
-        if (storedAuth && !user) {
-          const { user: storedUser } = JSON.parse(storedAuth);
-          setUser(storedUser);
-        }
-      } catch (error) {
-        console.error('Error restoring auth from SecureStore:', error);
-      }
-    }
-
     restoreFromSecureStore();
-    return unsubscribe;
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

@@ -413,7 +413,7 @@ export default function QuizScreen() {
         if (!user?.uid || !currentQuestion) return;
 
         try {
-            setIsLoading(true);
+            setIsAnswerLoading(true);
             setSelectedAnswer(answer);
 
             // Log answer submission
@@ -464,14 +464,6 @@ export default function QuizScreen() {
                 await incorrectSound.current?.replayAsync();
             }
 
-            if (analytics) {
-                logAnalyticsEvent('submit_answer', {
-                    user_id: user?.uid,
-                    question_id: currentQuestion?.id,
-                    is_correct: response.is_correct
-                });
-            }
-
             requestAnimationFrame(() => {
                 scrollToBottom();
             });
@@ -485,7 +477,7 @@ export default function QuizScreen() {
                 position: 'bottom'
             });
         } finally {
-            setIsLoading(false);
+            setIsAnswerLoading(false);
         }
     };
 
@@ -885,7 +877,6 @@ export default function QuizScreen() {
                             <View style={styles.questionContainer} testID='question-context'>
                                 {renderMixedContent(currentQuestion.context)}
                             </View>
-
                         )}
 
                         {(currentQuestion.image_path || currentQuestion.question_image_path) && (
