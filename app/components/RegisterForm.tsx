@@ -116,6 +116,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 onChangeText={setEmail}
                 autoCapitalize="none"
                 keyboardType="email-address"
+                testID="email-input"
             />
             <TextInput
                 style={styles.input}
@@ -124,6 +125,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
+                testID="password-input"
             />
             <TextInput
                 style={styles.input}
@@ -132,11 +134,13 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
+                testID="confirm-password-input"
             />
             <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleRegister}
                 disabled={isLoading}
+                testID="register-button"
             >
                 {isLoading ? (
                     <ActivityIndicator color="#FFFFFF" />

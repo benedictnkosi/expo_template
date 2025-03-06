@@ -14,7 +14,6 @@ import { fetchMySubjects, getLearner } from '../../services/api';
 import { Subject } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
-const { signOut } = useAuth();
 
 // Temporary mock data
 
@@ -34,8 +33,64 @@ function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>)
   }
 }
 
+// Move RatingModal outside of HomeScreen
+interface RatingModalProps {
+  visible: boolean;
+  rating: number;
+  onRate: (rating: number) => void;
+  onSubmit: () => void;
+  onDismiss: () => void;
+}
+
+const RatingModal = ({ visible, rating, onRate, onSubmit, onDismiss }: RatingModalProps) => {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.ratingContainer}>
+          <ThemedText style={styles.ratingTitle}>
+            How Would You Rate Our App Experience?
+          </ThemedText>
+          <View style={styles.starsContainer}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <TouchableOpacity
+                key={star}
+                onPress={() => onRate(star)}
+                activeOpacity={0.7}
+              >
+                <ThemedText style={[styles.star]}>
+                  {star <= rating ? '★' : '☆'}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              rating === 0 && styles.submitButtonDisabled
+            ]}
+            onPress={onSubmit}
+            disabled={rating === 0}
+          >
+            <ThemedText style={styles.submitButtonText}>Submit Rating</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.dismissButton}
+            onPress={onDismiss}
+          >
+            <ThemedText style={styles.dismissButtonText}>Maybe Later</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [learnerInfo, setLearnerInfo] = useState<{
@@ -53,25 +108,31 @@ export default function HomeScreen() {
   const { colors, isDark } = useTheme();
   const [showErrorModal, setShowErrorModal] = useState(false);
 
-
-  // Single useEffect for initial load
+  // Single useEffect for all analytics logging
   useEffect(() => {
     logAnalyticsEvent('screen_view', {
       screen_name: 'home',
       user_id: user?.uid
     });
-  }, []);
 
-  // Add stats view tracking
-  useEffect(() => {
     logAnalyticsEvent('view_stats', {
       user_id: user?.uid,
       ranking,
       streak
     });
-  }, [ranking, streak]);
+  }, [user?.uid, ranking, streak]);
 
-  // Move initialization logic to a separate function
+  // Handle error and signout
+  const handleError = useCallback(async () => {
+    setShowErrorModal(true);
+    const timer = setTimeout(() => {
+      setShowErrorModal(false);
+      signOut();
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Data initialization function
   const initializeData = useCallback(async () => {
     if (!user?.uid) return;
 
@@ -89,9 +150,7 @@ export default function HomeScreen() {
 
         const enrolledResponse = await fetchMySubjects(user.uid);
 
-        // Check if enrolledResponse and subjects array exists
         if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
-          // Group subjects by base name (removing P1/P2)
           const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
             const baseName = curr.name.replace(/ P[12]$/, '');
 
@@ -104,7 +163,6 @@ export default function HomeScreen() {
                 correct_answers: 0
               };
             } else {
-              // Sum up the stats from both papers
               acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
               acc[baseName].answered_questions += curr.totalResults || 0;
             }
@@ -117,57 +175,31 @@ export default function HomeScreen() {
           setMySubjects([]);
         }
       } else {
-        setShowErrorModal(true);
-        setTimeout(async () => {
-          setShowErrorModal(false);
-          await signOut();
-        }, 5000);
+        handleError();
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      setShowErrorModal(true);
-      setTimeout(async () => {
-        setShowErrorModal(false);
-        await signOut();
-      }, 5000);
+      handleError();
     } finally {
       setIsLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, handleError]);
 
-  // Use useFocusEffect to reinitialize data when tab is focused
+  // Use useFocusEffect for data initialization
   useFocusEffect(
     useCallback(() => {
       initializeData();
     }, [initializeData])
   );
 
-  // Update screen view tracking
-  useEffect(() => {
-    logAnalyticsEvent('screen_view', {
-      screen_name: 'home',
-      user_id: user?.uid
-    });
-  }, []);
-
-  // Add stats view tracking
-  useEffect(() => {
-    logAnalyticsEvent('view_stats', {
-      user_id: user?.uid,
-      ranking,
-      streak
-    });
-  }, [ranking, streak]);
-
-  // Update share function with analytics
-  const handleShare = async () => {
+  // Share function
+  const handleShare = useCallback(async () => {
     try {
       await Share.share({
         message: 'Check out Exam Quiz - Your ultimate study companion! https://play.google.com/store/apps/details?id=za.co.examquizafrica',
         title: 'Share Exam Quiz'
       });
 
-      // Log share event
       logAnalyticsEvent('share_app', {
         user_id: user?.uid,
         platform: Platform.OS
@@ -175,77 +207,30 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error sharing:', error);
     }
-  };
+  }, [user?.uid]);
 
-  // Update RatingModal component
-  const RatingModal = () => {
-    const handleRating = (selectedRating: number) => {
-      setRating(selectedRating);
-    };
+  // Rating handlers
+  const handleRating = useCallback((selectedRating: number) => {
+    setRating(selectedRating);
+  }, []);
 
-    const handleSubmitRating = () => {
-      if (rating >= 4) {
-        Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
-        logAnalyticsEvent('submit_rating', {
-          user_id: user?.uid,
-          rating
-        });
-      }
-      setShowRatingModal(false);
-    };
-
-    const handleDismissRating = () => {
-      logAnalyticsEvent('dismiss_rating', {
-        user_id: user?.uid
+  const handleSubmitRating = useCallback(() => {
+    if (rating >= 4) {
+      Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
+      logAnalyticsEvent('submit_rating', {
+        user_id: user?.uid,
+        rating
       });
-      setShowRatingModal(false);
-    };
+    }
+    setShowRatingModal(false);
+  }, [rating, user?.uid]);
 
-    return (
-      <Modal
-        visible={showRatingModal}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.ratingContainer}>
-            <ThemedText style={styles.ratingTitle}>
-              How Would You Rate Our App Experience?
-            </ThemedText>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity
-                  key={star}
-                  onPress={() => handleRating(star)}
-                  activeOpacity={0.7}
-                >
-                  <ThemedText style={[styles.star]}>
-                    {star <= rating ? '★' : '☆'}
-                  </ThemedText>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                rating === 0 && styles.submitButtonDisabled
-              ]}
-              onPress={handleSubmitRating}
-              disabled={rating === 0}
-            >
-              <ThemedText style={styles.submitButtonText}>Submit Rating</ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dismissButton}
-              onPress={handleDismissRating}
-            >
-              <ThemedText style={styles.dismissButtonText}>Maybe Later</ThemedText>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    );
-  };
+  const handleDismissRating = useCallback(() => {
+    logAnalyticsEvent('dismiss_rating', {
+      user_id: user?.uid
+    });
+    setShowRatingModal(false);
+  }, [user?.uid]);
 
   if (isLoading) {
     return (
@@ -421,7 +406,13 @@ export default function HomeScreen() {
           })}
         </View>
       </ScrollView>
-      <RatingModal />
+      <RatingModal
+        visible={showRatingModal}
+        rating={rating}
+        onRate={handleRating}
+        onSubmit={handleSubmitRating}
+        onDismiss={handleDismissRating}
+      />
 
       <Modal
         visible={showErrorModal}
@@ -457,6 +448,8 @@ function getSubjectIcon(subjectName: string) {
     'Physical Sciences': require('@/assets/images/subjects/physics.png'),
     'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
     'History': require('@/assets/images/subjects/history.png'),
+    'Life orientation': require('@/assets/images/subjects/life-orientation.png'),
+    'Tourism': require('@/assets/images/subjects/tourism.png'),
     'default': require('@/assets/images/subjects/mathematics.png')
   };
   return icons[subjectName as keyof typeof icons] || icons.default;

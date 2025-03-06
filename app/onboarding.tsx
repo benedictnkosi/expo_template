@@ -222,6 +222,7 @@ export default function OnboardingScreen() {
                       setGrade(g.toString());
                       setErrors(prev => ({ ...prev, grade: '' }));
                     }}
+                    testID={`grade-button-${g}`}
                   >
                     <ThemedText
                       style={[
@@ -246,7 +247,7 @@ export default function OnboardingScreen() {
               <ThemedText style={styles.stepTitle}>🎓 Which school do you rep?</ThemedText>
               <ThemedText style={styles.stepTitle}>Find your school and get ready to join the learning squad! 🚀📚</ThemedText>
               <GooglePlacesAutocomplete
-                placeholder="🔍 Search for your school..."
+                placeholder="Search for your school..."
                 onPress={(data, details = null) => {
                   setSchool(data.description);
                   setSchoolName(data.structured_formatting.main_text);
@@ -302,7 +303,9 @@ export default function OnboardingScreen() {
                   <View style={styles.selectedSchoolHeader}>
                     <ThemedText style={styles.selectedSchoolTitle}>🏫 Selected</ThemedText>
                   </View>
-                  <ThemedText style={styles.selectedSchoolName}>{school}</ThemedText>
+                  <ThemedText style={styles.selectedSchoolName}
+                    testID="selected-school-name"
+                  >{school}</ThemedText>
                 </View>
               )}
               {errors.school ? <ThemedText style={styles.errorText}>{errors.school}</ThemedText> : null}
@@ -335,6 +338,7 @@ export default function OnboardingScreen() {
                       setCurriculum(item.id);
                       setErrors(prev => ({ ...prev, curriculum: '' }));
                     }}
+                    testID={`curriculum-button-${item.id}`}
                   >
                     <ThemedText
                       style={[
@@ -389,6 +393,7 @@ export default function OnboardingScreen() {
                       difficultSubject === subject.id && styles.subjectButtonSelected
                     ]}
                     onPress={() => setDifficultSubject(subject.id)}
+                    testID={`subject-button-${subject.id}`}
                   >
                     <View style={styles.subjectContent}>
                       <ThemedText style={styles.subjectEmoji}>{subject.emoji}</ThemedText>
@@ -482,12 +487,14 @@ export default function OnboardingScreen() {
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
                   onPress={() => router.replace('/login')}
+                  testID="back-button"
                 >
                   <ThemedText style={styles.buttonText}>Back</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.primaryButton]}
                   onPress={() => setStep(1)}
+                  testID="start-button"
                 >
                   <ThemedText style={[styles.buttonText, styles.primaryButtonText]}>
                     Start! 🚀
@@ -499,6 +506,7 @@ export default function OnboardingScreen() {
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
                   onPress={() => setStep(step - 1)}
+                  testID="back-button"
                 >
                   <ThemedText style={styles.buttonText}>Back</ThemedText>
                 </TouchableOpacity>
@@ -510,6 +518,7 @@ export default function OnboardingScreen() {
                   ]}
                   onPress={handleNextStep}
                   disabled={!canProceed() && step !== 0}
+                  testID="next-button"
                 >
                   <ThemedText style={[
                     styles.buttonText,

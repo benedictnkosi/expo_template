@@ -70,6 +70,7 @@ export default function Login() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              testID="email-input"
             />
             <TextInput
               style={styles.input}
@@ -78,11 +79,13 @@ export default function Login() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              testID="password-input"
             />
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
+              testID="login-button"
             >
               <ThemedText style={styles.buttonText}>
                 {isLoading ? 'Signing in...' : 'Start Learning →'}
@@ -96,6 +99,7 @@ export default function Login() {
               <TouchableOpacity
                 style={styles.createAccountButton}
                 onPress={() => router.push('/onboarding')}
+                testID="create-account-button"
               >
                 <ThemedText style={styles.createAccountButtonText}>Create an account</ThemedText>
               </TouchableOpacity>
@@ -108,6 +112,7 @@ export default function Login() {
               <TouchableOpacity
                 style={styles.linkButton}
                 onPress={() => router.push('/forgot-password')}
+                testID="forgot-password-button"
               >
                 <ThemedText style={styles.linkText}>Reset it here</ThemedText>
               </TouchableOpacity>
