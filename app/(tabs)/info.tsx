@@ -6,6 +6,7 @@ import { Header } from '../../components/Header';
 import { useState, useEffect } from 'react';
 import { getLearner } from '../../services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FAQItem {
   question: string;
@@ -58,6 +59,7 @@ const faqs: FAQItem[] = [
 export default function InfoScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
 
   const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
 
@@ -85,7 +87,7 @@ export default function InfoScreen() {
 
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+      colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
       style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -101,20 +103,30 @@ export default function InfoScreen() {
         />
 
         <TouchableOpacity
-          style={styles.whatsappButton}
+          style={[styles.whatsappButton, {
+            backgroundColor: isDark ? colors.card : 'rgba(255, 255, 255, 0.9)',
+            borderColor: colors.border,
+            borderWidth: 1
+          }]}
           onPress={() => Linking.openURL('https://api.whatsapp.com/send/?phone=27837917430&text=Hi')}
         >
-          <ThemedText style={styles.whatsappText}>
+          <ThemedText style={[styles.whatsappText, {
+            color: isDark ? '#25D366' : '#25D366'
+          }]}>
             👋 Say hi on WhatsApp
           </ThemedText>
         </TouchableOpacity>
 
-        <ThemedText style={styles.header}>Frequently Asked Questions</ThemedText>
+        <ThemedText style={[styles.header, { color: colors.text }]}>Frequently Asked Questions</ThemedText>
 
         {faqs.map((faq, index) => (
-          <View key={index} style={styles.card}>
-            <ThemedText style={styles.title}>{faq.question}</ThemedText>
-            <ThemedText style={styles.text}>{faq.answer}</ThemedText>
+          <View key={index} style={[styles.card, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border,
+            borderWidth: 1
+          }]}>
+            <ThemedText style={[styles.title, { color: colors.text }]}>{faq.question}</ThemedText>
+            <ThemedText style={[styles.text, { color: colors.textSecondary }]}>{faq.answer}</ThemedText>
           </View>
         ))}
 
@@ -138,12 +150,10 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginBottom: 24,
     marginTop: 20,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginVertical: 8,
@@ -156,34 +166,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1E293B',
     marginBottom: 8,
   },
   text: {
     fontSize: 16,
-    color: '#64748B',
-    lineHeight: 24,
-  },
-  contactSection: {
-    backgroundColor: '#333',
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 8,
-    marginBottom: 40,
-  },
-  contactHeader: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  contactText: {
-    fontSize: 16,
-    color: '#999',
     lineHeight: 24,
   },
   whatsappButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     marginHorizontal: 20,
     marginTop: 12,
     marginBottom: 20,
@@ -210,6 +199,5 @@ const styles = StyleSheet.create({
   whatsappText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#25D366', // WhatsApp brand color
   },
 }); 

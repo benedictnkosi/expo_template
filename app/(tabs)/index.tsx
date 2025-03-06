@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { logEvent, Analytics } from 'firebase/analytics';
 import { analytics } from '../../config/firebase';
-
+import { useTheme } from '@/contexts/ThemeContext';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner } from '../../services/api';
@@ -37,72 +37,100 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{
+    name: string;
+    grade: string;
+    school_name: string;
+    school: string;
+    role?: string;
+  } | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
   const [streak] = useState(0);
   const [ranking] = useState(0);
+  const { colors, isDark } = useTheme();
 
 
   // Single useEffect for initial load
   useEffect(() => {
-    async function initializeData() {
-      if (!user?.uid) return;
+    logAnalyticsEvent('screen_view', {
+      screen_name: 'home',
+      user_id: user?.uid
+    });
+  }, []);
 
-      try {
-        setIsLoading(true);
-        const learner = await getLearner(user.uid);
-        if (learner.name && learner.grade && learner.school_name) {
-          setLearnerInfo({
-            name: learner.name,
-            grade: learner.grade?.number?.toString() || '',
-            school_name: learner.school_name || '',
-            school: learner.school_name || ''
-          });
+  // Add stats view tracking
+  useEffect(() => {
+    logAnalyticsEvent('view_stats', {
+      user_id: user?.uid,
+      ranking,
+      streak
+    });
+  }, [ranking, streak]);
 
-          const enrolledResponse = await fetchMySubjects(user.uid);
+  // Move initialization logic to a separate function
+  const initializeData = useCallback(async () => {
+    if (!user?.uid) return;
 
-          // Check if enrolledResponse and subjects array exists
-          if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
-            // Group subjects by base name (removing P1/P2)
-            const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
-              const baseName = curr.name.replace(/ P[12]$/, '');
+    try {
+      setIsLoading(true);
+      const learner = await getLearner(user.uid);
+      if (learner.name && learner.grade && learner.school_name) {
+        setLearnerInfo({
+          name: learner.name,
+          grade: learner.grade?.number?.toString() || '',
+          school_name: learner.school_name || '',
+          school: learner.school_name || '',
+          role: learner.role || 'learner'
+        });
 
-              if (!acc[baseName]) {
-                acc[baseName] = {
-                  id: curr.id.toString(),
-                  name: baseName,
-                  total_questions: curr.totalSubjectQuestions || 0,
-                  answered_questions: curr.totalResults || 0,
-                  correct_answers: 0
-                };
-              } else {
-                // Sum up the stats from both papers
-                acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-                acc[baseName].answered_questions += curr.totalResults || 0;
-              }
+        const enrolledResponse = await fetchMySubjects(user.uid);
 
-              return acc;
-            }, {});
+        // Check if enrolledResponse and subjects array exists
+        if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+          // Group subjects by base name (removing P1/P2)
+          const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+            const baseName = curr.name.replace(/ P[12]$/, '');
 
-            setMySubjects(Object.values(subjectGroups));
-          } else {
-            setMySubjects([]);
-          }
+            if (!acc[baseName]) {
+              acc[baseName] = {
+                id: curr.id.toString(),
+                name: baseName,
+                total_questions: curr.totalSubjectQuestions || 0,
+                answered_questions: curr.totalResults || 0,
+                correct_answers: 0
+              };
+            } else {
+              // Sum up the stats from both papers
+              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+              acc[baseName].answered_questions += curr.totalResults || 0;
+            }
+
+            return acc;
+          }, {});
+
+          setMySubjects(Object.values(subjectGroups));
         } else {
-          router.replace('/login');
+          setMySubjects([]);
         }
-      } catch (error) {
-        console.error('Error loading data:', error);
+      } else {
         router.replace('/login');
-      } finally {
-        setIsLoading(false);
       }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      router.replace('/login');
+    } finally {
+      setIsLoading(false);
     }
-
-    initializeData();
   }, [user?.uid]);
+
+  // Use useFocusEffect to reinitialize data when tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      initializeData();
+    }, [initializeData])
+  );
 
   // Update screen view tracking
   useEffect(() => {
@@ -211,16 +239,16 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+      <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <ThemedText style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</ThemedText>
       </View>
     );
   }
 
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+      colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
       style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -235,26 +263,29 @@ export default function HomeScreen() {
           learnerInfo={learnerInfo}
         />
 
-        <View style={styles.statsContainer}>
+        <View style={[styles.statsContainer, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <View style={styles.statContent}>
                 <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={styles.statLabel}>Scoreboard</ThemedText>
-                  <ThemedText style={styles.statValue} testID="ranking-value">{ranking}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Scoreboard</ThemedText>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="ranking-value">{ranking}</ThemedText>
                 </View>
               </View>
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.statItem}>
               <View style={styles.statContent}>
                 <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={styles.statLabel}>Quiz Streak</ThemedText>
-                  <ThemedText style={styles.statValue} testID="streak-value">{streak}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Quiz Streak</ThemedText>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="streak-value">{streak}</ThemedText>
                 </View>
               </View>
             </View>
@@ -263,7 +294,7 @@ export default function HomeScreen() {
 
         <View style={styles.shareContainer}>
           <TouchableOpacity
-            style={styles.shareButton}
+            style={[styles.shareButton, { backgroundColor: colors.primary }]}
             onPress={handleShare}
           >
             <Ionicons name="share-social" size={24} color="#FFFFFF" />
@@ -273,7 +304,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <ThemedText style={styles.sectionTitle}>📚 Let's Dive into Fun Learning!</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>📚 Let's Dive into Fun Learning!</ThemedText>
 
         <View style={styles.subjectsGrid}>
           {mySubjects.map((subject) => {
@@ -283,12 +314,18 @@ export default function HomeScreen() {
                 key={subject.id}
                 style={[
                   styles.subjectCard,
-                  isDisabled && styles.disabledSubjectCard
+                  {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                    borderColor: colors.border
+                  },
+                  isDisabled && [styles.disabledSubjectCard, {
+                    backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                    borderColor: isDark ? colors.border : '#E5E7EB'
+                  }]
                 ]}
                 activeOpacity={0.7}
                 onPress={() => {
                   if (!isDisabled) {
-                    // Log subject selection
                     logAnalyticsEvent('select_subject', {
                       user_id: user?.uid,
                       subject_name: subject.name,
@@ -305,7 +342,8 @@ export default function HomeScreen() {
                         subjectName: subject.name,
                         learnerName: learnerInfo?.name || '',
                         learnerGrade: learnerInfo?.grade || '',
-                        learnerSchool: learnerInfo?.school || ''
+                        learnerSchool: learnerInfo?.school || '',
+                        learnerRole: learnerInfo?.role || 'learner'
                       }
                     });
                   }
@@ -320,29 +358,49 @@ export default function HomeScreen() {
                   />
                 </View>
                 <View style={styles.cardContent}>
-                  <ThemedText style={[styles.subjectName, isDisabled && styles.disabledText]} testID={`subject-name-${subject.name}`}>
+                  <ThemedText
+                    style={[
+                      styles.subjectName,
+                      { color: colors.text },
+                      isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                    ]}
+                    testID={`subject-name-${subject.name}`}
+                  >
                     {subject.name}
                   </ThemedText>
-                  <ThemedText style={[styles.questionCount, isDisabled && styles.disabledText]} testID={`question-count-${subject.name}`}>
+                  <ThemedText
+                    style={[
+                      styles.questionCount,
+                      { color: colors.textSecondary },
+                      isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                    ]}
+                    testID={`question-count-${subject.name}`}
+                  >
                     {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
                   </ThemedText>
 
-                  {/* Progress section */}
                   <View style={isDisabled && styles.disabledProgress}>
-                    <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBarContainer, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]}>
                       <View
                         style={[
                           styles.progressBar,
                           {
                             width: `${subject.answered_questions === 0 ? 0 :
                               Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
-                            backgroundColor: isDisabled ? '#D1D5DB' : getProgressBarColor(subject.answered_questions === 0 ? 0 :
-                              Math.round((subject.correct_answers / subject.answered_questions) * 100))
+                            backgroundColor: isDisabled ? (isDark ? colors.textSecondary : '#D1D5DB') :
+                              getProgressBarColor(subject.answered_questions === 0 ? 0 :
+                                Math.round((subject.correct_answers / subject.answered_questions) * 100))
                           }
                         ]}
                       />
                     </View>
-                    <ThemedText style={[styles.masteryText, isDisabled && styles.disabledText]}>
+                    <ThemedText
+                      style={[
+                        styles.masteryText,
+                        { color: colors.textSecondary },
+                        isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                      ]}
+                    >
                       {subject.answered_questions === 0 ? 0 :
                         Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
                     </ThemedText>
@@ -354,7 +412,7 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <RatingModal />
-    </LinearGradient >
+    </LinearGradient>
   );
 }
 

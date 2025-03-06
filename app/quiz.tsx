@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { Analytics, logEvent } from 'firebase/analytics';
 import { analytics } from '../config/firebase';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Helper function for safe analytics logging
 function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -166,7 +167,7 @@ function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
 }
 
 // Add helper function
-function renderMixedContent(text: string) {
+function renderMixedContent(text: string, isDark: boolean, colors: any) {
     const parts = text.split(/(\$[^$]+\$)/g);
     return (
         <View style={styles.mixedContentContainer}>
@@ -174,7 +175,9 @@ function renderMixedContent(text: string) {
                 if (part.startsWith('$') && part.endsWith('$')) {
                     // LaTeX content
                     return (
-                        <View key={index} style={styles.latexContainer}>
+                        <View key={index} style={[styles.latexContainer, {
+                            backgroundColor: isDark ? colors.surface : '#FFFFFF'
+                        }]}>
                             <KaTeX
                                 latex={part.slice(1, -1)} // Remove $ signs
                             />
@@ -184,7 +187,7 @@ function renderMixedContent(text: string) {
                 // Regular text (only if not empty)
                 if (part.trim()) {
                     return (
-                        <ThemedText key={index} style={styles.contentText}>
+                        <ThemedText key={index} style={[styles.contentText, { color: colors.text }]}>
                             {part.trim()}
                         </ThemedText>
                     );
@@ -244,6 +247,7 @@ const ImageLoadingPlaceholder = () => (
 
 export default function QuizScreen() {
     const { user } = useAuth();
+    const { colors, isDark } = useTheme();
     const { subjectName, learnerRole } = useLocalSearchParams();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -308,6 +312,8 @@ export default function QuizScreen() {
             subject_name: subjectName,
             learner_role: learnerRole
         });
+
+        console.log("learner role", learnerRole);
     }, []);
 
     const reportIssue = () => {
@@ -567,6 +573,12 @@ export default function QuizScreen() {
 
     const handleApproveQuestion = async () => {
         if (!currentQuestion?.id || !user?.uid || !user?.email || learnerRole !== 'admin') {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'You do not have permission to approve questions.',
+                position: 'bottom'
+            });
             return;
         }
 
@@ -600,10 +612,10 @@ export default function QuizScreen() {
 
     const SubjectHeader = () => (
         <LinearGradient
-            colors={['#10B981', '#047857']} // emerald-500 to emerald-700
+            colors={isDark ? ['#4F46E5', '#4338CA'] : ['#10B981', '#047857']}
+            style={styles.subjectHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.subjectHeader}
         >
             <View style={styles.headerContent}>
                 <Image
@@ -611,18 +623,24 @@ export default function QuizScreen() {
                     style={styles.subjectheaderIcon}
                 />
                 <View style={styles.titleContainer}>
-                    <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
+                    <ThemedText style={[styles.subjectTitle, { color: '#FFFFFF' }]}>{subjectName}</ThemedText>
                     <View style={styles.badgeContainer}>
                         {currentQuestion && (
                             <>
-                                <View style={styles.badge}>
+                                <View style={[styles.badge, {
+                                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                                }]}>
                                     <ThemedText style={styles.badgeText}>{currentQuestion.year}</ThemedText>
                                 </View>
-                                <View style={styles.badge}>
+                                <View style={[styles.badge, {
+                                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                                }]}>
                                     <ThemedText style={styles.badgeText}>Term {currentQuestion.term}</ThemedText>
                                 </View>
                                 {currentQuestion.curriculum && (
-                                    <View style={styles.badge}>
+                                    <View style={[styles.badge, {
+                                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                                    }]}>
                                         <ThemedText style={styles.badgeText}>{currentQuestion.curriculum}</ThemedText>
                                     </View>
                                 )}
@@ -630,7 +648,6 @@ export default function QuizScreen() {
                         )}
                     </View>
                 </View>
-
             </View>
         </LinearGradient>
     );
@@ -642,41 +659,64 @@ export default function QuizScreen() {
             Math.round((stats.correct_answers / stats.total_answers) * 100);
 
         return (
-            <View style={styles.performanceContainer}>
+            <View style={[styles.performanceContainer, {
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: colors.border,
+                borderWidth: 1,
+                shadowColor: isDark ? '#000000' : '#000000',
+                shadowOpacity: isDark ? 0.3 : 0.1,
+            }]}>
                 <View style={styles.performanceHeader}>
-                    <ThemedText style={styles.performanceTitle}>Your Scoreboard! 🏆</ThemedText>
+                    <ThemedText style={[styles.performanceTitle, { color: colors.text }]}>Your Scoreboard! 🏆</ThemedText>
                     <TouchableOpacity
                         style={styles.restartIconButton}
                         onPress={() => {
                             setIsRestartModalVisible(true);
                         }}
                     >
-                        <Ionicons name="refresh-circle" size={28} color="#EF4444" />
+                        <Ionicons name="refresh-circle" size={28} color={isDark ? '#FF3B30' : '#EF4444'} />
                     </TouchableOpacity>
                 </View>
                 <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
+                    <View style={[styles.statItem, {
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        shadowColor: isDark ? '#000000' : '#000000',
+                        shadowOpacity: isDark ? 0.3 : 0.1,
+                    }]}>
                         <View style={styles.statContent}>
                             <ThemedText style={styles.statIcon}>🎯</ThemedText>
                             <View style={styles.statTextContainer}>
-                                <ThemedText style={styles.statCount}>{stats?.correct_answers || 0}</ThemedText>
-                                <ThemedText style={styles.statLabel}>Bullseyes</ThemedText>
+                                <ThemedText style={[styles.statCount, { color: colors.text }]}>{stats?.correct_answers || 0}</ThemedText>
+                                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Bullseyes</ThemedText>
                             </View>
                         </View>
                     </View>
 
-                    <View style={styles.statItem}>
+                    <View style={[styles.statItem, {
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        shadowColor: isDark ? '#000000' : '#000000',
+                        shadowOpacity: isDark ? 0.3 : 0.1,
+                    }]}>
                         <View style={styles.statContent}>
                             <ThemedText style={styles.statIcon}>💥</ThemedText>
                             <View style={styles.statTextContainer}>
-                                <ThemedText style={styles.statCount}>{stats?.incorrect_answers || 0}</ThemedText>
-                                <ThemedText style={styles.statLabel}>Oopsies</ThemedText>
+                                <ThemedText style={[styles.statCount, { color: colors.text }]}>{stats?.incorrect_answers || 0}</ThemedText>
+                                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Oopsies</ThemedText>
                             </View>
                         </View>
                     </View>
                 </View>
 
-                <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBarContainer, {
+                    backgroundColor: isDark ? colors.border : '#E2E8F0',
+                    marginHorizontal: 16,
+                    marginTop: 16,
+                    marginBottom: 8
+                }]}>
                     <View
                         style={[
                             styles.progressBar,
@@ -687,7 +727,11 @@ export default function QuizScreen() {
                         ]}
                     />
                 </View>
-                <ThemedText style={styles.masteryText}>
+                <ThemedText style={[styles.masteryText, {
+                    color: colors.textSecondary,
+                    marginHorizontal: 16,
+                    marginBottom: 8
+                }]}>
                     {progress}% GOAT 🐐
                 </ThemedText>
             </View>
@@ -724,8 +768,9 @@ export default function QuizScreen() {
 
     if (isLoading) {
         return (
-            <ThemedView style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
+            <ThemedView style={[styles.loadingContainer, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <ThemedText style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</ThemedText>
             </ThemedView>
         );
     }
@@ -733,28 +778,30 @@ export default function QuizScreen() {
     if (!selectedPaper) {
         return (
             <LinearGradient
-                colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+                colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
                 style={[styles.gradient, { paddingTop: insets.top }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
             >
                 <View style={styles.paperSelectionContainer}>
                     <TouchableOpacity
-                        style={styles.closeHeaderButton}
+                        style={[styles.closeHeaderButton, {
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                        }]}
                         onPress={() => router.back()}
                     >
-                        <Ionicons name="close" size={24} color="#000000" />
+                        <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                     <Image
                         source={getSubjectIcon(subjectName as string)}
                         style={styles.subjectIcon}
                     />
-                    <ThemedText style={styles.subjectTitle}>{subjectName}</ThemedText>
-                    <ThemedText style={styles.paperSelectionText}>Select a paper to continue</ThemedText>
+                    <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
+                    <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>Select a paper to continue</ThemedText>
 
                     <View style={styles.paperButtons}>
                         <LinearGradient
-                            colors={['#9333EA', '#4F46E5']} // purple-600 to indigo-600
+                            colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.paperButton}
@@ -771,7 +818,7 @@ export default function QuizScreen() {
                         </LinearGradient>
 
                         <LinearGradient
-                            colors={['#F59E0B', '#F97316']} // amber-500 to orange-500
+                            colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.paperButton}
@@ -795,27 +842,31 @@ export default function QuizScreen() {
     if (!currentQuestion) {
         return (
             <LinearGradient
-                colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+                colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
                 style={[styles.gradient, { paddingTop: insets.top }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
             >
                 <ScrollView style={styles.container}>
-                    <ThemedView style={styles.noQuestionsContainer}>
+                    <ThemedView style={[styles.noQuestionsContainer, {
+                        backgroundColor: isDark ? colors.card : '#FFFFFF'
+                    }]}>
                         <Image
                             source={NO_QUESTIONS_ILLUSTRATION}
                             style={styles.noQuestionsIllustration}
                             resizeMode="contain"
                         />
-                        <ThemedText style={styles.noQuestionsTitle}>
+                        <ThemedText style={[styles.noQuestionsTitle, { color: colors.text }]}>
                             🐛 Oops! Looks like the quiz gremlins ate all the questions!
                         </ThemedText>
-                        <ThemedText style={styles.noQuestionsSubtitle}>
+                        <ThemedText style={[styles.noQuestionsSubtitle, { color: colors.textSecondary }]}>
                             Check your profile for selected school terms and curriculum
                         </ThemedText>
 
                         <TouchableOpacity
-                            style={styles.profileSettingsButton}
+                            style={[styles.profileSettingsButton, {
+                                backgroundColor: isDark ? colors.primary : '#4F46E5'
+                            }]}
                             onPress={() => router.push('/(tabs)/profile')}
                         >
                             <View style={styles.buttonContent}>
@@ -826,7 +877,9 @@ export default function QuizScreen() {
 
                         <View style={styles.buttonGroup}>
                             <TouchableOpacity
-                                style={styles.restartButton}
+                                style={[styles.restartButton, {
+                                    backgroundColor: isDark ? '#DC2626' : '#EF4444'
+                                }]}
                                 onPress={() => {
                                     setIsRestartModalVisible(true);
                                 }}
@@ -838,7 +891,9 @@ export default function QuizScreen() {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={styles.goHomeButton}
+                                style={[styles.goHomeButton, {
+                                    backgroundColor: isDark ? colors.surface : '#64748B'
+                                }]}
                                 onPress={() => router.replace('/(tabs)')}
                             >
                                 <View style={styles.buttonContent}>
@@ -855,7 +910,7 @@ export default function QuizScreen() {
 
     return (
         <LinearGradient
-            colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+            colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
             style={[styles.gradient, { paddingTop: insets.top }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -864,7 +919,10 @@ export default function QuizScreen() {
                 <SubjectHeader />
                 <PerformanceSummary />
                 <ThemedView style={styles.content}>
-                    <ThemedView style={styles.sectionCard}>
+                    <ThemedView style={[styles.sectionCard, {
+                        backgroundColor: isDark ? colors.card : '#FFFFFF',
+                        borderColor: colors.border
+                    }]}>
 
                         {(currentQuestion.context || currentQuestion.image_path) && (
                             <ThemedText style={styles.questionMeta} testID='question-meta'>
@@ -873,14 +931,13 @@ export default function QuizScreen() {
                         )}
 
                         {currentQuestion.context && (
-
                             <View style={styles.questionContainer} testID='question-context'>
-                                {renderMixedContent(currentQuestion.context)}
+                                {renderMixedContent(currentQuestion.context, isDark, colors)}
                             </View>
                         )}
 
                         {(currentQuestion.image_path || currentQuestion.question_image_path) && (
-                            <ThemedText style={styles.imageCaption}>
+                            <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
                                 Click image to enlarge
                             </ThemedText>
                         )}
@@ -949,12 +1006,12 @@ export default function QuizScreen() {
 
                         {currentQuestion.question && (
                             <View style={styles.questionContainer} testID='question-text'>
-                                {renderMixedContent(currentQuestion.question)}
+                                {renderMixedContent(currentQuestion.question, isDark, colors)}
                             </View>
                         )}
 
-                        <View >
-                            <ThemedText style={styles.hintText}>
+                        <View>
+                            <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>
                                 Tap to select your answer
                             </ThemedText>
                         </View>
@@ -969,18 +1026,26 @@ export default function QuizScreen() {
                                                 key={key}
                                                 style={[
                                                     styles.option,
-                                                    selectedAnswer === value && styles.selectedOption,
-                                                    showFeedback && selectedAnswer === value &&
-                                                    (JSON.parse(currentQuestion.answer).includes(value)
-                                                        ? styles.correctOption
-                                                        : styles.wrongOption)
+                                                    {
+                                                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                                        borderColor: colors.border
+                                                    },
+                                                    selectedAnswer === value && [
+                                                        styles.selectedOption,
+                                                        { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
+                                                    ],
+                                                    showFeedback && selectedAnswer === value && (
+                                                        JSON.parse(currentQuestion.answer).includes(value)
+                                                            ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                            : [styles.wrongOption, { borderColor: '#FF3B30' }]
+                                                    )
                                                 ]}
                                                 onPress={() => handleAnswer(value)}
                                                 disabled={showFeedback || isAnswerLoading}
                                             >
                                                 {isAnswerLoading && selectedAnswer === value ? (
                                                     <View style={styles.optionLoadingContainer}>
-                                                        <ActivityIndicator size="small" color="#4F46E5" />
+                                                        <ActivityIndicator size="small" color={colors.primary} />
                                                     </View>
                                                 ) : (
                                                     cleanAnswer(value).includes('$') ? (
@@ -989,7 +1054,9 @@ export default function QuizScreen() {
                                                             isOption={true}
                                                         />
                                                     ) : (
-                                                        <ThemedText style={styles.optionText}>{value}</ThemedText>
+                                                        <ThemedText style={[styles.optionText, { color: colors.text }]}>
+                                                            {value}
+                                                        </ThemedText>
                                                     )
                                                 )}
                                             </TouchableOpacity>
@@ -997,11 +1064,15 @@ export default function QuizScreen() {
                                 </ThemedView>
 
                                 <TouchableOpacity
-                                    style={[styles.reportButton, { marginTop: 16, marginHorizontal: 16 }]}
+                                    style={[styles.reportButton, {
+                                        marginTop: 16,
+                                        marginHorizontal: 16,
+                                        backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                                    }]}
                                     onPress={reportIssue}
                                     testID='report-issue-button'
                                 >
-                                    <ThemedText style={styles.reportButtonText}>
+                                    <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
                                         🛑 Report an Issue with this Question
                                     </ThemedText>
                                 </TouchableOpacity>
@@ -1009,48 +1080,29 @@ export default function QuizScreen() {
                         )}
                         {showFeedback && (
                             <ThemedView style={styles.feedbackContainer}>
-                                <ThemedText style={styles.feedbackEmoji} testID='feedback-emoji'>
+                                <ThemedText style={[styles.feedbackEmoji, { color: colors.text }]} testID='feedback-emoji'>
                                     {feedbackMessage}
                                 </ThemedText>
 
-                                <ThemedView style={styles.correctAnswerContainer}>
-                                    <ThemedText style={styles.correctAnswerLabel} testID='correct-answer-label'>
+                                <ThemedView style={[styles.correctAnswerContainer, {
+                                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                    borderColor: '#22C55E'
+                                }]}>
+                                    <ThemedText style={[styles.correctAnswerLabel, { color: colors.textSecondary }]} testID='correct-answer-label'>
                                         ✅ Right Answer!
                                     </ThemedText>
                                     {cleanAnswer(currentQuestion.answer).includes('$') ? (
                                         <KaTeX latex={cleanAnswer(currentQuestion.answer).replace(/\$/g, '')} />
                                     ) : (
-                                        <ThemedText style={styles.correctAnswerText} testID='correct-answer-text'>
+                                        <ThemedText style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]} testID='correct-answer-text'>
                                             {cleanAnswer(currentQuestion.answer)}
                                         </ThemedText>
                                     )}
-                                    {currentQuestion.answer_image && (
-                                        <TouchableOpacity
-                                            onPress={() => {
-                                                setZoomImageUrl(currentQuestion.answer_image);
-                                                setIsZoomModalVisible(true);
-                                            }}
-                                            testID='correct-answer-image-container'
-                                        >
-                                            {isAnswerImageLoading && <ImageLoadingPlaceholder />}
-                                            <Image
-                                                source={{
-                                                    uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.answer_image}`
-                                                }}
-                                                style={styles.answerImage}
-                                                resizeMode="contain"
-                                                onLoadStart={() => setIsAnswerImageLoading(true)}
-                                                onLoadEnd={() => setIsAnswerImageLoading(false)}
-                                                testID='correct-answer-image'
-                                            />
-                                        </TouchableOpacity>
-                                    )}
                                     {currentQuestion.explanation && (
                                         <View style={styles.questionContainer} testID='explanation-container'>
-                                            {renderMixedContent(cleanAnswer(currentQuestion.explanation))}
+                                            {renderMixedContent(cleanAnswer(currentQuestion.explanation), isDark, colors)}
                                         </View>
                                     )}
-
                                 </ThemedView>
 
                                 {/* Question approval button - only show for admin users */}
@@ -1067,7 +1119,9 @@ export default function QuizScreen() {
                                 )}
 
                                 <TouchableOpacity
-                                    style={styles.aiExplanationButton}
+                                    style={[styles.aiExplanationButton, {
+                                        backgroundColor: isDark ? '#4338CA' : '#4F46E5'
+                                    }]}
                                     onPress={() => {
                                         fetchAIExplanation(currentQuestion?.id || 0)
                                     }}
@@ -1093,9 +1147,11 @@ export default function QuizScreen() {
                 </ThemedView>
             </ScrollView>
 
-            <ThemedView style={styles.footer}>
+            <ThemedView style={[styles.footer, {
+                backgroundColor: isDark ? colors.card : '#FFFFFF'
+            }]}>
                 <LinearGradient
-                    colors={['#9333EA', '#4F46E5']} // purple-600 to indigo-600
+                    colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.footerButton}
@@ -1110,7 +1166,7 @@ export default function QuizScreen() {
                 </LinearGradient>
 
                 <LinearGradient
-                    colors={['#F59E0B', '#F97316']} // amber-500 to orange-500
+                    colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.footerButton}
@@ -1120,10 +1176,10 @@ export default function QuizScreen() {
                         onPress={() => router.back()}
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText} >Chill Time!</ThemedText>
+                        <ThemedText style={styles.footerButtonText}>Chill Time!</ThemedText>
                     </TouchableOpacity>
                 </LinearGradient>
-            </ThemedView >
+            </ThemedView>
 
             <Modal
                 isVisible={isReportModalVisible}
@@ -1133,21 +1189,18 @@ export default function QuizScreen() {
                 useNativeDriver={true}
                 style={[styles.modal, { marginTop: insets.top }]}
             >
-                <View style={styles.reportModalContent}>
-                    <ThemedText style={styles.reportModalTitle}>Report Issue</ThemedText>
-                    <TouchableOpacity
-                        style={[styles.reportModalButton, styles.submitButton, { backgroundColor: '#3B82F6' }]}
-                        onPress={handleSubmitReport}
-                        disabled={isSubmitting}
-                    >
-                        <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
-                            {isSubmitting ? 'Submitting...' : 'Submit'}
-                        </ThemedText>
-                    </TouchableOpacity>
+                <View style={[styles.reportModalContent, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF'
+                }]}>
+                    <ThemedText style={[styles.reportModalTitle, { color: colors.text }]}>Report Issue</ThemedText>
                     <TextInput
-                        style={styles.reportInput}
+                        style={[styles.reportInput, {
+                            backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                            borderColor: colors.border,
+                            color: colors.text
+                        }]}
                         placeholder="Describe the issue..."
-                        placeholderTextColor="#64748B"
+                        placeholderTextColor={isDark ? '#666666' : '#64748B'}
                         value={reportComment}
                         onChangeText={setReportComment}
                         multiline
@@ -1155,12 +1208,24 @@ export default function QuizScreen() {
                     />
                     <View style={styles.reportModalButtons}>
                         <TouchableOpacity
-                            style={[styles.reportModalButton, styles.cancelButton]}
+                            style={[styles.reportModalButton, styles.cancelButton, {
+                                backgroundColor: isDark ? colors.surface : '#E2E8F0'
+                            }]}
                             onPress={() => setIsReportModalVisible(false)}
                         >
-                            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                            <ThemedText style={[styles.buttonText, { color: colors.text }]}>Cancel</ThemedText>
                         </TouchableOpacity>
-
+                        <TouchableOpacity
+                            style={[styles.reportModalButton, styles.submitButton, {
+                                backgroundColor: colors.primary
+                            }]}
+                            onPress={handleSubmitReport}
+                            disabled={isSubmitting}
+                        >
+                            <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                                {isSubmitting ? 'Submitting...' : 'Submit'}
+                            </ThemedText>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Modal>
@@ -1170,42 +1235,45 @@ export default function QuizScreen() {
                 onBackdropPress={() => setIsExplanationModalVisible(false)}
                 style={styles.modal}
             >
-                <View style={styles.explanationModal}>
+                <View style={[styles.explanationModal, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF'
+                }]}>
                     <View style={styles.explanationHeader}>
-                        <ThemedText style={styles.explanationTitle}>🔬 AI Science Scoop! 🤖✨</ThemedText>
+                        <ThemedText style={[styles.explanationTitle, { color: colors.text }]}>
+                            🔬 AI Science Scoop! 🤖✨
+                        </ThemedText>
                         <TouchableOpacity
                             onPress={() => setIsExplanationModalVisible(false)}
                             style={styles.closeButton}
                         >
-                            <Ionicons name="close" size={24} color="#1E293B" />
+                            <Ionicons name="close" size={24} color={colors.text} />
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={styles.explanationContent}>
                         {aiExplanation.split('\n').map((line, index) => {
                             const trimmedLine = line.trim();
                             if (trimmedLine.startsWith('-')) {
-                                // Remove the dash and any leading/trailing spaces
                                 const content = trimmedLine.substring(1).trim();
-                                const indentLevel = line.indexOf('-') / 2; // Calculate indent level
+                                const indentLevel = line.indexOf('-') / 2;
 
                                 return (
                                     <View
                                         key={index}
                                         style={[
                                             styles.explanationLine,
-                                            { marginLeft: indentLevel * 20 } // Indent nested points
+                                            { marginLeft: indentLevel * 20 }
                                         ]}
                                     >
                                         <ThemedText style={styles.bulletPoint}>✅</ThemedText>
                                         <View style={styles.explanationTextContainer}>
-                                            {renderMixedContent(content)}
+                                            {renderMixedContent(content, isDark, colors)}
                                         </View>
                                     </View>
                                 );
                             }
                             return (
                                 <View key={index} style={styles.explanationTextContainer}>
-                                    {renderMixedContent(line)}
+                                    {renderMixedContent(line, isDark, colors)}
                                 </View>
                             );
                         })}
@@ -1250,17 +1318,21 @@ export default function QuizScreen() {
                 animationOut="fadeOut"
                 backdropOpacity={0.5}
             >
-                <View style={styles.restartModalContent}>
-                    <ThemedText style={styles.restartModalTitle}>Reset Progress</ThemedText>
-                    <ThemedText style={styles.restartModalText}>
+                <View style={[styles.restartModalContent, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF'
+                }]}>
+                    <ThemedText style={[styles.restartModalTitle, { color: colors.text }]}>Reset Progress</ThemedText>
+                    <ThemedText style={[styles.restartModalText, { color: colors.textSecondary }]}>
                         Are you sure you want to reset your progress for this paper? This action cannot be undone.
                     </ThemedText>
                     <View style={styles.restartModalButtons}>
                         <TouchableOpacity
-                            style={[styles.restartModalButton, styles.cancelButton]}
+                            style={[styles.restartModalButton, styles.cancelButton, {
+                                backgroundColor: isDark ? colors.surface : '#E2E8F0'
+                            }]}
                             onPress={() => setIsRestartModalVisible(false)}
                         >
-                            <ThemedText style={styles.buttonText}>Cancel</ThemedText>
+                            <ThemedText style={[styles.buttonText, { color: colors.text }]}>Cancel</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.restartModalButton, styles.resetButton]}
@@ -1272,7 +1344,6 @@ export default function QuizScreen() {
                 </View>
             </Modal>
 
-            {/* Update Rating Modal */}
             <Modal
                 isVisible={showRatingModal}
                 onBackdropPress={handlePostponeRating}
@@ -1280,20 +1351,26 @@ export default function QuizScreen() {
                 animationIn="fadeIn"
                 animationOut="fadeOut"
             >
-                <View style={styles.ratingModalContent}>
-                    <ThemedText style={styles.ratingTitle}>Loving Exam Quiz? 🎉✨</ThemedText>
-                    <ThemedText style={styles.ratingText}>
+                <View style={[styles.ratingModalContent, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF'
+                }]}>
+                    <ThemedText style={[styles.ratingTitle, { color: colors.text }]}>Loving Exam Quiz? 🎉✨</ThemedText>
+                    <ThemedText style={[styles.ratingText, { color: colors.textSecondary }]}>
                         Hey superstar! 🌟 Your opinion matters! Give us a quick rating and help make Exam Quiz even more awesome! 🚀💡
                     </ThemedText>
                     <View style={styles.ratingButtons}>
                         <TouchableOpacity
-                            style={[styles.ratingButton, styles.ratingSecondaryButton]}
+                            style={[styles.ratingButton, styles.ratingSecondaryButton, {
+                                backgroundColor: isDark ? colors.surface : '#E2E8F0'
+                            }]}
                             onPress={handlePostponeRating}
                         >
-                            <ThemedText style={styles.ratingSecondaryButtonText}>Maybe Later</ThemedText>
+                            <ThemedText style={[styles.ratingSecondaryButtonText, { color: colors.text }]}>Maybe Later</ThemedText>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.ratingButton, styles.ratingPrimaryButton]}
+                            style={[styles.ratingButton, styles.ratingPrimaryButton, {
+                                backgroundColor: isDark ? colors.primary : '#8B5CF6'
+                            }]}
                             onPress={handleRating}
                         >
                             <ThemedText style={styles.ratingPrimaryButtonText}>Rate Now!</ThemedText>
@@ -1301,7 +1378,7 @@ export default function QuizScreen() {
                     </View>
                 </View>
             </Modal>
-        </LinearGradient >
+        </LinearGradient>
     );
 }
 
@@ -1454,16 +1531,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-    progressBar: {
-        height: 8,
-        backgroundColor: '#E0E0E0',
-        borderRadius: 4,
-        marginBottom: 20,
+    progressBarContainer: {
+        height: 4,
+        borderRadius: 2,
+        overflow: 'hidden',
     },
-    progressFill: {
+    progressBar: {
         height: '100%',
-        backgroundColor: '#000000',
-        borderRadius: 4,
+        borderRadius: 2,
     },
     questionContainer: {
         borderRadius: 12,
@@ -1653,6 +1728,8 @@ const styles = StyleSheet.create({
         borderColor: '#22C55E',
         borderRadius: 8,
         marginTop: 12,
+
+        padding: 12,
     },
     correctAnswerLabel: {
         fontSize: 14,
@@ -1663,6 +1740,7 @@ const styles = StyleSheet.create({
     correctAnswerText: {
         color: '#166534',
         marginLeft: 16,
+
     },
     answerImage: {
         width: '100%',
@@ -1885,10 +1963,15 @@ const styles = StyleSheet.create({
     },
 
     performanceContainer: {
-        backgroundColor: '#FFFFFF',
         borderRadius: 12,
         padding: 16,
+        marginHorizontal: 16,
         marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     performanceHeader: {
         flexDirection: 'row',
@@ -1899,72 +1982,41 @@ const styles = StyleSheet.create({
     performanceTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#1E293B',
-    },
-    termToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    termToggleText: {
-        fontSize: 14,
-        color: '#64748B',
     },
     statsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 20,
-        paddingHorizontal: 16,
-        gap: 16,
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 16,
     },
     statItem: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 16,
-        shadowColor: '#000',
+        borderRadius: 12,
+        padding: 12,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
         shadowRadius: 4,
         elevation: 2,
     },
     statContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        gap: 8,
     },
     statIcon: {
-
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
         fontSize: 24,
-        fontWeight: 'bold',
     },
     statTextContainer: {
         flex: 1,
     },
     statCount: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: '700',
-        color: '#1E293B',
     },
     statLabel: {
-        fontSize: 14,
-        color: '#64748B',
-    },
-    progressBarContainer: {
-        width: '100%',
-        backgroundColor: '#E2E8F0',
-        borderRadius: 2,
-        marginTop: 12,
-        height: 4,
-        overflow: 'hidden',
+        fontSize: 12,
     },
     masteryText: {
-        fontSize: 14,
-        color: '#64748B',
-        marginTop: 4,
+        fontSize: 12,
         textAlign: 'right',
     },
     closeHeaderButton: {

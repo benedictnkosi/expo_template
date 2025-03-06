@@ -20,6 +20,7 @@ import { deleteUser } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { requestNotificationPermissions, scheduleDailyReminder, cancelAllNotifications } from '../../services/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Helper function for safe analytics logging
 function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -46,6 +47,7 @@ interface LearnerInfo {
 export default function ProfileScreen() {
   const { user } = useAuth();
   const { signOut } = useAuth();
+  const { colors, isDark } = useTheme();
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [editName, setEditName] = useState('');
   const [editGrade, setEditGrade] = useState('');
@@ -312,20 +314,26 @@ export default function ProfileScreen() {
       style={styles.modal}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.alertContainer}>
-          <ThemedText style={styles.alertTitle}>{alertConfig.title}</ThemedText>
-          <ThemedText style={styles.alertMessage}>{alertConfig.message}</ThemedText>
+        <View style={[styles.alertContainer, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF'
+        }]}>
+          <ThemedText style={[styles.alertTitle, { color: colors.text }]}>{alertConfig.title}</ThemedText>
+          <ThemedText style={[styles.alertMessage, { color: colors.textSecondary }]}>{alertConfig.message}</ThemedText>
           <View style={styles.alertButtons}>
             {alertConfig.onConfirm ? (
               <>
                 <TouchableOpacity
-                  style={[styles.alertButton, styles.cancelButton]}
+                  style={[styles.alertButton, styles.cancelButton, {
+                    backgroundColor: isDark ? colors.surface : '#E0E0E0'
+                  }]}
                   onPress={() => setShowAlert(false)}
                 >
-                  <ThemedText style={styles.alertButtonText}>Cancel</ThemedText>
+                  <ThemedText style={[styles.alertButtonText, { color: colors.text }]}>Cancel</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.alertButton, styles.confirmButton]}
+                  style={[styles.alertButton, styles.confirmButton, {
+                    backgroundColor: isDark ? colors.primary : '#000000'
+                  }]}
                   onPress={() => {
                     setShowAlert(false);
                     alertConfig.onConfirm?.();
@@ -336,7 +344,9 @@ export default function ProfileScreen() {
               </>
             ) : (
               <TouchableOpacity
-                style={[styles.alertButton, styles.confirmButton]}
+                style={[styles.alertButton, styles.confirmButton, {
+                  backgroundColor: isDark ? colors.primary : '#000000'
+                }]}
                 onPress={() => setShowAlert(false)}
               >
                 <ThemedText style={styles.alertButtonText}>OK</ThemedText>
@@ -391,7 +401,7 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient
-      colors={['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+      colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
       style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
@@ -404,35 +414,53 @@ export default function ProfileScreen() {
         />
 
         <ThemedView style={styles.content}>
-          <ThemedView style={styles.profileCard}>
+          <ThemedView style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.editForm}>
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>🔹 What do we call our quiz champion?</ThemedText>
+                <ThemedText style={[styles.label, { color: colors.text }]}>🔹 What do we call our quiz champion?</ThemedText>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, {
+                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                    borderColor: colors.border,
+                    color: colors.text
+                  }]}
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Enter your name"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={isDark ? '#666666' : '#999999'}
                   testID='profile-name-input'
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>🏆 Grade</ThemedText>
-                <View style={styles.pickerContainer}>
+                <ThemedText style={[styles.label, { color: colors.text }]}>🏆 Grade</ThemedText>
+                <View style={[styles.pickerContainer, {
+                  backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                  borderColor: isDark ? colors.border : '#E2E8F0',
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  overflow: 'hidden'
+                }]}>
                   <Picker
                     selectedValue={editGrade}
                     onValueChange={setEditGrade}
-                    style={[styles.picker, Platform.OS === 'ios' && styles.pickerIOS]}
-                    itemStyle={Platform.OS === 'ios' ? styles.pickerItemIOS : undefined}
+                    style={[
+                      styles.picker,
+                      Platform.OS === 'ios' && styles.pickerIOS,
+                      { color: colors.text }
+                    ]}
+                    itemStyle={[
+                      Platform.OS === 'ios' ? styles.pickerItemIOS : undefined,
+                      { color: colors.text }
+                    ]}
+                    dropdownIconColor={colors.text}
                   >
                     {grades.map((grade) => (
                       <Picker.Item
                         key={grade.id}
                         label={`Grade ${grade.number}`}
                         value={grade.number.toString()}
-                        color="#1E293B"
+                        color={isDark ? colors.text : '#1E293B'}
                       />
                     ))}
                   </Picker>
@@ -440,11 +468,13 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>🏫 School</ThemedText>
+                <ThemedText style={[styles.label, { color: colors.text }]}>🏫 School</ThemedText>
                 {editSchool && (
-                  <View style={styles.selectedSchoolContainer}>
-                    <ThemedText style={styles.selectedSchoolName}>{editSchool}</ThemedText>
-                    <ThemedText style={styles.selectedSchoolAddress}>{editSchoolAddress}</ThemedText>
+                  <View style={[styles.selectedSchoolContainer, {
+                    backgroundColor: isDark ? colors.surface : 'rgba(226, 232, 240, 0.3)'
+                  }]}>
+                    <ThemedText style={[styles.selectedSchoolName, { color: colors.text }]}>{editSchool}</ThemedText>
+                    <ThemedText style={[styles.selectedSchoolAddress, { color: colors.textSecondary }]}>{editSchoolAddress}</ThemedText>
                   </View>
                 )}
                 <View style={styles.searchWrapper}>
@@ -475,16 +505,34 @@ export default function ProfileScreen() {
                     }}
                     styles={{
                       container: styles.searchContainer,
-                      textInput: styles.searchInput,
-                      listView: styles.searchListView,
+                      textInput: [
+                        styles.searchInput,
+                        {
+                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                          color: colors.text,
+                          borderColor: colors.border
+                        }
+                      ],
+                      listView: [
+                        styles.searchListView,
+                        {
+                          backgroundColor: isDark ? colors.surface : '#FFFFFF'
+                        }
+                      ],
+                      row: {
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF'
+                      },
+                      description: {
+                        color: colors.text
+                      }
                     }}
                   />
                 </View>
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>📖 Choose Your Curriculums</ThemedText>
-                <ThemedText style={styles.smallLabel}>Only questions from the selected curriculum\s will appear in the quiz.</ThemedText>
+                <ThemedText style={[styles.label, { color: colors.text }]}>📖 Choose Your Curriculums</ThemedText>
+                <ThemedText style={[styles.smallLabel, { color: colors.textSecondary }]}>Only questions from the selected curriculum\s will appear in the quiz.</ThemedText>
 
                 <View style={styles.optionsContainer}>
                   {CURRICULA.map((curr) => (
@@ -492,7 +540,14 @@ export default function ProfileScreen() {
                       key={curr}
                       style={[
                         styles.optionButton,
-                        editCurriculum.split(',').map(c => c.trim()).includes(curr) && styles.optionButtonSelected
+                        {
+                          backgroundColor: isDark ? colors.surface : 'rgba(226, 232, 240, 0.3)',
+                          borderColor: colors.border
+                        },
+                        editCurriculum.split(',').map(c => c.trim()).includes(curr) && [
+                          styles.optionButtonSelected,
+                          { backgroundColor: colors.primary }
+                        ]
                       ]}
                       onPress={() => {
                         const currArray = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
@@ -513,7 +568,9 @@ export default function ProfileScreen() {
                     >
                       <ThemedText style={[
                         styles.optionButtonText,
-                        editCurriculum.split(',').map(c => c.trim()).includes(curr) && styles.optionButtonTextSelected
+                        { color: colors.text },
+                        editCurriculum.split(',').map(c => c.trim()).includes(curr) &&
+                        styles.optionButtonTextSelected
                       ]}>
                         {curr}
                       </ThemedText>
@@ -523,8 +580,8 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={styles.label}>🔹 Which terms are you mastering today? Choose wisely! 💡</ThemedText>
-                <ThemedText style={styles.smallLabel}>Only questions from the selected terms will appear in the quiz.</ThemedText>
+                <ThemedText style={[styles.label, { color: colors.text }]}>🔹 Which terms are you mastering today? Choose wisely! 💡</ThemedText>
+                <ThemedText style={[styles.smallLabel, { color: colors.textSecondary }]}>Only questions from the selected terms will appear in the quiz.</ThemedText>
 
                 <View style={styles.optionsContainer}>
                   {TERMS.map((term) => (
@@ -532,7 +589,14 @@ export default function ProfileScreen() {
                       key={term}
                       style={[
                         styles.optionButton,
-                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) && styles.optionButtonSelected
+                        {
+                          backgroundColor: isDark ? colors.surface : 'rgba(226, 232, 240, 0.3)',
+                          borderColor: colors.border
+                        },
+                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) && [
+                          styles.optionButtonSelected,
+                          { backgroundColor: colors.primary }
+                        ]
                       ]}
                       onPress={() => {
                         const termsArray = editTerms.split(',').map(t => t.trim()).filter(Boolean);
@@ -553,7 +617,9 @@ export default function ProfileScreen() {
                     >
                       <ThemedText style={[
                         styles.optionButtonText,
-                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) && styles.optionButtonTextSelected
+                        { color: colors.text },
+                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) &&
+                        styles.optionButtonTextSelected
                       ]}>
                         Term {term}
                       </ThemedText>
@@ -566,7 +632,9 @@ export default function ProfileScreen() {
                 style={[
                   styles.button,
                   styles.saveButton,
-                  (!editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length) && styles.buttonDisabled
+                  { backgroundColor: colors.primary },
+                  (!editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length) &&
+                  [styles.buttonDisabled, { backgroundColor: isDark ? '#555555' : '#A0AEC0' }]
                 ]}
                 onPress={handleSave}
                 disabled={isSaving || !editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length}
@@ -580,19 +648,22 @@ export default function ProfileScreen() {
           </ThemedView>
         </ThemedView>
 
-        <ThemedView style={styles.sectionCard}>
-          <ThemedText style={styles.sectionTitle}>Notifications</ThemedText>
+        <ThemedView style={[styles.sectionCard, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Notifications</ThemedText>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <ThemedText style={styles.settingTitle}>Daily Reminders</ThemedText>
-              <ThemedText style={styles.settingDescription}>
+              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Daily Reminders</ThemedText>
+              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
                 Get daily reminders to practice and maintain your streak
               </ThemedText>
             </View>
             <Switch
               value={notificationsEnabled}
               onValueChange={toggleNotifications}
-              trackColor={{ false: '#E2E8F0', true: '#4F46E5' }}
+              trackColor={{ false: isDark ? '#555555' : '#E2E8F0', true: colors.primary }}
               thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
             />
           </View>
@@ -600,7 +671,11 @@ export default function ProfileScreen() {
 
         <ThemedView style={styles.signOutContainer}>
           <TouchableOpacity
-            style={[styles.signOutButton, isLoggingOut && styles.buttonDisabled]}
+            style={[
+              styles.signOutButton,
+              { backgroundColor: isDark ? '#DC2626' : '#F43F5E' },
+              isLoggingOut && [styles.buttonDisabled, { backgroundColor: isDark ? '#555555' : '#A0AEC0' }]
+            ]}
             onPress={handleLogout}
             disabled={isLoggingOut}
           >
@@ -610,11 +685,18 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.deleteAccountButton, isLoggingOut && styles.buttonDisabled]}
+            style={[
+              styles.deleteAccountButton,
+              {
+                backgroundColor: isDark ? colors.surface : '#FEE2E2',
+                borderColor: isDark ? '#DC2626' : '#DC2626'
+              },
+              isLoggingOut && styles.buttonDisabled
+            ]}
             onPress={() => setShowDeleteModal(true)}
             disabled={isLoggingOut}
           >
-            <ThemedText style={styles.deleteAccountText}>
+            <ThemedText style={[styles.deleteAccountText, { color: '#DC2626' }]}>
               Delete Account
             </ThemedText>
           </TouchableOpacity>
@@ -625,22 +707,24 @@ export default function ProfileScreen() {
         onBackdropPress={() => setShowGradeChangeModal(false)}
         style={styles.modal}
       >
-        <View style={styles.confirmationModal}>
+        <View style={[styles.confirmationModal, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF'
+        }]}>
           <View style={styles.confirmationHeader}>
-            <ThemedText style={styles.confirmationTitle}>🎓 Change Grade?</ThemedText>
+            <ThemedText style={[styles.confirmationTitle, { color: colors.text }]}>🎓 Change Grade?</ThemedText>
           </View>
-          <ThemedText style={styles.confirmationText}>
+          <ThemedText style={[styles.confirmationText, { color: colors.textSecondary }]}>
             ⚠️ Heads up! Switching grades will wipe out your progress like a clean slate! 🧹✨
 
             Are you super sure you want to start fresh? 🚀
           </ThemedText>
           <View style={styles.confirmationButtons}>
             <TouchableOpacity
-              style={[styles.paperButton, { backgroundColor: '#64748B' }]}
+              style={[styles.paperButton]}
               onPress={() => setShowGradeChangeModal(false)}
             >
               <LinearGradient
-                colors={['#64748B', '#475569']}
+                colors={isDark ? ['#475569', '#334155'] : ['#64748B', '#475569']}
                 style={styles.paperButtonGradient}
               >
                 <ThemedText style={styles.paperButtonText}>❌ Nope, Go Back!</ThemedText>
@@ -648,11 +732,11 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.paperButton, { backgroundColor: '#9333EA' }]}
+              style={[styles.paperButton]}
               onPress={handleConfirm}
             >
               <LinearGradient
-                colors={['#9333EA', '#4F46E5']}
+                colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
                 style={styles.paperButtonGradient}
               >
                 <ThemedText style={styles.paperButtonText}>✅ Yes, Let's Do It!</ThemedText>
@@ -666,24 +750,30 @@ export default function ProfileScreen() {
         onBackdropPress={() => setShowDeleteModal(false)}
         style={styles.modal}
       >
-        <View style={styles.confirmationModal}>
+        <View style={[styles.confirmationModal, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF'
+        }]}>
           <View style={styles.confirmationHeader}>
-            <ThemedText style={styles.confirmationTitle}>⚠️ Delete Account?</ThemedText>
+            <ThemedText style={[styles.confirmationTitle, { color: colors.text }]}>⚠️ Delete Account?</ThemedText>
           </View>
-          <ThemedText style={styles.confirmationText}>
+          <ThemedText style={[styles.confirmationText, { color: colors.textSecondary }]}>
             This action cannot be undone. All your data, including progress, settings, and history will be permanently deleted.
           </ThemedText>
 
           <View style={styles.deleteConfirmationContainer}>
-            <ThemedText style={styles.deleteConfirmationText}>
-              Type <ThemedText style={styles.deleteConfirmationHighlight}>delete</ThemedText> to confirm
+            <ThemedText style={[styles.deleteConfirmationText, { color: colors.textSecondary }]}>
+              Type <ThemedText style={[styles.deleteConfirmationHighlight, { color: '#DC2626' }]}>delete</ThemedText> to confirm
             </ThemedText>
             <TextInput
-              style={styles.deleteConfirmationInput}
+              style={[styles.deleteConfirmationInput, {
+                backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                borderColor: colors.border,
+                color: colors.text
+              }]}
               value={deleteConfirmation}
               onChangeText={setDeleteConfirmation}
               placeholder="Type 'delete'"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={isDark ? '#666666' : '#94A3B8'}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -691,14 +781,14 @@ export default function ProfileScreen() {
 
           <View style={styles.confirmationButtons}>
             <TouchableOpacity
-              style={[styles.paperButton, { backgroundColor: '#64748B' }]}
+              style={[styles.paperButton]}
               onPress={() => {
                 setShowDeleteModal(false);
                 setDeleteConfirmation('');
               }}
             >
               <LinearGradient
-                colors={['#64748B', '#475569']}
+                colors={isDark ? ['#475569', '#334155'] : ['#64748B', '#475569']}
                 style={styles.paperButtonGradient}
               >
                 <ThemedText style={styles.paperButtonText}>Cancel</ThemedText>
@@ -708,7 +798,6 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[
                 styles.paperButton,
-                { backgroundColor: '#DC2626' },
                 deleteConfirmation !== 'delete' && styles.paperButtonDisabled
               ]}
               onPress={handleDeleteAccount}
@@ -726,6 +815,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+      <CustomAlert />
     </LinearGradient>
   );
 }
@@ -852,10 +942,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
     marginBottom: 16,
     overflow: Platform.OS === 'android' ? 'hidden' : 'visible',
   },
@@ -865,11 +951,9 @@ const styles = StyleSheet.create({
   },
   pickerIOS: {
     height: 150,
-    backgroundColor: '#FFFFFF',
   },
   pickerItemIOS: {
     height: 150,
-    color: '#1E293B',
     fontSize: 16,
   },
   signOutContainer: {

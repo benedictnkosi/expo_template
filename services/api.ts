@@ -110,6 +110,7 @@ export async function getLearner(uid: string): Promise<{
   curriculum: string;
   terms: string;
   email: string;
+  role?: string;
 }> {
   console.log('getLearner', uid);
   const response = await fetch(
@@ -120,7 +121,9 @@ export async function getLearner(uid: string): Promise<{
     throw new Error('Failed to fetch learner');
   }
 
-  return response.json();
+  const data = await response.json();
+  // Set default role to 'learner' if not provided by the API
+  return { ...data, role: data.role || 'learner' };
 }
 
 export async function updateLearner(uid: string, data: {

@@ -5,10 +5,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import AuthLayout from './_auth';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { addNotificationListener, addNotificationResponseListener, removeNotificationListener, initializeNotifications } from '../services/notifications';
 import { router } from 'expo-router';
 
@@ -17,8 +18,38 @@ export {
   ErrorBoundary,
 } from 'expo-router';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+export const unstable_settings = {
+  initialRouteName: '(tabs)',
+};
+
+function RootLayoutNav() {
+  const { colors } = useTheme();
+
+  return (
+    <AuthProvider>
+      <AuthLayout />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background }
+        }}
+      >
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="quiz"
+          options={{
+            headerShown: false,
+            presentation: 'fullScreenModal'
+          }}
+        />
+      </Stack>
+      <Toast />
+    </AuthProvider>
+  );
+}
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -75,28 +106,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <AuthProvider>
-        <AuthLayout />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#000000' }
-          }}
-        >
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="register" options={{ headerShown: false }} />
-          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="quiz"
-            options={{
-              headerShown: false,
-              presentation: 'fullScreenModal'
-            }}
-          />
-        </Stack>
-        <Toast />
-      </AuthProvider>
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
