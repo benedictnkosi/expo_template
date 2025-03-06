@@ -14,6 +14,7 @@ import { fetchMySubjects, getLearner } from '../../services/api';
 import { Subject } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
+const { signOut } = useAuth();
 
 // Temporary mock data
 
@@ -50,6 +51,7 @@ export default function HomeScreen() {
   const [streak] = useState(0);
   const [ranking] = useState(0);
   const { colors, isDark } = useTheme();
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
 
   // Single useEffect for initial load
@@ -115,11 +117,19 @@ export default function HomeScreen() {
           setMySubjects([]);
         }
       } else {
-        router.replace('/login');
+        setShowErrorModal(true);
+        setTimeout(async () => {
+          setShowErrorModal(false);
+          await signOut();
+        }, 5000);
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      router.replace('/login');
+      setShowErrorModal(true);
+      setTimeout(async () => {
+        setShowErrorModal(false);
+        await signOut();
+      }, 5000);
     } finally {
       setIsLoading(false);
     }
@@ -412,6 +422,25 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
       <RatingModal />
+
+      <Modal
+        visible={showErrorModal}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.errorModalContainer, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF'
+          }]}>
+            <ThemedText style={[styles.errorModalTitle, { color: colors.text }]}>
+              ⚠️ Connection Error
+            </ThemedText>
+            <ThemedText style={[styles.errorModalMessage, { color: colors.textSecondary }]}>
+              Oops! We can't fetch your details 🤔. Check your internet connection and restart the app! 🚀
+            </ThemedText>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -894,6 +923,30 @@ const styles = StyleSheet.create({
   dismissButtonText: {
     color: '#666666',
     fontSize: 14,
+  },
+  errorModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  errorModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorModalMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
 });
 

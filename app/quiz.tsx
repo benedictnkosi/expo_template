@@ -1203,8 +1203,7 @@ export default function QuizScreen() {
                         placeholderTextColor={isDark ? '#666666' : '#64748B'}
                         value={reportComment}
                         onChangeText={setReportComment}
-                        multiline
-                        numberOfLines={4}
+                        onSubmitEditing={handleSubmitReport}
                     />
                     <View style={styles.reportModalButtons}>
                         <TouchableOpacity
