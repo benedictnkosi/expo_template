@@ -18,6 +18,7 @@ export interface APISubject {
   active: boolean;
   totalResults: number;
   totalSubjectQuestions: number;
+  correctAnswers: number;
 }
 
 export interface LearnerSubject {

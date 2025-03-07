@@ -429,6 +429,7 @@ export default function ProfileScreen() {
                   placeholder="Enter your name"
                   placeholderTextColor={isDark ? '#666666' : '#999999'}
                   testID='profile-name-input'
+                  maxLength={50}
                 />
               </View>
 
@@ -776,6 +777,7 @@ export default function ProfileScreen() {
               placeholderTextColor={isDark ? '#666666' : '#94A3B8'}
               autoCapitalize="none"
               autoCorrect={false}
+              maxLength={50}
             />
           </View>
 

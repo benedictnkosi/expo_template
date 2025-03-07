@@ -73,6 +73,7 @@ export default function ForgotPassword() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              maxLength={50}
             />
 
             <TouchableOpacity

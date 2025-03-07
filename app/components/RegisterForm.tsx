@@ -117,6 +117,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 testID="email-input"
+                maxLength={50}
             />
             <TextInput
                 style={styles.input}
@@ -126,6 +127,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 onChangeText={setPassword}
                 secureTextEntry
                 testID="password-input"
+                maxLength={50}
             />
             <TextInput
                 style={styles.input}
@@ -135,6 +137,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 onChangeText={setConfirmPassword}
                 secureTextEntry
                 testID="confirm-password-input"
+                maxLength={50}
             />
             <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}

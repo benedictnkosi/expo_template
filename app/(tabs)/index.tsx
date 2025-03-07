@@ -27,9 +27,23 @@ function getProgressBarColor(progress: number): string {
 
 // Helper function for safe analytics logging
 function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
-  if (analytics) {
+  try {
+    if (!analytics) {
+      console.log('[Analytics Debug] Analytics not initialized, skipping event:', eventName);
+      // Retry analytics initialization if it failed
+      if (Platform.OS !== 'web') {
+        console.log('[Analytics Debug] Attempting to reinitialize analytics...');
+        import('../../config/firebase').then(({ initializeAnalytics }) => {
+          initializeAnalytics();
+        });
+      }
+      return;
+    }
     const analyticsInstance = analytics as Analytics;
     logEvent(analyticsInstance, eventName, eventParams);
+    console.log('[Analytics Debug] Event logged successfully:', eventName);
+  } catch (error) {
+    console.log('[Analytics Debug] Error logging event:', eventName, error);
   }
 }
 
@@ -110,16 +124,24 @@ export default function HomeScreen() {
 
   // Single useEffect for all analytics logging
   useEffect(() => {
-    logAnalyticsEvent('screen_view', {
-      screen_name: 'home',
-      user_id: user?.uid
-    });
+    try {
+      if (!user?.uid) return;
 
-    logAnalyticsEvent('view_stats', {
-      user_id: user?.uid,
-      ranking,
-      streak
-    });
+      // Log screen view
+      logAnalyticsEvent('screen_view', {
+        screen_name: 'home',
+        user_id: user.uid
+      });
+
+      // Log stats
+      logAnalyticsEvent('view_stats', {
+        user_id: user.uid,
+        ranking,
+        streak
+      });
+    } catch (error) {
+      console.log('Error in analytics useEffect:', error);
+    }
   }, [user?.uid, ranking, streak]);
 
   // Handle error and signout
@@ -149,6 +171,7 @@ export default function HomeScreen() {
         });
 
         const enrolledResponse = await fetchMySubjects(user.uid);
+        console.log(enrolledResponse);
 
         if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
           const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
@@ -160,11 +183,12 @@ export default function HomeScreen() {
                 name: baseName,
                 total_questions: curr.totalSubjectQuestions || 0,
                 answered_questions: curr.totalResults || 0,
-                correct_answers: 0
+                correct_answers: curr.correctAnswers || 0
               };
             } else {
               acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
               acc[baseName].answered_questions += curr.totalResults || 0;
+              acc[baseName].correct_answers += curr.correctAnswers || 0;
             }
 
             return acc;
@@ -192,44 +216,54 @@ export default function HomeScreen() {
     }, [initializeData])
   );
 
-  // Share function
+  // Handle share with analytics
   const handleShare = useCallback(async () => {
     try {
       await Share.share({
-        message: 'Check out Exam Quiz - Your ultimate study companion! https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+        message: 'Check out Exam Quiz - Your ultimate study companion! https://examquiz.co.za',
         title: 'Share Exam Quiz'
       });
 
-      logAnalyticsEvent('share_app', {
-        user_id: user?.uid,
-        platform: Platform.OS
-      });
+      if (user?.uid) {
+        logAnalyticsEvent('share_app', {
+          user_id: user.uid,
+          platform: Platform.OS
+        });
+      }
     } catch (error) {
       console.error('Error sharing:', error);
     }
   }, [user?.uid]);
 
-  // Rating handlers
-  const handleRating = useCallback((selectedRating: number) => {
-    setRating(selectedRating);
-  }, []);
-
+  // Rating handlers with analytics
   const handleSubmitRating = useCallback(() => {
-    if (rating >= 4) {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
-      logAnalyticsEvent('submit_rating', {
-        user_id: user?.uid,
-        rating
-      });
+    try {
+      if (rating >= 4) {
+        Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
+        if (user?.uid) {
+          logAnalyticsEvent('submit_rating', {
+            user_id: user.uid,
+            rating
+          });
+        }
+      }
+      setShowRatingModal(false);
+    } catch (error) {
+      console.error('Error submitting rating:', error);
     }
-    setShowRatingModal(false);
   }, [rating, user?.uid]);
 
   const handleDismissRating = useCallback(() => {
-    logAnalyticsEvent('dismiss_rating', {
-      user_id: user?.uid
-    });
-    setShowRatingModal(false);
+    try {
+      if (user?.uid) {
+        logAnalyticsEvent('dismiss_rating', {
+          user_id: user.uid
+        });
+      }
+      setShowRatingModal(false);
+    } catch (error) {
+      console.error('Error dismissing rating:', error);
+    }
   }, [user?.uid]);
 
   if (isLoading) {
@@ -409,7 +443,7 @@ export default function HomeScreen() {
       <RatingModal
         visible={showRatingModal}
         rating={rating}
-        onRate={handleRating}
+        onRate={(selectedRating) => setRating(selectedRating)}
         onSubmit={handleSubmitRating}
         onDismiss={handleDismissRating}
       />

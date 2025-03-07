@@ -520,11 +520,7 @@ export default function QuizScreen() {
 
         try {
             setIsLoading(true);
-            setCurrentQuestion(null);
-            setSelectedAnswer(null);
-            setShowFeedback(false);
-            setIsCorrect(null);
-            setNoMoreQuestions(false);
+
 
             // Log quiz restart
             logAnalyticsEvent('restart_quiz', {
@@ -533,6 +529,14 @@ export default function QuizScreen() {
             });
 
             await removeResults(user.uid, subjectName + " " + selectedPaper);
+
+            setCurrentQuestion(null);
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            setIsCorrect(null);
+            setNoMoreQuestions(false);
+            setIsRestartModalVisible(false);
+
             await loadRandomQuestion(selectedPaper || '');
             Toast.show({
                 type: 'success',
@@ -1224,6 +1228,7 @@ export default function QuizScreen() {
                         value={reportComment}
                         onChangeText={setReportComment}
                         onSubmitEditing={handleSubmitReport}
+                        maxLength={200}
                     />
                     <View style={styles.reportModalButtons}>
                         <TouchableOpacity
