@@ -102,6 +102,7 @@ function cleanAnswer(answer: string): string {
 
 function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
     const [webViewHeight, setWebViewHeight] = useState(60);
+    const { isDark } = useTheme();
 
     const html = `
         <!DOCTYPE html>
@@ -125,7 +126,7 @@ function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
                     }
                     .katex {
                         font-size: ${isOption && latex.length > 70 ? '0.8em' : '1em'};
-                        color: '#000000',
+                        color: ${isDark ? '#FFFFFF' : '#000000'};
                     }
                     .katex-display {
                         margin: 0;
@@ -289,22 +290,41 @@ export default function QuizScreen() {
 
     useEffect(() => {
         async function loadSounds() {
-            const { sound: correct } = await Audio.Sound.createAsync(
-                require('@/assets/audio/correct_answer.mp3')
-            );
-            const { sound: incorrect } = await Audio.Sound.createAsync(
-                require('@/assets/audio/bad_answer.mp3')
-            );
-            correctSound.current = correct;
-            incorrectSound.current = incorrect;
+            try {
+                const { sound: correct } = await Audio.Sound.createAsync(
+                    require('@/assets/audio/correct_answer.mp3')
+                );
+                const { sound: incorrect } = await Audio.Sound.createAsync(
+                    require('@/assets/audio/bad_answer.mp3')
+                );
+                correctSound.current = correct;
+                incorrectSound.current = incorrect;
+            } catch (error) {
+                console.log('Error loading sounds:', error);
+            }
         }
         loadSounds();
 
         return () => {
-            correctSound.current?.unloadAsync();
-            incorrectSound.current?.unloadAsync();
+            if (correctSound.current) {
+                correctSound.current.unloadAsync();
+            }
+            if (incorrectSound.current) {
+                incorrectSound.current.unloadAsync();
+            }
         };
     }, []);
+
+    const playSound = async (isCorrect: boolean) => {
+        try {
+            const soundToPlay = isCorrect ? correctSound.current : incorrectSound.current;
+            if (soundToPlay) {
+                await soundToPlay.replayAsync();
+            }
+        } catch (error) {
+            console.log('Error playing sound:', error);
+        }
+    };
 
     useEffect(() => {
         logAnalyticsEvent('quiz_screen_view', {
@@ -434,11 +454,13 @@ export default function QuizScreen() {
             setIsCorrect(response.is_correct);
             setFeedbackMessage(response.is_correct ? getRandomSuccessMessage() : getRandomWrongMessage());
 
-            if (response.is_correct) {
-                await correctSound.current?.replayAsync();
-                trackStreak(user.uid);
+            // Play sound using the new playSound function
+            await playSound(response.is_correct);
 
-                // Check if we should show rating prompt after correct answer
+            trackStreak(user.uid);
+
+            // Check if we should show rating prompt after correct answer
+            if (response.is_correct) {
                 try {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
@@ -466,8 +488,6 @@ export default function QuizScreen() {
                 } catch (error) {
                     console.error('Error checking rating status:', error);
                 }
-            } else {
-                await incorrectSound.current?.replayAsync();
             }
 
             requestAnimationFrame(() => {

@@ -127,7 +127,7 @@ export default function HomeScreen() {
     setShowErrorModal(true);
     const timer = setTimeout(() => {
       setShowErrorModal(false);
-      signOut();
+
     }, 5000);
     return () => clearTimeout(timer);
   }, []);
