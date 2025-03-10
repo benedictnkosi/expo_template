@@ -78,6 +78,6 @@ export interface MySubjectsResponse {
 
 export interface CheckAnswerResponse {
   status: string;
-  is_correct: boolean;
+  correct: boolean;
   correct_answers: string;
 } 

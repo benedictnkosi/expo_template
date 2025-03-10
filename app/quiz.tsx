@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Dimensions, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
@@ -13,7 +13,7 @@ import ZoomableImageNew from '../components/ZoomableImageNew';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
-import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '../services/api';
+import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus, trackStreak } from '../services/api';
 import { API_BASE_URL, API_BASE_URL as ConfigAPI_BASE_URL, IMAGE_BASE_URL } from '../config/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,6 +48,7 @@ interface Question {
     term: string;
     explanation: string;
     curriculum?: string;
+    ai_explanation?: string | null;
 }
 
 
@@ -281,7 +282,9 @@ const WRONG_ANSWER_MESSAGES = [
     '🎯 Oops! Let\'s Nail This!',
     '🚧 Not Quite! Try Again!',
     '🔄 Almost There! Keep Going!',
-    '🧐 Think Again, You Got This!'
+    '🧐 Think Again, You Got This!',
+    '💡 Keep Trying! You Can Do It!',
+    '🔍 Keep Searching! You\'re Close!'
 ];
 
 // Add helper function
@@ -296,11 +299,21 @@ const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stresse
 const ImageLoadingPlaceholder = () => (
     <View style={styles.imagePlaceholderContainer}>
         <View style={styles.imagePlaceholderContent}>
-            <ActivityIndicator size="large" color="#4F46E5" />
-            <ThemedText style={styles.loadingText}>Loading image...</ThemedText>
+            <Image
+                source={require('@/assets/images/book-loading.gif')}
+                style={styles.loadingGif}
+            />
+            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
         </View>
     </View>
 );
+
+// Update the FavoriteQuestion interface
+interface FavoriteQuestion {
+    id: number;
+    created_at: string;
+    question: Question;
+}
 
 export default function QuizScreen() {
     const { user } = useAuth();
@@ -333,6 +346,12 @@ export default function QuizScreen() {
     const [isRestartModalVisible, setIsRestartModalVisible] = useState(false);
     const [showRatingModal, setShowRatingModal] = useState(false);
     const [hasShownRating, setHasShownRating] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const [favoriteQuestions, setFavoriteQuestions] = useState<FavoriteQuestion[]>([]);
+    const [isFavoritesLoading, setIsFavoritesLoading] = useState(false);
+    const [isFavoriting, setIsFavoriting] = useState(false);
+    const [isCurrentQuestionFavorited, setIsCurrentQuestionFavorited] = useState(false);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -342,6 +361,25 @@ export default function QuizScreen() {
         }, 500);
     };
 
+    const startTimer = () => {
+        // Clear any existing timer
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+        // Reset duration
+        setDuration(0);
+        // Start new timer
+        timerRef.current = setInterval(() => {
+            setDuration(prev => prev + 1);
+        }, 1000);
+    };
+
+    const stopTimer = () => {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    };
 
     useEffect(() => {
         async function loadSounds() {
@@ -439,16 +477,17 @@ export default function QuizScreen() {
 
     const loadRandomQuestion = async (paper: string) => {
         if (!user?.uid || !subjectName) {
-
             return;
         }
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
         setIsCorrect(null);
+        stopTimer(); // Stop any existing timer
 
         try {
-            setIsLoading(true); const response = await fetch(
+            setIsLoading(true);
+            const response = await fetch(
                 `${API_BASE_URL}/api/question/random?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
             if (!response.ok) {
@@ -473,6 +512,7 @@ export default function QuizScreen() {
                 };
                 setCurrentQuestion(data);
                 setNoMoreQuestions(false);
+                startTimer(); // Start timer when new question is loaded
             }
 
             const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
@@ -493,31 +533,28 @@ export default function QuizScreen() {
         if (!user?.uid || !currentQuestion) return;
 
         try {
+            stopTimer();
             setIsAnswerLoading(true);
             setSelectedAnswer(answer);
 
-
-
-            const response = await checkAnswer(user.uid, currentQuestion.id, answer);
+            const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration);
             setShowFeedback(true);
-            setIsCorrect(response.is_correct);
-            setFeedbackMessage(response.is_correct ? getRandomSuccessMessage() : getRandomWrongMessage());
+            setIsCorrect(response.correct);
+            setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
 
             // Play sound using the new playSound function
-            await playSound(response.is_correct);
-
-            trackStreak(user.uid);
+            await playSound(response.correct);
 
             // Log answer submission
             logAnalyticsEvent('submit_answer', {
                 user_id: user.uid,
                 question_id: currentQuestion.id,
-                is_correct: response.is_correct,
+                is_correct: response.correct,
             });
 
 
             // Check if we should show rating prompt after correct answer
-            if (response.is_correct) {
+            if (response.correct) {
                 try {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
@@ -691,6 +728,108 @@ export default function QuizScreen() {
         }
     };
 
+    const handleFavoriteQuestion = async () => {
+        if (!user?.uid || !currentQuestion) return;
+
+        try {
+            setIsFavoriting(true);
+            const response = await fetch(`${API_BASE_URL}/api/question/favorite`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    question_id: currentQuestion.id
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to favorite question');
+            }
+
+            const data = await response.json();
+            if (data.status === "OK") {
+                Toast.show({
+                    type: 'success',
+                    text1: '⭐ Question Favorited!',
+                    text2: 'Added to your favorites list',
+                    position: 'bottom'
+                });
+                // Refresh favorites list
+                fetchFavoriteQuestions();
+            }
+        } catch (error) {
+            console.error('Error favoriting question:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to favorite question',
+                position: 'bottom'
+            });
+        } finally {
+            setIsFavoriting(false);
+        }
+    };
+
+    const handleUnfavoriteQuestion = async () => {
+        if (!user?.uid || !currentQuestion) return;
+
+        try {
+            setIsFavoriting(true);
+            const response = await fetch(`${API_BASE_URL}/api/question/favorite`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    question_id: currentQuestion.id
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to unfavorite question');
+            }
+
+            const data = await response.json();
+            if (data.status === "OK") {
+                Toast.show({
+                    type: 'success',
+                    text1: '⭐ Question Unfavorited',
+                    text2: 'Removed from your favorites list',
+                    position: 'bottom'
+                });
+                // Refresh favorites list
+                fetchFavoriteQuestions();
+            }
+        } catch (error) {
+            console.error('Error unfavoriting question:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to unfavorite question',
+                position: 'bottom'
+            });
+        } finally {
+            setIsFavoriting(false);
+        }
+    };
+
+    // Update the checkIfQuestionIsFavorited function
+    const checkIfQuestionIsFavorited = useCallback(() => {
+        if (!currentQuestion) return;
+        console.log('favoriteQuestions', favoriteQuestions);
+        console.log('currentQuestion', currentQuestion);
+        const isFavorited = favoriteQuestions.some(fav => fav.question.id === currentQuestion.id);
+        setIsCurrentQuestionFavorited(isFavorited);
+    }, [currentQuestion, favoriteQuestions]);
+
+    // Add effect to check favorite status when question or favorites change
+    useEffect(() => {
+        checkIfQuestionIsFavorited();
+    }, [currentQuestion, favoriteQuestions, checkIfQuestionIsFavorited]);
+
     const SubjectHeader = () => (
         <LinearGradient
             colors={isDark ? ['#4F46E5', '#4338CA'] : ['#10B981', '#047857']}
@@ -725,7 +864,28 @@ export default function QuizScreen() {
                                         <ThemedText style={styles.badgeText}>{currentQuestion.curriculum}</ThemedText>
                                     </View>
                                 )}
+
+                                <TouchableOpacity
+                                    onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
+                                    disabled={isFavoriting}
+                                    style={[styles.favoriteButton, {
+                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                        marginLeft: 'auto'
+                                    }]}
+                                >
+                                    {isFavoriting ? (
+                                        <ActivityIndicator size="small" color={colors.primary} />
+                                    ) : (
+                                        <Ionicons
+                                            name={isCurrentQuestionFavorited ? "star" : "star-outline"}
+                                            size={24}
+                                            color={isCurrentQuestionFavorited ? '#FFB800' : (isDark ? '#FFFFFF' : '#000000')}
+                                        />
+                                    )}
+                                </TouchableOpacity>
                             </>
+
+
                         )}
                     </View>
                 </View>
@@ -847,12 +1007,70 @@ export default function QuizScreen() {
         await SecureStore.setItemAsync('next_rating_prompt_date', nextPromptDate.toISOString());
     };
 
+    const fetchFavoriteQuestions = async () => {
+        if (!user?.uid) return;
+
+        try {
+            setIsFavoritesLoading(true);
+            const response = await fetch(
+                `${API_BASE_URL}/api/question/favorite?uid=${user.uid}&subject_name=${subjectName}`
+            );
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch favorites');
+            }
+
+            const data = await response.json();
+            if (data.status === "OK") {
+                // The response data is in data.data array
+                setFavoriteQuestions(data.data || []);
+                console.log('Fetched favorites:', data.data); // Debug log
+            }
+        } catch (error) {
+            console.error('Error fetching favorites:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to load favorite questions',
+                position: 'bottom'
+            });
+        } finally {
+            setIsFavoritesLoading(false);
+        }
+    };
+
+    // Call fetchFavoriteQuestions when component mounts and when user changes
+    useEffect(() => {
+        fetchFavoriteQuestions();
+    }, [user?.uid]);
+
+    const loadSpecificQuestion = async (questionId: number) => {
+        if (!user?.uid || !subjectName) return;
+        setSelectedPaper('P1'); // Default to Paper 1, adjust if needed
+        try {
+            setIsLoading(true);
+            const response = await fetch(
+                `${API_BASE_URL}/api/question/random?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
+            );
+            if (!response.ok) throw new Error('Failed to fetch question');
+            const data: QuestionResponse = await response.json();
+            setCurrentQuestion(data);
+            setNoMoreQuestions(false);
+        } catch (error) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to load question',
+                position: 'bottom'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     if (isLoading) {
         return (
-            <ThemedView style={[styles.loadingContainer, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
-                <ThemedText style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</ThemedText>
-            </ThemedView>
+            <ImageLoadingPlaceholder />
         );
     }
 
@@ -864,58 +1082,122 @@ export default function QuizScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
             >
-                <View style={styles.paperSelectionContainer}>
-                    <TouchableOpacity
-                        style={[styles.closeHeaderButton, {
-                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                        }]}
-                        onPress={() => router.back()}
-                    >
-                        <Ionicons name="close" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                    <Image
-                        source={getSubjectIcon(subjectName as string)}
-                        style={styles.subjectIcon}
-                    />
-                    <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
-                    <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>Select a paper to continue</ThemedText>
-
-                    <View style={styles.paperButtons}>
-                        <LinearGradient
-                            colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.paperButton}
+                <ScrollView style={styles.container}>
+                    <View style={styles.paperSelectionContainer}>
+                        <TouchableOpacity
+                            style={[styles.closeHeaderButton, {
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            }]}
+                            onPress={() => router.back()}
                         >
-                            <TouchableOpacity
-                                style={styles.buttonContent}
-                                onPress={() => {
-                                    setSelectedPaper('P1');
-                                    loadRandomQuestion('P1');
-                                }}
-                            >
-                                <ThemedText style={styles.paperButtonText}>Paper 1</ThemedText>
-                            </TouchableOpacity>
-                        </LinearGradient>
+                            <Ionicons name="close" size={24} color={colors.text} />
+                        </TouchableOpacity>
+                        <Image
+                            source={getSubjectIcon(subjectName as string)}
+                            style={styles.subjectIcon}
+                        />
+                        <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
+                        <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>Select a paper to continue</ThemedText>
 
-                        <LinearGradient
-                            colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.paperButton}
-                        >
-                            <TouchableOpacity
-                                style={styles.buttonContent}
-                                onPress={() => {
-                                    setSelectedPaper('P2');
-                                    loadRandomQuestion('P2');
-                                }}
+                        <View style={styles.paperButtons}>
+                            <LinearGradient
+                                colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.paperButton}
                             >
-                                <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
-                            </TouchableOpacity>
-                        </LinearGradient>
+                                <TouchableOpacity
+                                    style={styles.buttonContent}
+                                    onPress={() => {
+                                        setSelectedPaper('P1');
+                                        loadRandomQuestion('P1');
+                                    }}
+                                >
+                                    <ThemedText style={styles.paperButtonText}>Paper 1</ThemedText>
+                                </TouchableOpacity>
+                            </LinearGradient>
+
+                            <LinearGradient
+                                colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.paperButton}
+                            >
+                                <TouchableOpacity
+                                    style={styles.buttonContent}
+                                    onPress={() => {
+                                        setSelectedPaper('P2');
+                                        loadRandomQuestion('P2');
+                                    }}
+                                >
+                                    <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
+                                </TouchableOpacity>
+                            </LinearGradient>
+                        </View>
+
+                        {/* Favorites Section */}
+                        <View style={[styles.favoritesSection, { marginTop: 32 }]}>
+                            <View style={styles.favoritesTitleContainer}>
+                                <ThemedText style={[styles.favoritesTitle, { color: colors.text }]}>
+                                    ⭐ Your Favorite Questions
+                                </ThemedText>
+                                {isFavoritesLoading && (
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                )}
+                            </View>
+
+                            {favoriteQuestions.length > 0 ? (
+                                <View style={[styles.favoritesList, {
+                                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                                    borderColor: colors.border
+                                }]}>
+                                    {favoriteQuestions.map((fav, index) => (
+                                        <TouchableOpacity
+                                            key={fav.id}
+                                            style={[styles.favoriteItem, {
+                                                borderBottomColor: colors.border,
+                                                borderBottomWidth: index < favoriteQuestions.length - 1 ? 1 : 0
+                                            }]}
+                                            onPress={() => loadSpecificQuestion(fav.question.id)}
+                                        >
+                                            <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}>
+                                                {(fav.question.ai_explanation ?
+                                                    fav.question.ai_explanation.split('\n')[0].replace(/^-\s*/, '').replace(/^##\s*/, '').replace(/^#\s*/, '') :
+                                                    ((fav.question.question && fav.question.question.length > 0) ?
+                                                        (fav.question.question.length > 50 ?
+                                                            `${fav.question.question.split('\n')[0].substring(0, 50)}...` :
+                                                            fav.question.question) :
+                                                        (fav.question.context && fav.question.context.length > 0) ?
+                                                            (fav.question.context.length > 50 ?
+                                                                `${fav.question.context.split('\n')[0].substring(0, 50)}...` :
+                                                                fav.question.context) :
+                                                            `Question #${fav.question.id}`
+                                                    )
+                                                )}
+                                            </ThemedText>
+
+
+                                            <Ionicons
+                                                name="chevron-forward"
+                                                size={20}
+                                                color={colors.text}
+                                            />
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            ) : !isFavoritesLoading && (
+                                <View style={[styles.emptyFavorites, {
+                                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                                    borderColor: colors.border
+                                }]}>
+                                    <ThemedText style={[styles.emptyFavoritesText, { color: colors.textSecondary }]}>
+                                        No favorite questions yet! 🌟
+                                    </ThemedText>
+                                </View>
+                            )}
+                        </View>
                     </View>
-                </View>
+                </ScrollView>
             </LinearGradient>
         );
     }
@@ -1011,6 +1293,7 @@ export default function QuizScreen() {
                         }]}
                         testID="question-card"
                     >
+
                         {(currentQuestion.context || currentQuestion.image_path) && (
                             <ThemedText
                                 style={styles.questionMeta}
@@ -1131,7 +1414,9 @@ export default function QuizScreen() {
                                                         { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
                                                     ],
                                                     showFeedback && selectedAnswer === value && (
-                                                        JSON.parse(currentQuestion.answer).includes(value)
+                                                        (Array.isArray(JSON.parse(currentQuestion.answer))
+                                                            ? JSON.parse(currentQuestion.answer).includes(value)
+                                                            : JSON.parse(currentQuestion.answer) === value)
                                                             ? [styles.correctOption, { borderColor: '#22C55E' }]
                                                             : [styles.wrongOption, { borderColor: '#FF3B30' }]
                                                     )
@@ -1246,6 +1531,19 @@ export default function QuizScreen() {
                                     )}
 
                                 </ThemedView>
+
+                                {/* Question approval button - only show for admin users */}
+                                {learnerRole === 'admin' && showFeedback && currentQuestion && (
+                                    <TouchableOpacity
+                                        style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
+                                        onPress={handleApproveQuestion}
+                                        disabled={isApproving}
+                                    >
+                                        <ThemedText style={styles.approveButtonText}>
+                                            {isApproving ? 'Approving...' : 'Question looks good'}
+                                        </ThemedText>
+                                    </TouchableOpacity>
+                                )}
 
                                 <TouchableOpacity
                                     style={[styles.aiExplanationButton, {
@@ -1907,7 +2205,7 @@ const styles = StyleSheet.create({
     },
     imagePlaceholderContainer: {
         width: '100%',
-        height: 200,
+        height: '100%',
         backgroundColor: '#F8FAFC',
         borderRadius: 8,
         overflow: 'hidden',
@@ -1993,8 +2291,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     subjectIcon: {
-        width: 240,
-        height: 240,
+        width: 120,
+        height: 120,
         marginBottom: 16,
     },
 
@@ -2206,6 +2504,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
         zIndex: 1,
+    },
+    explanationHeaderButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     explanationTitle: {
         fontSize: 20,
@@ -2419,6 +2722,74 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         alignItems: 'center',
+    },
+    loadingGif: {
+        width: 80,
+        height: 80,
+        marginBottom: 8
+    },
+    favoritesSection: {
+        width: '100%',
+        paddingHorizontal: 16,
+    },
+    favoritesTitleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    favoritesTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        lineHeight: 28,
+    },
+    favoritesList: {
+        borderWidth: 1,
+        borderRadius: 12,
+        marginTop: 12,
+        overflow: 'hidden',
+    },
+    favoriteItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+    },
+    favoriteItemText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    emptyFavorites: {
+        padding: 24,
+        borderWidth: 2,
+        borderRadius: 12,
+        borderStyle: 'dashed',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    emptyFavoritesText: {
+        fontSize: 16,
+        textAlign: 'center',
+        lineHeight: 24,
+    },
+    favoriteButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    },
+    questionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+        paddingHorizontal: 16,
+        paddingTop: 16,
     },
 });
 

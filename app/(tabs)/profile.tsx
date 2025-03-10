@@ -116,7 +116,7 @@ export default function ProfileScreen() {
         setEditCurriculum(learner.curriculum || '');
         setEditTerms(learner.terms || '');
       } catch (error) {
-        console.error('Failed to fetch learner info:', error);
+        console.log('Failed to fetch learner info:', error);
       }
     }
     fetchLearnerInfo();

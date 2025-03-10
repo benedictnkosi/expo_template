@@ -108,6 +108,8 @@ interface LearnerInfo {
   email: string;
   rating: number;
   rating_cancelled?: string;
+  points: number;
+  streak: number;
 }
 
 export default function HomeScreen() {
@@ -177,7 +179,6 @@ export default function HomeScreen() {
 
       if (learner.name && learner.grade) {
         setLearnerInfo(learner as LearnerInfo);
-
         const enrolledResponse = await fetchMySubjects(user.uid);
 
         if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
@@ -341,10 +342,10 @@ export default function HomeScreen() {
           <View style={styles.statsRow} testID="stats-row">
             <View style={styles.statItem} testID="ranking-stat">
               <View style={styles.statContent}>
-                <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} testID="ranking-icon" />
+                <Image source={require('@/assets/images/points.png')} style={styles.statIcon} testID="ranking-icon" />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]} testID="ranking-label">Scoreboard</ThemedText>
-                  <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="ranking-value">{ranking}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]} testID="ranking-label">points</ThemedText>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="ranking-value">{learnerInfo?.points}</ThemedText>
                 </View>
               </View>
             </View>
@@ -355,8 +356,8 @@ export default function HomeScreen() {
               <View style={styles.statContent}>
                 <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} testID="streak-icon" />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]} testID="streak-label">Quiz Streak</ThemedText>
-                  <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="streak-value">{streak}</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]} testID="streak-label">Streak</ThemedText>
+                  <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="streak-value">{learnerInfo?.streak}</ThemedText>
                 </View>
               </View>
             </View>

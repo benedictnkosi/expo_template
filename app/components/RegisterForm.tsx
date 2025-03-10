@@ -98,11 +98,6 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                         email: email,
                         error: learner.status
                     });
-                } else {
-                    logAnalyticsEvent('register_success', {
-                        user_id: user.uid,
-                        email: email,
-                    });
                 }
             }
 

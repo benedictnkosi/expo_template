@@ -17,7 +17,7 @@ export function useProtectedRoute() {
         const learner = await getLearner(user.uid);
         setHasProfile(!!learner.name && !!learner.grade);
       } catch (error) {
-        console.error('Failed to fetch learner:', error);
+        console.log('Failed to fetch learner:', error);
       } finally {
         setIsLoading(false);
       }

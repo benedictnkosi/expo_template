@@ -33,7 +33,8 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
 export async function checkAnswer(
   uid: string,
   questionId: number,
-  answer: string
+  answer: string,
+  duration: number
 ): Promise<CheckAnswerResponse> {
   const response = await fetch(
     `${API_BASE_URL}/api/learner/check-answer`,
@@ -44,7 +45,8 @@ export async function checkAnswer(
         question_id: questionId,
         answer,
         answers: [],
-        requesting_type: 'real'
+        requesting_type: 'real',
+        duration: duration
       })
     }
   );
@@ -73,18 +75,20 @@ export async function getLearner(uid: string): Promise<{
   terms: string;
   email: string;
   role?: string;
+  points: number;
+  streak: number;
 }> {
   const response = await fetch(
     `${API_BASE_URL}/api/learner?uid=${uid}`
   );
 
   if (!response.ok) {
-    throw new Error('Failed to fetch learner');
+    console.log('Failed to fetch learner');
   }
 
   const data = await response.json();
   // Set default role to 'learner' if not provided by the API
-  return { ...data, role: data.role || 'learner' };
+  return { ...data, role: data.role || 'learner', points: data.points || 0 };
 }
 
 export async function updateLearner(uid: string, data: {
@@ -167,16 +171,11 @@ export async function fetchQuestion(uid: string, subjectId: number) {
 
 export async function removeResults(uid: string, subjectName: string): Promise<void> {
   const response = await fetch(
-    ensureHttps(`${API_BASE_URL}/api/learner/remove-results`),
+    ensureHttps(`${API_BASE_URL}/api/learner/results/remove?uid=${uid}&subject_name=${subjectName}`),
     {
-      method: 'POST',
-      body: JSON.stringify({
-        uid,
-        subject_name: subjectName
-      })
+      method: 'DELETE',
     }
   );
-
   if (!response.ok) {
     throw new Error('Failed to remove results');
   }
@@ -330,9 +329,9 @@ interface QuestionStatusData {
 export async function setQuestionStatus(data: QuestionStatusData): Promise<void> {
   try {
     const response = await fetch(
-      ensureHttps(`${API_BASE_URL}/api/question/set-status`),
+      ensureHttps(`${API_BASE_URL}/api/question/status`),
       {
-        method: 'POST',
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
