@@ -5,8 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { logEvent, Analytics } from 'firebase/analytics';
-import { analytics } from '../../config/firebase';
+import { analytics } from '../../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 
 import { ThemedText } from '../../components/ThemedText';
@@ -25,28 +24,6 @@ function getProgressBarColor(progress: number): string {
   return '#FF3B30'; // Red for low scores
 }
 
-// Helper function for safe analytics logging
-function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
-  try {
-    if (!analytics) {
-      console.log('[Analytics Debug] Analytics not initialized, skipping event:', eventName);
-      // Retry analytics initialization if it failed
-      if (Platform.OS !== 'web') {
-        console.log('[Analytics Debug] Attempting to reinitialize analytics...');
-        import('../../config/firebase').then(({ initializeAnalytics }) => {
-          initializeAnalytics();
-        });
-      }
-      return;
-    }
-    const analyticsInstance = analytics as Analytics;
-    logEvent(analyticsInstance, eventName, eventParams);
-    console.log('[Analytics Debug] Event logged successfully:', eventName);
-  } catch (error) {
-    console.log('[Analytics Debug] Error logging event:', eventName, error);
-  }
-}
-
 // Move RatingModal outside of HomeScreen
 interface RatingModalProps {
   visible: boolean;
@@ -54,14 +31,16 @@ interface RatingModalProps {
   onRate: (rating: number) => void;
   onSubmit: () => void;
   onDismiss: () => void;
+  testID?: string;
 }
 
-const RatingModal = ({ visible, rating, onRate, onSubmit, onDismiss }: RatingModalProps) => {
+const RatingModal = ({ visible, rating, onRate, onSubmit, onDismiss, testID }: RatingModalProps) => {
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
+      testID={testID}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.ratingContainer}>
@@ -103,17 +82,39 @@ const RatingModal = ({ visible, rating, onRate, onSubmit, onDismiss }: RatingMod
   );
 };
 
+interface LearnerGrade {
+  id: number;
+  active: number;
+  number: number;
+}
+
+interface LearnerInfo {
+  id: number;
+  uid: string;
+  grade: LearnerGrade;
+  score: number;
+  name: string;
+  notification_hour: number;
+  role: string;
+  created: string;
+  lastSeen: string;
+  school_address: string;
+  school_name: string;
+  school_latitude: number;
+  school_longitude: number;
+  terms: string;
+  curriculum: string;
+  private_school: boolean;
+  email: string;
+  rating: number;
+  rating_cancelled?: string;
+}
+
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [learnerInfo, setLearnerInfo] = useState<{
-    name: string;
-    grade: string;
-    school_name: string;
-    school: string;
-    role?: string;
-  } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
   const insets = useSafeAreaInsets();
@@ -124,25 +125,37 @@ export default function HomeScreen() {
 
   // Single useEffect for all analytics logging
   useEffect(() => {
-    try {
-      if (!user?.uid) return;
+    async function logEvents() {
+      try {
+        if (!user?.uid) return;
 
-      // Log screen view
-      logAnalyticsEvent('screen_view', {
-        screen_name: 'home',
-        user_id: user.uid
-      });
+        // Identify user in Mixpanel
+        await analytics.track('identify', {
+          distinct_id: user.uid,
+          name: learnerInfo?.name,
+          grade: learnerInfo?.grade,
+          school: learnerInfo?.school_name,
+          role: learnerInfo?.role
+        });
 
-      // Log stats
-      logAnalyticsEvent('view_stats', {
-        user_id: user.uid,
-        ranking,
-        streak
-      });
-    } catch (error) {
-      console.log('Error in analytics useEffect:', error);
+        // Log screen view
+        await analytics.track('screen_view', {
+          screen_name: 'home',
+          user_id: user.uid
+        });
+
+        // Log stats
+        await analytics.track('view_stats', {
+          user_id: user.uid,
+          ranking,
+          streak
+        });
+      } catch (error) {
+        console.log('Error in analytics useEffect:', error);
+      }
     }
-  }, [user?.uid, ranking, streak]);
+    logEvents();
+  }, [user?.uid, ranking, streak, learnerInfo]);
 
   // Handle error and signout
   const handleError = useCallback(async () => {
@@ -161,40 +174,38 @@ export default function HomeScreen() {
     try {
       setIsLoading(true);
       const learner = await getLearner(user.uid);
-      if (learner.name && learner.grade && learner.school_name) {
-        setLearnerInfo({
-          name: learner.name,
-          grade: learner.grade?.number?.toString() || '',
-          school_name: learner.school_name || '',
-          school: learner.school_name || '',
-          role: learner.role || 'learner'
-        });
+
+      if (learner.name && learner.grade) {
+        setLearnerInfo(learner as LearnerInfo);
 
         const enrolledResponse = await fetchMySubjects(user.uid);
-        console.log(enrolledResponse);
 
         if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
           const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
-            const baseName = curr.name.replace(/ P[12]$/, '');
+            if (!curr?.name) return acc;
+
+            // Extract base subject name without P1/P2
+            const baseName = curr.name.split(' P')[0];
 
             if (!acc[baseName]) {
               acc[baseName] = {
                 id: curr.id.toString(),
                 name: baseName,
-                total_questions: curr.totalSubjectQuestions || 0,
-                answered_questions: curr.totalResults || 0,
-                correct_answers: curr.correctAnswers || 0
+                total_questions: curr.question_count || 0,
+                answered_questions: curr.result_count || 0,
+                correct_answers: curr.correct_count || 0
               };
             } else {
-              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-              acc[baseName].answered_questions += curr.totalResults || 0;
-              acc[baseName].correct_answers += curr.correctAnswers || 0;
+              acc[baseName].total_questions += curr.question_count || 0;
+              acc[baseName].answered_questions += curr.result_count || 0;
+              acc[baseName].correct_answers += curr.correct_count || 0;
             }
 
             return acc;
           }, {});
 
-          setMySubjects(Object.values(subjectGroups));
+          const groupedSubjects = Object.values(subjectGroups);
+          setMySubjects(groupedSubjects);
         } else {
           setMySubjects([]);
         }
@@ -202,7 +213,6 @@ export default function HomeScreen() {
         handleError();
       }
     } catch (error) {
-      console.error('Error loading data:', error);
       handleError();
     } finally {
       setIsLoading(false);
@@ -225,7 +235,7 @@ export default function HomeScreen() {
       });
 
       if (user?.uid) {
-        logAnalyticsEvent('share_app', {
+        await analytics.track('share_app', {
           user_id: user.uid,
           platform: Platform.OS
         });
@@ -236,12 +246,12 @@ export default function HomeScreen() {
   }, [user?.uid]);
 
   // Rating handlers with analytics
-  const handleSubmitRating = useCallback(() => {
+  const handleSubmitRating = useCallback(async () => {
     try {
       if (rating >= 4) {
-        Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
+        await Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
         if (user?.uid) {
-          logAnalyticsEvent('submit_rating', {
+          await analytics.track('submit_rating', {
             user_id: user.uid,
             rating
           });
@@ -253,10 +263,10 @@ export default function HomeScreen() {
     }
   }, [rating, user?.uid]);
 
-  const handleDismissRating = useCallback(() => {
+  const handleDismissRating = useCallback(async () => {
     try {
       if (user?.uid) {
-        logAnalyticsEvent('dismiss_rating', {
+        await analytics.track('dismiss_rating', {
           user_id: user.uid
         });
       }
@@ -265,6 +275,32 @@ export default function HomeScreen() {
       console.error('Error dismissing rating:', error);
     }
   }, [user?.uid]);
+
+  // Update the router.push call in the subject card
+  const handleSubjectPress = useCallback((subject: Subject) => {
+    if (user?.uid && learnerInfo) {
+      analytics.track('select_subject', {
+        user_id: user.uid,
+        subject_name: subject.name,
+        subject_id: subject.id,
+        total_questions: subject.total_questions,
+        answered_questions: subject.answered_questions,
+        mastery_percentage: subject.answered_questions === 0 ? 0 :
+          Math.round((subject.correct_answers / subject.answered_questions) * 100)
+      });
+
+      router.push({
+        pathname: '/quiz',
+        params: {
+          subjectName: subject.name,
+          learnerName: learnerInfo.name,
+          learnerGrade: learnerInfo.grade.number.toString(),
+          learnerSchool: learnerInfo.school_name,
+          learnerRole: learnerInfo.role
+        }
+      });
+    }
+  }, [user?.uid, learnerInfo]);
 
   if (isLoading) {
     return (
@@ -281,27 +317,33 @@ export default function HomeScreen() {
       style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
+      testID="home-screen-gradient"
     >
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
+        testID="home-screen-scroll-view"
       >
         <Header
           title="Exam Quiz"
           user={user}
-          learnerInfo={learnerInfo}
+          learnerInfo={learnerInfo ? {
+            name: learnerInfo.name,
+            grade: learnerInfo.grade.number.toString(),
+            school: learnerInfo.school_name
+          } : null}
         />
 
         <View style={[styles.statsContainer, {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
-        }]}>
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
+        }]} testID="stats-container">
+          <View style={styles.statsRow} testID="stats-row">
+            <View style={styles.statItem} testID="ranking-stat">
               <View style={styles.statContent}>
-                <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} />
+                <Image source={require('@/assets/images/trophy.png')} style={styles.statIcon} testID="ranking-icon" />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Scoreboard</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]} testID="ranking-label">Scoreboard</ThemedText>
                   <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="ranking-value">{ranking}</ThemedText>
                 </View>
               </View>
@@ -309,11 +351,11 @@ export default function HomeScreen() {
 
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            <View style={styles.statItem}>
+            <View style={styles.statItem} testID="streak-stat">
               <View style={styles.statContent}>
-                <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} />
+                <Image source={require('@/assets/images/streak.png')} style={styles.statIcon} testID="streak-icon" />
                 <View style={styles.statTextContainer}>
-                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Quiz Streak</ThemedText>
+                  <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]} testID="streak-label">Quiz Streak</ThemedText>
                   <ThemedText style={[styles.statValue, { color: colors.primary }]} testID="streak-value">{streak}</ThemedText>
                 </View>
               </View>
@@ -321,146 +363,133 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={styles.shareContainer}>
+        <View style={styles.shareContainer} testID="share-container">
           <TouchableOpacity
             style={[styles.shareButton, { backgroundColor: colors.primary }]}
             onPress={handleShare}
+            testID="share-button"
           >
             <Ionicons name="share-social" size={24} color="#FFFFFF" />
-            <ThemedText style={styles.shareButtonText}>
+            <ThemedText style={styles.shareButtonText} testID="share-button-text">
               Spread the fun, tell your friends!  📢
             </ThemedText>
           </TouchableOpacity>
         </View>
 
-        <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>📚 Let's Dive into Fun Learning!</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">📚 Let's Dive into Fun Learning!</ThemedText>
 
-        <View style={styles.subjectsGrid}>
-          {mySubjects.map((subject) => {
-            const isDisabled = subject.total_questions === 0;
-            return (
-              <TouchableOpacity
-                key={subject.id}
-                style={[
-                  styles.subjectCard,
-                  {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF',
-                    borderColor: colors.border
-                  },
-                  isDisabled && [styles.disabledSubjectCard, {
-                    backgroundColor: isDark ? colors.surface : '#F3F4F6',
-                    borderColor: isDark ? colors.border : '#E5E7EB'
-                  }]
-                ]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  if (!isDisabled) {
-                    logAnalyticsEvent('select_subject', {
-                      user_id: user?.uid,
-                      subject_name: subject.name,
-                      subject_id: subject.id,
-                      total_questions: subject.total_questions,
-                      answered_questions: subject.answered_questions,
-                      mastery_percentage: subject.answered_questions === 0 ? 0 :
-                        Math.round((subject.correct_answers / subject.answered_questions) * 100)
-                    });
-
-                    router.push({
-                      pathname: '/quiz',
-                      params: {
-                        subjectName: subject.name,
-                        learnerName: learnerInfo?.name || '',
-                        learnerGrade: learnerInfo?.grade || '',
-                        learnerSchool: learnerInfo?.school || '',
-                        learnerRole: learnerInfo?.role || 'learner'
-                      }
-                    });
-                  }
-                }}
-                disabled={isDisabled}
-                testID={`subject-card-${subject.name}`}
-              >
-                <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]}>
-                  <Image
-                    source={getSubjectIcon(subject.name)}
-                    style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
-                  />
-                </View>
-                <View style={styles.cardContent}>
-                  <ThemedText
-                    style={[
-                      styles.subjectName,
-                      { color: colors.text },
-                      isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
-                    ]}
-                    testID={`subject-name-${subject.name}`}
-                  >
-                    {subject.name}
-                  </ThemedText>
-                  <ThemedText
-                    style={[
-                      styles.questionCount,
-                      { color: colors.textSecondary },
-                      isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
-                    ]}
-                    testID={`question-count-${subject.name}`}
-                  >
-                    {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
-                  </ThemedText>
-
-                  <View style={isDisabled && styles.disabledProgress}>
-                    <View style={[styles.progressBarContainer, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]}>
-                      <View
-                        style={[
-                          styles.progressBar,
-                          {
-                            width: `${subject.answered_questions === 0 ? 0 :
-                              Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
-                            backgroundColor: isDisabled ? (isDark ? colors.textSecondary : '#D1D5DB') :
-                              getProgressBarColor(subject.answered_questions === 0 ? 0 :
-                                Math.round((subject.correct_answers / subject.answered_questions) * 100))
-                          }
-                        ]}
-                      />
-                    </View>
+        <View style={styles.subjectsGrid} testID="subjects-grid">
+          {(() => {
+            return mySubjects.map((subject) => {
+              const isDisabled = subject.total_questions === 0;
+              return (
+                <TouchableOpacity
+                  key={subject.id}
+                  style={[
+                    styles.subjectCard,
+                    {
+                      backgroundColor: isDark ? colors.card : '#FFFFFF',
+                      borderColor: colors.border
+                    },
+                    isDisabled && [styles.disabledSubjectCard, {
+                      backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                      borderColor: isDark ? colors.border : '#E5E7EB'
+                    }]
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={() => !isDisabled && handleSubjectPress(subject)}
+                  disabled={isDisabled}
+                  testID={`subject-card-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]} testID={`subject-icon-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <Image
+                      source={getSubjectIcon(subject.name)}
+                      style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
+                      testID={`subject-icon-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                    />
+                  </View>
+                  <View style={styles.cardContent} testID={`subject-content-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
                     <ThemedText
                       style={[
-                        styles.masteryText,
+                        styles.subjectName,
+                        { color: colors.text },
+                        isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                      ]}
+                      testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      {subject.name}
+                    </ThemedText>
+                    <ThemedText
+                      style={[
+                        styles.questionCount,
                         { color: colors.textSecondary },
                         isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
                       ]}
+                      testID={`question-count-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                     >
-                      {subject.answered_questions === 0 ? 0 :
-                        Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                      {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
                     </ThemedText>
+
+                    <View style={isDisabled && styles.disabledProgress} testID={`progress-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <View style={[styles.progressBarContainer, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]} testID={`progress-bar-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <View
+                          style={[
+                            styles.progressBar,
+                            {
+                              width: `${subject.answered_questions === 0 ? 0 :
+                                Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
+                              backgroundColor: isDisabled ? (isDark ? colors.textSecondary : '#D1D5DB') :
+                                getProgressBarColor(subject.answered_questions === 0 ? 0 :
+                                  Math.round((subject.correct_answers / subject.answered_questions) * 100))
+                            }
+                          ]}
+                          testID={`progress-bar-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        />
+                      </View>
+                      <ThemedText
+                        style={[
+                          styles.masteryText,
+                          { color: colors.textSecondary },
+                          isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                        ]}
+                        testID={`mastery-text-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        {subject.answered_questions === 0 ? 0 :
+                          Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                      </ThemedText>
+
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                </TouchableOpacity>
+              );
+            });
+          })()}
         </View>
       </ScrollView>
+
       <RatingModal
         visible={showRatingModal}
         rating={rating}
         onRate={(selectedRating) => setRating(selectedRating)}
         onSubmit={handleSubmitRating}
         onDismiss={handleDismissRating}
+        testID="rating-modal"
       />
 
       <Modal
         visible={showErrorModal}
         transparent
         animationType="fade"
+        testID="error-modal"
       >
-        <View style={styles.modalOverlay}>
+        <View style={styles.modalOverlay} testID="error-modal-overlay">
           <View style={[styles.errorModalContainer, {
             backgroundColor: isDark ? colors.card : '#FFFFFF'
-          }]}>
-            <ThemedText style={[styles.errorModalTitle, { color: colors.text }]}>
+          }]} testID="error-modal-content">
+            <ThemedText style={[styles.errorModalTitle, { color: colors.text }]} testID="error-modal-title">
               ⚠️ Connection Error
             </ThemedText>
-            <ThemedText style={[styles.errorModalMessage, { color: colors.textSecondary }]}>
+            <ThemedText style={[styles.errorModalMessage, { color: colors.textSecondary }]} testID="error-modal-message">
               Oops! We can't fetch your details 🤔. Check your internet connection and restart the app! 🚀
             </ThemedText>
           </View>

@@ -9,7 +9,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import AuthLayout from './_auth';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { addNotificationListener, addNotificationResponseListener, removeNotificationListener, initializeNotifications } from '../services/notifications';
 import { router } from 'expo-router';
 

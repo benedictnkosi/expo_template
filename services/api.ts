@@ -7,7 +7,7 @@ function ensureHttps(url: string): string {
 
 export async function fetchAvailableSubjects(grade: string): Promise<SubjectsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/getSubjectsByGrade?grade=${grade}`
+    `${API_BASE_URL}/api/subject/getSubjectsByGrade?grade=${grade}`
   );
 
   if (!response.ok) {
@@ -18,9 +18,8 @@ export async function fetchAvailableSubjects(grade: string): Promise<SubjectsRes
 }
 
 export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
-  console.log('fetchMySubjects', uid);
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/subjects?uid=${uid}`
+    `${API_BASE_URL}/api/learner/subjects?uid=${uid}`
   );
 
   if (!response.ok) {
@@ -30,43 +29,6 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
   return response.json();
 }
 
-export async function removeSubject(uid: string, subjectId: number): Promise<void> {
-  console.log('removeSubject', uid, subjectId);
-  const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/remove-subject`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        uid,
-        subject_id: subjectId
-      })
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to remove subject');
-  }
-}
-
-export async function assignSubject(uid: string, subjectId: number): Promise<void> {
-  console.log('assignSubject', uid, subjectId);
-  const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/assign-subject`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        uid,
-        subject_id: subjectId
-      })
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Failed to assign subject');
-  }
-}
 
 export async function checkAnswer(
   uid: string,
@@ -74,7 +36,7 @@ export async function checkAnswer(
   answer: string
 ): Promise<CheckAnswerResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/check-answer`,
+    `${API_BASE_URL}/api/learner/check-answer`,
     {
       method: 'POST',
       body: JSON.stringify({
@@ -112,9 +74,8 @@ export async function getLearner(uid: string): Promise<{
   email: string;
   role?: string;
 }> {
-  console.log('getLearner', uid);
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner?uid=${uid}`
+    `${API_BASE_URL}/api/learner?uid=${uid}`
   );
 
   if (!response.ok) {
@@ -137,9 +98,8 @@ export async function updateLearner(uid: string, data: {
   curriculum: string;
   email: string;
 }): Promise<{ status: string }> {
-  console.log('updateLearner', uid, data);
   const response = await fetch(
-    `${API_BASE_URL}/public/learn/learner/update`,
+    `${API_BASE_URL}/api/learner/create`,
     {
       method: 'POST',
       headers: {
@@ -171,7 +131,7 @@ export async function updateLearner(uid: string, data: {
 interface Grade {
   id: number;
   number: number;
-  active: number;
+  active: boolean;
 }
 
 interface GradesResponse {
@@ -181,7 +141,7 @@ interface GradesResponse {
 
 export async function fetchGrades(): Promise<Grade[]> {
   const response = await fetch(
-    ensureHttps(`${API_BASE_URL}/public/learn/grades`)
+    ensureHttps(`${API_BASE_URL}/api/grades`)
   );
 
   if (!response.ok) {
@@ -189,12 +149,13 @@ export async function fetchGrades(): Promise<Grade[]> {
   }
 
   const data: GradesResponse = await response.json();
+  console.log('Grades API response:', data);
   return data.grades;
 }
 
 export async function fetchQuestion(uid: string, subjectId: number) {
   const response = await fetch(
-    ensureHttps(`${API_BASE_URL}/public/learn/question/random?subject_id=${subjectId}&uid=${uid}&question_id=0`)
+    ensureHttps(`${API_BASE_URL}/api/question/random?subject_id=${subjectId}&uid=${uid}&question_id=0`)
   );
 
   if (!response.ok) {
@@ -206,7 +167,7 @@ export async function fetchQuestion(uid: string, subjectId: number) {
 
 export async function removeResults(uid: string, subjectName: string): Promise<void> {
   const response = await fetch(
-    ensureHttps(`${API_BASE_URL}/public/learn/learner/remove-results`),
+    ensureHttps(`${API_BASE_URL}/api/learner/remove-results`),
     {
       method: 'POST',
       body: JSON.stringify({
@@ -234,8 +195,11 @@ interface StreakResponse {
 
 export async function trackStreak(uid: string): Promise<StreakResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/streaks/track/${uid}`, {
-      method: 'POST'
+    const response = await fetch(`${API_BASE_URL}/api/streak/track`, {
+      method: 'POST',
+      body: JSON.stringify({
+        uid
+      })
     });
 
     if (!response.ok) {
@@ -338,7 +302,7 @@ interface SubjectStats {
 export async function getSubjectStats(uid: string, subjectName: string): Promise<SubjectStats> {
   try {
     const response = await fetch(
-      ensureHttps(`${API_BASE_URL}/public/learn/learner/subject-stats?uid=${uid}&subject_name=${subjectName}`),
+      ensureHttps(`${API_BASE_URL}/api/learner/stats?uid=${uid}&subject=${subjectName}`),
       { method: 'GET' }
     );
 
@@ -366,7 +330,7 @@ interface QuestionStatusData {
 export async function setQuestionStatus(data: QuestionStatusData): Promise<void> {
   try {
     const response = await fetch(
-      ensureHttps(`${API_BASE_URL}/public/learn/question/set-status`),
+      ensureHttps(`${API_BASE_URL}/api/question/set-status`),
       {
         method: 'POST',
         headers: {

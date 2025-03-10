@@ -7,11 +7,13 @@ import { auth } from '../config/firebase';
 import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -73,16 +75,29 @@ export default function Login() {
               testID="email-input"
               maxLength={50}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#94A3B8"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              testID="password-input"
-              maxLength={50}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Password"
+                placeholderTextColor="#94A3B8"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                testID="password-input"
+                maxLength={50}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+                testID="toggle-password-visibility"
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off" : "eye"}
+                  size={24}
+                  color="#94A3B8"
+                />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleLogin}
@@ -225,5 +240,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  passwordContainer: {
+    position: 'relative',
+    width: '100%',
+    marginBottom: 12,
+  },
+  passwordInput: {
+    paddingRight: 50, // Make room for the eye icon
+    marginBottom: 0,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 4,
   },
 }); 

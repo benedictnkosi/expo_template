@@ -13,9 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { Analytics, logEvent } from 'firebase/analytics';
-import { analytics } from '../../config/firebase';
-import { API_BASE_URL as ConfigAPI_BASE_URL } from '../../config/api';
+import { analytics } from '../../services/analytics';
+import { API_BASE_URL, API_BASE_URL as ConfigAPI_BASE_URL } from '../../config/api';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { requestNotificationPermissions, scheduleDailyReminder, cancelAllNotifications } from '../../services/notifications';
@@ -23,13 +22,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Helper function for safe analytics logging
-function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
-  if (analytics) {
-    const analyticsInstance = analytics as Analytics;
-    logEvent(analyticsInstance, eventName, eventParams);
+async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+  try {
+    await analytics.track(eventName, eventParams);
+  } catch (error) {
+    console.error('[Analytics] Error logging event:', error);
   }
 }
-
 
 interface LearnerInfo {
   name: string;
@@ -42,6 +41,16 @@ interface LearnerInfo {
   terms?: string;
   photoURL?: string;
   imagePath?: string;
+}
+
+interface Grade {
+  id: number;
+  number: number;
+  active: boolean;
+}
+
+interface GradesResponse {
+  grades: Grade[];
 }
 
 export default function ProfileScreen() {
@@ -59,7 +68,7 @@ export default function ProfileScreen() {
   const [editTerms, setEditTerms] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [grades, setGrades] = useState<{ id: number; number: number }[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [showAlert, setShowAlert] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
@@ -77,19 +86,18 @@ export default function ProfileScreen() {
   const TERMS = [1, 2, 3, 4];
   const CURRICULA = ['CAPS', 'IEB'];
 
-
-
   useEffect(() => {
     async function fetchLearnerInfo() {
       if (!user?.uid) return;
       try {
         const learner = await getLearner(user.uid);
         const name = learner.name || '';
-        const grade = learner.grade?.number?.toString() || '';
+        // Extract grade number from the nested grade object
+        const gradeNumber = learner.grade?.number?.toString() || '';
 
         setLearnerInfo({
           name,
-          grade,
+          grade: gradeNumber,
           school: learner.school_name || '',
           school_address: learner.school_address || '',
           school_latitude: learner.school_latitude || 0,
@@ -100,7 +108,7 @@ export default function ProfileScreen() {
         });
 
         setEditName(name);
-        setEditGrade(grade || grades[0]?.number.toString() || '');
+        setEditGrade(gradeNumber);
         setEditSchool(learner.school_name || '');
         setEditSchoolAddress(learner.school_address || '');
         setEditSchoolLatitude(learner.school_latitude || 0);
@@ -117,11 +125,13 @@ export default function ProfileScreen() {
   useEffect(() => {
     async function loadGrades() {
       try {
-        const grades = await fetchGrades();
+        const response = await fetchGrades();
+
         // Sort grades in descending order (12, 11, 10)
-        const sortedGrades = grades
-          .filter(grade => grade.active === 1)
-          .sort((a, b) => b.number - a.number);
+        const sortedGrades = response
+          .filter((grade: Grade) => grade.active === true)
+          .sort((a: Grade, b: Grade) => b.number - a.number);
+
         setGrades(sortedGrades);
       } catch (error) {
         console.error('Failed to fetch grades:', error);
@@ -138,6 +148,16 @@ export default function ProfileScreen() {
   }, []);
 
   const handleSave = async () => {
+    // Track profile completion status
+    await logAnalyticsEvent('profile_completion_status', {
+      user_id: user?.uid,
+      has_name: Boolean(editName),
+      has_grade: Boolean(editGrade),
+      has_school: Boolean(editSchool),
+      has_curriculum: editCurriculum.split(',').filter(Boolean).length > 0,
+      has_terms: editTerms.split(',').filter(Boolean).length > 0
+    });
+
     // Validate curriculum and terms selection
     const selectedCurricula = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
     const selectedTerms = editTerms.split(',').map(t => t.trim()).filter(Boolean);
@@ -172,7 +192,7 @@ export default function ProfileScreen() {
         .join(', ');
 
       // Log profile update event
-      logAnalyticsEvent('profile_update', {
+      await logAnalyticsEvent('profile_update', {
         user_id: user.uid,
         updated_fields: {
           name: editName.trim() !== learnerInfo?.name,
@@ -225,6 +245,10 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
+      // Track user sign out
+      await logAnalyticsEvent('user_signed_out', {
+        user_id: user?.uid
+      });
       await signOut();
       router.replace('/login');
     } catch (error) {
@@ -245,7 +269,7 @@ export default function ProfileScreen() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`${ConfigAPI_BASE_URL}/public/learn/learner/delete?uid=${user.uid}`, {
+      const response = await fetch(`${API_BASE_URL}/api/learner/delete?uid=${user.uid}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -264,7 +288,7 @@ export default function ProfileScreen() {
           await deleteUser(auth.currentUser!);
 
           // Log account deletion event
-          logAnalyticsEvent('account_deleted', {
+          await logAnalyticsEvent('account_deleted', {
             user_id: user.uid
           });
 
@@ -368,6 +392,12 @@ export default function ProfileScreen() {
 
   const handleConfirm = async () => {
     setShowGradeChangeModal(false);
+    // Track grade change confirmation
+    await logAnalyticsEvent('grade_change_confirmed', {
+      user_id: user?.uid,
+      old_grade: learnerInfo?.grade,
+      new_grade: editGrade
+    });
     await saveChanges();
   };
 
@@ -381,12 +411,22 @@ export default function ProfileScreen() {
           setNotificationsEnabled(true);
           // Schedule daily reminder at 18:00
           await scheduleDailyReminder();
+          // Track notification enabled
+          await logAnalyticsEvent('notification_preference_changed', {
+            user_id: user?.uid,
+            enabled: true
+          });
         }
       } else {
         // Disable notifications
         await cancelAllNotifications();
         await AsyncStorage.setItem('notificationsEnabled', 'false');
         setNotificationsEnabled(false);
+        // Track notification disabled
+        await logAnalyticsEvent('notification_preference_changed', {
+          user_id: user?.uid,
+          enabled: false
+        });
       }
     } catch (error) {
       console.error('Error toggling notifications:', error);
@@ -456,6 +496,11 @@ export default function ProfileScreen() {
                     ]}
                     dropdownIconColor={colors.text}
                   >
+                    <Picker.Item
+                      label="Select Grade"
+                      value=""
+                      color={isDark ? colors.textSecondary : '#94A3B8'}
+                    />
                     {grades.map((grade) => (
                       <Picker.Item
                         key={grade.id}
@@ -481,9 +526,9 @@ export default function ProfileScreen() {
                 <View style={styles.searchWrapper}>
                   <GooglePlacesAutocomplete
                     placeholder="🔍 Search for your school..."
-                    onPress={(data, details = null) => {
+                    onPress={async (data, details = null) => {
                       // Log school change event
-                      logAnalyticsEvent('school_change', {
+                      await logAnalyticsEvent('school_change', {
                         user_id: user?.uid,
                         old_school: editSchool,
                         new_school: data.structured_formatting.main_text,
@@ -679,6 +724,7 @@ export default function ProfileScreen() {
             ]}
             onPress={handleLogout}
             disabled={isLoggingOut}
+            testID='sign-out-button'
           >
             <ThemedText style={styles.signOutText}>
               {isLoggingOut ? 'Signing out...' : 'Sign Out'}
@@ -707,6 +753,7 @@ export default function ProfileScreen() {
         isVisible={showGradeChangeModal}
         onBackdropPress={() => setShowGradeChangeModal(false)}
         style={styles.modal}
+        testID="grade-change-modal"
       >
         <View style={[styles.confirmationModal, {
           backgroundColor: isDark ? colors.card : '#FFFFFF'
@@ -735,6 +782,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[styles.paperButton]}
               onPress={handleConfirm}
+              testID="grade-change-confirm-button"
             >
               <LinearGradient
                 colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}

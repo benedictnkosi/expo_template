@@ -16,9 +16,9 @@ export interface APISubject {
   id: number;
   name: string;
   active: boolean;
-  totalResults: number;
-  totalSubjectQuestions: number;
-  correctAnswers: number;
+  question_count: number;
+  result_count: number;
+  correct_count: number;
 }
 
 export interface LearnerSubject {
@@ -54,6 +54,21 @@ export interface SubjectsResponse {
     };
     totalQuestions: number;
   }[];
+}
+
+export interface Paper {
+  id: number;
+  name: string;
+}
+
+export interface SubjectWithPapers {
+  name: string;
+  papers: Paper[];
+}
+
+export interface GradeSubjects {
+  grade: number;
+  subjects: SubjectWithPapers[];
 }
 
 export interface MySubjectsResponse {

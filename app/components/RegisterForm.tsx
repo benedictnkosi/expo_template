@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemedText } from '@/components/ThemedText';
 import Toast from 'react-native-toast-message';
 import { updateLearner } from '@/services/api';
+import { Ionicons } from '@expo/vector-icons';
 
 interface OnboardingData {
     grade: string;
@@ -27,6 +28,8 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const { signUp } = useAuth();
 
     const handleRegister = async () => {
@@ -35,6 +38,16 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 type: 'error',
                 text1: 'Error',
                 text2: 'Please fill in all fields',
+                position: 'bottom'
+            });
+            return;
+        }
+
+        if (password.length < 6) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Password must be at least 6 characters',
                 position: 'bottom'
             });
             return;
@@ -85,6 +98,11 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                         email: email,
                         error: learner.status
                     });
+                } else {
+                    logAnalyticsEvent('register_success', {
+                        user_id: user.uid,
+                        email: email,
+                    });
                 }
             }
 
@@ -107,7 +125,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
     };
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container} testID="register-form-container">
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -118,37 +136,72 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 keyboardType="email-address"
                 testID="email-input"
                 maxLength={50}
+                accessibilityLabel="Email input"
             />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#94A3B8"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                testID="password-input"
-                maxLength={50}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Confirm Password"
-                placeholderTextColor="#94A3B8"
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                testID="confirm-password-input"
-                maxLength={50}
-            />
+            <View style={styles.inputContainer}>
+                <View style={styles.passwordContainer}>
+                    <TextInput
+                        style={[styles.input, styles.passwordInput]}
+                        placeholder="Password"
+                        placeholderTextColor="#94A3B8"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        testID="password-input"
+                        maxLength={50}
+                        accessibilityLabel="Password input"
+                    />
+                    <TouchableOpacity
+                        style={styles.eyeIcon}
+                        onPress={() => setShowPassword(!showPassword)}
+                        testID="toggle-password-visibility"
+                    >
+                        <Ionicons
+                            name={showPassword ? "eye-off" : "eye"}
+                            size={24}
+                            color="#94A3B8"
+                        />
+                    </TouchableOpacity>
+                </View>
+                <ThemedText style={styles.helperText} testID="password-helper-text">
+                    Password must be at least 6 characters
+                </ThemedText>
+            </View>
+            <View style={styles.passwordContainer}>
+                <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="Confirm Password"
+                    placeholderTextColor="#94A3B8"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    testID="confirm-password-input"
+                    maxLength={50}
+                    accessibilityLabel="Confirm password input"
+                />
+                <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    testID="toggle-confirm-password-visibility"
+                >
+                    <Ionicons
+                        name={showConfirmPassword ? "eye-off" : "eye"}
+                        size={24}
+                        color="#94A3B8"
+                    />
+                </TouchableOpacity>
+            </View>
             <TouchableOpacity
                 style={[styles.button, isLoading && styles.buttonDisabled]}
                 onPress={handleRegister}
                 disabled={isLoading}
                 testID="register-button"
+                accessibilityLabel="Create account button"
             >
                 {isLoading ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color="#FFFFFF" testID="register-loading-indicator" />
                 ) : (
-                    <ThemedText style={styles.buttonText}>Create Account</ThemedText>
+                    <ThemedText style={styles.buttonText} testID="register-button-text">Create Account</ThemedText>
                 )}
             </TouchableOpacity>
         </View>
@@ -159,13 +212,37 @@ const styles = StyleSheet.create({
     container: {
         width: '100%',
     },
+    inputContainer: {
+        marginBottom: 16,
+    },
+    passwordContainer: {
+        position: 'relative',
+        width: '100%',
+        marginBottom: 16,
+    },
     input: {
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderRadius: 12,
         padding: 16,
-        marginBottom: 16,
+        marginBottom: 4,
         color: '#FFFFFF',
         fontSize: 16,
+    },
+    passwordInput: {
+        paddingRight: 50, // Make room for the eye icon
+        marginBottom: 0,
+    },
+    eyeIcon: {
+        position: 'absolute',
+        right: 12,
+        top: 12,
+        padding: 4,
+    },
+    helperText: {
+        fontSize: 12,
+        color: '#94A3B8',
+        marginLeft: 4,
+        marginTop: 4,
     },
     button: {
         backgroundColor: '#4F46E5',
@@ -184,6 +261,10 @@ const styles = StyleSheet.create({
     },
 });
 
-function logAnalyticsEvent(arg0: string, arg1: { user_id: string; email: string; error: string; }) {
+function logAnalyticsEvent(eventName: string, params: {
+    user_id: string;
+    email: string;
+    error?: string;
+}) {
     throw new Error('Function not implemented.');
 }

@@ -11,8 +11,7 @@ import * as WebBrowser from 'expo-web-browser';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import RegisterForm from './components/RegisterForm';
-import { Analytics, logEvent } from 'firebase/analytics';
-import { analytics } from '../config/firebase';
+import { analytics } from '../services/analytics';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -23,21 +22,13 @@ const ILLUSTRATIONS = {
   ready: require('@/assets/images/illustrations/exam.png'),
 };
 
-// Add checkmark component for plan features
-const CheckmarkItem = ({ text }: { text: string }) => (
-  <View style={styles.checkmarkItem}>
-    <View style={styles.checkmarkCircle}>
-      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-    </View>
-    <ThemedText style={styles.checkmarkText}>{text}</ThemedText>
-  </View>
-);
 
 // Helper function for safe analytics logging
-function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
-  if (analytics) {
-    const analyticsInstance = analytics as Analytics;
-    logEvent(analyticsInstance, eventName, eventParams);
+async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+  try {
+    await analytics.track(eventName, eventParams);
+  } catch (error) {
+    console.error('[Analytics] Error logging event:', error);
   }
 }
 
@@ -178,22 +169,23 @@ export default function OnboardingScreen() {
     switch (step) {
       case 0:
         return (
-          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]}>
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="welcome-step">
             <View style={{ width: '100%', height: 200, marginBottom: 40 }}>
               <Image
                 source={ILLUSTRATIONS.welcome}
                 style={{ width: '100%', height: '100%' }}
                 resizeMode="contain"
+                testID="welcome-illustration"
               />
             </View>
-            <View style={[styles.textContainer, { paddingHorizontal: 20 }]}>
-              <ThemedText style={[styles.welcomeTitle, { fontSize: 28, marginBottom: 24 }]}>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="welcome-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 28, marginBottom: 24 }]} testID="welcome-title">
                 🎉 Welcome to Exam Quiz! 🚀
               </ThemedText>
-              <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]}>
+              <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]} testID="welcome-description">
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
               </ThemedText>
-              <ThemedText style={[styles.statsText, { fontSize: 18, lineHeight: 28 }]}>
+              <ThemedText style={[styles.statsText, { fontSize: 18, lineHeight: 28 }]} testID="welcome-stats">
                 💡 Join 4,000+ students sharpening their skills with 8,000+ brain-boosting questions every day! 🧠🔥
               </ThemedText>
             </View>
@@ -202,15 +194,16 @@ export default function OnboardingScreen() {
 
       case 1:
         return (
-          <View style={styles.step}>
+          <View style={styles.step} testID="grade-selection-step">
             <Image
               source={ILLUSTRATIONS.grade}
               style={styles.illustration}
               resizeMode="contain"
+              testID="grade-illustration"
             />
             <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>What grade are you in?</ThemedText>
-              <View style={styles.gradeButtons}>
+              <ThemedText style={styles.stepTitle} testID="grade-step-title">What grade are you in?</ThemedText>
+              <View style={styles.gradeButtons} testID="grade-buttons-container">
                 {[10, 11, 12].map((g) => (
                   <TouchableOpacity
                     key={g}
@@ -229,23 +222,24 @@ export default function OnboardingScreen() {
                         styles.gradeButtonText,
                         grade === g.toString() && styles.gradeButtonTextSelected
                       ]}
+                      testID={`grade-button-text-${g}`}
                     >
                       Grade {g}
                     </ThemedText>
                   </TouchableOpacity>
                 ))}
               </View>
-              {errors.grade ? <ThemedText style={styles.errorText}>{errors.grade}</ThemedText> : null}
+              {errors.grade ? <ThemedText style={styles.errorText} testID="grade-error">{errors.grade}</ThemedText> : null}
             </View>
           </View>
         );
 
       case 2:
         return (
-          <View style={styles.step}>
+          <View style={styles.step} testID="school-selection-step">
             <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>🎓 Which school do you rep?</ThemedText>
-              <ThemedText style={styles.stepTitle}>Find your school and get ready to join the learning squad! 🚀📚</ThemedText>
+              <ThemedText style={styles.stepTitle} testID="school-step-title">🎓 Which school do you rep?</ThemedText>
+              <ThemedText style={styles.stepTitle} testID="school-step-subtitle">Find your school and get ready to join the learning squad! 🚀📚</ThemedText>
               <GooglePlacesAutocomplete
                 placeholder="Search for your school..."
                 onPress={(data, details = null) => {
@@ -290,6 +284,7 @@ export default function OnboardingScreen() {
                 textInputProps={{
                   placeholderTextColor: 'rgba(0, 0, 0, 0.5)',
                   selectionColor: '#4338CA',
+                  testID: 'school-search-input'
                 }}
                 query={{
                   key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "",
@@ -298,32 +293,23 @@ export default function OnboardingScreen() {
                   language: 'en',
                 }}
               />
-              {school && (
-                <View style={styles.selectedSchoolContainer}>
-                  <View style={styles.selectedSchoolHeader}>
-                    <ThemedText style={styles.selectedSchoolTitle}>🏫 Selected</ThemedText>
-                  </View>
-                  <ThemedText style={styles.selectedSchoolName}
-                    testID="selected-school-name"
-                  >{school}</ThemedText>
-                </View>
-              )}
-              {errors.school ? <ThemedText style={styles.errorText}>{errors.school}</ThemedText> : null}
+              {errors.school ? <ThemedText style={styles.errorText} testID="school-error">{errors.school}</ThemedText> : null}
             </View>
           </View>
         );
 
       case 3:
         return (
-          <View style={styles.step}>
+          <View style={styles.step} testID="curriculum-selection-step">
             <Image
               source={ILLUSTRATIONS.school}
               style={styles.illustration}
               resizeMode="contain"
+              testID="curriculum-illustration"
             />
             <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>📚 Which curriculum are you following?</ThemedText>
-              <View style={styles.curriculumButtons}>
+              <ThemedText style={styles.stepTitle} testID="curriculum-step-title">📚 Which curriculum are you following?</ThemedText>
+              <View style={styles.curriculumButtons} testID="curriculum-buttons-container">
                 {[
                   { id: 'CAPS', label: 'CAPS', emoji: '📘' },
                   { id: 'IEB', label: 'IEB', emoji: '📗' }
@@ -345,13 +331,14 @@ export default function OnboardingScreen() {
                         styles.curriculumButtonText,
                         curriculum === item.id && styles.curriculumButtonTextSelected
                       ]}
+                      testID={`curriculum-button-text-${item.id}`}
                     >
                       {item.emoji} {item.label}
                     </ThemedText>
                   </TouchableOpacity>
                 ))}
               </View>
-              {errors.curriculum ? <ThemedText style={styles.errorText}>{errors.curriculum}</ThemedText> : null}
+              {errors.curriculum ? <ThemedText style={styles.errorText} testID="curriculum-error">{errors.curriculum}</ThemedText> : null}
             </View>
           </View>
         );
@@ -481,20 +468,20 @@ export default function OnboardingScreen() {
         </View>
 
         {step < 5 && (
-          <View style={styles.buttonContainer}>
+          <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
                   onPress={() => router.replace('/login')}
-                  testID="back-button"
+                  testID="login-button"
                 >
                   <ThemedText style={styles.buttonText}>Back</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.button, styles.primaryButton]}
                   onPress={() => setStep(1)}
-                  testID="start-button"
+                  testID="start-onboarding-button"
                 >
                   <ThemedText style={[styles.buttonText, styles.primaryButtonText]}>
                     Start! 🚀
@@ -506,7 +493,7 @@ export default function OnboardingScreen() {
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
                   onPress={() => setStep(step - 1)}
-                  testID="back-button"
+                  testID="previous-step-button"
                 >
                   <ThemedText style={styles.buttonText}>Back</ThemedText>
                 </TouchableOpacity>
@@ -518,7 +505,7 @@ export default function OnboardingScreen() {
                   ]}
                   onPress={handleNextStep}
                   disabled={!canProceed() && step !== 0}
-                  testID="next-button"
+                  testID="next-step-button"
                 >
                   <ThemedText style={[
                     styles.buttonText,

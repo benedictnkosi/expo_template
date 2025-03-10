@@ -1,0 +1,13 @@
+{
+    "expo": {
+        "name": "examquiz",
+        "plugins": [
+            [
+                "mixpanel-react-native",
+                {
+                    "apiToken": "44c9d6952845f26c209c7e42a6e8b6b3"
+                }
+            ]
+        ]
+    }
+}

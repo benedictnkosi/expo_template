@@ -14,18 +14,18 @@ import ZoomableImageNew from '../components/ZoomableImageNew';
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
 import { checkAnswer, removeResults, trackStreak, getSubjectStats, setQuestionStatus } from '../services/api';
-import { API_BASE_URL as ConfigAPI_BASE_URL } from '../config/api';
+import { API_BASE_URL, API_BASE_URL as ConfigAPI_BASE_URL, IMAGE_BASE_URL } from '../config/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
-import { Analytics, logEvent } from 'firebase/analytics';
-import { analytics } from '../config/firebase';
+import { analytics } from '../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Helper function for safe analytics logging
-function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
-    if (analytics) {
-        const analyticsInstance = analytics as Analytics;
-        logEvent(analyticsInstance, eventName, eventParams);
+async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+    try {
+        await analytics.track(eventName, eventParams);
+    } catch (error) {
+        console.error('[Analytics] Error logging event:', error);
     }
 }
 
@@ -169,7 +169,9 @@ function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
 
 // Add helper function
 function renderMixedContent(text: string, isDark: boolean, colors: any) {
+    // First split by LaTeX delimiters
     const parts = text.split(/(\$[^$]+\$)/g);
+
     return (
         <View style={styles.mixedContentContainer}>
             {parts.map((part, index) => {
@@ -185,8 +187,62 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                         </View>
                     );
                 }
-                // Regular text (only if not empty)
+
+                // Handle regular text with markdown
                 if (part.trim()) {
+                    // Handle headers
+                    if (part.startsWith('# ')) {
+                        return (
+                            <ThemedText key={index} style={[styles.h1Text, { color: colors.text }]}>
+                                {part.substring(2).trim()}
+                            </ThemedText>
+                        );
+                    }
+                    if (part.startsWith('## ')) {
+                        return (
+                            <ThemedText key={index} style={[styles.h2Text, { color: colors.text }]}>
+                                {part.substring(3).trim()}
+                            </ThemedText>
+                        );
+                    }
+                    if (part.startsWith('### ')) {
+                        return (
+                            <ThemedText key={index} style={[styles.h3Text, { color: colors.text }]}>
+                                {part.substring(4).trim()}
+                            </ThemedText>
+                        );
+                    }
+
+                    // Handle bold text
+                    const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
+                    if (boldParts.length > 1) {
+                        return (
+                            <View key={index} style={styles.textContainer}>
+                                {boldParts.map((boldPart, boldIndex) => {
+                                    if (boldPart.startsWith('**') && boldPart.endsWith('**')) {
+                                        return (
+                                            <ThemedText
+                                                key={`${index}-${boldIndex}`}
+                                                style={[styles.boldText, { color: colors.text }]}
+                                            >
+                                                {boldPart.slice(2, -2)}
+                                            </ThemedText>
+                                        );
+                                    }
+                                    return boldPart ? (
+                                        <ThemedText
+                                            key={`${index}-${boldIndex}`}
+                                            style={[styles.contentText, { color: colors.text }]}
+                                        >
+                                            {boldPart}
+                                        </ThemedText>
+                                    ) : null;
+                                })}
+                            </View>
+                        );
+                    }
+
+                    // Regular text
                     return (
                         <ThemedText key={index} style={[styles.contentText, { color: colors.text }]}>
                             {part.trim()}
@@ -257,7 +313,6 @@ export default function QuizScreen() {
     const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [noMoreQuestions, setNoMoreQuestions] = useState(false);
     const [isImageLoading, setIsImageLoading] = useState(true);
-    const [isAnswerImageLoading, setIsAnswerImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
@@ -333,7 +388,6 @@ export default function QuizScreen() {
             learner_role: learnerRole
         });
 
-        console.log("learner role", learnerRole);
     }, []);
 
     const reportIssue = () => {
@@ -395,7 +449,7 @@ export default function QuizScreen() {
 
         try {
             setIsLoading(true); const response = await fetch(
-                `${ConfigAPI_BASE_URL}/public/learn/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
+                `${API_BASE_URL}/api/question/random?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
@@ -442,12 +496,7 @@ export default function QuizScreen() {
             setIsAnswerLoading(true);
             setSelectedAnswer(answer);
 
-            // Log answer submission
-            logAnalyticsEvent('submit_answer', {
-                user_id: user.uid,
-                question_id: currentQuestion.id,
-                answer: answer
-            });
+
 
             const response = await checkAnswer(user.uid, currentQuestion.id, answer);
             setShowFeedback(true);
@@ -458,6 +507,14 @@ export default function QuizScreen() {
             await playSound(response.is_correct);
 
             trackStreak(user.uid);
+
+            // Log answer submission
+            logAnalyticsEvent('submit_answer', {
+                user_id: user.uid,
+                question_id: currentQuestion.id,
+                is_correct: response.is_correct,
+            });
+
 
             // Check if we should show rating prompt after correct answer
             if (response.is_correct) {
@@ -560,7 +617,7 @@ export default function QuizScreen() {
         setIsLoadingExplanation(true);
         try {
             const response = await fetch(
-                `${ConfigAPI_BASE_URL}/public/learn/question/ai-explanation?question_id=${questionId}`
+                `${API_BASE_URL}/api/question/ai-explanation?questionId=${questionId}`
             );
             const data = await response.json();
             if (data.status === "OK") {
@@ -939,34 +996,46 @@ export default function QuizScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
         >
-            <ScrollView style={styles.container} ref={scrollViewRef}>
+            <ScrollView
+                style={styles.container}
+                ref={scrollViewRef}
+                testID="quiz-scroll-view"
+            >
                 <SubjectHeader />
                 <PerformanceSummary />
                 <ThemedView style={styles.content}>
-                    <ThemedView style={[styles.sectionCard, {
-                        backgroundColor: isDark ? colors.card : '#FFFFFF',
-                        borderColor: colors.border
-                    }]}>
-
+                    <ThemedView
+                        style={[styles.sectionCard, {
+                            backgroundColor: isDark ? colors.card : '#FFFFFF',
+                            borderColor: colors.border
+                        }]}
+                        testID="question-card"
+                    >
                         {(currentQuestion.context || currentQuestion.image_path) && (
-                            <ThemedText style={styles.questionMeta} testID='question-meta'>
+                            <ThemedText
+                                style={styles.questionMeta}
+                                testID="context-label"
+                            >
                                 Context
                             </ThemedText>
                         )}
 
                         {currentQuestion.context && (
-                            <View style={styles.questionContainer} testID='question-context'>
+                            <View
+                                style={styles.questionContainer}
+                                testID="context-container"
+                            >
                                 {renderMixedContent(currentQuestion.context, isDark, colors)}
                             </View>
                         )}
 
                         {(currentQuestion.image_path || currentQuestion.question_image_path) && (
                             <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
-                                Click image to enlarge
+                                {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
                             </ThemedText>
                         )}
 
-                        {currentQuestion.image_path && (
+                        {(currentQuestion.image_path && currentQuestion.image_path !== null && currentQuestion.image_path !== 'NULL') && (
                             <View style={styles.imageWrapper}>
                                 <TouchableOpacity
                                     style={styles.touchableImage}
@@ -981,7 +1050,7 @@ export default function QuizScreen() {
                                     {isImageLoading && <ImageLoadingPlaceholder />}
                                     <Image
                                         source={{
-                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.image_path}`
+                                            uri: `${IMAGE_BASE_URL}${currentQuestion.image_path}`
                                         }}
                                         style={styles.questionImage}
                                         resizeMode="contain"
@@ -999,7 +1068,7 @@ export default function QuizScreen() {
                             </ThemedText>
                         )}
 
-                        {currentQuestion.question_image_path && (
+                        {(currentQuestion.question_image_path && currentQuestion.question_image_path !== null && currentQuestion.question_image_path !== 'NULL') && (
                             <View style={styles.imageWrapper}>
                                 <TouchableOpacity
                                     style={styles.touchableImage}
@@ -1013,7 +1082,7 @@ export default function QuizScreen() {
                                 >
                                     <Image
                                         source={{
-                                            uri: `${ConfigAPI_BASE_URL}/public/learn/learner/get-image?image=${currentQuestion.question_image_path}`
+                                            uri: `${IMAGE_BASE_URL}${currentQuestion.question_image_path}`
                                         }}
                                         style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
                                         resizeMode="contain"
@@ -1042,10 +1111,13 @@ export default function QuizScreen() {
 
                         {currentQuestion.type === 'multiple_choice' && (
                             <>
-                                <ThemedView style={styles.optionsContainer}>
+                                <ThemedView
+                                    style={styles.optionsContainer}
+                                    testID="options-container"
+                                >
                                     {Object.entries(currentQuestion.options)
                                         .filter(([_, value]) => value)
-                                        .map(([key, value]) => (
+                                        .map(([key, value], index) => (
                                             <TouchableOpacity
                                                 key={key}
                                                 style={[
@@ -1066,9 +1138,13 @@ export default function QuizScreen() {
                                                 ]}
                                                 onPress={() => handleAnswer(value)}
                                                 disabled={showFeedback || isAnswerLoading}
+                                                testID={`option-${index}`}
                                             >
                                                 {isAnswerLoading && selectedAnswer === value ? (
-                                                    <View style={styles.optionLoadingContainer}>
+                                                    <View
+                                                        style={styles.optionLoadingContainer}
+                                                        testID="option-loading"
+                                                    >
                                                         <ActivityIndicator size="small" color={colors.primary} />
                                                     </View>
                                                 ) : (
@@ -1078,7 +1154,10 @@ export default function QuizScreen() {
                                                             isOption={true}
                                                         />
                                                     ) : (
-                                                        <ThemedText style={[styles.optionText, { color: colors.text }]}>
+                                                        <ThemedText
+                                                            style={[styles.optionText, { color: colors.text }]}
+                                                            testID={`option-text-${index}`}
+                                                        >
                                                             {value}
                                                         </ThemedText>
                                                     )
@@ -1094,7 +1173,7 @@ export default function QuizScreen() {
                                         backgroundColor: isDark ? colors.surface : '#FEE2E2'
                                     }]}
                                     onPress={reportIssue}
-                                    testID='report-issue-button'
+                                    testID="report-issue-button"
                                 >
                                     <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
                                         🛑 Report an Issue with this Question
@@ -1103,57 +1182,85 @@ export default function QuizScreen() {
                             </>
                         )}
                         {showFeedback && (
-                            <ThemedView style={styles.feedbackContainer}>
-                                <ThemedText style={[styles.feedbackEmoji, { color: colors.text }]} testID='feedback-emoji'>
+                            <ThemedView
+                                style={styles.feedbackContainer}
+                                testID="feedback-container"
+                            >
+                                <ThemedText
+                                    style={[styles.feedbackEmoji, { color: colors.text }]}
+                                    testID="feedback-message"
+                                >
                                     {feedbackMessage}
                                 </ThemedText>
 
-                                <ThemedView style={[styles.correctAnswerContainer, {
-                                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                    borderColor: '#22C55E'
-                                }]}>
-                                    <ThemedText style={[styles.correctAnswerLabel, { color: colors.textSecondary }]} testID='correct-answer-label'>
+                                <ThemedView
+                                    style={[styles.correctAnswerContainer, {
+                                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                        borderColor: '#22C55E'
+                                    }]}
+                                    testID="correct-answer-container"
+                                >
+                                    <ThemedText
+                                        style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
+                                        testID="correct-answer-label"
+                                    >
                                         ✅ Right Answer!
                                     </ThemedText>
+
                                     {cleanAnswer(currentQuestion.answer).includes('$') ? (
                                         <KaTeX latex={cleanAnswer(currentQuestion.answer).replace(/\$/g, '')} />
                                     ) : (
-                                        <ThemedText style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]} testID='correct-answer-text'>
+                                        <ThemedText
+                                            style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
+                                            testID="correct-answer-text"
+                                        >
                                             {cleanAnswer(currentQuestion.answer)}
                                         </ThemedText>
                                     )}
-                                    {currentQuestion.explanation && (
-                                        <View style={styles.questionContainer} testID='explanation-container'>
-                                            {renderMixedContent(cleanAnswer(currentQuestion.explanation), isDark, colors)}
+
+                                    {(currentQuestion.answer_image && currentQuestion.answer_image !== null && currentQuestion.answer_image !== 'NULL') && (
+                                        <View style={styles.imageWrapper}>
+                                            <TouchableOpacity
+                                                style={styles.touchableImage}
+                                                onPress={() => {
+                                                    setZoomImageUrl(currentQuestion.answer_image);
+                                                    setIsZoomModalVisible(true);
+                                                }}
+                                                activeOpacity={0.7}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                testID='question-additional-image-container'
+                                            >
+                                                <Image
+                                                    source={{
+                                                        uri: `${IMAGE_BASE_URL}${currentQuestion.answer_image}`
+                                                    }}
+                                                    style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
+                                                    resizeMode="contain"
+                                                    onLoadStart={() => setIsImageLoading(true)}
+                                                    onLoadEnd={() => setIsImageLoading(false)}
+                                                    testID='question-image'
+                                                />
+                                                {isImageLoading && <ImageLoadingPlaceholder />}
+                                            </TouchableOpacity>
                                         </View>
                                     )}
-                                </ThemedView>
 
-                                {/* Question approval button - only show for admin users */}
-                                {learnerRole === 'admin' && showFeedback && currentQuestion && (
-                                    <TouchableOpacity
-                                        style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
-                                        onPress={handleApproveQuestion}
-                                        disabled={isApproving}
-                                    >
-                                        <ThemedText style={styles.approveButtonText}>
-                                            {isApproving ? 'Approving...' : 'Question looks good'}
-                                        </ThemedText>
-                                    </TouchableOpacity>
-                                )}
+                                </ThemedView>
 
                                 <TouchableOpacity
                                     style={[styles.aiExplanationButton, {
                                         backgroundColor: isDark ? '#4338CA' : '#4F46E5'
                                     }]}
-                                    onPress={() => {
-                                        fetchAIExplanation(currentQuestion?.id || 0)
-                                    }}
+                                    onPress={() => fetchAIExplanation(currentQuestion?.id || 0)}
                                     disabled={isLoadingExplanation}
+                                    testID="ai-explanation-button"
                                 >
                                     <ThemedText style={styles.aiExplanationButtonText}>
                                         {isLoadingExplanation ? (
-                                            <View style={styles.loaderContainer}>
+                                            <View
+                                                style={styles.loaderContainer}
+                                                testID="ai-explanation-loading"
+                                            >
                                                 <ThemedText style={styles.aiExplanationButtonText}>
                                                     🤖 Pretending to think...
                                                 </ThemedText>
@@ -1171,9 +1278,12 @@ export default function QuizScreen() {
                 </ThemedView>
             </ScrollView>
 
-            <ThemedView style={[styles.footer, {
-                backgroundColor: isDark ? colors.card : '#FFFFFF'
-            }]}>
+            <ThemedView
+                style={[styles.footer, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF'
+                }]}
+                testID="quiz-footer"
+            >
                 <LinearGradient
                     colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
                     start={{ x: 0, y: 0 }}
@@ -1183,6 +1293,7 @@ export default function QuizScreen() {
                     <TouchableOpacity
                         style={styles.buttonContent}
                         onPress={handleNext}
+                        testID="next-question-button"
                     >
                         <Ionicons name="play" size={20} color="#FFFFFF" />
                         <ThemedText style={styles.footerButtonText}>🎯 Keep Going!</ThemedText>
@@ -1198,6 +1309,7 @@ export default function QuizScreen() {
                     <TouchableOpacity
                         style={styles.buttonContent}
                         onPress={() => router.back()}
+                        testID="quit-quiz-button"
                     >
                         <Ionicons name="cafe" size={20} color="#FFFFFF" />
                         <ThemedText style={styles.footerButtonText}>Chill Time!</ThemedText>
@@ -1212,6 +1324,7 @@ export default function QuizScreen() {
                 swipeDirection={['down']}
                 useNativeDriver={true}
                 style={[styles.modal, { marginTop: insets.top }]}
+                testID="report-modal"
             >
                 <View style={[styles.reportModalContent, {
                     backgroundColor: isDark ? colors.card : '#FFFFFF'
@@ -1229,6 +1342,7 @@ export default function QuizScreen() {
                         onChangeText={setReportComment}
                         onSubmitEditing={handleSubmitReport}
                         maxLength={200}
+                        testID="report-input"
                     />
                     <View style={styles.reportModalButtons}>
                         <TouchableOpacity
@@ -1322,6 +1436,7 @@ export default function QuizScreen() {
                         style={styles.zoomCloseButton}
                         onPress={() => setIsZoomModalVisible(false)}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        testID="zoom-close-button"
                     >
                         <Ionicons name="close" size={28} color="#FFFFFF" />
                     </TouchableOpacity>
@@ -2278,6 +2393,32 @@ const styles = StyleSheet.create({
         color: '#1E293B',
         fontSize: 16,
         fontWeight: '600',
+    },
+    h1Text: {
+        fontSize: 24,
+        fontWeight: '700',
+        marginVertical: 12,
+        lineHeight: 32,
+    },
+    h2Text: {
+        fontSize: 20,
+        fontWeight: '600',
+        marginVertical: 10,
+        lineHeight: 28,
+    },
+    h3Text: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginVertical: 8,
+        lineHeight: 26,
+    },
+    boldText: {
+        fontWeight: '700',
+    },
+    textContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center',
     },
 });
 

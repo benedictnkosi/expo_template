@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Dimensions } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, IMAGE_BASE_URL } from '@/config/api';
 
 interface Props {
     imageUrl: string;
@@ -18,7 +18,7 @@ function ZoomableImageNew({ imageUrl }: Props) {
 
     const fullImageUrl = imageUrl.startsWith('http')
         ? imageUrl
-        : `${API_BASE_URL}/public/learn/learner/get-image?image=${imageUrl}`;
+        : `${IMAGE_BASE_URL}${imageUrl}`;
 
     const pinchGesture = Gesture.Pinch()
         .onUpdate((e) => {
@@ -58,6 +58,7 @@ function ZoomableImageNew({ imageUrl }: Props) {
                     source={{ uri: fullImageUrl }}
                     style={[styles.image, animatedStyle]}
                     resizeMode="contain"
+                    testID="zoomable-image"
                 />
             </GestureDetector>
         </GestureHandlerRootView>

@@ -10,18 +10,19 @@ export default function RegisterScreen() {
     const params = useLocalSearchParams();
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} testID="register-screen">
             <LinearGradient
                 colors={['#1B1464', '#2B2F77']}
                 style={styles.gradient}
+                testID="register-gradient-background"
             >
-                <View style={styles.content}>
-                    <View style={styles.header}>
-                        <ThemedText style={styles.title}>Create Account</ThemedText>
-                        <ThemedText style={styles.subtitle}>Join thousands of students acing their exams! 🎯</ThemedText>
+                <View style={styles.content} testID="register-content">
+                    <View style={styles.header} testID="register-header">
+                        <ThemedText style={styles.title} testID="register-title">Create Account</ThemedText>
+                        <ThemedText style={styles.subtitle} testID="register-subtitle">Join thousands of students acing their exams! 🎯</ThemedText>
                     </View>
 
-                    <RegisterForm onboardingData={params as any} />
+                    <RegisterForm onboardingData={params as any} testID="register-form" />
                 </View>
             </LinearGradient>
         </SafeAreaView>
