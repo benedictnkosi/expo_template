@@ -59,6 +59,8 @@ interface CheckAnswerResponse {
     points: number;
     message: string;
     lastThreeCorrect: boolean;
+    streak: number;
+    streakUpdated: boolean;
     subject: string;
 }
 
@@ -326,7 +328,7 @@ interface FavoriteQuestion {
 }
 
 // Add this component near the top of the file, after imports
-const AnimatedFire = () => {
+const AnimatedFire = ({ size = 24, color = '#FF3B30' }: { size?: number; color?: string }) => {
     const scaleValue = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
@@ -354,7 +356,7 @@ const AnimatedFire = () => {
         <Animated.View style={{
             transform: [{ scale: scaleValue }],
         }}>
-            <Ionicons name="flame" size={24} color="#FF3B30" />
+            <Ionicons name="flame" size={size} color={color} />
         </Animated.View>
     );
 };
@@ -363,6 +365,7 @@ const AnimatedFire = () => {
 const PointsAnimation = ({ points, isVisible }: { points: number; isVisible: boolean }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.3)).current;
+    const { isDark } = useTheme();
 
     useEffect(() => {
         if (isVisible) {
@@ -408,11 +411,49 @@ const PointsAnimation = ({ points, isVisible }: { points: number; isVisible: boo
                 {
                     opacity: fadeAnim,
                     transform: [{ scale: scaleAnim }],
+                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)'
                 }
             ]}
         >
             <ThemedText style={styles.pointsText}>{emoji} {points}px</ThemedText>
         </Animated.View>
+    );
+};
+
+// Add the StreakModal component after the PointsAnimation component
+const StreakModal = ({ isVisible, onClose, streak }: { isVisible: boolean; onClose: () => void; streak: number }) => {
+    return (
+        <Modal
+            isVisible={isVisible}
+            onBackdropPress={onClose}
+            style={styles.modal}
+            animationIn="fadeIn"
+            animationOut="fadeOut"
+        >
+            <View style={[styles.streakModalContent]}>
+                <View style={styles.streakIconContainer}>
+                    <View style={styles.streakDaysRow}>
+                        {['S', 'S', 'M', 'T', 'W', 'T', 'F'].map((day, index) => (
+                            <View key={index} style={styles.streakDay}>
+                                <ThemedText style={styles.streakDayText}>{day}</ThemedText>
+                            </View>
+                        ))}
+                    </View>
+                    <View style={styles.streakNumberContainer}>
+                        <AnimatedFire size={48} color="#FFFFFF" />
+                    </View>
+                </View>
+                <ThemedText style={styles.streakTitle}>{streak} Day Streak!</ThemedText>
+                <ThemedText style={styles.streakSubtitle}>Get 3 questions correct every day to build your streak</ThemedText>
+
+                <TouchableOpacity
+                    style={styles.continueButton}
+                    onPress={onClose}
+                >
+                    <ThemedText style={styles.continueButtonText}>CONTINUE</ThemedText>
+                </TouchableOpacity>
+            </View>
+        </Modal>
     );
 };
 
@@ -456,6 +497,9 @@ export default function QuizScreen() {
     const [isFireMode, setIsFireMode] = useState(false);
     const [showPoints, setShowPoints] = useState(false);
     const [earnedPoints, setEarnedPoints] = useState(0);
+    // Add new state for streak modal
+    const [showStreakModal, setShowStreakModal] = useState(false);
+    const [currentStreak, setCurrentStreak] = useState(0);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -650,6 +694,12 @@ export default function QuizScreen() {
             setIsCorrect(response.correct);
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
             setIsFireMode(response.lastThreeCorrect || false);
+
+            // Handle streak modal
+            if (response.streakUpdated) {
+                setCurrentStreak(response.streak);
+                setShowStreakModal(true);
+            }
 
             if (response.correct) {
                 setEarnedPoints(points);
@@ -1943,6 +1993,13 @@ export default function QuizScreen() {
 
             {/* Add PointsAnimation component */}
             <PointsAnimation points={earnedPoints} isVisible={showPoints} />
+
+            {/* Add StreakModal */}
+            <StreakModal
+                isVisible={showStreakModal}
+                onClose={() => setShowStreakModal(false)}
+                streak={currentStreak}
+            />
         </LinearGradient>
     );
 }
@@ -2932,11 +2989,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        alignSelf: 'center',
+        width: 'auto',
+        minWidth: 120,
     },
     pointsText: {
         fontSize: 48,
         fontWeight: 'bold',
-        color: '#22C55E',
+        color: '#FFD700',
         textShadowColor: 'rgba(0, 0, 0, 0.2)',
         textShadowOffset: { width: 0, height: 2 },
         textShadowRadius: 4,
@@ -2946,6 +3009,77 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#64748B',
         marginTop: 4,
+    },
+    streakModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        width: '90%',
+        maxWidth: 400,
+        alignSelf: 'center',
+        alignItems: 'center',
+    },
+    streakIconContainer: {
+        marginBottom: 24,
+        alignItems: 'center',
+    },
+    streakDaysRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginBottom: 16,
+    },
+    streakDay: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#FF9500',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    streakDayText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    streakNumberContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#FF9500',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: -12,
+    },
+    streakNumber: {
+        color: '#FFFFFF',
+        fontSize: 36,
+        fontWeight: 'bold',
+    },
+    streakTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1E293B',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    streakSubtitle: {
+        fontSize: 16,
+        color: '#64748B',
+        textAlign: 'center',
+        marginBottom: 24,
+    },
+    continueButton: {
+        backgroundColor: '#2196F3',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        width: '100%',
+        alignItems: 'center',
+    },
+    continueButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 
