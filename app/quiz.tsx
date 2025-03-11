@@ -2758,7 +2758,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
     },
     favoriteItemText: {
-        fontSize: 16,
+        fontSize: 12,
         fontWeight: '500',
     },
     emptyFavorites: {
