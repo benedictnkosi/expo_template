@@ -12,6 +12,27 @@ import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import RegisterForm from './components/RegisterForm';
 import { analytics } from '../services/analytics';
+import { API_BASE_URL } from '@/config/api';
+
+// Add function before WebBrowser.maybeCompleteAuthSession()
+async function getSchoolFunfacts(schoolName: string) {
+  try {
+    console.log(`${API_BASE_URL}/api/school/fact?school_name=${encodeURIComponent(schoolName)}`);
+    const response = await fetch(`${API_BASE_URL}/api/school/fact?school_name=${encodeURIComponent(schoolName)}`);
+    const data = await response.json();
+    if (data.status === "OK") {
+      return {
+        fact: data.fact
+      };
+    }
+    throw new Error('Failed to fetch school facts');
+  } catch (error) {
+    console.error('Error fetching school facts:', error);
+    return {
+      fact: `${schoolName} is a great place to learn!`
+    };
+  }
+}
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -43,6 +64,8 @@ export default function OnboardingScreen() {
   const [curriculum, setCurriculum] = useState('');
   const [difficultSubject, setDifficultSubject] = useState('');
   const insets = useSafeAreaInsets();
+  const [schoolFunfacts, setSchoolFunfacts] = useState('');
+
   const [errors, setErrors] = useState({
     grade: '',
     school: '',
@@ -239,10 +262,10 @@ export default function OnboardingScreen() {
           <View style={styles.step} testID="school-selection-step">
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle} testID="school-step-title">🎓 Which school do you rep?</ThemedText>
-              <ThemedText style={styles.stepTitle} testID="school-step-subtitle">Find your school and get ready to join the learning squad! 🚀📚</ThemedText>
+              <ThemedText style={styles.stepTitle} testID="school-step-subtitle">Join the learning squad! 🚀📚</ThemedText>
               <GooglePlacesAutocomplete
                 placeholder="Search for your school..."
-                onPress={(data, details = null) => {
+                onPress={async (data, details = null) => {
                   setSchool(data.description);
                   setSchoolName(data.structured_formatting.main_text);
                   setSchoolAddress(data.description);
@@ -251,6 +274,8 @@ export default function OnboardingScreen() {
                     setSchoolLatitude(details.geometry.location.lat);
                     setSchoolLongitude(details.geometry.location.lng);
                   }
+                  const funfacts = await getSchoolFunfacts(data.description);
+                  setSchoolFunfacts(funfacts.fact);
                 }}
                 fetchDetails={true}
                 onFail={error => console.error('GooglePlaces error:', error)}
@@ -293,6 +318,27 @@ export default function OnboardingScreen() {
                   language: 'en',
                 }}
               />
+              {school && (
+                <>
+                  <View style={styles.selectedSchoolContainer}>
+                    <View style={styles.selectedSchoolHeader}>
+                      <Ionicons name="location" size={20} color="#FFFFFF" />
+                      <ThemedText style={styles.selectedSchoolTitle}>Selected School</ThemedText>
+                    </View>
+                    <ThemedText style={styles.selectedSchoolName}>{schoolName}</ThemedText>
+                    <ThemedText style={styles.selectedSchoolAddress}>{schoolAddress}</ThemedText>
+                  </View>
+                  {schoolFunfacts && (
+                    <View style={styles.funFactContainer}>
+                      <View style={styles.funFactHeader}>
+                        <Ionicons name="information-circle" size={24} color="#FFFFFF" />
+                        <ThemedText style={styles.funFactTitle}>Did you know?</ThemedText>
+                      </View>
+                      <ThemedText style={styles.funFactText}>{schoolFunfacts}</ThemedText>
+                    </View>
+                  )}
+                </>
+              )}
               {errors.school ? <ThemedText style={styles.errorText} testID="school-error">{errors.school}</ThemedText> : null}
             </View>
           </View>
@@ -1076,5 +1122,32 @@ const styles = StyleSheet.create({
     color: '#E2E8F0',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  funFactContainer: {
+    width: '90%',
+    backgroundColor: 'rgba(77, 90, 211, 0.3)',
+    borderRadius: 24,
+    padding: 20,
+    marginTop: 12,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  funFactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  funFactTitle: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  funFactText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    lineHeight: 24,
+    opacity: 0.9,
   },
 });

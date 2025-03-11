@@ -1,3 +1,3 @@
-//export const API_BASE_URL = 'https://exam-quiz-admin.vercel.app';
-export const API_BASE_URL = 'http://192.168.1.33:3000';
+export const API_BASE_URL = 'https://exam-quiz-admin.vercel.app';
+//export const API_BASE_URL = 'http://192.168.1.33:3000';
 export const IMAGE_BASE_URL = `https://ozhhkdhtddoznswtplbx.supabase.co/storage/v1/object/public/question_images/`;

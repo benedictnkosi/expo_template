@@ -29,7 +29,6 @@ export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> 
   return response.json();
 }
 
-
 export async function checkAnswer(
   uid: string,
   questionId: number,
@@ -40,6 +39,9 @@ export async function checkAnswer(
     `${API_BASE_URL}/api/learner/check-answer`,
     {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({
         uid,
         question_id: questionId,
@@ -55,7 +57,8 @@ export async function checkAnswer(
     throw new Error('Failed to check answer');
   }
 
-  return response.json();
+  const data = await response.json();
+  return data;
 }
 
 export async function getLearner(uid: string): Promise<{
@@ -315,8 +318,6 @@ export async function getSubjectStats(uid: string, subjectName: string): Promise
     throw error;
   }
 }
-
-
 
 interface QuestionStatusData {
   question_id: number;

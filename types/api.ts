@@ -79,5 +79,10 @@ export interface MySubjectsResponse {
 export interface CheckAnswerResponse {
   status: string;
   correct: boolean;
-  correct_answers: string;
+  explanation: string | null;
+  correctAnswer: string;
+  points: number;
+  message: string;
+  lastThreeCorrect: boolean;
+  subject: string;
 } 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Dimensions, Platform } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
@@ -13,8 +13,8 @@ import ZoomableImageNew from '../components/ZoomableImageNew';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
-import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus, trackStreak } from '../services/api';
-import { API_BASE_URL, API_BASE_URL as ConfigAPI_BASE_URL, IMAGE_BASE_URL } from '../config/api';
+import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus } from '../services/api';
+import { API_BASE_URL, IMAGE_BASE_URL } from '../config/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { analytics } from '../services/analytics';
@@ -51,6 +51,16 @@ interface Question {
     ai_explanation?: string | null;
 }
 
+interface CheckAnswerResponse {
+    status: string;
+    correct: boolean;
+    explanation: string | null;
+    correctAnswer: string;
+    points: number;
+    message: string;
+    lastThreeCorrect: boolean;
+    subject: string;
+}
 
 interface QuestionResponse extends Question {
     status: string;
@@ -315,6 +325,97 @@ interface FavoriteQuestion {
     question: Question;
 }
 
+// Add this component near the top of the file, after imports
+const AnimatedFire = () => {
+    const scaleValue = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        const pulseAnimation = Animated.sequence([
+            Animated.timing(scaleValue, {
+                toValue: 1.2,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.timing(scaleValue, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            })
+        ]);
+
+        Animated.loop(pulseAnimation).start();
+
+        return () => {
+            scaleValue.stopAnimation();
+        };
+    }, []);
+
+    return (
+        <Animated.View style={{
+            transform: [{ scale: scaleValue }],
+        }}>
+            <Ionicons name="flame" size={24} color="#FF3B30" />
+        </Animated.View>
+    );
+};
+
+// Add this component after the AnimatedFire component
+const PointsAnimation = ({ points, isVisible }: { points: number; isVisible: boolean }) => {
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const scaleAnim = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        if (isVisible) {
+            // Reset animations
+            fadeAnim.setValue(0);
+            scaleAnim.setValue(0.3);
+
+            // Start animations
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(scaleAnim, {
+                    toValue: 1,
+                    friction: 4,
+                    useNativeDriver: true,
+                })
+            ]).start();
+
+            // Fade out after 2.5 seconds
+            const timer = setTimeout(() => {
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 300,
+                    useNativeDriver: true,
+                }).start();
+            }, 2500);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isVisible]);
+
+    if (!isVisible) return null;
+
+    const emoji = points === 3 ? '🔥' : '⭐';
+
+    return (
+        <Animated.View
+            style={[
+                styles.pointsContainer,
+                {
+                    opacity: fadeAnim,
+                    transform: [{ scale: scaleAnim }],
+                }
+            ]}
+        >
+            <ThemedText style={styles.pointsText}>{emoji} {points}px</ThemedText>
+        </Animated.View>
+    );
+};
+
 export default function QuizScreen() {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
@@ -352,6 +453,9 @@ export default function QuizScreen() {
     const [isFavoritesLoading, setIsFavoritesLoading] = useState(false);
     const [isFavoriting, setIsFavoriting] = useState(false);
     const [isCurrentQuestionFavorited, setIsCurrentQuestionFavorited] = useState(false);
+    const [isFireMode, setIsFireMode] = useState(false);
+    const [showPoints, setShowPoints] = useState(false);
+    const [earnedPoints, setEarnedPoints] = useState(0);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -538,9 +642,22 @@ export default function QuizScreen() {
             setSelectedAnswer(answer);
 
             const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration);
+
+            // Calculate points
+            const points = response.correct ? (response.lastThreeCorrect ? 3 : 1) : 0;
+
             setShowFeedback(true);
             setIsCorrect(response.correct);
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
+            setIsFireMode(response.lastThreeCorrect || false);
+
+            if (response.correct) {
+                setEarnedPoints(points);
+                setShowPoints(true);
+                setTimeout(() => {
+                    setShowPoints(false);
+                }, 3000);
+            }
 
             // Play sound using the new playSound function
             await playSound(response.correct);
@@ -883,6 +1000,7 @@ export default function QuizScreen() {
                                         />
                                     )}
                                 </TouchableOpacity>
+
                             </>
 
 
@@ -917,6 +1035,13 @@ export default function QuizScreen() {
                     >
                         <Ionicons name="refresh-circle" size={28} color={isDark ? '#FF3B30' : '#EF4444'} />
                     </TouchableOpacity>
+
+                    {isFireMode && (
+                        <View style={styles.fireIconContainer}>
+                            <AnimatedFire />
+                        </View>
+                    )}
+
                 </View>
                 <View style={styles.statsContainer}>
                     <View style={[styles.statItem, {
@@ -1815,6 +1940,9 @@ export default function QuizScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* Add PointsAnimation component */}
+            <PointsAnimation points={earnedPoints} isVisible={showPoints} />
         </LinearGradient>
     );
 }
@@ -2790,6 +2918,34 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         paddingHorizontal: 16,
         paddingTop: 16,
+    },
+    fireIconContainer: {
+        marginLeft: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pointsContainer: {
+        position: 'absolute',
+        top: '40%',
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+    },
+    pointsText: {
+        fontSize: 48,
+        fontWeight: 'bold',
+        color: '#22C55E',
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+    },
+    pointsLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#64748B',
+        marginTop: 4,
     },
 });
 
