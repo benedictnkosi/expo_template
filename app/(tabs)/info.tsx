@@ -61,7 +61,7 @@ export default function InfoScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
 
-  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string } | null>(null);
+  const [learnerInfo, setLearnerInfo] = useState<{ name: string; grade: string; school_name: string; school: string; avatar: string } | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -74,7 +74,8 @@ export default function InfoScreen() {
               name: learner.name,
               grade: learner.grade?.number?.toString() || '',
               school_name: learner.school_name || '',
-              school: learner.school_name || ''
+              school: learner.school_name || '',
+              avatar: learner.avatar || ''
             });
           }
         } catch (error) {
@@ -97,8 +98,6 @@ export default function InfoScreen() {
         contentContainerStyle={styles.contentContainer}
       >
         <Header
-          title="Exam Quiz"
-          user={user}
           learnerInfo={learnerInfo}
         />
 

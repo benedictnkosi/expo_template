@@ -110,6 +110,7 @@ interface LearnerInfo {
   rating_cancelled?: string;
   points: number;
   streak: number;
+  avatar: string;
 }
 
 export default function HomeScreen() {
@@ -305,9 +306,14 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#121212' : '#FFFFFF' }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <ThemedText style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</ThemedText>
+      <View style={styles.imagePlaceholderContainer}>
+        <View style={styles.imagePlaceholderContent}>
+          <Image
+            source={require('@/assets/images/book-loading.gif')}
+            style={styles.loadingGif}
+          />
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+        </View>
       </View>
     );
   }
@@ -326,12 +332,11 @@ export default function HomeScreen() {
         testID="home-screen-scroll-view"
       >
         <Header
-          title="Exam Quiz"
-          user={user}
           learnerInfo={learnerInfo ? {
             name: learnerInfo.name,
             grade: learnerInfo.grade.number.toString(),
-            school: learnerInfo.school_name
+            school: learnerInfo.school_name,
+            avatar: learnerInfo.avatar
           } : null}
         />
 
@@ -886,10 +891,32 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  imagePlaceholderContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'absolute',
+    zIndex: 4,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  imagePlaceholderContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingGif: {
+    width: 80,
+    height: 80,
+    marginBottom: 8
+  },
   loadingText: {
-    fontSize: 16,
-    color: '#64748B',
-    marginTop: 12,
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
   },
   emptyStateContainer: {
     padding: 20,

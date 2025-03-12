@@ -22,7 +22,7 @@ export default function RegisterScreen() {
                         <ThemedText style={styles.subtitle} testID="register-subtitle">Join thousands of students acing their exams! 🎯</ThemedText>
                     </View>
 
-                    <RegisterForm onboardingData={params as any} testID="register-form" />
+                    <RegisterForm onboardingData={params as any} />
                 </View>
             </LinearGradient>
         </SafeAreaView>

@@ -1,20 +1,35 @@
-import { StyleSheet, View, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+const avatarImages: Record<string, ImageSourcePropType> = {
+  '1': require('../assets/images/avatars/1.png'),
+  '2': require('../assets/images/avatars/2.png'),
+  '3': require('../assets/images/avatars/3.png'),
+  '4': require('../assets/images/avatars/4.png'),
+  '5': require('../assets/images/avatars/5.png'),
+  '6': require('../assets/images/avatars/6.png'),
+  '7': require('../assets/images/avatars/7.png'),
+  '8': require('../assets/images/avatars/8.png'),
+  '9': require('../assets/images/avatars/9.png'),
+  'default': require('../assets/images/avatars/8.png'),
+};
+
 interface HeaderProps {
-  title: string;
-  user: GoogleUser | null;
   learnerInfo: {
     name: string;
     grade: string;
     school?: string;
+    avatar?: string;
   } | null;
 }
 
-export function Header({ title, user, learnerInfo }: HeaderProps) {
+export function Header({ learnerInfo }: HeaderProps) {
   const insets = useSafeAreaInsets();
+  const avatarSource = learnerInfo?.avatar && avatarImages[learnerInfo.avatar]
+    ? avatarImages[learnerInfo.avatar]
+    : avatarImages['default'];
 
   return (
     <View style={[styles.header, { marginTop: insets.top }]}>
@@ -27,18 +42,11 @@ export function Header({ title, user, learnerInfo }: HeaderProps) {
 
       <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
         <View style={styles.profileSection}>
-          {user?.picture ? (
-            <Image
-              source={{ uri: user.picture }}
-              style={styles.profileImage}
-            />
-          ) : (
-            <View style={[styles.profileImage, styles.profilePlaceholder]}>
-              <ThemedText style={styles.profileInitial}>
-                {learnerInfo?.name?.[0]?.toUpperCase() || '?'}
-              </ThemedText>
-            </View>
-          )}
+          <Image
+            source={avatarSource}
+            style={styles.profileImage}
+            resizeMode="cover"
+          />
         </View>
       </TouchableOpacity>
     </View>

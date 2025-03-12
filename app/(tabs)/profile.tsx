@@ -41,6 +41,7 @@ interface LearnerInfo {
   terms?: string;
   photoURL?: string;
   imagePath?: string;
+  avatar?: string;
 }
 
 interface Grade {
@@ -104,7 +105,8 @@ export default function ProfileScreen() {
           school_longitude: learner.school_longitude || 0,
           curriculum: learner.curriculum || '',
           terms: learner.terms || '',
-          imagePath: user.photoURL || ""
+          imagePath: user.photoURL || "",
+          avatar: learner.avatar || ""
         });
 
         setEditName(name);
@@ -448,8 +450,6 @@ export default function ProfileScreen() {
     >
       <ScrollView style={styles.container}>
         <Header
-          title="Exam Quiz"
-          user={user}
           learnerInfo={learnerInfo}
         />
 

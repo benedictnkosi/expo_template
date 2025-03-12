@@ -7,23 +7,14 @@ import { ThemedText } from '@/components/ThemedText';
 import Toast from 'react-native-toast-message';
 import { updateLearner } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
-
-interface OnboardingData {
-    grade: string;
-    school: string;
-    school_address: string;
-    school_latitude: string;
-    school_longitude: string;
-    curriculum: string;
-    difficultSubject: string;
-    selectedPlan?: string;
-}
+import { OnboardingData } from '../onboarding';
 
 interface RegisterFormProps {
-    onboardingData?: OnboardingData;
+    onboardingData: OnboardingData;
 }
 
 export default function RegisterForm({ onboardingData }: RegisterFormProps) {
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,7 +24,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
     const { signUp } = useAuth();
 
     const handleRegister = async () => {
-        if (!email || !password || !confirmPassword) {
+        if (!name || !email || !password || !confirmPassword) {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
@@ -71,7 +62,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
             // If we have onboarding data, update the learner profile
             if (onboardingData) {
                 const learnerData = {
-                    name: email.split('@')[0], // Use email username as initial name
+                    name: name,
                     grade: parseInt(onboardingData.grade),
                     school: onboardingData.school,
                     school_address: onboardingData.school_address || '',
@@ -80,6 +71,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                     curriculum: onboardingData.curriculum,
                     terms: "1,2,3,4",
                     email: email,
+                    avatar: onboardingData.avatar,
                 };
 
 
@@ -123,6 +115,16 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
         <View style={styles.container} testID="register-form-container">
             <TextInput
                 style={styles.input}
+                placeholder="Name"
+                placeholderTextColor="#94A3B8"
+                value={name}
+                onChangeText={setName}
+                testID="name-input"
+                maxLength={50}
+                accessibilityLabel="Full name input"
+            />
+            <TextInput
+                style={styles.input}
                 placeholder="Email"
                 placeholderTextColor="#94A3B8"
                 value={email}
@@ -158,9 +160,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                         />
                     </TouchableOpacity>
                 </View>
-                <ThemedText style={styles.helperText} testID="password-helper-text">
-                    Password must be at least 6 characters
-                </ThemedText>
+                4721
             </View>
             <View style={styles.passwordContainer}>
                 <TextInput

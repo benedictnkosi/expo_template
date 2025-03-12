@@ -43,6 +43,32 @@ const ILLUSTRATIONS = {
   ready: require('@/assets/images/illustrations/exam.png'),
 };
 
+type AvatarImages = {
+  [key: string]: any;
+};
+
+const AVATAR_IMAGES: AvatarImages = {
+  '1': require('@/assets/images/avatars/1.png'),
+  '2': require('@/assets/images/avatars/2.png'),
+  '3': require('@/assets/images/avatars/3.png'),
+  '4': require('@/assets/images/avatars/4.png'),
+  '5': require('@/assets/images/avatars/5.png'),
+  '6': require('@/assets/images/avatars/6.png'),
+  '7': require('@/assets/images/avatars/7.png'),
+  '8': require('@/assets/images/avatars/8.png'),
+  '9': require('@/assets/images/avatars/9.png'),
+};
+
+export interface OnboardingData {
+  grade: string;
+  school: string;
+  school_address: string;
+  school_latitude: string;
+  school_longitude: string;
+  curriculum: string;
+  difficultSubject: string;
+  avatar: string;
+}
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -63,6 +89,7 @@ export default function OnboardingScreen() {
   const [schoolName, setSchoolName] = useState('');
   const [curriculum, setCurriculum] = useState('');
   const [difficultSubject, setDifficultSubject] = useState('');
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const insets = useSafeAreaInsets();
   const [schoolFunfacts, setSchoolFunfacts] = useState('');
 
@@ -109,7 +136,9 @@ export default function OnboardingScreen() {
       setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
     } else if (step === 4 && !difficultSubject) {
       setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
-    } else if (step === 5) {
+    } else if (step === 5 && !selectedAvatar) {
+      setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
+    } else if (step === 6) {
       handleComplete();
     } else {
       setErrors({ grade: '', school: '', curriculum: '' });
@@ -130,6 +159,8 @@ export default function OnboardingScreen() {
       case 4:
         return 'difficult_subject_selection';
       case 5:
+        return 'avatar_selection';
+      case 6:
         return 'registration';
       default:
         return 'unknown';
@@ -149,6 +180,7 @@ export default function OnboardingScreen() {
         school_longitude: schoolLongitude,
         curriculum,
         difficultSubject,
+        avatar: selectedAvatar,
         onboardingCompleted: true
       }));
 
@@ -160,7 +192,8 @@ export default function OnboardingScreen() {
         school_latitude: schoolLatitude,
         school_longitude: schoolLongitude,
         curriculum,
-        difficult_subject: difficultSubject
+        difficult_subject: difficultSubject,
+        avatar: selectedAvatar
       });
 
       // Navigate to registration screen
@@ -174,6 +207,7 @@ export default function OnboardingScreen() {
           school_longitude: schoolLongitude.toString(),
           curriculum,
           difficultSubject,
+          avatar: selectedAvatar,
         }
       });
 
@@ -392,11 +426,7 @@ export default function OnboardingScreen() {
       case 4:
         return (
           <View style={styles.step}>
-            <Image
-              source={ILLUSTRATIONS.school}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
+
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>
                 🤔 Which subject challenges you the most?
@@ -449,9 +479,53 @@ export default function OnboardingScreen() {
       case 5:
         return (
           <View style={styles.step}>
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle}>
+                🎨 Choose Your Avatar
+              </ThemedText>
+              <ThemedText style={styles.stepSubtitle}>
+                Pick a cool avatar to represent you! ✨
+              </ThemedText>
+            </View>
+            <ScrollView
+              style={styles.avatarsScrollView}
+              contentContainerStyle={styles.avatarsScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.avatarsGrid}>
+                {Object.keys(AVATAR_IMAGES).map((num) => (
+                  <TouchableOpacity
+                    key={num}
+                    style={[
+                      styles.avatarButton,
+                      selectedAvatar === num && styles.avatarButtonSelected
+                    ]}
+                    onPress={() => setSelectedAvatar(num)}
+                    testID={`avatar-button-${num}`}
+                  >
+                    <Image
+                      source={AVATAR_IMAGES[num]}
+                      style={styles.avatarImage}
+                      resizeMode="cover"
+                    />
+                    {selectedAvatar === num && (
+                      <View style={styles.avatarCheckmark}>
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        );
+
+      case 6:
+        return (
+          <View style={styles.step}>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setStep(4)}
+              onPress={() => setStep(5)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -473,6 +547,7 @@ export default function OnboardingScreen() {
                   school_longitude: schoolLongitude.toString(),
                   curriculum,
                   difficultSubject,
+                  avatar: selectedAvatar,
                 }}
               />
             </ScrollView>
@@ -497,6 +572,8 @@ export default function OnboardingScreen() {
       case 4:
         return !!difficultSubject;
       case 5:
+        return !!selectedAvatar;
+      case 6:
         return true;
       default:
         return false;
@@ -513,7 +590,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 5 && (
+        {step < 6 && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
@@ -584,22 +661,23 @@ const styles = StyleSheet.create({
   },
   step: {
     flex: 1,
+    width: '100%',
+    alignItems: 'center',
+  },
+  textContainer: {
+    width: '100%',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 100,
+    marginBottom: 20,
   },
   illustration: {
-    width: '100%',
+    width: '80%',
     height: 200,
     marginBottom: 24,
   },
   bigIllustration: {
     width: '100%',
     marginBottom: 40,
-  },
-  textContainer: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 24,
   },
   welcomeTitle: {
     fontSize: 22,
@@ -1062,23 +1140,25 @@ const styles = StyleSheet.create({
   },
   subjectsScrollView: {
     flex: 1,
-    marginTop: 16,
+    width: '100%',
   },
   subjectsScrollContent: {
-    paddingBottom: 32,
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   subjectButtons: {
     width: '100%',
     gap: 12,
+    flex: 1,
   },
   subjectButton: {
     width: '100%',
-    padding: 16,
+    padding: 20,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 12,
   },
   subjectButtonSelected: {
     borderColor: '#FFFFFF',
@@ -1149,5 +1229,56 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 24,
     opacity: 0.9,
+  },
+  avatarsScrollView: {
+    flex: 1,
+    marginTop: 16,
+  },
+  avatarsScrollContent: {
+    paddingBottom: 32,
+    paddingHorizontal: 16,
+  },
+  avatarsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  avatarButton: {
+    width: '30%',
+    aspectRatio: 1,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  avatarButtonSelected: {
+    borderColor: '#4F46E5',
+    borderWidth: 3,
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarCheckmark: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });

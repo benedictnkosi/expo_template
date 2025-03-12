@@ -80,6 +80,7 @@ export async function getLearner(uid: string): Promise<{
   role?: string;
   points: number;
   streak: number;
+  avatar: string;
 }> {
   const response = await fetch(
     `${API_BASE_URL}/api/learner?uid=${uid}`
@@ -104,6 +105,7 @@ export async function updateLearner(uid: string, data: {
   terms: string;
   curriculum: string;
   email: string;
+  avatar: string;
 }): Promise<{ status: string }> {
   const response = await fetch(
     `${API_BASE_URL}/api/learner/create`,
@@ -122,7 +124,8 @@ export async function updateLearner(uid: string, data: {
         school_longitude: data.school_longitude,
         terms: data.terms,
         curriculum: data.curriculum,
-        email: data.email
+        email: data.email,
+        avatar: data.avatar
       })
     }
   );
