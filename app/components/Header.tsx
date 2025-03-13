@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AuthUser } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ export interface HeaderProps {
 }
 
 export function Header({ title, user, learnerInfo, testID }: HeaderProps) {
-    const { colors, isDark } = useTheme();
+    const { colors } = useTheme();
 
     return (
         <View

@@ -5,9 +5,10 @@ import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemedText } from '@/components/ThemedText';
 import Toast from 'react-native-toast-message';
-import { updateLearner } from '@/services/api';
+import { createLearner } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { OnboardingData } from '../onboarding';
+import { analytics } from '@/services/analytics';
 
 interface RegisterFormProps {
     onboardingData: OnboardingData;
@@ -22,6 +23,18 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const { signUp } = useAuth();
+
+    const logAnalyticsEvent = async (eventName: string, params: {
+        user_id: string;
+        email: string;
+        error?: string;
+    }) => {
+        try {
+            await analytics.track(eventName, params);
+        } catch (error) {
+            console.error('Analytics error:', error);
+        }
+    };
 
     const handleRegister = async () => {
         if (!name || !email || !password || !confirmPassword) {
@@ -75,7 +88,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 };
 
 
-                const learner = await updateLearner(user.uid, learnerData);
+                const learner = await createLearner(user.uid, learnerData);
                 if (learner.status !== 'OK') {
 
                     Toast.show({
@@ -85,7 +98,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                         position: 'bottom'
                     });
 
-                    logAnalyticsEvent('register_failed', {
+                    await logAnalyticsEvent('register_failed', {
                         user_id: user.uid,
                         email: email,
                         error: learner.status
@@ -160,7 +173,6 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                         />
                     </TouchableOpacity>
                 </View>
-                4721
             </View>
             <View style={styles.passwordContainer}>
                 <TextInput
@@ -255,11 +267,3 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 });
-
-function logAnalyticsEvent(eventName: string, params: {
-    user_id: string;
-    email: string;
-    error?: string;
-}) {
-    throw new Error('Function not implemented.');
-}

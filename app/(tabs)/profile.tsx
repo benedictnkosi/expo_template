@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ThemedView } from '../../components/ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { useState, useEffect } from 'react';
-import { getLearner, updateLearner, fetchGrades } from '../../services/api';
+import { getLearner, createLearner, fetchGrades } from '../../services/api';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
@@ -14,7 +14,7 @@ import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Sw
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { analytics } from '../../services/analytics';
-import { API_BASE_URL, API_BASE_URL as ConfigAPI_BASE_URL } from '../../config/api';
+import { API_BASE_URL } from '../../config/api';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { requestNotificationPermissions, scheduleDailyReminder, cancelAllNotifications } from '../../services/notifications';
@@ -47,12 +47,9 @@ interface LearnerInfo {
 interface Grade {
   id: number;
   number: number;
-  active: boolean;
+  active: number;
 }
 
-interface GradesResponse {
-  grades: Grade[];
-}
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -131,7 +128,7 @@ export default function ProfileScreen() {
 
         // Sort grades in descending order (12, 11, 10)
         const sortedGrades = response
-          .filter((grade: Grade) => grade.active === true)
+          .filter((grade: Grade) => grade.active === 1)
           .sort((a: Grade, b: Grade) => b.number - a.number);
 
         setGrades(sortedGrades);
@@ -205,7 +202,7 @@ export default function ProfileScreen() {
         }
       });
 
-      await updateLearner(user.uid, {
+      await createLearner(user.uid, {
         name: editName.trim(),
         grade: parseInt(editGrade),
         school: editSchool,
@@ -214,7 +211,8 @@ export default function ProfileScreen() {
         school_longitude: editSchoolLongitude,
         terms: cleanTerms,
         curriculum: cleanCurriculum,
-        email: user.email || ''
+        email: user.email || '',
+        avatar: learnerInfo?.avatar || ''
       });
 
       setLearnerInfo({
@@ -271,7 +269,7 @@ export default function ProfileScreen() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/learner/delete?uid=${user.uid}`, {
+      const response = await fetch(`${API_BASE_URL}/learner/delete?uid=${user.uid}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

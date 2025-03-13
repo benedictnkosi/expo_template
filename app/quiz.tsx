@@ -51,18 +51,6 @@ interface Question {
     ai_explanation?: string | null;
 }
 
-interface CheckAnswerResponse {
-    status: string;
-    correct: boolean;
-    explanation: string | null;
-    correctAnswer: string;
-    points: number;
-    message: string;
-    lastThreeCorrect: boolean;
-    streak: number;
-    streakUpdated: boolean;
-    subject: string;
-}
 
 interface QuestionResponse extends Question {
     status: string;
@@ -636,7 +624,7 @@ export default function QuizScreen() {
         try {
             setIsLoading(true);
             const response = await fetch(
-                `${API_BASE_URL}/api/question/random?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
+                `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
@@ -821,7 +809,7 @@ export default function QuizScreen() {
         setIsLoadingExplanation(true);
         try {
             const response = await fetch(
-                `${API_BASE_URL}/api/question/ai-explanation?questionId=${questionId}`
+                `${API_BASE_URL}/question/ai-explanation?questionId=${questionId}`
             );
             const data = await response.json();
             if (data.status === "OK") {
@@ -898,9 +886,12 @@ export default function QuizScreen() {
     const handleFavoriteQuestion = async () => {
         if (!user?.uid || !currentQuestion) return;
 
+        // Optimistically update UI
+        setIsCurrentQuestionFavorited(true);
+        setIsFavoriting(true);
+
         try {
-            setIsFavoriting(true);
-            const response = await fetch(`${API_BASE_URL}/api/question/favorite`, {
+            const response = await fetch(`${API_BASE_URL}/question/favorite`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -912,6 +903,8 @@ export default function QuizScreen() {
             });
 
             if (!response.ok) {
+                // Revert optimistic update if request fails
+                setIsCurrentQuestionFavorited(false);
                 throw new Error('Failed to favorite question');
             }
 
@@ -923,10 +916,15 @@ export default function QuizScreen() {
                     text2: 'Added to your favorites list',
                     position: 'bottom'
                 });
-                // Refresh favorites list
-                fetchFavoriteQuestions();
+                // Update favorites list
+                await fetchFavoriteQuestions();
+            } else {
+                // Revert optimistic update if request fails
+                setIsCurrentQuestionFavorited(false);
             }
         } catch (error) {
+            // Revert optimistic update if request fails
+            setIsCurrentQuestionFavorited(false);
             console.error('Error favoriting question:', error);
             Toast.show({
                 type: 'error',
@@ -942,9 +940,12 @@ export default function QuizScreen() {
     const handleUnfavoriteQuestion = async () => {
         if (!user?.uid || !currentQuestion) return;
 
+        // Optimistically update UI
+        setIsCurrentQuestionFavorited(false);
+        setIsFavoriting(true);
+
         try {
-            setIsFavoriting(true);
-            const response = await fetch(`${API_BASE_URL}/api/question/favorite`, {
+            const response = await fetch(`${API_BASE_URL}/question/favorite`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -956,6 +957,8 @@ export default function QuizScreen() {
             });
 
             if (!response.ok) {
+                // Revert optimistic update if request fails
+                setIsCurrentQuestionFavorited(true);
                 throw new Error('Failed to unfavorite question');
             }
 
@@ -967,10 +970,15 @@ export default function QuizScreen() {
                     text2: 'Removed from your favorites list',
                     position: 'bottom'
                 });
-                // Refresh favorites list
-                fetchFavoriteQuestions();
+                // Update favorites list
+                await fetchFavoriteQuestions();
+            } else {
+                // Revert optimistic update if request fails
+                setIsCurrentQuestionFavorited(true);
             }
         } catch (error) {
+            // Revert optimistic update if request fails
+            setIsCurrentQuestionFavorited(true);
             console.error('Error unfavoriting question:', error);
             Toast.show({
                 type: 'error',
@@ -986,11 +994,11 @@ export default function QuizScreen() {
     // Update the checkIfQuestionIsFavorited function
     const checkIfQuestionIsFavorited = useCallback(() => {
         if (!currentQuestion) return;
-        console.log('favoriteQuestions', favoriteQuestions);
-        console.log('currentQuestion', currentQuestion);
         const isFavorited = favoriteQuestions.some(fav => fav.question.id === currentQuestion.id);
-        setIsCurrentQuestionFavorited(isFavorited);
-    }, [currentQuestion, favoriteQuestions]);
+        if (isFavorited !== isCurrentQuestionFavorited) {
+            setIsCurrentQuestionFavorited(isFavorited);
+        }
+    }, [currentQuestion, favoriteQuestions, isCurrentQuestionFavorited]);
 
     // Add effect to check favorite status when question or favorites change
     useEffect(() => {
@@ -1046,7 +1054,7 @@ export default function QuizScreen() {
                                         <Ionicons
                                             name={isCurrentQuestionFavorited ? "star" : "star-outline"}
                                             size={24}
-                                            color={isCurrentQuestionFavorited ? '#FFB800' : (isDark ? '#FFFFFF' : '#000000')}
+                                            color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
                                         />
                                     )}
                                 </TouchableOpacity>
@@ -1188,7 +1196,7 @@ export default function QuizScreen() {
         try {
             setIsFavoritesLoading(true);
             const response = await fetch(
-                `${API_BASE_URL}/api/question/favorite?uid=${user.uid}&subject_name=${subjectName}`
+                `${API_BASE_URL}/question/favorite?uid=${user.uid}&subject_name=${subjectName}`
             );
 
             if (!response.ok) {
@@ -1225,7 +1233,7 @@ export default function QuizScreen() {
         try {
             setIsLoading(true);
             const response = await fetch(
-                `${API_BASE_URL}/api/question/random?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
+                `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
             );
             if (!response.ok) throw new Error('Failed to fetch question');
             const data: QuestionResponse = await response.json();

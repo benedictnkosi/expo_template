@@ -17,8 +17,7 @@ import { API_BASE_URL } from '@/config/api';
 // Add function before WebBrowser.maybeCompleteAuthSession()
 async function getSchoolFunfacts(schoolName: string) {
   try {
-    console.log(`${API_BASE_URL}/api/school/fact?school_name=${encodeURIComponent(schoolName)}`);
-    const response = await fetch(`${API_BASE_URL}/api/school/fact?school_name=${encodeURIComponent(schoolName)}`);
+    const response = await fetch(`${API_BASE_URL}/school/fact?school_name=${encodeURIComponent(schoolName)}`);
     const data = await response.json();
     if (data.status === "OK") {
       return {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, View, ActivityIndicator, ScrollView, Image, Platform, Modal, Linking, Share } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -193,14 +193,14 @@ export default function HomeScreen() {
               acc[baseName] = {
                 id: curr.id.toString(),
                 name: baseName,
-                total_questions: curr.question_count || 0,
-                answered_questions: curr.result_count || 0,
-                correct_answers: curr.correct_count || 0
+                total_questions: curr.totalSubjectQuestions || 0,
+                answered_questions: curr.totalResults || 0,
+                correct_answers: curr.correctAnswers || 0
               };
             } else {
-              acc[baseName].total_questions += curr.question_count || 0;
-              acc[baseName].answered_questions += curr.result_count || 0;
-              acc[baseName].correct_answers += curr.correct_count || 0;
+              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+              acc[baseName].answered_questions += curr.totalResults || 0;
+              acc[baseName].correct_answers += curr.correctAnswers || 0;
             }
 
             return acc;
