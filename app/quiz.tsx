@@ -695,43 +695,27 @@ export default function QuizScreen() {
             setIsAnswerLoading(true);
             setSelectedAnswer(answer);
 
-            const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration);
+            // Get the correct answer from the current question
+            const correctAnswer = cleanAnswer(currentQuestion.answer);
 
-            // Calculate points
-            const points = response.correct ? (response.lastThreeCorrect ? 3 : 1) : 0;
+            // Check if the selected answer is correct locally
+            const isCorrect = correctAnswer.includes(answer);
 
+            // Update UI immediately based on local check
             setShowFeedback(true);
-            setIsCorrect(response.correct);
-            setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
-            setIsFireMode(response.lastThreeCorrect || false);
+            setIsCorrect(isCorrect);
+            setFeedbackMessage(isCorrect ? getRandomSuccessMessage() : getRandomWrongMessage());
 
-            // Handle streak modal
-            if (response.streakUpdated) {
-                setCurrentStreak(response.streak);
-                setShowStreakModal(true);
-            }
+            // Play sound based on local check
+            await playSound(isCorrect);
 
-            if (response.correct) {
-                setEarnedPoints(points);
-                setShowPoints(true);
-                setTimeout(() => {
-                    setShowPoints(false);
-                }, 3000);
-            }
-
-            // Play sound using the new playSound function
-            await playSound(response.correct);
-
-            // Log answer submission
-            logAnalyticsEvent('submit_answer', {
-                user_id: user.uid,
-                question_id: currentQuestion.id,
-                is_correct: response.correct,
+            // Scroll to bottom to show feedback
+            requestAnimationFrame(() => {
+                scrollToBottom();
             });
 
-
             // Check if we should show rating prompt after correct answer
-            if (response.correct) {
+            if (isCorrect) {
                 try {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
@@ -761,9 +745,40 @@ export default function QuizScreen() {
                 }
             }
 
-            requestAnimationFrame(() => {
-                scrollToBottom();
-            });
+            // Call API asynchronously to record progress
+            checkAnswer(user.uid, currentQuestion.id, answer, duration)
+                .then(response => {
+                    // Update additional UI elements based on API response
+                    setIsFireMode(response.lastThreeCorrect || false);
+
+                    // Handle streak modal if available in the response and streakUpdated is true
+                    if (response.streakUpdated) {
+                        setCurrentStreak(response.streak);
+                        setShowStreakModal(true);
+                    }
+
+                    // Show points animation if correct
+                    if (isCorrect) {
+                        const points = response.lastThreeCorrect ? 3 : 1;
+                        setEarnedPoints(points);
+                        setShowPoints(true);
+                        setTimeout(() => {
+                            setShowPoints(false);
+                        }, 3000);
+                    }
+
+                    // Log analytics event
+                    logAnalyticsEvent('submit_answer', {
+                        user_id: user.uid,
+                        question_id: currentQuestion.id,
+                        correct: isCorrect,
+                        time_taken: duration
+                    });
+                })
+                .catch(error => {
+                    console.error('Error recording answer:', error);
+                    // The user already has feedback, so we don't need to show an error toast
+                });
 
         } catch (error) {
             console.error('Error submitting answer:', error);
@@ -2063,7 +2078,7 @@ export default function QuizScreen() {
                         <Ionicons name="checkmark-circle" size={60} color="#22C55E" />
                     </View>
                     <ThemedText style={[styles.thankYouTitle, { color: colors.text }]}>
-                        🎉 You’re Awesome! 🙌
+                        🎉 You're Awesome! 🙌
                     </ThemedText>
                     <ThemedText style={[styles.thankYouMessage, { color: colors.textSecondary }]}>
                         Your feedback helps us level up our questions! Thanks for making the quiz even better. 🚀💡

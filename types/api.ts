@@ -85,4 +85,6 @@ export interface CheckAnswerResponse {
   message: string;
   lastThreeCorrect: boolean;
   subject: string;
+  streakUpdated: boolean;
+  streak: number;
 } 
