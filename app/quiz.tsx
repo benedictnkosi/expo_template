@@ -50,6 +50,10 @@ interface Question {
     explanation: string;
     curriculum?: string;
     ai_explanation?: string | null;
+    subject: {
+        id: number;
+        name: string;
+    }
 }
 
 
@@ -292,6 +296,20 @@ const WRONG_ANSWER_MESSAGES = [
 function getRandomWrongMessage(): string {
     const randomIndex = Math.floor(Math.random() * WRONG_ANSWER_MESSAGES.length);
     return WRONG_ANSWER_MESSAGES[randomIndex];
+}
+
+// Add this array for favorite card colors
+const FAVORITE_CARD_COLORS = [
+    '#FF9FF3', // Pink
+    '#FF9A8B', // Coral
+    '#A0E57C', // Green
+    '#FFF07C', // Yellow
+    '#A0DDFF', // Light Blue
+];
+
+// Helper function to get a color for a card based on index
+function getFavoriteCardColor(index: number): string {
+    return FAVORITE_CARD_COLORS[index % FAVORITE_CARD_COLORS.length];
 }
 
 const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
@@ -757,8 +775,8 @@ export default function QuizScreen() {
                         setShowStreakModal(true);
                     }
 
-                    // Show points animation if correct
-                    if (isCorrect) {
+                    // Show points animation if correct and the question is not favorited
+                    if (isCorrect && !isCurrentQuestionFavorited) {
                         const points = response.lastThreeCorrect ? 3 : 1;
                         setEarnedPoints(points);
                         setShowPoints(true);
@@ -1265,8 +1283,10 @@ export default function QuizScreen() {
     }, [user?.uid]);
 
     const loadSpecificQuestion = async (questionId: number) => {
-        if (!user?.uid || !subjectName) return;
-        setSelectedPaper('P1'); // Default to Paper 1, adjust if needed
+        if (!user?.uid || !subjectName) {
+            console.log("No user or subject name");
+            return;
+        };
         try {
             setIsLoading(true);
             const response = await fetch(
@@ -1276,16 +1296,26 @@ export default function QuizScreen() {
             const data: QuestionResponse = await response.json();
             setCurrentQuestion(data);
 
+            // Set the selectedPaper to ensure the question is displayed, split and get the last part
+            setSelectedPaper(data.subject.name.split(" ").pop() || 'P1');
+
             // Check if this question is in favorites and set the star accordingly
             const isFavorited = favoriteQuestions.some(fav => fav.questionId === questionId);
             setIsCurrentQuestionFavorited(isFavorited);
 
             setNoMoreQuestions(false);
+
+            // Reset the UI state for a new question
+            setSelectedAnswer(null);
+            setShowFeedback(false);
+            setIsCorrect(null);
+            setFeedbackMessage('');
         } catch (error) {
+            console.error('Error loading favorite question:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: 'Failed to load question',
+                text2: 'Failed to load saved question',
                 position: 'bottom'
             });
         } finally {
@@ -1365,14 +1395,15 @@ export default function QuizScreen() {
                         {/* Divider */}
                         <View style={[styles.divider, {
                             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                            marginVertical: 24
+                            marginTop: 24,
+                            marginBottom: 0
                         }]} />
 
                         {/* Favorites Section */}
                         <View style={[styles.favoritesSection]}>
                             <View style={styles.favoritesTitleContainer}>
                                 <ThemedText style={[styles.favoritesTitle, { color: colors.text }]}>
-                                    ⭐ Your Favorite Questions
+                                    ⭐ Favorite Questions
                                 </ThemedText>
                                 {isFavoritesLoading && (
                                     <ActivityIndicator size="small" color={colors.primary} />
@@ -1380,52 +1411,38 @@ export default function QuizScreen() {
                             </View>
 
                             {favoriteQuestions.length > 0 ? (
-                                <View style={[styles.favoritesList, {
-                                    backgroundColor: isDark ? colors.card : '#FFFFFF',
-                                    borderColor: colors.border
-                                }]}>
-                                    {favoriteQuestions.map((fav, index) => (
-                                        <TouchableOpacity
-                                            key={fav.id}
-                                            style={[styles.favoriteItem, {
-                                                borderBottomColor: colors.border,
-                                                borderBottomWidth: index < favoriteQuestions.length - 1 ? 1 : 0
-                                            }]}
-                                            onPress={() => loadSpecificQuestion(fav.questionId)}
-                                        >
-                                            <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}>
-                                                {/* Display question text if available */}
-                                                {fav.question && fav.question.trim() ? (
-                                                    fav.question.length > 50
-                                                        ? `${fav.question.split('\n')[0].substring(0, 50)}...`
-                                                        : fav.question.split('\n')[0]
-                                                ) : fav.context && fav.context.trim() ? (
-                                                    // Otherwise display context if available
-                                                    fav.context.length > 50
-                                                        ? `${fav.context.split('\n')[0].substring(0, 50)}...`
-                                                        : fav.context.split('\n')[0]
-                                                ) : (
-                                                    // Fallback to question ID
-                                                    `Question #${fav.questionId || 'Unknown'}`
-                                                )}
-                                            </ThemedText>
+                                <View style={styles.favoritesGrid}>
+                                    {favoriteQuestions.map((fav, index) => {
+                                        // Get display text for the card
+                                        const displayText = fav.question && fav.question.trim()
+                                            ? fav.question.split('\n')[0]
+                                            : fav.context && fav.context.trim()
+                                                ? fav.context.split('\n')[0]
+                                                : `Question #${fav.questionId || 'Unknown'}`;
 
-
-                                            <Ionicons
-                                                name="chevron-forward"
-                                                size={20}
-                                                color={colors.text}
-                                            />
-                                        </TouchableOpacity>
-                                    ))}
+                                        return (
+                                            <TouchableOpacity
+                                                key={fav.id}
+                                                style={[
+                                                    styles.favoriteCard,
+                                                    { backgroundColor: getFavoriteCardColor(index) }
+                                                ]}
+                                                onPress={() => loadSpecificQuestion(fav.questionId)}
+                                            >
+                                                <ThemedText style={styles.favoriteCardText} numberOfLines={4}>
+                                                    {displayText}
+                                                </ThemedText>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
                                 </View>
                             ) : !isFavoritesLoading && (
                                 <View style={[styles.emptyFavorites, {
-                                    backgroundColor: isDark ? colors.card : '#FFFFFF',
-                                    borderColor: colors.border
+                                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
                                 }]}>
                                     <ThemedText style={[styles.emptyFavoritesText, { color: colors.textSecondary }]}>
-                                        No favorite questions yet! 🌟
+                                        No saved questions yet! 🌟
                                     </ThemedText>
                                 </View>
                             )}
@@ -3010,40 +3027,45 @@ const styles = StyleSheet.create({
     favoritesSection: {
         width: '100%',
         paddingHorizontal: 16,
+        position: 'relative',
+        paddingTop: 16,
     },
     favoritesTitleContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: 12,
     },
     favoritesTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        lineHeight: 28,
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 34,
     },
-    favoritesList: {
-        borderWidth: 1,
-        borderRadius: 12,
-        marginTop: 12,
-        overflow: 'hidden',
+    favoritesGrid: {
+        flexDirection: 'column',
+        marginTop: 4, // Reduce space between title and first card
     },
-    favoriteItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        borderBottomWidth: 1,
+    favoriteCard: {
+        width: '100%',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    favoriteItemText: {
-        fontSize: 12,
+    favoriteCardText: {
+        fontSize: 14,
         fontWeight: '500',
+        color: '#000000',
+        lineHeight: 20,
     },
     emptyFavorites: {
         padding: 24,
         borderWidth: 2,
-        borderRadius: 12,
+        borderRadius: 16,
         borderStyle: 'dashed',
         justifyContent: 'center',
         alignItems: 'center',
@@ -3053,6 +3075,24 @@ const styles = StyleSheet.create({
         fontSize: 16,
         textAlign: 'center',
         lineHeight: 24,
+    },
+    addButtonContainer: {
+        position: 'absolute',
+        bottom: 16,
+        right: 16,
+        zIndex: 1,
+    },
+    addButton: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
     },
     favoriteButton: {
         width: 36,
@@ -3225,4 +3265,4 @@ function getProgressBarColor(progress: number): string {
     if (progress >= 60) return '#3B82F6'; // Blue
     if (progress >= 40) return '#F59E0B'; // Yellow
     return '#EF4444'; // Red
-} 
+}
