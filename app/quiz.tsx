@@ -469,6 +469,7 @@ export default function QuizScreen() {
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
     const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+    const [isThankYouModalVisible, setIsThankYouModalVisible] = useState(false);
     const [reportComment, setReportComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const insets = useSafeAreaInsets();
@@ -604,15 +605,16 @@ export default function QuizScreen() {
                 comment: reportComment
             });
 
-            Toast.show({
-                type: 'success',
-                text1: 'Thank you',
-                text2: 'Issue reported successfully',
-                position: 'bottom'
-            });
+            // Close the report modal and show thank you modal
             setIsReportModalVisible(false);
+            setIsThankYouModalVisible(true);
             setReportComment('');
-            loadRandomQuestion(selectedPaper || '');
+
+            // Log analytics event
+            logAnalyticsEvent('report_issue', {
+                user_id: user?.uid,
+                question_id: currentQuestion?.id
+            });
         } catch (error) {
             console.error('Error reporting issue:', error);
             Toast.show({
@@ -2042,6 +2044,41 @@ export default function QuizScreen() {
                 onClose={() => setShowStreakModal(false)}
                 streak={currentStreak}
             />
+
+            {/* Thank You Modal */}
+            <Modal
+                isVisible={isThankYouModalVisible}
+                onBackdropPress={() => {
+                    setIsThankYouModalVisible(false);
+                    loadRandomQuestion(selectedPaper || '');
+                }}
+                useNativeDriver={true}
+                style={[styles.modal, { marginTop: insets.top }]}
+                testID="thank-you-modal"
+            >
+                <View style={[styles.thankYouModalContent, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF'
+                }]}>
+                    <View style={styles.thankYouIconContainer}>
+                        <Ionicons name="checkmark-circle" size={60} color="#22C55E" />
+                    </View>
+                    <ThemedText style={[styles.thankYouTitle, { color: colors.text }]}>
+                        🎉 You’re Awesome! 🙌
+                    </ThemedText>
+                    <ThemedText style={[styles.thankYouMessage, { color: colors.textSecondary }]}>
+                        Your feedback helps us level up our questions! Thanks for making the quiz even better. 🚀💡
+                    </ThemedText>
+                    <TouchableOpacity
+                        style={[styles.thankYouButton, { backgroundColor: colors.primary }]}
+                        onPress={() => {
+                            setIsThankYouModalVisible(false);
+                            loadRandomQuestion(selectedPaper || '');
+                        }}
+                    >
+                        <ThemedText style={styles.thankYouButtonText}>Keep Going 🚀</ThemedText>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
         </LinearGradient>
     );
 }
@@ -3128,6 +3165,43 @@ const styles = StyleSheet.create({
         width: '100%',
         backgroundColor: '#E2E8F0',
         marginHorizontal: 16,
+    },
+    // Thank You Modal Styles
+    thankYouModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        maxWidth: 400,
+        width: '90%',
+        alignSelf: 'center',
+    },
+    thankYouIconContainer: {
+        marginBottom: 16,
+    },
+    thankYouTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    thankYouMessage: {
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 24,
+        lineHeight: 24,
+    },
+    thankYouButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        width: '100%',
+        alignItems: 'center',
+    },
+    thankYouButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 
