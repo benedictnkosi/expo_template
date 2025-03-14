@@ -79,6 +79,7 @@ export default function ProfileScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Available options
   const TERMS = [1, 2, 3, 4];
@@ -143,6 +144,12 @@ export default function ProfileScreen() {
     // Check if notifications are enabled
     AsyncStorage.getItem('notificationsEnabled').then(value => {
       setNotificationsEnabled(value === 'true');
+    });
+
+    // Check if sound is enabled
+    AsyncStorage.getItem('soundEnabled').then(value => {
+      // Default to true if not set
+      setSoundEnabled(value === null ? true : value === 'true');
     });
   }, []);
 
@@ -439,6 +446,34 @@ export default function ProfileScreen() {
     }
   };
 
+  const toggleSound = async () => {
+    try {
+      const newSoundState = !soundEnabled;
+      await AsyncStorage.setItem('soundEnabled', newSoundState.toString());
+      setSoundEnabled(newSoundState);
+
+      // Track sound preference change
+      await logAnalyticsEvent('sound_preference_changed', {
+        user_id: user?.uid,
+        enabled: newSoundState
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: newSoundState ? 'Sounds enabled' : 'Sounds disabled',
+        position: 'bottom'
+      });
+    } catch (error) {
+      console.error('Error toggling sound settings:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update sound settings',
+        position: 'bottom'
+      });
+    }
+  };
+
   return (
     <LinearGradient
       colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -709,6 +744,22 @@ export default function ProfileScreen() {
               onValueChange={toggleNotifications}
               trackColor={{ false: isDark ? '#555555' : '#E2E8F0', true: colors.primary }}
               thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
+            />
+          </View>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Question Sounds</ThemedText>
+              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Play sounds for correct and incorrect answers
+              </ThemedText>
+            </View>
+            <Switch
+              value={soundEnabled}
+              onValueChange={toggleSound}
+              trackColor={{ false: isDark ? '#555555' : '#E2E8F0', true: colors.primary }}
+              thumbColor={soundEnabled ? '#FFFFFF' : '#FFFFFF'}
+              testID="sound-toggle-switch"
             />
           </View>
         </ThemedView>

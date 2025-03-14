@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { analytics } from '../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -310,9 +311,17 @@ const ImageLoadingPlaceholder = () => (
 
 // Update the FavoriteQuestion interface
 interface FavoriteQuestion {
-    id: number;
-    created_at: string;
-    question: Question;
+    id: string;
+    createdAt: {
+        date: string;
+        timezone_type: number;
+        timezone: string;
+    };
+    questionId: number;
+    question: string;
+    aiExplanation: string;
+    subjectId: number;
+    context: string;
 }
 
 // Add this component near the top of the file, after imports
@@ -546,9 +555,15 @@ export default function QuizScreen() {
 
     const playSound = async (isCorrect: boolean) => {
         try {
-            const soundToPlay = isCorrect ? correctSound.current : incorrectSound.current;
-            if (soundToPlay) {
-                await soundToPlay.replayAsync();
+            // Check if sound is enabled in AsyncStorage
+            const soundEnabled = await AsyncStorage.getItem('soundEnabled');
+
+            // Only play sound if it's enabled (null means default which is true)
+            if (soundEnabled === null || soundEnabled === 'true') {
+                const soundToPlay = isCorrect ? correctSound.current : incorrectSound.current;
+                if (soundToPlay) {
+                    await soundToPlay.replayAsync();
+                }
             }
         } catch (error) {
             console.log('Error playing sound:', error);
@@ -991,10 +1006,10 @@ export default function QuizScreen() {
         }
     };
 
-    // Update the checkIfQuestionIsFavorited function
+    // Check if the current question is in favorites
     const checkIfQuestionIsFavorited = useCallback(() => {
         if (!currentQuestion) return;
-        const isFavorited = favoriteQuestions.some(fav => fav.question.id === currentQuestion.id);
+        const isFavorited = favoriteQuestions.some(fav => fav.questionId === currentQuestion.id);
         if (isFavorited !== isCurrentQuestionFavorited) {
             setIsCurrentQuestionFavorited(isFavorited);
         }
@@ -1341,21 +1356,22 @@ export default function QuizScreen() {
                                                 borderBottomColor: colors.border,
                                                 borderBottomWidth: index < favoriteQuestions.length - 1 ? 1 : 0
                                             }]}
-                                            onPress={() => loadSpecificQuestion(fav.question.id)}
+                                            onPress={() => loadSpecificQuestion(fav.questionId)}
                                         >
                                             <ThemedText style={[styles.favoriteItemText, { color: colors.text }]}>
-                                                {(fav.question.ai_explanation ?
-                                                    fav.question.ai_explanation.split('\n')[0].replace(/^-\s*/, '').replace(/^##\s*/, '').replace(/^#\s*/, '') :
-                                                    ((fav.question.question && fav.question.question.length > 0) ?
-                                                        (fav.question.question.length > 50 ?
-                                                            `${fav.question.question.split('\n')[0].substring(0, 50)}...` :
-                                                            fav.question.question) :
-                                                        (fav.question.context && fav.question.context.length > 0) ?
-                                                            (fav.question.context.length > 50 ?
-                                                                `${fav.question.context.split('\n')[0].substring(0, 50)}...` :
-                                                                fav.question.context) :
-                                                            `Question #${fav.question.id}`
-                                                    )
+                                                {/* Display question text if available */}
+                                                {fav.question && fav.question.trim() ? (
+                                                    fav.question.length > 50
+                                                        ? `${fav.question.split('\n')[0].substring(0, 50)}...`
+                                                        : fav.question.split('\n')[0]
+                                                ) : fav.context && fav.context.trim() ? (
+                                                    // Otherwise display context if available
+                                                    fav.context.length > 50
+                                                        ? `${fav.context.split('\n')[0].substring(0, 50)}...`
+                                                        : fav.context.split('\n')[0]
+                                                ) : (
+                                                    // Fallback to question ID
+                                                    `Question #${fav.questionId || 'Unknown'}`
                                                 )}
                                             </ThemedText>
 
