@@ -382,7 +382,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">📚 Let's Dive into Fun Learning!</ThemedText>
+        <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">📚 Learn, Play, and Grow!</ThemedText>
 
         <View style={styles.subjectsGrid} testID="subjects-grid">
           {(() => {

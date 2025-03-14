@@ -80,6 +80,7 @@ export default function ProfileScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const googlePlacesRef = React.useRef<any>(null);
 
   // Available options
   const TERMS = [1, 2, 3, 4];
@@ -481,7 +482,11 @@ export default function ProfileScreen() {
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+      >
         <Header
           learnerInfo={learnerInfo}
         />
@@ -574,6 +579,18 @@ export default function ProfileScreen() {
                         setEditSchoolLatitude(details.geometry.location.lat);
                         setEditSchoolLongitude(details.geometry.location.lng);
                       }
+
+                      // Force a re-render by triggering a state update
+                      setTimeout(() => {
+                        // This empty setState forces a re-render
+                        setEditName(prev => prev);
+
+                        // Clear the search input
+                        if (googlePlacesRef.current) {
+                          googlePlacesRef.current.clear();
+                          googlePlacesRef.current.blur();
+                        }
+                      }, 100);
                     }}
                     fetchDetails={true}
                     query={{
@@ -582,6 +599,19 @@ export default function ProfileScreen() {
                       types: 'school',
                       language: 'en',
                     }}
+                    enablePoweredByContainer={false}
+                    textInputProps={{
+                      clearButtonMode: 'while-editing',
+                      autoCorrect: false,
+                      autoCapitalize: 'none',
+                    }}
+                    key={`school-search-${editSchool}`} // Add a key to force re-render when school changes
+                    listViewDisplayed={false} // Only show list when user is typing
+                    disableScroll={true} // Disable scrolling in the component
+                    keyboardShouldPersistTaps="handled"
+                    nearbyPlacesAPI="GooglePlacesSearch"
+                    debounce={300}
+                    minLength={2}
                     styles={{
                       container: styles.searchContainer,
                       textInput: [
@@ -605,6 +635,7 @@ export default function ProfileScreen() {
                         color: colors.text
                       }
                     }}
+                    ref={googlePlacesRef}
                   />
                 </View>
               </View>
@@ -1252,10 +1283,16 @@ const styles = StyleSheet.create({
   },
   searchWrapper: {
     marginTop: 8,
+    zIndex: 1,
+    position: 'relative',
+    height: 50,
+    marginBottom: 60,
   },
   searchContainer: {
     flex: 0,
     width: '100%',
+    position: 'absolute',
+    zIndex: 2,
   },
   searchInput: {
     height: 50,
@@ -1366,5 +1403,12 @@ const styles = StyleSheet.create({
   },
   paperButtonDisabled: {
     opacity: 0.5,
+  },
+  clearSchoolButton: {
+    marginTop: 8,
+    padding: 6,
+    alignSelf: 'flex-start',
+    borderRadius: 4,
+    backgroundColor: 'rgba(220, 38, 38, 0.1)',
   },
 }); 

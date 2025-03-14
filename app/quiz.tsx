@@ -713,27 +713,61 @@ export default function QuizScreen() {
             setIsAnswerLoading(true);
             setSelectedAnswer(answer);
 
-            // Get the correct answer from the current question
-            const correctAnswer = cleanAnswer(currentQuestion.answer);
+            const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration);
 
-            // Check if the selected answer is correct locally
-            const isCorrect = correctAnswer.includes(answer);
+            // Calculate points
+            const points = response.correct ? (response.lastThreeCorrect ? 3 : 1) : 0;
 
-            // Update UI immediately based on local check
             setShowFeedback(true);
-            setIsCorrect(isCorrect);
-            setFeedbackMessage(isCorrect ? getRandomSuccessMessage() : getRandomWrongMessage());
+            setIsCorrect(response.correct);
+            setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
+            setIsFireMode(response.lastThreeCorrect || false);
 
-            // Play sound based on local check
-            await playSound(isCorrect);
+            // Handle streak modal
+            if (response.streakUpdated) {
+                setCurrentStreak(response.streak);
+                setShowStreakModal(true);
+            }
 
-            // Scroll to bottom to show feedback
-            requestAnimationFrame(() => {
-                scrollToBottom();
+            if (response.correct) {
+                setEarnedPoints(points);
+                setShowPoints(true);
+                setTimeout(() => {
+                    setShowPoints(false);
+                }, 3000);
+            }
+
+            // Update local stats immediately
+            if (stats) {
+                setStats({
+                    total_answers: stats.total_answers + 1,
+                    correct_answers: response.correct
+                        ? stats.correct_answers + 1
+                        : stats.correct_answers,
+                    incorrect_answers: !response.correct
+                        ? stats.incorrect_answers + 1
+                        : stats.incorrect_answers,
+                    correct_percentage: response.correct
+                        ? ((stats.correct_answers + 1) / (stats.total_answers + 1)) * 100
+                        : (stats.correct_answers / (stats.total_answers + 1)) * 100,
+                    incorrect_percentage: !response.correct
+                        ? ((stats.incorrect_answers + 1) / (stats.total_answers + 1)) * 100
+                        : (stats.incorrect_answers / (stats.total_answers + 1)) * 100,
+                });
+            }
+
+            // Play sound using the new playSound function
+            await playSound(response.correct);
+
+            // Log answer submission
+            logAnalyticsEvent('submit_answer', {
+                user_id: user.uid,
+                question_id: currentQuestion.id,
+                is_correct: response.correct,
             });
 
             // Check if we should show rating prompt after correct answer
-            if (isCorrect) {
+            if (response.correct) {
                 try {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
@@ -763,40 +797,9 @@ export default function QuizScreen() {
                 }
             }
 
-            // Call API asynchronously to record progress
-            checkAnswer(user.uid, currentQuestion.id, answer, duration)
-                .then(response => {
-                    // Update additional UI elements based on API response
-                    setIsFireMode(response.lastThreeCorrect || false);
-
-                    // Handle streak modal if available in the response and streakUpdated is true
-                    if (response.streakUpdated) {
-                        setCurrentStreak(response.streak);
-                        setShowStreakModal(true);
-                    }
-
-                    // Show points animation if correct and the question is not favorited
-                    if (isCorrect && !isCurrentQuestionFavorited) {
-                        const points = response.lastThreeCorrect ? 3 : 1;
-                        setEarnedPoints(points);
-                        setShowPoints(true);
-                        setTimeout(() => {
-                            setShowPoints(false);
-                        }, 3000);
-                    }
-
-                    // Log analytics event
-                    logAnalyticsEvent('submit_answer', {
-                        user_id: user.uid,
-                        question_id: currentQuestion.id,
-                        correct: isCorrect,
-                        time_taken: duration
-                    });
-                })
-                .catch(error => {
-                    console.error('Error recording answer:', error);
-                    // The user already has feedback, so we don't need to show an error toast
-                });
+            requestAnimationFrame(() => {
+                scrollToBottom();
+            });
 
         } catch (error) {
             console.error('Error submitting answer:', error);
@@ -864,7 +867,7 @@ export default function QuizScreen() {
         setIsLoadingExplanation(true);
         try {
             const response = await fetch(
-                `${API_BASE_URL}/question/ai-explanation?questionId=${questionId}`
+                `${API_BASE_URL}/question/ai-explanation?question_id=${questionId}`
             );
             const data = await response.json();
             if (data.status === "OK") {
@@ -1094,32 +1097,48 @@ export default function QuizScreen() {
                                         <ThemedText style={styles.badgeText}>{currentQuestion.curriculum}</ThemedText>
                                     </View>
                                 )}
-
-                                <TouchableOpacity
-                                    onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
-                                    disabled={isFavoriting}
-                                    style={[styles.favoriteButton, {
-                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                                        marginLeft: 'auto'
-                                    }]}
-                                >
-                                    {isFavoriting ? (
-                                        <ActivityIndicator size="small" color={colors.primary} />
-                                    ) : (
-                                        <Ionicons
-                                            name={isCurrentQuestionFavorited ? "star" : "star-outline"}
-                                            size={24}
-                                            color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
-                                        />
-                                    )}
-                                </TouchableOpacity>
-
+                                {currentQuestion && (
+                                    <TouchableOpacity
+                                        onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
+                                        disabled={isFavoriting}
+                                        style={[styles.favoriteButton, {
+                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                            marginLeft: 'auto',
+                                            marginRight: 56 // Add margin to create space from the close button
+                                        }]}
+                                    >
+                                        {isFavoriting ? (
+                                            <ActivityIndicator size="small" color={colors.primary} />
+                                        ) : (
+                                            <Ionicons
+                                                name={isCurrentQuestionFavorited ? "star" : "star-outline"}
+                                                size={14} // Increase size for better visibility
+                                                color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
+                                            />
+                                        )}
+                                    </TouchableOpacity>
+                                )}
                             </>
-
-
                         )}
                     </View>
                 </View>
+
+
+            </View>
+
+            <View style={styles.headerButtonsContainer}>
+                <TouchableOpacity
+                    style={[styles.headerButton, {
+                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                    }]}
+                    onPress={() => {
+                        // Reset selected paper to show paper selection screen
+                        setSelectedPaper(null);
+                    }}
+                    testID="close-button"
+                >
+                    <Ionicons name="close" size={22} color="#FFFFFF" />
+                </TouchableOpacity>
             </View>
         </LinearGradient>
     );
@@ -1665,11 +1684,29 @@ export default function QuizScreen() {
                                                         { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
                                                     ],
                                                     showFeedback && selectedAnswer === value && (
-                                                        (Array.isArray(JSON.parse(currentQuestion.answer))
-                                                            ? JSON.parse(currentQuestion.answer).includes(value)
-                                                            : JSON.parse(currentQuestion.answer) === value)
-                                                            ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                            : [styles.wrongOption, { borderColor: '#FF3B30' }]
+                                                        (() => {
+                                                            try {
+                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+
+                                                                const parsedAnswer = currentQuestion.answer.startsWith('[')
+                                                                    ? JSON.parse(currentQuestion.answer)
+                                                                    : currentQuestion.answer;
+
+                                                                return (Array.isArray(parsedAnswer)
+                                                                    ? parsedAnswer.includes(value)
+                                                                    : parsedAnswer === value)
+                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                                            } catch (error) {
+                                                                console.error('Error parsing answer:', error);
+                                                                // Default to comparing as strings if parsing fails
+                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+
+                                                                return currentQuestion.answer === value
+                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                                            }
+                                                        })()
                                                     )
                                                 ]}
                                                 onPress={() => handleAnswer(value)}
@@ -1857,11 +1894,11 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => setSelectedPaper(null)}
-                        testID="show-papers-button"
+                        onPress={() => router.replace('/(tabs)')}
+                        testID="home-button"
                     >
-                        <Ionicons name="options-outline" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>Menu</ThemedText>
+                        <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+                        <ThemedText style={styles.footerButtonText}>Home</ThemedText>
                     </TouchableOpacity>
                 </LinearGradient>
             </ThemedView>
@@ -2186,15 +2223,35 @@ const styles = StyleSheet.create({
 
     },
     subjectHeader: {
-        padding: 24,
-        borderBottomLeftRadius: 8,
-        borderBottomRightRadius: 8,
-        marginBottom: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
+        overflow: 'hidden',
+        position: 'relative',
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
+        position: 'relative',
+    },
+    headerButtonsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        zIndex: 10,
+    },
+    headerButton: {
+        padding: 8,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 40,
+        height: 40,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
     },
     iconContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -3095,12 +3152,12 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     favoriteButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
+        padding: 5,
+        borderRadius: 20,
+        width: 32,
+        height: 32,
         alignItems: 'center',
-        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+        justifyContent: 'center',
     },
     questionHeader: {
         flexDirection: 'row',

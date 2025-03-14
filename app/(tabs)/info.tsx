@@ -16,43 +16,43 @@ interface FAQItem {
 const faqs: FAQItem[] = [
   {
     question: "How does ExamQuiz work?",
-    answer: "ExamQuiz helps you practice with real past exam questions. Choose your subjects, select Paper 1 or Paper 2, and start practicing! Each question comes with detailed solutions and explanations. Your progress is tracked separately for each paper and subject."
+    answer: "ExamQuiz helps you practice with real past exam questions tailored to your grade and curriculum. Choose your subjects, select Paper 1 or Paper 2, and start practicing! Each question comes with detailed solutions and explanations. Your progress is tracked separately for each paper and subject, helping you focus on areas that need improvement."
   },
   {
     question: "What is the difference between Paper 1 and Paper 2?",
-    answer: "Each subject is divided into Paper 1 and Paper 2, following the official exam structure. Each paper covers different topics and sections of the curriculum. You can practice both papers separately to ensure complete preparation."
+    answer: "Each subject is divided into Paper 1 and Paper 2, following the official exam structure. Each paper covers different topics and sections of the curriculum. Paper 1 typically focuses on theory and conceptual understanding, while Paper 2 often covers practical applications and problem-solving. You can practice both papers separately to ensure complete preparation."
   },
   {
     question: "How does the AI help me learn?",
-    answer: "Our AI assistant helps explain concepts in detail when you get a question wrong. It breaks down the solution step-by-step, identifies where you might have gone wrong, and provides additional examples to help you understand."
+    answer: "Our AI assistant provides personalized learning support in multiple ways: it explains concepts in detail when you get a question wrong, breaks down solutions step-by-step, identifies your specific misconceptions, and provides additional examples tailored to your learning style. The AI adapts to your performance over time, focusing more on areas where you need extra help."
   },
   {
     question: "How do I select my curriculum and terms?",
-    answer: "In your profile settings, you can choose between CAPS and IEB curricula or both, and select which terms (1-4) you want to see questions from. This helps customize your practice to match your school's curriculum and current term."
+    answer: "In your profile settings, you can choose between CAPS and IEB curricula or both, and select which terms (1-4) you want to see questions from. This helps customize your practice to match your school's curriculum and current term. You can update these settings anytime as you progress through the school year."
   },
   {
     question: "How do streaks work?",
-    answer: "To maintain your daily streak, you need to get at least 3 correct answers each day. Miss a day or fail to get 3 correct answers, and your streak resets. Keep practicing daily to build your streak! 🔥"
+    answer: "To maintain your daily streak, you need to get at least 3 correct answers each day. Miss a day or fail to get 3 correct answers, and your streak resets. Keep practicing daily to build your streak! Longer streaks unlock special achievements and badges to showcase your consistency. 🔥"
   },
   {
     question: "How do points work?",
-    answer: "You earn 1 point for each correct answer. Get on a roll with 3 correct answers in a row, and you'll earn double points for your next correct answers! Keep the streak going to maximize your points. 🎯"
+    answer: "You earn 1 point for each correct answer. Get on a roll with 3 correct answers in a row, and you'll enter 'Fire Mode' where you earn 3 points for each correct answer! Keep the streak going to maximize your points. Points contribute to your overall ranking and unlock special features and achievements. 🔥🎯"
   },
   {
     question: "How does the progress tracking work?",
-    answer: "Each subject shows your performance with:\n• Total questions attempted\n• Correct answers (Bullseyes)\n• Incorrect answers (Oopsies)\n• Overall mastery percentage\nThe progress bar color indicates your performance level: green for high scores, amber for medium, and red for areas needing improvement."
+    answer: "Each subject shows your performance with:\n• Total questions attempted\n• Correct answers (Bullseyes)\n• Incorrect answers (Oopsies)\n• Overall mastery percentage\nThe progress bar color indicates your performance level: green for high scores (>70%), amber for medium (40-70%), and red for areas needing improvement (<40%). You can view detailed analytics for each subject to identify specific topics to focus on."
   },
   {
     question: "Can I change my grade or school?",
-    answer: "Yes, you can update your grade and school in the profile section. Note that changing your grade will reset your progress as questions are grade-specific. Your school information helps us provide relevant curriculum content."
+    answer: "Yes, you can update your grade and school in the profile section. Note that changing your grade will reset your progress as questions are grade-specific. Your school information helps us provide relevant curriculum content and allows you to compare your performance with peers at your school (if enabled in privacy settings)."
   },
   {
     question: "What if I find an issue with a question?",
-    answer: "You can report any issues with questions using the report button in the quiz screen. Our team will review and address the reported issues to ensure accuracy."
+    answer: "You can report any issues with questions using the report button in the quiz screen. Our team will review and address the reported issues to ensure accuracy. We appreciate your feedback as it helps us improve the quality of our question bank for all users."
   },
   {
     question: "How do I reset my progress?",
-    answer: "You can reset your progress for individual subjects from the subject screen. This will clear your progress for that specific subject and let you start fresh."
+    answer: "You can reset your progress for individual subjects from the subject screen. This will clear your progress for that specific subject and let you start fresh. This is useful when you want to retry a subject after studying or when you want to practice with a clean slate at the beginning of a new term."
   }
 ];
 
