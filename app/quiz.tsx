@@ -662,6 +662,11 @@ export default function QuizScreen() {
                     option4: shuffledEntries[3][1]
                 };
                 setCurrentQuestion(data);
+
+                // Check if this question is in favorites and set the star accordingly
+                const isFavorited = favoriteQuestions.some(fav => fav.questionId === data.id);
+                setIsCurrentQuestionFavorited(isFavorited);
+
                 setNoMoreQuestions(false);
                 startTimer(); // Start timer when new question is loaded
             }
@@ -1253,6 +1258,11 @@ export default function QuizScreen() {
             if (!response.ok) throw new Error('Failed to fetch question');
             const data: QuestionResponse = await response.json();
             setCurrentQuestion(data);
+
+            // Check if this question is in favorites and set the star accordingly
+            const isFavorited = favoriteQuestions.some(fav => fav.questionId === questionId);
+            setIsCurrentQuestionFavorited(isFavorited);
+
             setNoMoreQuestions(false);
         } catch (error) {
             Toast.show({
@@ -1295,7 +1305,9 @@ export default function QuizScreen() {
                             style={styles.subjectIcon}
                         />
                         <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
-                        <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>Select a paper to continue</ThemedText>
+                        <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
+                            Choose a paper or explore your favorites
+                        </ThemedText>
 
                         <View style={styles.paperButtons}>
                             <LinearGradient
@@ -1333,8 +1345,14 @@ export default function QuizScreen() {
                             </LinearGradient>
                         </View>
 
+                        {/* Divider */}
+                        <View style={[styles.divider, {
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                            marginVertical: 24
+                        }]} />
+
                         {/* Favorites Section */}
-                        <View style={[styles.favoritesSection, { marginTop: 32 }]}>
+                        <View style={[styles.favoritesSection]}>
                             <View style={styles.favoritesTitleContainer}>
                                 <ThemedText style={[styles.favoritesTitle, { color: colors.text }]}>
                                     ⭐ Your Favorite Questions
@@ -1805,11 +1823,11 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => router.back()}
-                        testID="quit-quiz-button"
+                        onPress={() => setSelectedPaper(null)}
+                        testID="show-papers-button"
                     >
-                        <Ionicons name="cafe" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>Chill Time!</ThemedText>
+                        <Ionicons name="options-outline" size={20} color="#FFFFFF" />
+                        <ThemedText style={styles.footerButtonText}>Menu</ThemedText>
                     </TouchableOpacity>
                 </LinearGradient>
             </ThemedView>
@@ -3104,6 +3122,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    divider: {
+        height: 1,
+        width: '100%',
+        backgroundColor: '#E2E8F0',
+        marginHorizontal: 16,
     },
 });
 
