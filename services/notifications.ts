@@ -75,8 +75,8 @@ export async function scheduleDailyReminder(hour?: number, minute?: number) {
         await cancelAllNotifications();
 
         // Use provided time or default to 16:15
-        const reminderHour = hour ?? 16;
-        const reminderMinute = minute ?? 15;
+        const reminderHour = hour ?? 12;
+        const reminderMinute = minute ?? 29;
 
         // Schedule the new notification
         await Notifications.scheduleNotificationAsync({
@@ -155,7 +155,7 @@ export function addNotificationResponseListener(
 
 // Remove notification listener
 export function removeNotificationListener(
-    subscription: Notifications.Subscription
+    subscription: ReturnType<typeof Notifications.addNotificationReceivedListener> | ReturnType<typeof Notifications.addNotificationResponseReceivedListener>
 ) {
     Notifications.removeNotificationSubscription(subscription);
 } 

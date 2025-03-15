@@ -20,6 +20,8 @@ import { auth } from '../../config/firebase';
 import { requestNotificationPermissions, scheduleDailyReminder, cancelAllNotifications } from '../../services/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -409,35 +411,119 @@ export default function ProfileScreen() {
     await saveChanges();
   };
 
+  // Add a function to check notification permissions status
+  const checkNotificationPermissions = async () => {
+    try {
+      console.log('[Notifications Debug] Checking notification permissions');
+      const { status } = await Notifications.getPermissionsAsync();
+      console.log('[Notifications Debug] Current permission status:', status);
+
+      // Check if device is a real device
+      const isDevice = Device.isDevice;
+      console.log('[Notifications Debug] Is real device:', isDevice);
+
+      if (!isDevice) {
+        Toast.show({
+          type: 'info',
+          text1: 'Emulator Detected',
+          text2: 'Notifications may not work properly on emulators. Try on a physical device.',
+          position: 'bottom'
+        });
+      }
+
+      return status;
+    } catch (error) {
+      console.error('[Notifications Debug] Error checking permissions:', error);
+      return null;
+    }
+  };
+
   const toggleNotifications = async () => {
     try {
+      console.log('[Notifications Debug] Toggle notifications called, current state:', notificationsEnabled);
+
+      // Check current permission status first
+      const currentStatus = await checkNotificationPermissions();
+      console.log('[Notifications Debug] Current permission status before toggle:', currentStatus);
+
       if (!notificationsEnabled) {
+        console.log('[Notifications Debug] Attempting to enable notifications');
         // Request permissions and enable notifications
         const hasPermission = await requestNotificationPermissions();
+        console.log('[Notifications Debug] Permission request result:', hasPermission);
+
         if (hasPermission) {
+          console.log('[Notifications Debug] Permission granted, saving to AsyncStorage');
           await AsyncStorage.setItem('notificationsEnabled', 'true');
           setNotificationsEnabled(true);
+
           // Schedule daily reminder at 18:00
-          await scheduleDailyReminder();
+          console.log('[Notifications Debug] Scheduling daily reminder');
+          const reminderResult = await scheduleDailyReminder();
+          console.log('[Notifications Debug] Reminder scheduling result:', reminderResult);
+
           // Track notification enabled
           await logAnalyticsEvent('notification_preference_changed', {
             user_id: user?.uid,
             enabled: true
           });
+
+          // Check if notifications were actually scheduled
+          const pendingNotifications = await Notifications.getAllScheduledNotificationsAsync();
+          console.log('[Notifications Debug] Pending notifications after scheduling:',
+            JSON.stringify(pendingNotifications, null, 2));
+
+          Toast.show({
+            type: 'success',
+            text1: 'Notifications Enabled',
+            text2: 'Daily reminders have been set up',
+            position: 'bottom'
+          });
+        } else {
+          console.log('[Notifications Debug] Permission denied by user or system');
+
+          // Check if we're on Android to provide specific instructions
+          if (Platform.OS === 'android') {
+            Toast.show({
+              type: 'error',
+              text1: 'Permission Denied',
+              text2: 'Please enable notifications in your device settings for Exam Quiz',
+              position: 'bottom',
+              visibilityTime: 4000
+            });
+          } else {
+            Toast.show({
+              type: 'error',
+              text1: 'Permission Denied',
+              text2: 'Please enable notifications in your device settings',
+              position: 'bottom'
+            });
+          }
         }
       } else {
+        console.log('[Notifications Debug] Disabling notifications');
         // Disable notifications
-        await cancelAllNotifications();
+        const cancelResult = await cancelAllNotifications();
+        console.log('[Notifications Debug] Cancel notifications result:', cancelResult);
+
         await AsyncStorage.setItem('notificationsEnabled', 'false');
         setNotificationsEnabled(false);
+
         // Track notification disabled
         await logAnalyticsEvent('notification_preference_changed', {
           user_id: user?.uid,
           enabled: false
         });
+
+        Toast.show({
+          type: 'info',
+          text1: 'Notifications Disabled',
+          position: 'bottom'
+        });
       }
     } catch (error) {
-      console.error('Error toggling notifications:', error);
+      console.error('[Notifications Debug] Error in toggleNotifications:', error);
+      console.log('[Notifications Debug] Error details:', JSON.stringify(error, null, 2));
       Toast.show({
         type: 'error',
         text1: 'Error',

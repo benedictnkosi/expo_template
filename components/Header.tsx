@@ -35,9 +35,9 @@ export function Header({ learnerInfo }: HeaderProps) {
     <View style={[styles.header, { marginTop: insets.top }]}>
       <View style={styles.greeting}>
         <ThemedText style={styles.welcomeText} testID='welcome-text'>
-          Hey, {learnerInfo?.name || ''}👋
+          <ThemedText style={styles.appName}>📚 Exam Quiz</ThemedText> <ThemedText style={styles.emoji}>✨</ThemedText>
         </ThemedText>
-        <ThemedText style={styles.subtitle}>{learnerInfo?.school || ''}</ThemedText>
+        <ThemedText style={styles.subtitle}>Explore the Joy of Learning! 🎓</ThemedText>
       </View>
 
       <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
@@ -66,11 +66,19 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#999',
+  },
+  appName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#8B5CF6',
+  },
+  emoji: {
+    fontSize: 24,
   },
   subtitle: {
     fontSize: 16,
-    color: '#999',
+    color: '#64748B',
+    marginTop: 4,
   },
   profileSection: {
     marginLeft: 16,

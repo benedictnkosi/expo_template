@@ -546,6 +546,14 @@ export default function QuizScreen() {
     };
 
     useEffect(() => {
+        async function loadHasRated() {
+            await SecureStore.deleteItemAsync('has_reviewed_app');
+            await SecureStore.deleteItemAsync('next_rating_prompt_date');
+        }
+        loadHasRated();
+    }, []);
+
+    useEffect(() => {
         async function loadSounds() {
             try {
                 const { sound: correct } = await Audio.Sound.createAsync(
@@ -666,6 +674,7 @@ export default function QuizScreen() {
             }
 
             const data: QuestionResponse = await response.json();
+            console.log(data);
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
@@ -730,11 +739,14 @@ export default function QuizScreen() {
             }
 
             if (response.correct) {
-                setEarnedPoints(points);
-                setShowPoints(true);
-                setTimeout(() => {
-                    setShowPoints(false);
-                }, 3000);
+                // Only show points if the question is not favorited
+                if (!isCurrentQuestionFavorited) {
+                    setEarnedPoints(points);
+                    setShowPoints(true);
+                    setTimeout(() => {
+                        setShowPoints(false);
+                    }, 3000);
+                }
             }
 
             // Update local stats immediately
@@ -769,6 +781,8 @@ export default function QuizScreen() {
             // Check if we should show rating prompt after correct answer
             if (response.correct) {
                 try {
+
+
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
 
@@ -778,6 +792,7 @@ export default function QuizScreen() {
                             const now = new Date();
 
                             // Only show if we've passed the next prompt date
+                            console.log(now, nextPromptDate);
                             if (now >= nextPromptDate) {
                                 setTimeout(() => {
                                     setShowRatingModal(true);
@@ -903,7 +918,8 @@ export default function QuizScreen() {
     };
 
     const handleApproveQuestion = async () => {
-        if (!currentQuestion?.id || !user?.uid || !user?.email || learnerRole !== 'admin') {
+        //learner role is not admin or reviewer
+        if (!currentQuestion?.id || !user?.uid || !user?.email || (learnerRole !== 'admin' && learnerRole !== 'reviewer')) {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
@@ -1821,7 +1837,7 @@ export default function QuizScreen() {
                                 </ThemedView>
 
                                 {/* Question approval button - only show for admin users */}
-                                {learnerRole === 'admin' && showFeedback && currentQuestion && (
+                                {(learnerRole === 'admin' || learnerRole === 'reviewer') && showFeedback && currentQuestion && (
                                     <TouchableOpacity
                                         style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
                                         onPress={handleApproveQuestion}
@@ -3094,7 +3110,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     favoritesTitle: {
-        fontSize: 28,
+        fontSize: 18,
         fontWeight: '700',
         lineHeight: 34,
     },
