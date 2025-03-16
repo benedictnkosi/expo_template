@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Dimensions } from 'react-native';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
@@ -6,15 +6,30 @@ import { API_BASE_URL, IMAGE_BASE_URL } from '@/config/api';
 
 interface Props {
     imageUrl: string;
+    rotation?: number;
 }
 
-function ZoomableImageNew({ imageUrl }: Props) {
+function ZoomableImageNew({ imageUrl, rotation = 0 }: Props) {
     const scale = useSharedValue(1);
     const savedScale = useSharedValue(1);
     const positionX = useSharedValue(0);
     const positionY = useSharedValue(0);
     const savedPositionX = useSharedValue(0);
     const savedPositionY = useSharedValue(0);
+    const rotate = useSharedValue(rotation);
+
+    // Update rotate value when rotation prop changes
+    // Also reset position when rotation changes to prevent image from going off-screen
+    useEffect(() => {
+        rotate.value = rotation;
+        // Reset position and scale when rotation changes to prevent image from going off-screen
+        positionX.value = 0;
+        positionY.value = 0;
+        savedPositionX.value = 0;
+        savedPositionY.value = 0;
+        scale.value = 1;
+        savedScale.value = 1;
+    }, [rotation, rotate, positionX, positionY, savedPositionX, savedPositionY, scale, savedScale]);
 
     const fullImageUrl = imageUrl.startsWith('http')
         ? imageUrl
@@ -46,8 +61,8 @@ function ZoomableImageNew({ imageUrl }: Props) {
         transform: [
             { translateX: positionX.value },
             { translateY: positionY.value },
-            { scale: scale.value },
-            { rotate: '90deg' }
+            { rotate: `${rotate.value}deg` },
+            { scale: scale.value }
         ]
     }));
 

@@ -514,6 +514,13 @@ export default function QuizScreen() {
         }
     };
 
+    useEffect(() => {
+        async function loadHasRated() {
+            await SecureStore.deleteItemAsync('has_reviewed_app');
+            await SecureStore.deleteItemAsync('next_rating_prompt_date');
+        }
+        loadHasRated();
+    }, []);
 
     useEffect(() => {
         async function loadSounds() {
@@ -631,8 +638,6 @@ export default function QuizScreen() {
             const response = await fetch(
                 `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
-
-            console.log('response', response);
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
             }

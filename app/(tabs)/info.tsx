@@ -36,7 +36,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: "How do points work?",
-    answer: "You earn 1 point for each correct answer. Get on a roll with 3 correct answers in a row, and you'll enter 'Fire Mode' where you earn 3 points for each correct answer! Keep the streak going to maximize your points. Points contribute to your overall ranking and unlock special features and achievements. 🔥🎯"
+    answer: "You earn 1 point for each correct answer. Points contribute to your overall ranking and unlock special features and achievements. Keep practicing daily to maximize your points and improve your knowledge! ⭐"
   },
   {
     question: "How does the progress tracking work?",
@@ -53,6 +53,10 @@ const faqs: FAQItem[] = [
   {
     question: "How do I reset my progress?",
     answer: "You can reset your progress for individual subjects from the subject screen. This will clear your progress for that specific subject and let you start fresh. This is useful when you want to retry a subject after studying or when you want to practice with a clean slate at the beginning of a new term."
+  },
+  {
+    question: "Why do I keep seeing the same question?",
+    answer: "This is part of our spaced repetition learning system! We show you questions multiple times to reinforce your learning. Only after you've answered a question correctly 3 times do we consider it 'mastered,' and then it will appear less frequently. This approach is based on educational research showing that repeated exposure with increasing intervals helps move information from short-term to long-term memory."
   }
 ];
 

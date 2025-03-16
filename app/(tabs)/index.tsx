@@ -177,6 +177,8 @@ export default function HomeScreen() {
     try {
       setIsLoading(true);
       const learner = await getLearner(user.uid);
+      console.log('learner', learner);
+
 
       if (learner.name && learner.grade) {
         setLearnerInfo(learner as LearnerInfo);
@@ -496,7 +498,7 @@ export default function HomeScreen() {
               ⚠️ Connection Error
             </ThemedText>
             <ThemedText style={[styles.errorModalMessage, { color: colors.textSecondary }]} testID="error-modal-message">
-              Oops! We can't fetch your details 🤔. Check your internet connection and restart the app! 🚀
+              Oops! We can't find you in our system! please try to login again or register again🚀
             </ThemedText>
           </View>
         </View>
