@@ -427,8 +427,8 @@ const StreakModal = ({ isVisible, onClose, streak }: { isVisible: boolean; onClo
                         <Ionicons name="star" size={48} color="#FFFFFF" />
                     </View>
                 </View>
-                <ThemedText style={styles.streakTitle}>{streak} Day Streak!</ThemedText>
-                <ThemedText style={styles.streakSubtitle}>Answer questions correctly every day to build your streak</ThemedText>
+                <ThemedText style={styles.streakTitle}>🔥 {streak}-Day Streak! 🔥</ThemedText>
+                <ThemedText style={styles.streakSubtitle}>Keep the fire going — get 3 right answers every day to grow your streak!</ThemedText>
 
                 <TouchableOpacity
                     style={styles.continueButton}
@@ -695,21 +695,18 @@ export default function QuizScreen() {
             setIsCorrect(response.correct);
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
 
-            // Handle streak modal - keeping streak functionality but not related to fire mode
-            if (response.streakUpdated) {
+            // Modify to show points first, then delay the streak display
+            if (response.streakUpdated && response.correct) {
+                setEarnedPoints(points);
+                setShowPoints(true);
+                setTimeout(() => {
+                    setShowPoints(false);
+                    setCurrentStreak(response.streak);
+                    setShowStreakModal(true);
+                }, 5000); // Delay streak display by 5 seconds
+            } else if (response.streakUpdated) {
                 setCurrentStreak(response.streak);
                 setShowStreakModal(true);
-            }
-
-            if (response.correct) {
-                // Only show points if the question is not favorited
-                if (!isCurrentQuestionFavorited) {
-                    setEarnedPoints(points);
-                    setShowPoints(true);
-                    setTimeout(() => {
-                        setShowPoints(false);
-                    }, 3000);
-                }
             }
 
             // Update local stats immediately
@@ -939,13 +936,20 @@ export default function QuizScreen() {
                 })
             });
 
+            const data = await response.json();
             if (!response.ok) {
+                if (data.message && data.message.includes('You can only favorite up to')) {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Error',
+                        text2: 'You can only favorite up to 20 questions per paper',
+                        position: 'bottom'
+                    });
+                }
                 // Revert optimistic update if request fails
                 setIsCurrentQuestionFavorited(false);
-                throw new Error('Failed to favorite question');
             }
 
-            const data = await response.json();
             if (data.status === "OK") {
                 Toast.show({
                     type: 'success',
