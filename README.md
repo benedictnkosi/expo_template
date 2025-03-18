@@ -241,3 +241,5 @@ menu - > Product -> archive
 
 ## run on real IOS device
 npx expo run:ios --device
+
+npx expo-doctor

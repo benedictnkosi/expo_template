@@ -11,7 +11,6 @@ export default {
     supportsTablet: true,
     bundleIdentifier: 'za.co.examquizafrica',
     buildNumber: '1.0.0',
-    deploymentTarget: "15.1",
     googleServicesFile: './GoogleService-Info.plist',
     infoPlist: {
       "ITSAppUsesNonExemptEncryption": false
@@ -23,7 +22,6 @@ export default {
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#ffffff',
-      googleServicesFile: './google-services.json'
     }
   },
   web: {
