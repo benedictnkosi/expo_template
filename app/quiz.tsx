@@ -196,24 +196,27 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
 
                 // Handle regular text with markdown
                 if (part.trim()) {
+                    // Determine font size based on text length
+                    const fontSize = part.length > 500 ? 12 : 18;
+
                     // Handle headers
                     if (part.startsWith('# ')) {
                         return (
-                            <ThemedText key={index} style={[styles.h1Text, { color: colors.text }]}>
+                            <ThemedText key={index} style={[styles.h1Text, { color: colors.text, fontSize }]}>
                                 {part.substring(2).trim()}
                             </ThemedText>
                         );
                     }
                     if (part.startsWith('## ')) {
                         return (
-                            <ThemedText key={index} style={[styles.h2Text, { color: colors.text }]}>
+                            <ThemedText key={index} style={[styles.h2Text, { color: colors.text, fontSize }]}>
                                 {part.substring(3).trim()}
                             </ThemedText>
                         );
                     }
                     if (part.startsWith('### ')) {
                         return (
-                            <ThemedText key={index} style={[styles.h3Text, { color: colors.text }]}>
+                            <ThemedText key={index} style={[styles.h3Text, { color: colors.text, fontSize }]}>
                                 {part.substring(4).trim()}
                             </ThemedText>
                         );
@@ -229,7 +232,7 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                                         return (
                                             <ThemedText
                                                 key={`${index}-${boldIndex}`}
-                                                style={[styles.boldText, { color: colors.text }]}
+                                                style={[styles.boldText, { color: colors.text, fontSize }]}
                                             >
                                                 {boldPart.slice(2, -2)}
                                             </ThemedText>
@@ -238,7 +241,7 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                                     return boldPart ? (
                                         <ThemedText
                                             key={`${index}-${boldIndex}`}
-                                            style={[styles.contentText, { color: colors.text }]}
+                                            style={[styles.contentText, { color: colors.text, fontSize }]}
                                         >
                                             {boldPart}
                                         </ThemedText>
@@ -250,7 +253,7 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
 
                     // Regular text
                     return (
-                        <ThemedText key={index} style={[styles.contentText, { color: colors.text }]}>
+                        <ThemedText key={index} style={[styles.contentText, { color: colors.text, fontSize }]}>
                             {part.trim()}
                         </ThemedText>
                     );
