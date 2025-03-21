@@ -175,31 +175,48 @@ function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
 
 // Add helper function
 function renderMixedContent(text: string, isDark: boolean, colors: any) {
-    // First split by LaTeX delimiters
-    const parts = text.split(/(\$[^$]+\$)/g);
+    if (text.includes('$')) {
+        // First split by LaTeX delimiters
+        const parts = text.split(/(\$[^$]+\$)/g);
+
+        return (
+            <View style={styles.mixedContentContainer}>
+                {parts.map((part, index) => {
+                    if (part.startsWith('$') && part.endsWith('$')) {
+                        // LaTeX content
+                        return (
+                            <View key={index} style={[styles.latexContainer, {
+                                backgroundColor: isDark ? colors.surface : '#FFFFFF'
+                            }]}>
+                                <KaTeX
+                                    latex={part.slice(1, -1)} // Remove $ signs
+                                />
+                            </View>
+                        );
+                    } else {
+                        return (
+                            <ThemedText key={index} style={[styles.contentText, { color: colors.text }]}>
+                                {part}
+                            </ThemedText>
+                        );
+                    }
+                })}
+            </View>
+        );
+    }
+    // First split by new line
+    const parts = text.split(/\n/g);
 
     return (
         <View style={styles.mixedContentContainer}>
             {parts.map((part, index) => {
-                if (part.startsWith('$') && part.endsWith('$')) {
-                    // LaTeX content
-                    return (
-                        <View key={index} style={[styles.latexContainer, {
-                            backgroundColor: isDark ? colors.surface : '#FFFFFF'
-                        }]}>
-                            <KaTeX
-                                latex={part.slice(1, -1)} // Remove $ signs
-                            />
-                        </View>
-                    );
-                }
-
                 // Handle regular text with markdown
                 if (part.trim()) {
-                    // Determine font size based on text length
+                    // Add extra spacing before lines starting with ***
+                    const needsExtraSpacing = part.trim().startsWith('***');
                     const fontSize = part.length > 500 ? 12 : 18;
 
-                    // Handle headers
+                    // Handle headers first
                     if (part.startsWith('# ')) {
                         return (
                             <ThemedText key={index} style={[styles.h1Text, { color: colors.text, fontSize }]}>
@@ -222,40 +239,117 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                         );
                     }
 
-                    // Handle bold text
-                    const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
-                    if (boldParts.length > 1) {
+                    // Split into lines first to handle bullet points
+                    const lines = part.split('\n').filter(line => line.trim());
+                    const hasBulletPoints = lines.some(line => line.trim().startsWith('-'));
+
+                    if (hasBulletPoints) {
                         return (
-                            <View key={index} style={styles.textContainer}>
-                                {boldParts.map((boldPart, boldIndex) => {
-                                    if (boldPart.startsWith('**') && boldPart.endsWith('**')) {
+                            <View key={index} style={[
+                                styles.bulletListContainer,
+                                needsExtraSpacing && { marginTop: 24 }
+                            ]}>
+                                {lines.map((line, lineIndex) => {
+                                    const trimmedLine = line.trim();
+                                    if (trimmedLine.startsWith('-')) {
+                                        const bulletContent = trimmedLine.substring(1).trim();
+                                        // Handle bold text within bullet points
+                                        const bulletBoldParts = bulletContent.split(/(\*\*[^*]+\*\*)/g);
+
                                         return (
-                                            <ThemedText
-                                                key={`${index}-${boldIndex}`}
-                                                style={[styles.boldText, { color: colors.text, fontSize }]}
-                                            >
-                                                {boldPart.slice(2, -2)}
-                                            </ThemedText>
+                                            <View key={`${index}-${lineIndex}`} style={styles.bulletPointContainer}>
+                                                <ThemedText style={[styles.bulletPoint, { color: colors.text }]}>•</ThemedText>
+                                                <View style={styles.bulletTextWrapper}>
+                                                    <View style={styles.bulletTextContent}>
+                                                        {bulletBoldParts.map((bpart, bindex) => {
+                                                            const trimmedPart = bpart.trim();
+                                                            if (bpart.startsWith('**') && bpart.endsWith('**')) {
+                                                                const boldContent = bpart.slice(2, -2).trim();
+                                                                return (
+                                                                    <ThemedText
+                                                                        key={`bullet-bold-${bindex}`}
+                                                                        style={[styles.bulletPointText, styles.boldText, { color: colors.text, fontSize }]}
+                                                                    >
+                                                                        {bpart.slice(2, -2).trim()}
+                                                                    </ThemedText>
+                                                                );
+                                                            }
+                                                            return bpart ? (
+                                                                <ThemedText
+                                                                    key={`bullet-text-${bindex}`}
+                                                                    style={[styles.bulletPointText, { color: colors.text, fontSize }]}
+                                                                >
+                                                                    {bpart.trim()}
+                                                                </ThemedText>
+                                                            ) : null;
+                                                        })}
+                                                    </View>
+                                                </View>
+                                            </View>
                                         );
                                     }
-                                    return boldPart ? (
-                                        <ThemedText
-                                            key={`${index}-${boldIndex}`}
-                                            style={[styles.contentText, { color: colors.text, fontSize }]}
-                                        >
-                                            {boldPart}
-                                        </ThemedText>
-                                    ) : null;
+                                    // For non-bullet point lines, still handle bold text
+                                    const boldParts = trimmedLine.split(/(\*\*[^*]+\*\*)/g);
+                                    return (
+                                        <View key={`${index}-${lineIndex}`} style={[
+                                            styles.textContainer,
+                                            needsExtraSpacing && { marginTop: 24 }
+                                        ]}>
+                                            {boldParts.map((boldPart, boldIndex) => {
+                                                if (boldPart.startsWith('**') && boldPart.endsWith('**')) {
+                                                    return (
+                                                        <ThemedText
+                                                            key={`${index}-${boldIndex}`}
+                                                            style={[styles.boldText, { color: colors.text, fontSize }]}
+                                                        >
+                                                            {boldPart.slice(2, -2)}
+                                                        </ThemedText>
+                                                    );
+                                                }
+                                                return boldPart ? (
+                                                    <ThemedText
+                                                        key={`${index}-${boldIndex}`}
+                                                        style={[styles.contentText, { color: colors.text, fontSize }]}
+                                                    >
+                                                        {boldPart.replace(/^\*\*\*/, '')}
+                                                    </ThemedText>
+                                                ) : null;
+                                            })}
+                                        </View>
+                                    );
                                 })}
                             </View>
                         );
                     }
 
-                    // Regular text
+                    // Handle regular text with bold formatting
+                    const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
                     return (
-                        <ThemedText key={index} style={[styles.contentText, { color: colors.text, fontSize }]}>
-                            {part.trim()}
-                        </ThemedText>
+                        <View key={index} style={[
+                            styles.textContainer,
+                            needsExtraSpacing && { marginTop: 24 }
+                        ]}>
+                            {boldParts.map((boldPart, boldIndex) => {
+                                if (boldPart.startsWith('**') && boldPart.endsWith('**')) {
+                                    return (
+                                        <ThemedText
+                                            key={`${index}-${boldIndex}`}
+                                            style={[styles.boldText, { color: colors.text, fontSize }]}
+                                        >
+                                            {boldPart.slice(2, -2)}
+                                        </ThemedText>
+                                    );
+                                }
+                                return boldPart ? (
+                                    <ThemedText
+                                        key={`${index}-${boldIndex}`}
+                                        style={[styles.contentText, { color: colors.text, fontSize }]}
+                                    >
+                                        {boldPart.replace(/^\*\*\*/, '')}
+                                    </ThemedText>
+                                ) : null;
+                            })}
+                        </View>
                     );
                 }
                 return null;
@@ -639,7 +733,7 @@ export default function QuizScreen() {
             }
 
             const data: QuestionResponse = await response.json();
-            console.log("explanation", data.explanation);
+            console.log("context ", data);
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
@@ -668,6 +762,7 @@ export default function QuizScreen() {
             const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
             setStats(newStats.data.stats);
         } catch (error) {
+            console.error('Error loading question:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
@@ -1793,9 +1888,25 @@ export default function QuizScreen() {
                                     )}
 
                                     {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
-                                        <View style={styles.questionContainer} testID='explanation-container'>
-                                            {renderMixedContent(currentQuestion.explanation, isDark, colors)}
-                                        </View>
+                                        <>
+                                            <ThemedText
+                                                style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
+                                                testID="correct-answer-label"
+                                            >
+                                                ✅ Explanation
+                                            </ThemedText>
+
+                                            {cleanAnswer(currentQuestion.explanation).includes('$') ? (
+                                                <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
+                                            ) : (
+                                                <ThemedText
+                                                    style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
+                                                    testID="correct-answer-text"
+                                                >
+                                                    {cleanAnswer(currentQuestion.explanation)}
+                                                </ThemedText>
+                                            )}
+                                        </>
                                     )}
 
                                 </ThemedView>
@@ -2329,13 +2440,13 @@ const styles = StyleSheet.create({
     },
     questionContainer: {
         borderRadius: 12,
-        padding: 16,
+        // padding: 16,
         margin: 16,
-        shadowColor: '#FFFFFF',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        // shadowColor: '#FFFFFF',
+        // shadowOffset: {width: 0, height: 2 },
+        // shadowOpacity: 0.1,
+        // shadowRadius: 4,
+        //elevation: 3,
         color: '#000000',
     },
     questionText: {
@@ -2523,6 +2634,7 @@ const styles = StyleSheet.create({
         color: '#999',
         marginBottom: 4,
         marginLeft: 16,
+        marginTop: 16,
     },
     correctAnswerText: {
         color: '#166534',
@@ -2692,9 +2804,8 @@ const styles = StyleSheet.create({
         color: '#000000',
     },
     mixedContentContainer: {
+        flex: 1,
         width: '100%',
-        gap: 12,
-        color: '#000000',
     },
     modalOverlay: {
         flex: 1,
@@ -2876,11 +2987,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         paddingRight: 8,
         width: '100%',
-    },
-    bulletPoint: {
-        fontSize: 16,
-        marginRight: 8,
-        marginTop: 4,
     },
     explanationTextContainer: {
         flex: 1,
@@ -3323,6 +3429,39 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    bulletListContainer: {
+        flexDirection: 'column',
+        width: '100%',
+        paddingLeft: 16,
+        paddingRight: 16,
+        marginVertical: 8,
+    },
+    bulletPointContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+        width: '100%',
+    },
+    bulletPoint: {
+        fontSize: 24,
+        lineHeight: 24,
+        marginRight: 8,
+        marginTop: 0,
+    },
+    bulletTextWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+    },
+    bulletTextContent: {
+        flex: 1,
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'flex-start',
+    },
+    bulletPointText: {
+        fontSize: 16,
+        lineHeight: 24,
+    },
 });
 
 function getProgressBarColor(progress: number): string {
@@ -3331,3 +3470,4 @@ function getProgressBarColor(progress: number): string {
     if (progress >= 40) return '#F59E0B'; // Yellow
     return '#EF4444'; // Red
 }
+
