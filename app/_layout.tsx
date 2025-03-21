@@ -64,6 +64,37 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    // Set up notification listeners
+    // notificationListener.current = addNotificationListener(notification => {
+    //   console.log('Received notification:', notification);
+    // });
+
+    // responseListener.current = addNotificationResponseListener(response => {
+    //   const data = response.notification.request.content.data;
+
+    //   // Handle notification tap
+    //   if (data?.screen) {
+    //     router.push(data.screen);
+    //   }
+    // });
+
+    // Cleanup listeners on unmount
+    // return () => {
+    //   if (notificationListener.current) {
+    //     removeNotificationListener(notificationListener.current);
+    //   }
+    //   if (responseListener.current) {
+    //     removeNotificationListener(responseListener.current);
+    //   }
+    // };
+  }, []);
+
+  useEffect(() => {
+    // Initialize notifications when app starts
+    // initializeNotifications();
+  }, []);
+
   if (!loaded) {
     return null;
   }

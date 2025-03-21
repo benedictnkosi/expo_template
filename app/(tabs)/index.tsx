@@ -214,10 +214,10 @@ export default function HomeScreen() {
           setMySubjects([]);
         }
       } else {
-        handleError();
+        signOut();
       }
     } catch (error) {
-      handleError();
+      signOut();
     } finally {
       setIsLoading(false);
     }

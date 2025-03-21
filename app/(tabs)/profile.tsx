@@ -17,11 +17,8 @@ import { analytics } from '../../services/analytics';
 import { API_BASE_URL } from '../../config/api';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '../../config/firebase';
-import { requestNotificationPermissions, scheduleDailyReminder, cancelAllNotifications } from '../../services/notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
