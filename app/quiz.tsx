@@ -634,14 +634,12 @@ export default function QuizScreen() {
             const response = await fetch(
                 `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
-
-            console.log('response', response);
             if (!response.ok) {
                 throw new Error('Failed to fetch question');
             }
 
             const data: QuestionResponse = await response.json();
-            console.log(data);
+            console.log("explanation", data.explanation);
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
@@ -1791,6 +1789,12 @@ export default function QuizScreen() {
                                                 />
                                                 {isImageLoading && <ImageLoadingPlaceholder />}
                                             </TouchableOpacity>
+                                        </View>
+                                    )}
+
+                                    {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
+                                        <View style={styles.questionContainer} testID='explanation-container'>
+                                            {renderMixedContent(currentQuestion.explanation, isDark, colors)}
                                         </View>
                                     )}
 

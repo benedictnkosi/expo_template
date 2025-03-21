@@ -10,8 +10,6 @@ import AuthLayout from './_auth';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
-import { addNotificationListener, addNotificationResponseListener, removeNotificationListener, initializeNotifications } from '../services/notifications';
-import { router } from 'expo-router';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -71,33 +69,33 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Set up notification listeners
-    notificationListener.current = addNotificationListener(notification => {
-      console.log('Received notification:', notification);
-    });
+    // notificationListener.current = addNotificationListener(notification => {
+    //   console.log('Received notification:', notification);
+    // });
 
-    responseListener.current = addNotificationResponseListener(response => {
-      const data = response.notification.request.content.data;
+    // responseListener.current = addNotificationResponseListener(response => {
+    //   const data = response.notification.request.content.data;
 
-      // Handle notification tap
-      if (data?.screen) {
-        router.push(data.screen);
-      }
-    });
+    //   // Handle notification tap
+    //   if (data?.screen) {
+    //     router.push(data.screen);
+    //   }
+    // });
 
     // Cleanup listeners on unmount
-    return () => {
-      if (notificationListener.current) {
-        removeNotificationListener(notificationListener.current);
-      }
-      if (responseListener.current) {
-        removeNotificationListener(responseListener.current);
-      }
-    };
+    // return () => {
+    //   if (notificationListener.current) {
+    //     removeNotificationListener(notificationListener.current);
+    //   }
+    //   if (responseListener.current) {
+    //     removeNotificationListener(responseListener.current);
+    //   }
+    // };
   }, []);
 
   useEffect(() => {
     // Initialize notifications when app starts
-    initializeNotifications();
+    // initializeNotifications();
   }, []);
 
   if (!loaded) {
