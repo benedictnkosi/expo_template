@@ -1,5 +1,5 @@
 import { CheckAnswerResponse } from '@/types/api';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, HOST_URL } from '@/config/api';
 
 export interface MySubjectsResponse {
   status: string;
@@ -246,5 +246,25 @@ export async function setQuestionStatus(data: QuestionStatusData): Promise<void>
   } catch (error) {
     console.error('Error setting question status:', error);
     throw error;
+  }
+}
+
+export async function updatePushToken(uid: string, pushToken: string): Promise<void> {
+  const response = await fetch(
+    `${HOST_URL}/api/push-notifications/update-token`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        uid,
+        push_token: pushToken
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to update push token');
   }
 } 

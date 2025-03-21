@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { analytics } from '../../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
+import { registerForPushNotificationsAsync } from '@/services/notifications';
+import { updatePushToken } from '../../services/api';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner } from '../../services/api';
@@ -177,7 +179,6 @@ export default function HomeScreen() {
     try {
       setIsLoading(true);
       const learner = await getLearner(user.uid);
-      console.log('learner', learner);
 
 
       if (learner.name && learner.grade) {
@@ -305,6 +306,20 @@ export default function HomeScreen() {
       });
     }
   }, [user?.uid, learnerInfo]);
+
+  useEffect(() => {
+    // Request notification permissions when the home screen loads
+    registerForPushNotificationsAsync().then(token => {
+      if (token && user?.uid) {
+        console.log('Push notification token:', token);
+        updatePushToken(user.uid, token).catch(error => {
+          console.error('Failed to update push token:', error);
+        });
+      } else {
+        console.log("Push notification token not found or user not logged in");
+      }
+    });
+  }, [user?.uid]);
 
   if (isLoading) {
     return (

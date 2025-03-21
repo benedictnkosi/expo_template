@@ -13,7 +13,8 @@ export default {
     buildNumber: '1.0.0',
     googleServicesFile: './GoogleService-Info.plist',
     infoPlist: {
-      "ITSAppUsesNonExemptEncryption": false
+      "ITSAppUsesNonExemptEncryption": false,
+      "UIBackgroundModes": ["remote-notification"]
     }
   },
   android: {
@@ -22,7 +23,8 @@ export default {
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: '#ffffff',
-    }
+    },
+    permissions: ["NOTIFICATIONS"]
   },
   web: {
     bundler: 'metro',
@@ -53,6 +55,12 @@ export default {
         imageWidth: 200,
         resizeMode: 'contain',
         backgroundColor: '#ffffff'
+      }
+    ],
+    [
+      'expo-notifications',
+      {
+        color: '#ffffff'
       }
     ]
   ],
