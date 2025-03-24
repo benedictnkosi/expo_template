@@ -109,6 +109,11 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
             // Store auth token
             await SecureStore.setItemAsync('auth', JSON.stringify({ user }));
 
+            await logAnalyticsEvent('register_success', {
+                user_id: user.uid,
+                email: email,
+            });
+
             // Navigate to tabs
             router.replace('/(tabs)');
         } catch (error) {

@@ -582,7 +582,7 @@ export default function QuizScreen() {
     // Add new state for streak modal
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
-
+    const [correctAnswer, setCorrectAnswer] = useState<string>('');
     const scrollToBottom = () => {
         setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({
@@ -790,6 +790,7 @@ export default function QuizScreen() {
             setShowFeedback(true);
             setIsCorrect(response.correct);
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
+            setCorrectAnswer(response.correctAnswer);
 
             // Modify to show points first, then delay the streak display
             if (response.streakUpdated && response.correct) {
@@ -1853,14 +1854,14 @@ export default function QuizScreen() {
                                         ✅ Right Answer!
                                     </ThemedText>
 
-                                    {cleanAnswer(currentQuestion.answer).includes('$') ? (
-                                        <KaTeX latex={cleanAnswer(currentQuestion.answer).replace(/\$/g, '')} />
+                                    {cleanAnswer(correctAnswer).includes('$') ? (
+                                        <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
                                     ) : (
                                         <ThemedText
                                             style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
                                             testID="correct-answer-text"
                                         >
-                                            {cleanAnswer(currentQuestion.answer)}
+                                            {cleanAnswer(correctAnswer)}
                                         </ThemedText>
                                     )}
 
@@ -3474,4 +3475,5 @@ function getProgressBarColor(progress: number): string {
     if (progress >= 40) return '#F59E0B'; // Yellow
     return '#EF4444'; // Red
 }
+
 
