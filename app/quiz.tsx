@@ -1044,27 +1044,27 @@ export default function QuizScreen() {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
 
-                    //if (!hasRated && !hasShownRating) {
-                    if (nextPromptDateStr) {
-                        const nextPromptDate = new Date(nextPromptDateStr);
-                        const now = new Date();
+                    if (!hasRated && !hasShownRating) {
+                        if (nextPromptDateStr) {
+                            const nextPromptDate = new Date(nextPromptDateStr);
+                            const now = new Date();
 
-                        // Only show if we've passed the next prompt date
-                        //console.log(now, nextPromptDate);
-                        if (now >= nextPromptDate) {
+                            // Only show if we've passed the next prompt date
+                            //console.log(now, nextPromptDate);
+                            if (now >= nextPromptDate) {
+                                setTimeout(() => {
+                                    setShowRatingModal(true);
+                                    setHasShownRating(true);
+                                }, 2000);
+                            }
+                        } else {
+                            // First time showing the prompt
                             setTimeout(() => {
                                 setShowRatingModal(true);
                                 setHasShownRating(true);
                             }, 2000);
                         }
-                    } else {
-                        // First time showing the prompt
-                        setTimeout(() => {
-                            setShowRatingModal(true);
-                            setHasShownRating(true);
-                        }, 2000);
                     }
-                    //}
                 } catch (error) {
                     console.error('Error checking rating status:', error);
                 }
