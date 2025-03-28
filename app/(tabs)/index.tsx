@@ -9,9 +9,10 @@ import { analytics } from '../../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { registerForPushNotificationsAsync } from '@/services/notifications';
 import { updatePushToken } from '../../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '../../components/ThemedText';
-import { fetchMySubjects, getLearner } from '../../services/api';
+import { fetchMySubjects, getLearner, getRandomAIQuestion, RandomAIQuestion } from '../../services/api';
 import { Subject } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
@@ -115,6 +116,19 @@ interface LearnerInfo {
   avatar: string;
 }
 
+interface RandomAIQuestionResponse {
+  status: string;
+  question: {
+    id: number;
+    question: string;
+    ai_explanation: string;
+    subject: {
+      id: number;
+      name: string;
+    };
+  };
+}
+
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
@@ -122,11 +136,63 @@ export default function HomeScreen() {
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [rating, setRating] = useState(0);
+  const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
+  const [showAllSubjects, setShowAllSubjects] = useState(false);
+  const [randomLesson, setRandomLesson] = useState<RandomAIQuestion | null>(null);
   const insets = useSafeAreaInsets();
   const [streak] = useState(0);
   const [ranking] = useState(0);
   const { colors, isDark } = useTheme();
   const [showErrorModal, setShowErrorModal] = useState(false);
+
+  // Load hidden subjects from storage
+  useEffect(() => {
+    async function loadHiddenSubjects() {
+      try {
+        const stored = await AsyncStorage.getItem('hiddenSubjects');
+        if (stored) {
+          setHiddenSubjects(JSON.parse(stored));
+        }
+      } catch (error) {
+        console.error('Error loading hidden subjects:', error);
+      }
+    }
+    loadHiddenSubjects();
+  }, []);
+
+  // Function to toggle subject visibility
+  const toggleSubjectVisibility = useCallback(async (subjectId: string) => {
+    try {
+      const newHiddenSubjects = hiddenSubjects.includes(subjectId)
+        ? hiddenSubjects.filter(id => id !== subjectId)
+        : [...hiddenSubjects, subjectId];
+
+      setHiddenSubjects(newHiddenSubjects);
+      await AsyncStorage.setItem('hiddenSubjects', JSON.stringify(newHiddenSubjects));
+
+      // Track the event
+      if (user?.uid) {
+        await analytics.track('toggle_subject_visibility', {
+          user_id: user.uid,
+          subject_id: subjectId,
+          is_hidden: !hiddenSubjects.includes(subjectId)
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling subject visibility:', error);
+    }
+  }, [hiddenSubjects, user?.uid]);
+
+  // Function to toggle showing all subjects
+  const toggleShowAllSubjects = useCallback(() => {
+    setShowAllSubjects(prev => !prev);
+    if (user?.uid) {
+      analytics.track('toggle_show_all_subjects', {
+        user_id: user.uid,
+        show_all: !showAllSubjects
+      });
+    }
+  }, [showAllSubjects, user?.uid]);
 
   // Single useEffect for all analytics logging
   useEffect(() => {
@@ -172,14 +238,31 @@ export default function HomeScreen() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Data initialization function
+  // Add this function to fetch random lesson
+  const fetchRandomLesson = async () => {
+    if (!user?.uid) return;
+    try {
+      const response = await getRandomAIQuestion(user.uid);
+      if (response.status === "OK" && response.question) {
+        setRandomLesson(response);
+        //console.log('Random lesson:', response.question.ai_explanation);
+      } else {
+        console.log('No random lesson available');
+        setRandomLesson(null);
+      }
+    } catch (error) {
+      console.error('Error fetching random lesson:', error);
+      setRandomLesson(null);
+    }
+  };
+
+  // Update the initializeData function to include random lesson fetch
   const initializeData = useCallback(async () => {
     if (!user?.uid) return;
 
     try {
       setIsLoading(true);
       const learner = await getLearner(user.uid);
-
 
       if (learner.name && learner.grade) {
         setLearnerInfo(learner as LearnerInfo);
@@ -217,6 +300,9 @@ export default function HomeScreen() {
       } else {
         signOut();
       }
+
+      // Fetch random lesson
+      await fetchRandomLesson();
     } catch (error) {
       signOut();
     } finally {
@@ -323,13 +409,15 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.imagePlaceholderContainer}>
+      <View style={[styles.imagePlaceholderContainer, {
+        backgroundColor: isDark ? colors.surface : '#F8FAFC'
+      }]}>
         <View style={styles.imagePlaceholderContent}>
           <Image
             source={require('@/assets/images/book-loading.gif')}
             style={styles.loadingGif}
           />
-          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+          <ThemedText style={[styles.loadingText, { color: isDark ? colors.textSecondary : '#6B7280' }]}>Loading...</ThemedText>
         </View>
       </View>
     );
@@ -399,95 +487,153 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Add Random Lesson Preview */}
+        {randomLesson?.question && randomLesson.question.ai_explanation.includes('***Key Lesson') && (
+          <View style={[styles.randomLessonContainer, {
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 24,
+            marginHorizontal: 16
+          }]}>
+            <View style={styles.randomLessonHeader}>
+              <View style={styles.subjectIconContainer}>
+                <Image
+                  source={getSubjectIcon(randomLesson.question.subject.name.split(' P')[0])}
+                  style={styles.randomLessonIcon}
+                />
+              </View>
+              <ThemedText style={[styles.randomLessonTitle, { color: colors.text }]}>
+                Quick Bite: {randomLesson.question.subject.name}
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.randomLessonContent, { color: colors.textSecondary }]}>
+              {randomLesson.question.ai_explanation.split('***Key Lesson:')[1]?.trim().replace('***', '').trim()}
+            </ThemedText>
+          </View>
+        )}
+
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
 
         <View style={styles.subjectsGrid} testID="subjects-grid">
           {(() => {
-            return mySubjects.map((subject) => {
-              const isDisabled = subject.total_questions === 0;
-              return (
-                <TouchableOpacity
-                  key={subject.id}
-                  style={[
-                    styles.subjectCard,
-                    {
-                      backgroundColor: isDark ? colors.card : '#FFFFFF',
-                      borderColor: colors.border
-                    },
-                    isDisabled && [styles.disabledSubjectCard, {
-                      backgroundColor: isDark ? colors.surface : '#F3F4F6',
-                      borderColor: isDark ? colors.border : '#E5E7EB'
-                    }]
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => !isDisabled && handleSubjectPress(subject)}
-                  disabled={isDisabled}
-                  testID={`subject-card-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]} testID={`subject-icon-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                    <Image
-                      source={getSubjectIcon(subject.name)}
-                      style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
-                      testID={`subject-icon-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                    />
-                  </View>
-                  <View style={styles.cardContent} testID={`subject-content-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                    <ThemedText
-                      style={[
-                        styles.subjectName,
-                        { color: colors.text },
-                        isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
-                      ]}
-                      testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+            return mySubjects
+              .filter(subject => showAllSubjects || !hiddenSubjects.includes(subject.id))
+              .map((subject) => {
+                const isDisabled = subject.total_questions === 0;
+                const isHidden = hiddenSubjects.includes(subject.id);
+                return (
+                  <TouchableOpacity
+                    key={subject.id}
+                    style={[
+                      styles.subjectCard,
+                      {
+                        backgroundColor: isDark ? colors.card : '#FFFFFF',
+                        borderColor: colors.border
+                      },
+                      isDisabled && [styles.disabledSubjectCard, {
+                        backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                        borderColor: isDark ? colors.border : '#E5E7EB'
+                      }],
+                      isHidden && styles.hiddenSubjectCard
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => !isDisabled && handleSubjectPress(subject)}
+                    disabled={isDisabled}
+                    testID={`subject-card-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <TouchableOpacity
+                      style={styles.visibilityToggle}
+                      onPress={() => toggleSubjectVisibility(subject.id)}
+                      testID={`visibility-toggle-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                     >
-                      {subject.name}
-                    </ThemedText>
-                    <ThemedText
-                      style={[
-                        styles.questionCount,
-                        { color: colors.textSecondary },
-                        isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
-                      ]}
-                      testID={`question-count-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
-                    </ThemedText>
-
-                    <View style={isDisabled && styles.disabledProgress} testID={`progress-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <View style={[styles.progressBarContainer, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]} testID={`progress-bar-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                        <View
-                          style={[
-                            styles.progressBar,
-                            {
-                              width: `${subject.answered_questions === 0 ? 0 :
-                                Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
-                              backgroundColor: isDisabled ? (isDark ? colors.textSecondary : '#D1D5DB') :
-                                getProgressBarColor(subject.answered_questions === 0 ? 0 :
-                                  Math.round((subject.correct_answers / subject.answered_questions) * 100))
-                            }
-                          ]}
-                          testID={`progress-bar-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                        />
-                      </View>
+                      <Ionicons
+                        name={isHidden ? "eye-off" : "eye"}
+                        size={20}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                    <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]} testID={`subject-icon-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <Image
+                        source={getSubjectIcon(subject.name)}
+                        style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
+                        testID={`subject-icon-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      />
+                    </View>
+                    <View style={styles.cardContent} testID={`subject-content-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
                       <ThemedText
                         style={[
-                          styles.masteryText,
+                          styles.subjectName,
+                          { color: colors.text },
+                          isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                        ]}
+                        testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        {subject.name}
+                      </ThemedText>
+                      <ThemedText
+                        style={[
+                          styles.questionCount,
                           { color: colors.textSecondary },
                           isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
                         ]}
-                        testID={`mastery-text-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        testID={`question-count-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        {subject.answered_questions === 0 ? 0 :
-                          Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                        {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
                       </ThemedText>
 
+                      <View style={isDisabled && styles.disabledProgress} testID={`progress-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <View style={[styles.progressBarContainer, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]} testID={`progress-bar-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                          <View
+                            style={[
+                              styles.progressBar,
+                              {
+                                width: `${subject.answered_questions === 0 ? 0 :
+                                  Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
+                                backgroundColor: isDisabled ? (isDark ? colors.textSecondary : '#D1D5DB') :
+                                  getProgressBarColor(subject.answered_questions === 0 ? 0 :
+                                    Math.round((subject.correct_answers / subject.answered_questions) * 100))
+                              }
+                            ]}
+                            testID={`progress-bar-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                          />
+                        </View>
+                        <ThemedText
+                          style={[
+                            styles.masteryText,
+                            { color: colors.textSecondary },
+                            isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                          ]}
+                          testID={`mastery-text-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          {subject.answered_questions === 0 ? 0 :
+                            Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                        </ThemedText>
+
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            });
+                  </TouchableOpacity>
+                );
+              });
           })()}
         </View>
+
+        {hiddenSubjects.length > 0 && (
+          <TouchableOpacity
+            style={[styles.showAllButton, { backgroundColor: colors.primary }]}
+            onPress={toggleShowAllSubjects}
+            testID="show-all-subjects-button"
+          >
+            <Ionicons
+              name={showAllSubjects ? "eye-off" : "eye"}
+              size={20}
+              color="#FFFFFF"
+            />
+            <ThemedText style={styles.showAllButtonText} testID="show-all-subjects-text">
+              {showAllSubjects ? 'Hide Hidden Subjects' : `Show ${hiddenSubjects.length} Hidden Subject${hiddenSubjects.length > 1 ? 's' : ''}`}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       <RatingModal
@@ -911,7 +1057,6 @@ const styles = StyleSheet.create({
   imagePlaceholderContainer: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#F8FAFC',
     borderRadius: 8,
     overflow: 'hidden',
     position: 'absolute',
@@ -1048,6 +1193,70 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  visibilityToggle: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 2,
+    padding: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  hiddenSubjectCard: {
+    opacity: 0.7,
+    borderStyle: 'dashed',
+  },
+  showAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 16,
+    marginHorizontal: 16,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  showAllButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  randomLessonContainer: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    marginHorizontal: 16,
+  },
+  randomLessonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  subjectIconContainer: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  randomLessonIcon: {
+    width: 32,
+    height: 32,
+  },
+  randomLessonTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  randomLessonContent: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 

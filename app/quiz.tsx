@@ -108,7 +108,7 @@ function cleanAnswer(answer: string): string {
 
 function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
     const [webViewHeight, setWebViewHeight] = useState(60);
-    const { isDark } = useTheme();
+    const { isDark, colors } = useTheme();
 
     const html = `
         <!DOCTYPE html>
@@ -123,21 +123,33 @@ function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
                         margin: 0;
                         padding: 8px;
                         background-color: transparent;
+                        color: ${isDark ? '#FFFFFF' : '#000000'};
                     }
                     #formula {
                         width: 100%;
                         overflow-x: auto;
                         overflow-y: visible;
                         padding: 5px 0;
+                        color: ${isDark ? '#FFFFFF' : '#000000'};
                     }
                     .katex {
                         font-size: ${isOption && latex.length > 70 ? '0.8em' : '1em'};
                         color: ${isDark ? '#FFFFFF' : '#000000'};
+                        text-align: left;
                     }
                     .katex-display {
                         margin: 0;
                         padding: 5px 0;
                         overflow: visible;
+                        text-align: left !important;
+                        color: ${isDark ? '#FFFFFF' : '#000000'};
+                    }
+                    .katex-display > .katex {
+                        text-align: left !important;
+                        color: ${isDark ? '#FFFFFF' : '#000000'};
+                    }
+                    .katex .base {
+                        color: ${isDark ? '#FFFFFF' : '#000000'};
                     }
                 </style>
             </head>
@@ -174,8 +186,42 @@ function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
 }
 
 // Add helper function
+let isOpeningDollarSign = false
+let isClosingDollarSignNextLine = false
 function renderMixedContent(text: string, isDark: boolean, colors: any) {
+    //console.log("text ", text);
+    if (!text) return null;
+
+    if (text.includes('$') && text.trim().length < 3 && !isOpeningDollarSign && !isClosingDollarSignNextLine) {
+        isOpeningDollarSign = true
+        return ''
+    }
+
+    if (isOpeningDollarSign) {
+        isOpeningDollarSign = false
+        isClosingDollarSignNextLine = true
+        text = `$${text}$`
+    }
+
+    if (text.includes('$') && text.trim().length < 3 && isClosingDollarSignNextLine) {
+        isClosingDollarSignNextLine = false
+        return ''
+    }
+
+    if (text.includes(':') && text.trim().length < 3) {
+        return ''
+    }
+
     if (text.includes('$')) {
+        //replace \$ with $
+        text = text.replace(/\\\$/g, '$')
+        //remove ** from the text
+        text = text.replace(/\*\*/g, '')
+
+        // Clean up LaTeX commands
+        text = text.replace(/\\newlineeq/g, '=')  // Replace \newlineeq with =
+        text = text.replace(/\\newline/g, ' ')    // Replace \newline with space
+
         // First split by LaTeX delimiters
         const parts = text.split(/(\$[^$]+\$)/g);
 
@@ -189,14 +235,58 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                                 backgroundColor: isDark ? colors.surface : '#FFFFFF'
                             }]}>
                                 <KaTeX
-                                    latex={part.slice(1, -1)} // Remove $ signs
+                                    latex={part.slice(1, -1)} // replace *** with ""
                                 />
                             </View>
                         );
                     } else {
+                        const fontSize = part.length > 500 ? 12 : 18;
+
+                        if (part.trim().endsWith(':')) {
+                            part = part.trim().slice(0, -1);
+                        }
+                        // Handle headers first
+                        if (part.startsWith('# ')) {
+                            //replace ** with ""
+                            part = part.replace(/\*\*/g, '')
+                            return (
+                                <ThemedText key={index} style={[styles.h1Text, { color: colors.text, fontSize }]}>
+                                    {part.substring(2).trim()}
+                                </ThemedText>
+                            );
+                        }
+                        if (part.startsWith('## ')) {
+                            //replace ** with ""
+                            part = part.replace(/\*\*/g, '')
+                            return (
+                                <ThemedText key={index} style={[styles.h2Text, { color: colors.text, fontSize }]}>
+                                    {part.substring(3).trim()}
+                                </ThemedText>
+                            );
+                        }
+                        if (part.startsWith('### ')) {
+                            //replace ** with ""
+                            part = part.replace(/\*\*/g, '')
+                            return (
+                                <ThemedText key={index} style={[styles.h3Text, { color: colors.text, fontSize }]}>
+                                    {part.substring(4).trim()}
+                                </ThemedText>
+                            );
+                        }
+
+                        if (part.startsWith('#### ')) {
+                            //replace ** with ""
+                            part = part.replace(/\*\*/g, '')
+                            return (
+                                <ThemedText key={index} style={[styles.h4Text, { color: colors.text, fontSize }]}>
+                                    {part.substring(4).trim()}
+                                </ThemedText>
+                            );
+                        }
+
                         return (
                             <ThemedText key={index} style={[styles.contentText, { color: colors.text }]}>
-                                {part}
+                                {part.replace(/\*\*/g, '')}
                             </ThemedText>
                         );
                     }
@@ -205,7 +295,7 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
         );
     }
     // First split by new line
-    const parts = text.split(/\n/g);
+    const parts = text.split('#$%');
 
     return (
         <View style={styles.mixedContentContainer}>
@@ -215,9 +305,13 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                     // Add extra spacing before lines starting with ***
                     const needsExtraSpacing = part.trim().startsWith('***');
                     const fontSize = part.length > 500 ? 12 : 18;
-
+                    if (part.trim().endsWith(':')) {
+                        part = part.trim().slice(0, -1);
+                    }
                     // Handle headers first
                     if (part.startsWith('# ')) {
+                        //replace ** with ""
+                        part = part.replace(/\*\*/g, '')
                         return (
                             <ThemedText key={index} style={[styles.h1Text, { color: colors.text, fontSize }]}>
                                 {part.substring(2).trim()}
@@ -225,6 +319,8 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                         );
                     }
                     if (part.startsWith('## ')) {
+                        //replace ** with ""
+                        part = part.replace(/\*\*/g, '')
                         return (
                             <ThemedText key={index} style={[styles.h2Text, { color: colors.text, fontSize }]}>
                                 {part.substring(3).trim()}
@@ -232,8 +328,20 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                         );
                     }
                     if (part.startsWith('### ')) {
+                        //replace ** with ""
+                        part = part.replace(/\*\*/g, '')
                         return (
                             <ThemedText key={index} style={[styles.h3Text, { color: colors.text, fontSize }]}>
+                                {part.substring(4).trim()}
+                            </ThemedText>
+                        );
+                    }
+
+                    if (part.startsWith('#### ')) {
+                        //replace ** with ""
+                        part = part.replace(/\*\*/g, '')
+                        return (
+                            <ThemedText key={index} style={[styles.h4Text, { color: colors.text, fontSize }]}>
                                 {part.substring(4).trim()}
                             </ThemedText>
                         );
@@ -327,7 +435,7 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                     return (
                         <View key={index} style={[
                             styles.textContainer,
-                            needsExtraSpacing && { marginTop: 24 }
+                            needsExtraSpacing && { marginTop: 2 }
                         ]}>
                             {boldParts.map((boldPart, boldIndex) => {
                                 if (boldPart.startsWith('**') && boldPart.endsWith('**')) {
@@ -389,6 +497,19 @@ const WRONG_ANSWER_MESSAGES = [
     '🔍 Keep Searching! You\'re Close!'
 ];
 
+function getRandomLoadingMessage(): string {
+    const messages = [
+        "Teaching the AI not to eat crayons… 🖍️🤖 Please hold!",
+        "Convincing the AI it's smarter than a goldfish… 🐟💡",
+        "Loading… The robots are arguing over who's in charge 🤖🤖⚔️",
+        "Polishing ones and zeros until they sparkle ✨0️⃣1️⃣✨",
+        "Hold on… the AI just went for a coffee ☕🤖 (typical!)",
+        "Almost ready… just untangling the robot's shoelaces 🤖👟",
+        "Your smart lesson is brewing… we hope the AI didn't forget the sugar 🍯🧠"
+    ]
+    return messages[Math.floor(Math.random() * messages.length)]
+}
+
 // Add helper function
 function getRandomWrongMessage(): string {
     const randomIndex = Math.floor(Math.random() * WRONG_ANSWER_MESSAGES.length);
@@ -412,17 +533,45 @@ function getFavoriteCardColor(index: number): string {
 const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
 
 
-const ImageLoadingPlaceholder = () => (
-    <View style={styles.imagePlaceholderContainer}>
-        <View style={styles.imagePlaceholderContent}>
-            <Image
-                source={require('@/assets/images/book-loading.gif')}
-                style={styles.loadingGif}
-            />
-            <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+const ImageLoadingPlaceholder = () => {
+    const { isDark, colors } = useTheme();
+    return (
+        <View style={[styles.imagePlaceholderContainer, {
+            backgroundColor: isDark ? colors.surface : '#F8FAFC'
+        }]}>
+            <View
+                style={styles.loaderContainer}
+            >
+                <ActivityIndicator size="large" color={isDark ? '#FFFFFF' : colors.primary} />
+
+            </View>
         </View>
-    </View>
-);
+    );
+};
+
+const AiLoadingPlaceholder = () => {
+    const { isDark, colors } = useTheme();
+    return (
+        <View style={[styles.imagePlaceholderContainer, {
+            backgroundColor: isDark ? colors.surface : '#F8FAFC'
+        }]}>
+            <View
+                style={styles.loaderContainer}
+            >
+                <ActivityIndicator size="large" color={isDark ? '#FFFFFF' : colors.primary} />
+
+            </View>
+            <View
+                style={styles.loaderContainer}
+            >
+                <ThemedText style={[styles.loadingText, { color: isDark ? colors.text : '#6B7280' }]}>
+                    {getRandomLoadingMessage()}
+                </ThemedText>
+
+            </View>
+        </View>
+    );
+};
 
 // Update the FavoriteQuestion interface
 interface FavoriteQuestion {
@@ -583,6 +732,8 @@ export default function QuizScreen() {
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
     const [correctAnswer, setCorrectAnswer] = useState<string>('');
+    const [selectedMode, setSelectedMode] = useState<'quiz' | 'lessons'>('quiz');
+    const [isQuestionLoading, setIsQuestionLoading] = useState(false);
     const scrollToBottom = () => {
         setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({
@@ -715,8 +866,15 @@ export default function QuizScreen() {
 
     const loadRandomQuestion = async (paper: string) => {
         if (!user?.uid || !subjectName) {
+            console.warn('Missing required parameters: user ID or subject name');
             return;
         }
+
+        if (!paper) {
+            console.warn('Paper parameter is required');
+            return;
+        }
+
         // Reset all states before loading new question
         setSelectedAnswer(null);
         setShowFeedback(false);
@@ -724,16 +882,32 @@ export default function QuizScreen() {
         stopTimer(); // Stop any existing timer
 
         try {
-            setIsLoading(true);
+            setIsQuestionLoading(true);
+            const endpoint = selectedMode === 'lessons' ? 'random' : 'byname';
+            const encodedSubjectName = encodeURIComponent(`${subjectName}`);
             const response = await fetch(
-                `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
+                `${API_BASE_URL}/question/${endpoint}?subject_name=${encodedSubjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
             );
+
             if (!response.ok) {
-                throw new Error('Failed to fetch question');
+                const errorText = await response.text();
+                console.error('API Error:', errorText);
+                throw new Error(`Failed to fetch random question: ${response.status} ${response.statusText}`);
             }
 
+            //if response json body status exists and it is NOK
             const data: QuestionResponse = await response.json();
-            console.log("context ", data);
+            if (data.status && data.status === "NOK") {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: data.message,
+                });
+                return;
+            }
+
+
+            // console.log("context ", data);
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
@@ -749,6 +923,32 @@ export default function QuizScreen() {
                     option3: shuffledEntries[2][1],
                     option4: shuffledEntries[3][1]
                 };
+
+                data.ai_explanation = data.ai_explanation ? data.ai_explanation
+                    .replace(/\\n/g, '\\newline')
+                    .replace(/\\\(/g, '$')
+                    .replace(/\\\),/g, '$')
+                    .replace(/\[/g, '$')
+                    .replace(/\]/g, '$')
+                    .replace(/\\\)\./g, '$')
+                    .replace(/\\\)/g, '$')
+                    .replace(/\\\\/g, '\\')
+                    .replace(/\\text\{([^}]+)\}/g, '\\text{$1}')
+                    .replace(/\[/g, '$')
+                    .replace(/\]/g, '$')
+                    .replace(/\\[[\]]/g, '$')
+                    //replace \newlineq with =
+                    .replace(/\\newline/g, '=')
+                    //replace **: with **
+                    .replace(/\*\*: /g, '**')
+                    //replace *** with **
+                    //replace $: with $
+                    .replace(/\$\: /g, '$')
+                    .replace(/\*\*\*/g, '**')
+                    // Remove newlines between $ signs to keep LaTeX on one line
+                    .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $')
+                    : ''
+
                 setCurrentQuestion(data);
 
                 // Check if this question is in favorites and set the star accordingly
@@ -770,6 +970,7 @@ export default function QuizScreen() {
                 position: 'bottom'
             });
         } finally {
+            setIsQuestionLoading(false);
             setIsLoading(false);
         }
     };
@@ -843,27 +1044,27 @@ export default function QuizScreen() {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
 
-                    if (!hasRated && !hasShownRating) {
-                        if (nextPromptDateStr) {
-                            const nextPromptDate = new Date(nextPromptDateStr);
-                            const now = new Date();
+                    //if (!hasRated && !hasShownRating) {
+                    if (nextPromptDateStr) {
+                        const nextPromptDate = new Date(nextPromptDateStr);
+                        const now = new Date();
 
-                            // Only show if we've passed the next prompt date
-                            console.log(now, nextPromptDate);
-                            if (now >= nextPromptDate) {
-                                setTimeout(() => {
-                                    setShowRatingModal(true);
-                                    setHasShownRating(true);
-                                }, 2000);
-                            }
-                        } else {
-                            // First time showing the prompt
+                        // Only show if we've passed the next prompt date
+                        //console.log(now, nextPromptDate);
+                        if (now >= nextPromptDate) {
                             setTimeout(() => {
                                 setShowRatingModal(true);
                                 setHasShownRating(true);
                             }, 2000);
                         }
+                    } else {
+                        // First time showing the prompt
+                        setTimeout(() => {
+                            setShowRatingModal(true);
+                            setHasShownRating(true);
+                        }, 2000);
                     }
+                    //}
                 } catch (error) {
                     console.error('Error checking rating status:', error);
                 }
@@ -1312,21 +1513,28 @@ export default function QuizScreen() {
 
     // Add this function to handle rating
     const handleRating = async () => {
-        if (await StoreReview.hasAction()) {
-            await StoreReview.requestReview();
-        } else {
-            // Fallback to store URLs if StoreReview is not available
-            const storeUrl = Platform.select({
-                ios: 'https://apps.apple.com/app/6742684696',
-                android: 'https://play.google.com/store/apps/details?id=za.co.examquizafrica',
-            });
-            if (storeUrl) {
-                await Linking.openURL(storeUrl);
+        try {
+            if (Platform.OS === 'android') {
+                // Direct Play Store link for Android
+                await Linking.openURL('market://details?id=za.co.examquizafrica');
+            } else {
+                // Use StoreReview for iOS
+                if (await StoreReview.hasAction()) {
+                    await StoreReview.requestReview();
+                } else {
+                    await Linking.openURL('https://apps.apple.com/app/6742684696');
+                }
             }
+            // Store that user has reviewed
+            await SecureStore.setItemAsync('has_reviewed_app', 'true');
+            setShowRatingModal(false);
+        } catch (error) {
+            // If market:// scheme fails, try the web URL
+            if (Platform.OS === 'android') {
+                await Linking.openURL('https://play.google.com/store/apps/details?id=za.co.examquizafrica');
+            }
+            console.error('Error opening store:', error);
         }
-        setShowRatingModal(false);
-        // Store that user has reviewed
-        await SecureStore.setItemAsync('has_reviewed_app', 'true');
     };
 
     // Add this function to handle postponing the rating
@@ -1355,7 +1563,7 @@ export default function QuizScreen() {
             if (data.status === "OK") {
                 // The response data is in data.data array
                 setFavoriteQuestions(data.data || []);
-                console.log('Fetched favorites:', data.data); // Debug log
+                //console.log('Fetched favorites:', data.data); // Debug log
             }
         } catch (error) {
             console.error('Error fetching favorites:', error);
@@ -1381,6 +1589,7 @@ export default function QuizScreen() {
             return;
         };
         try {
+            setSelectedMode('quiz');
             setIsLoading(true);
             const response = await fetch(
                 `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
@@ -1422,6 +1631,12 @@ export default function QuizScreen() {
         );
     }
 
+    if (isQuestionLoading) {
+        return (
+            <AiLoadingPlaceholder />
+        );
+    }
+
     if (!selectedPaper) {
         return (
             <LinearGradient
@@ -1449,19 +1664,89 @@ export default function QuizScreen() {
                             Choose a paper or explore your favorites
                         </ThemedText>
 
+                        {/* Add Mode Selection */}
+                        <View style={styles.modeSelectionContainer}>
+                            <ThemedText style={[styles.modeSelectionTitle, { color: colors.text }]}>
+                                Choose Your Learning Mode
+                            </ThemedText>
+                            <View style={styles.modeButtons}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeButton,
+                                        {
+                                            backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                            borderColor: selectedMode === 'quiz' ? '#4F46E5' : colors.border
+                                        },
+                                        selectedMode === 'quiz' && styles.modeButtonSelected
+                                    ]}
+                                    onPress={() => setSelectedMode('quiz')}
+                                >
+                                    <Ionicons
+                                        name="school-outline"
+                                        size={24}
+                                        color={selectedMode === 'quiz' ? '#FFFFFF' : colors.text}
+                                    />
+                                    <ThemedText style={[
+                                        styles.modeButtonText,
+                                        { color: selectedMode === 'quiz' ? '#FFFFFF' : colors.text }
+                                    ]}>
+                                        Quiz Mode
+                                    </ThemedText>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeButton,
+                                        {
+                                            backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                            borderColor: selectedMode === 'lessons' ? '#4F46E5' : colors.border
+                                        },
+                                        selectedMode === 'lessons' && styles.modeButtonSelected
+                                    ]}
+                                    onPress={() => setSelectedMode('lessons')}
+                                >
+                                    <Ionicons
+                                        name="book-outline"
+                                        size={24}
+                                        color={selectedMode === 'lessons' ? '#FFFFFF' : colors.text}
+                                    />
+                                    <ThemedText style={[
+                                        styles.modeButtonText,
+                                        { color: selectedMode === 'lessons' ? '#FFFFFF' : colors.text }
+                                    ]}>
+                                        Lessons Mode
+                                    </ThemedText>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
                         <View style={styles.paperButtons}>
                             <LinearGradient
                                 colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={styles.paperButton}
+                                style={[
+                                    styles.paperButton,
+                                    !selectedMode && { opacity: 0.5 }
+                                ]}
                             >
                                 <TouchableOpacity
                                     style={styles.buttonContent}
                                     onPress={() => {
+                                        if (!selectedMode) {
+                                            Toast.show({
+                                                type: 'error',
+                                                text1: 'Select a Mode',
+                                                text2: 'Please choose a learning mode first',
+                                                position: 'bottom'
+                                            });
+                                            return;
+                                        }
                                         setSelectedPaper('P1');
                                         loadRandomQuestion('P1');
+                                        setCurrentQuestion(null);
                                     }}
+                                    disabled={!selectedMode}
                                 >
                                     <ThemedText style={styles.paperButtonText}>Paper 1</ThemedText>
                                 </TouchableOpacity>
@@ -1471,14 +1756,37 @@ export default function QuizScreen() {
                                 colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={styles.paperButton}
+                                style={[
+                                    styles.paperButton,
+                                    (!selectedMode || (subjectName as string).toLowerCase().includes('life orientation') || (subjectName as string).toLowerCase().includes('tourism')) && { opacity: 0.5 }
+                                ]}
                             >
                                 <TouchableOpacity
                                     style={styles.buttonContent}
                                     onPress={() => {
+                                        if (!selectedMode) {
+                                            Toast.show({
+                                                type: 'error',
+                                                text1: 'Select a Mode',
+                                                text2: 'Please choose a learning mode first',
+                                                position: 'bottom'
+                                            });
+                                            return;
+                                        }
+                                        if ((subjectName as string).toLowerCase().includes('life orientation') || (subjectName as string).toLowerCase().includes('tourism')) {
+                                            Toast.show({
+                                                type: 'error',
+                                                text1: 'Not Available',
+                                                text2: 'Paper 2 is not available for this subject',
+                                                position: 'bottom'
+                                            });
+                                            return;
+                                        }
                                         setSelectedPaper('P2');
                                         loadRandomQuestion('P2');
+                                        setCurrentQuestion(null);
                                     }}
+                                    disabled={!selectedMode || (subjectName as string).toLowerCase().includes('life orientation') || (subjectName as string).toLowerCase().includes('tourism')}
                                 >
                                     <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
                                 </TouchableOpacity>
@@ -1523,7 +1831,11 @@ export default function QuizScreen() {
                                                 onPress={() => loadSpecificQuestion(fav.questionId)}
                                             >
                                                 <ThemedText style={styles.favoriteCardText} numberOfLines={4}>
-                                                    {displayText}
+                                                    {displayText.includes('$') ? (
+                                                        <ThemedText style={styles.favoriteCardText}>Question with formula #{fav.questionId}</ThemedText>
+                                                    ) : (
+                                                        <ThemedText style={styles.favoriteCardText}>{displayText}</ThemedText>
+                                                    )}
                                                 </ThemedText>
                                             </TouchableOpacity>
                                         );
@@ -1546,7 +1858,7 @@ export default function QuizScreen() {
         );
     }
 
-    if (!currentQuestion) {
+    if (!currentQuestion && selectedMode === 'quiz') {
         return (
             <LinearGradient
                 colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -1601,11 +1913,11 @@ export default function QuizScreen() {
                                 style={[styles.goHomeButton, {
                                     backgroundColor: isDark ? colors.surface : '#64748B'
                                 }]}
-                                onPress={() => router.replace('/(tabs)')}
+                                onPress={() => setSelectedPaper(null)}
                             >
                                 <View style={styles.buttonContent}>
                                     <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-                                    <ThemedText style={styles.buttonText}>Go Home</ThemedText>
+                                    <ThemedText style={styles.buttonText}>Go Back</ThemedText>
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -1628,7 +1940,9 @@ export default function QuizScreen() {
                 testID="quiz-scroll-view"
             >
                 <SubjectHeader />
-                <PerformanceSummary />
+                {selectedMode === 'quiz' && (
+                    <PerformanceSummary />
+                )}
                 <ThemedView style={styles.content}>
                     <ThemedView
                         style={[styles.sectionCard, {
@@ -1637,325 +1951,517 @@ export default function QuizScreen() {
                         }]}
                         testID="question-card"
                     >
-
-                        {(currentQuestion.context || currentQuestion.image_path) && (
-                            <ThemedText
-                                style={styles.questionMeta}
-                                testID="context-label"
-                            >
-                                Context
-                            </ThemedText>
-                        )}
-
-                        {currentQuestion.context && (
-                            <View
-                                style={styles.questionContainer}
-                                testID="context-container"
-                            >
-                                {renderMixedContent(currentQuestion.context, isDark, colors)}
-                            </View>
-                        )}
-
-                        {(currentQuestion.image_path || currentQuestion.question_image_path) && (
-                            <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
-                                {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
-                            </ThemedText>
-                        )}
-
-                        {(currentQuestion.image_path && currentQuestion.image_path !== null && currentQuestion.image_path !== 'NULL') && (
-                            <View style={styles.imageWrapper}>
-                                <TouchableOpacity
-                                    style={styles.touchableImage}
-                                    onPress={() => {
-                                        setZoomImageUrl(currentQuestion.image_path);
-                                        setIsZoomModalVisible(true);
-                                    }}
-                                    activeOpacity={0.7}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    testID='question-context-image-container'
-                                >
-                                    {isImageLoading && <ImageLoadingPlaceholder />}
-                                    <Image
-                                        source={{
-                                            uri: `${IMAGE_BASE_URL}${currentQuestion.image_path}`
-                                        }}
-                                        style={styles.questionImage}
-                                        resizeMode="contain"
-                                        onLoadStart={() => setIsImageLoading(true)}
-                                        onLoadEnd={() => setIsImageLoading(false)}
-                                        testID='question-context-image'
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        {(currentQuestion.question || currentQuestion.question_image_path) && (
-                            <ThemedText style={styles.questionMeta} testID='question-meta'>
-                                Question
-                            </ThemedText>
-                        )}
-
-                        {(currentQuestion.question_image_path && currentQuestion.question_image_path !== null && currentQuestion.question_image_path !== 'NULL') && (
-                            <View style={styles.imageWrapper}>
-                                <TouchableOpacity
-                                    style={styles.touchableImage}
-                                    onPress={() => {
-                                        setZoomImageUrl(currentQuestion.question_image_path);
-                                        setIsZoomModalVisible(true);
-                                    }}
-                                    activeOpacity={0.7}
-                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                    testID='question-additional-image-container'
-                                >
-                                    <Image
-                                        source={{
-                                            uri: `${IMAGE_BASE_URL}${currentQuestion.question_image_path}`
-                                        }}
-                                        style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
-                                        resizeMode="contain"
-                                        onLoadStart={() => setIsImageLoading(true)}
-                                        onLoadEnd={() => setIsImageLoading(false)}
-                                        testID='question-image'
-                                    />
-                                    {isImageLoading && <ImageLoadingPlaceholder />}
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-
-
-                        {currentQuestion.question && (
-                            <View style={styles.questionContainer} testID='question-text'>
-                                {renderMixedContent(currentQuestion.question, isDark, colors)}
-                            </View>
-                        )}
-
-                        <View>
-                            <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>
-                                Tap to select your answer
-                            </ThemedText>
-                        </View>
-
-                        {currentQuestion.type === 'multiple_choice' && (
+                        {currentQuestion ? (
                             <>
-                                <ThemedView
-                                    style={styles.optionsContainer}
-                                    testID="options-container"
-                                >
-                                    {Object.entries(currentQuestion.options)
-                                        .filter(([_, value]) => value)
-                                        .map(([key, value], index) => (
-                                            <TouchableOpacity
-                                                key={key}
-                                                style={[
-                                                    styles.option,
-                                                    {
-                                                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                                        borderColor: colors.border
-                                                    },
-                                                    selectedAnswer === value && [
-                                                        styles.selectedOption,
-                                                        { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
-                                                    ],
-                                                    showFeedback && selectedAnswer === value && (
-                                                        (() => {
-                                                            try {
-                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
-
-                                                                const parsedAnswer = currentQuestion.answer.startsWith('[')
-                                                                    ? JSON.parse(currentQuestion.answer)
-                                                                    : currentQuestion.answer;
-
-                                                                return (Array.isArray(parsedAnswer)
-                                                                    ? parsedAnswer.includes(value)
-                                                                    : parsedAnswer === value)
-                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
-                                                            } catch (error) {
-                                                                console.error('Error parsing answer:', error);
-                                                                // Default to comparing as strings if parsing fails
-                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
-
-                                                                return currentQuestion.answer === value
-                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
-                                                            }
-                                                        })()
-                                                    )
-                                                ]}
-                                                onPress={() => handleAnswer(value)}
-                                                disabled={showFeedback || isAnswerLoading}
-                                                testID={`option-${index}`}
-                                            >
-                                                {isAnswerLoading && selectedAnswer === value ? (
-                                                    <View
-                                                        style={styles.optionLoadingContainer}
-                                                        testID="option-loading"
-                                                    >
-                                                        <ActivityIndicator size="small" color={colors.primary} />
-                                                    </View>
-                                                ) : (
-                                                    cleanAnswer(value).includes('$') ? (
-                                                        <KaTeX
-                                                            latex={cleanAnswer(value).replace(/\$/g, '')}
-                                                            isOption={true}
-                                                        />
-                                                    ) : (
-                                                        <ThemedText
-                                                            style={[styles.optionText, { color: colors.text }]}
-                                                            testID={`option-text-${index}`}
-                                                        >
-                                                            {value}
-                                                        </ThemedText>
-                                                    )
-                                                )}
-                                            </TouchableOpacity>
-                                        ))}
-                                </ThemedView>
-
-                                <TouchableOpacity
-                                    style={[styles.reportButton, {
-                                        marginTop: 16,
-                                        marginHorizontal: 16,
-                                        backgroundColor: isDark ? colors.surface : '#FEE2E2'
-                                    }]}
-                                    onPress={reportIssue}
-                                    testID="report-issue-button"
-                                >
-                                    <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                                        🛑 Report an Issue with this Question
-                                    </ThemedText>
-                                </TouchableOpacity>
-                            </>
-                        )}
-                        {showFeedback && (
-                            <ThemedView
-                                style={styles.feedbackContainer}
-                                testID="feedback-container"
-                            >
-                                <ThemedText
-                                    style={[styles.feedbackEmoji, { color: colors.text }]}
-                                    testID="feedback-message"
-                                >
-                                    {feedbackMessage}
-                                </ThemedText>
-
-                                <ThemedView
-                                    style={[styles.correctAnswerContainer, {
-                                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                        borderColor: '#22C55E'
-                                    }]}
-                                    testID="correct-answer-container"
-                                >
+                                {(currentQuestion.context || currentQuestion.image_path) && (
                                     <ThemedText
-                                        style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
-                                        testID="correct-answer-label"
+                                        style={styles.questionMeta}
+                                        testID="context-label"
                                     >
-                                        ✅ Right Answer!
+                                        Context
                                     </ThemedText>
+                                )}
 
-                                    {cleanAnswer(correctAnswer).includes('$') ? (
-                                        <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
-                                    ) : (
-                                        <ThemedText
-                                            style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
-                                            testID="correct-answer-text"
+                                {currentQuestion.context && (
+                                    <View
+                                        style={styles.questionContainer}
+                                        testID="context-container"
+                                    >
+                                        {currentQuestion.context?.split('\n').map((line, index) => {
+                                            const trimmedLine = line.trim();
+                                            //formulas cant have bullet points
+                                            if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                                //console.log('trimmedLine', trimmedLine);
+                                                const content = trimmedLine.substring(1).trim();
+                                                const indentLevel = line.indexOf('-') / 2;
+
+                                                return (
+                                                    <View
+                                                        key={index}
+                                                        style={[
+                                                            styles.bulletPointRow,
+                                                            { marginLeft: indentLevel * 5 }
+                                                        ]}
+                                                    >
+                                                        <ThemedText style={[styles.bulletPoint, {
+                                                            color: colors.text,
+                                                            marginTop: 4
+                                                        }]}>
+                                                            {indentLevel > 0 ? '🎯' : '✅'}
+                                                        </ThemedText>
+                                                        <View style={styles.bulletTextWrapper}>
+                                                            {renderMixedContent(content, isDark, colors)}
+                                                        </View>
+                                                    </View>
+                                                );
+                                            }
+                                            if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                                //remove the - at the beginning of the line
+                                                line = trimmedLine.substring(1).trim();
+                                            }
+                                            return (
+                                                <View key={index}>
+                                                    {renderMixedContent(line, isDark, colors)}
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+
+                                {(currentQuestion.image_path || currentQuestion.question_image_path) && (
+                                    <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
+                                        {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
+                                    </ThemedText>
+                                )}
+
+                                {(currentQuestion.image_path && currentQuestion.image_path !== null && currentQuestion.image_path !== 'NULL') && (
+                                    <View style={styles.imageWrapper}>
+                                        <TouchableOpacity
+                                            style={styles.touchableImage}
+                                            onPress={() => {
+                                                setZoomImageUrl(currentQuestion.image_path);
+                                                setIsZoomModalVisible(true);
+                                            }}
+                                            activeOpacity={0.7}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            testID='question-context-image-container'
                                         >
-                                            {cleanAnswer(correctAnswer)}
-                                        </ThemedText>
-                                    )}
-
-                                    {(currentQuestion.answer_image && currentQuestion.answer_image !== null && currentQuestion.answer_image !== 'NULL') && (
-                                        <View style={styles.imageWrapper}>
-                                            <TouchableOpacity
-                                                style={styles.touchableImage}
-                                                onPress={() => {
-                                                    setZoomImageUrl(currentQuestion.answer_image);
-                                                    setIsZoomModalVisible(true);
+                                            {isImageLoading && <ImageLoadingPlaceholder />}
+                                            <Image
+                                                source={{
+                                                    uri: `${IMAGE_BASE_URL}${currentQuestion.image_path}`
                                                 }}
-                                                activeOpacity={0.7}
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                testID='question-additional-image-container'
-                                            >
-                                                <Image
-                                                    source={{
-                                                        uri: `${IMAGE_BASE_URL}${currentQuestion.answer_image}`
-                                                    }}
-                                                    style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
-                                                    resizeMode="contain"
-                                                    onLoadStart={() => setIsImageLoading(true)}
-                                                    onLoadEnd={() => setIsImageLoading(false)}
-                                                    testID='question-image'
-                                                />
-                                                {isImageLoading && <ImageLoadingPlaceholder />}
-                                            </TouchableOpacity>
-                                        </View>
-                                    )}
+                                                style={styles.questionImage}
+                                                resizeMode="contain"
+                                                onLoadStart={() => setIsImageLoading(true)}
+                                                onLoadEnd={() => setIsImageLoading(false)}
+                                                testID='question-context-image'
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
 
-                                    {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
-                                        <>
+                                {(currentQuestion.question || currentQuestion.question_image_path) && (
+                                    <ThemedText style={styles.questionMeta} testID='question-meta'>
+                                        Question
+                                    </ThemedText>
+                                )}
+
+                                {(currentQuestion.question_image_path && currentQuestion.question_image_path !== null && currentQuestion.question_image_path !== 'NULL') && (
+                                    <View style={styles.imageWrapper}>
+                                        <TouchableOpacity
+                                            style={styles.touchableImage}
+                                            onPress={() => {
+                                                setZoomImageUrl(currentQuestion.question_image_path);
+                                                setIsZoomModalVisible(true);
+                                            }}
+                                            activeOpacity={0.7}
+                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            testID='question-additional-image-container'
+                                        >
+                                            <Image
+                                                source={{
+                                                    uri: `${IMAGE_BASE_URL}${currentQuestion.question_image_path}`
+                                                }}
+                                                style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
+                                                resizeMode="contain"
+                                                onLoadStart={() => setIsImageLoading(true)}
+                                                onLoadEnd={() => setIsImageLoading(false)}
+                                                testID='question-image'
+                                            />
+                                            {isImageLoading && <ImageLoadingPlaceholder />}
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+
+                                {currentQuestion.question && (
+                                    <View style={styles.questionContainer} testID='question-text'>
+                                        {currentQuestion.question?.split('\n').map((line, index) => {
+                                            const trimmedLine = line.trim();
+                                            //formulas cant have bullet points
+                                            if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                                //console.log('trimmedLine', trimmedLine);
+                                                const content = trimmedLine.substring(1).trim();
+                                                const indentLevel = line.indexOf('-') / 2;
+
+                                                return (
+                                                    <View
+                                                        key={index}
+                                                        style={[
+                                                            styles.bulletPointRow,
+                                                            { marginLeft: indentLevel * 5 }
+                                                        ]}
+                                                    >
+                                                        <ThemedText style={[styles.bulletPoint, {
+                                                            color: colors.text,
+                                                            marginTop: 4
+                                                        }]}>
+                                                            {indentLevel > 0 ? '🎯' : '✅'}
+                                                        </ThemedText>
+                                                        <View style={styles.bulletTextWrapper}>
+                                                            {renderMixedContent(content, isDark, colors)}
+                                                        </View>
+                                                    </View>
+                                                );
+                                            }
+                                            if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                                //remove the - at the beginning of the line
+                                                line = trimmedLine.substring(1).trim();
+                                            }
+                                            return (
+                                                <View key={index}>
+                                                    {renderMixedContent(line, isDark, colors)}
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+
+                                {selectedMode === 'quiz' && (
+                                    <>
+                                        <View>
+                                            <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>
+                                                Tap to select your answer
+                                            </ThemedText>
+                                        </View>
+
+                                        {currentQuestion.type === 'multiple_choice' && (
+                                            <>
+                                                <ThemedView
+                                                    style={styles.optionsContainer}
+                                                    testID="options-container"
+                                                >
+                                                    {Object.entries(currentQuestion.options)
+                                                        .filter(([_, value]) => value)
+                                                        .map(([key, value], index) => (
+                                                            <TouchableOpacity
+                                                                key={key}
+                                                                style={[
+                                                                    styles.option,
+                                                                    {
+                                                                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                                                        borderColor: colors.border
+                                                                    },
+                                                                    selectedAnswer === value && [
+                                                                        styles.selectedOption,
+                                                                        { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
+                                                                    ],
+                                                                    showFeedback && selectedAnswer === value && (
+                                                                        (() => {
+                                                                            try {
+                                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+
+                                                                                const parsedAnswer = currentQuestion.answer.startsWith('[')
+                                                                                    ? JSON.parse(currentQuestion.answer)
+                                                                                    : currentQuestion.answer;
+
+                                                                                return (Array.isArray(parsedAnswer)
+                                                                                    ? parsedAnswer.includes(value)
+                                                                                    : parsedAnswer === value)
+                                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                                                            } catch (error) {
+                                                                                console.error('Error parsing answer:', error);
+                                                                                // Default to comparing as strings if parsing fails
+                                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+
+                                                                                return currentQuestion.answer === value
+                                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                                                            }
+                                                                        })()
+                                                                    )
+                                                                ]}
+                                                                onPress={() => handleAnswer(value)}
+                                                                disabled={showFeedback || isAnswerLoading}
+                                                                testID={`option-${index}`}
+                                                            >
+                                                                {isAnswerLoading && selectedAnswer === value ? (
+                                                                    <View
+                                                                        style={styles.optionLoadingContainer}
+                                                                        testID="option-loading"
+                                                                    >
+                                                                        <ActivityIndicator size="small" color={colors.primary} />
+                                                                    </View>
+                                                                ) : (
+                                                                    cleanAnswer(value).includes('$') ? (
+                                                                        <KaTeX
+                                                                            latex={cleanAnswer(value).replace(/\$/g, '')}
+                                                                            isOption={true}
+                                                                        />
+                                                                    ) : (
+                                                                        <ThemedText
+                                                                            style={[styles.optionText, { color: colors.text }]}
+                                                                            testID={`option-text-${index}`}
+                                                                        >
+                                                                            {value}
+                                                                        </ThemedText>
+                                                                    )
+                                                                )}
+                                                            </TouchableOpacity>
+                                                        ))}
+                                                </ThemedView>
+
+                                                <TouchableOpacity
+                                                    style={[styles.reportButton, {
+                                                        marginTop: 16,
+                                                        marginHorizontal: 16,
+                                                        backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                                                    }]}
+                                                    onPress={reportIssue}
+                                                    testID="report-issue-button"
+                                                >
+                                                    <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                                                        🛑 Report an Issue with this {selectedMode === 'quiz' ? 'Question' : 'Lesson'}
+                                                    </ThemedText>
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+
+                                {selectedMode === 'lessons' && (
+                                    <>
+                                        {(currentQuestion.ai_explanation && currentQuestion.ai_explanation !== null && currentQuestion.ai_explanation !== 'NULL') && (
+                                            <ThemedView
+                                                style={[styles.aiExplanationContainer, {
+                                                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                                    borderColor: '#22C55E'
+                                                }]}
+                                                testID="correct-answer-container"
+                                            >
+                                                {currentQuestion.ai_explanation?.split('\n').map((line, index) => {
+                                                    const trimmedLine = line.trim();
+                                                    //formulas cant have bullet points
+                                                    if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                                        //console.log('trimmedLine', trimmedLine);
+                                                        const content = trimmedLine.substring(1).trim();
+                                                        const indentLevel = line.indexOf('-') / 2;
+
+                                                        return (
+                                                            <View
+                                                                key={index}
+                                                                style={[
+                                                                    styles.bulletPointRow,
+                                                                    { marginLeft: indentLevel * 5 }
+                                                                ]}
+                                                            >
+                                                                <ThemedText style={[styles.bulletPoint, {
+                                                                    color: colors.text,
+                                                                    marginTop: 4
+                                                                }]}>
+                                                                    {indentLevel > 0 ? '🎯' : '✅'}
+                                                                </ThemedText>
+                                                                <View style={styles.bulletTextWrapper}>
+                                                                    {renderMixedContent(content, isDark, colors)}
+                                                                </View>
+                                                            </View>
+                                                        );
+                                                    }
+                                                    if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                                        //remove the - at the beginning of the line
+                                                        line = trimmedLine.substring(1).trim();
+                                                    }
+                                                    return (
+                                                        <View key={index}>
+                                                            {renderMixedContent(line, isDark, colors)}
+                                                        </View>
+                                                    );
+                                                })}
+                                            </ThemedView>
+                                        )}
+
+                                        <TouchableOpacity
+                                            style={[styles.reportButton, {
+                                                marginTop: 16,
+                                                marginHorizontal: 16,
+                                                backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                                            }]}
+                                            onPress={reportIssue}
+                                            testID="report-issue-button"
+                                        >
+                                            <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                                                🛑 Report an Issue with this Lesson
+                                            </ThemedText>
+                                        </TouchableOpacity>
+                                    </>
+                                )}
+
+
+
+                                {showFeedback && selectedMode === 'quiz' && (
+                                    <ThemedView
+                                        style={styles.feedbackContainer}
+                                        testID="feedback-container"
+                                    >
+                                        <ThemedText
+                                            style={[styles.feedbackEmoji, { color: colors.text }]}
+                                            testID="feedback-message"
+                                        >
+                                            {feedbackMessage}
+                                        </ThemedText>
+
+                                        <ThemedView
+                                            style={[styles.correctAnswerContainer, {
+                                                backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                                borderColor: '#22C55E'
+                                            }]}
+                                            testID="correct-answer-container"
+                                        >
                                             <ThemedText
                                                 style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
                                                 testID="correct-answer-label"
                                             >
-                                                ✅ Explanation
+                                                ✅ Right Answer!
                                             </ThemedText>
 
-                                            {cleanAnswer(currentQuestion.explanation).includes('$') ? (
-                                                <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
+                                            {cleanAnswer(correctAnswer).includes('$') ? (
+                                                <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
                                             ) : (
                                                 <ThemedText
                                                     style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
                                                     testID="correct-answer-text"
                                                 >
-                                                    {cleanAnswer(currentQuestion.explanation)}
+                                                    {cleanAnswer(correctAnswer)}
                                                 </ThemedText>
                                             )}
-                                        </>
-                                    )}
 
-                                </ThemedView>
+                                            {(currentQuestion.answer_image && currentQuestion.answer_image !== null && currentQuestion.answer_image !== 'NULL') && (
+                                                <View style={styles.imageWrapper}>
+                                                    <TouchableOpacity
+                                                        style={styles.touchableImage}
+                                                        onPress={() => {
+                                                            setZoomImageUrl(currentQuestion.answer_image);
+                                                            setIsZoomModalVisible(true);
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                        testID='question-additional-image-container'
+                                                    >
+                                                        <Image
+                                                            source={{
+                                                                uri: `${IMAGE_BASE_URL}${currentQuestion.answer_image}`
+                                                            }}
+                                                            style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
+                                                            resizeMode="contain"
+                                                            onLoadStart={() => setIsImageLoading(true)}
+                                                            onLoadEnd={() => setIsImageLoading(false)}
+                                                            testID='question-image'
+                                                        />
+                                                        {isImageLoading && <ImageLoadingPlaceholder />}
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
 
-                                {/* Question approval button - only show for admin users */}
-                                {(learnerRole === 'admin' || learnerRole === 'reviewer') && showFeedback && currentQuestion && (
-                                    <TouchableOpacity
-                                        style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
-                                        onPress={handleApproveQuestion}
-                                        disabled={isApproving}
-                                    >
-                                        <ThemedText style={styles.approveButtonText}>
-                                            {isApproving ? 'Approving...' : 'Question looks good'}
-                                        </ThemedText>
-                                    </TouchableOpacity>
-                                )}
+                                            {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
+                                                <>
+                                                    <ThemedText
+                                                        style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
+                                                        testID="correct-answer-label"
+                                                    >
+                                                        ✅ Explanation
+                                                    </ThemedText>
 
-                                <TouchableOpacity
-                                    style={[styles.aiExplanationButton, {
-                                        backgroundColor: isDark ? '#4338CA' : '#4F46E5'
-                                    }]}
-                                    onPress={() => fetchAIExplanation(currentQuestion?.id || 0)}
-                                    disabled={isLoadingExplanation}
-                                    testID="ai-explanation-button"
-                                >
-                                    <ThemedText style={styles.aiExplanationButtonText}>
-                                        {isLoadingExplanation ? (
-                                            <View
-                                                style={styles.loaderContainer}
-                                                testID="ai-explanation-loading"
+                                                    {cleanAnswer(currentQuestion.explanation).includes('$') ? (
+                                                        <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
+                                                    ) : (
+                                                        <ThemedText
+                                                            style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
+                                                            testID="correct-answer-text"
+                                                        >
+                                                            {currentQuestion.explanation?.split('\n').map((line, index) => {
+                                                                const trimmedLine = line.trim();
+                                                                //formulas cant have bullet points
+                                                                if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                                                    //console.log('trimmedLine', trimmedLine);
+                                                                    const content = trimmedLine.substring(1).trim();
+                                                                    const indentLevel = line.indexOf('-') / 2;
+
+                                                                    return (
+                                                                        <View
+                                                                            key={index}
+                                                                            style={[
+                                                                                styles.bulletPointRow,
+                                                                                { marginLeft: indentLevel * 5 }
+                                                                            ]}
+                                                                        >
+                                                                            <ThemedText style={[styles.bulletPoint, {
+                                                                                color: colors.text,
+                                                                                marginTop: 4
+                                                                            }]}>
+                                                                                {indentLevel > 0 ? '🎯' : '✅'}
+                                                                            </ThemedText>
+                                                                            <View style={styles.bulletTextWrapper}>
+                                                                                {renderMixedContent(content, isDark, colors)}
+                                                                            </View>
+                                                                        </View>
+                                                                    );
+                                                                }
+                                                                if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                                                    //remove the - at the beginning of the line
+                                                                    line = trimmedLine.substring(1).trim();
+                                                                }
+                                                                if (trimmedLine.includes('{')) {
+                                                                    //remove the - at the beginning of the line
+                                                                    <View key={index}>
+                                                                        {renderMixedContent(line, isDark, colors)}
+                                                                    </View>
+                                                                }
+                                                                return (
+                                                                    <View key={index}>
+                                                                        <ThemedText>
+                                                                            {line}
+                                                                        </ThemedText>
+                                                                    </View>
+                                                                );
+                                                            })}
+                                                        </ThemedText>
+                                                    )}
+                                                </>
+                                            )}
+                                        </ThemedView>
+
+                                        <TouchableOpacity
+                                            style={[styles.aiExplanationButton, {
+                                                backgroundColor: isDark ? '#4338CA' : '#4F46E5'
+                                            }]}
+                                            onPress={() => fetchAIExplanation(currentQuestion?.id || 0)}
+                                            disabled={isLoadingExplanation}
+                                            testID="ai-explanation-button"
+                                        >
+                                            <ThemedText style={styles.aiExplanationButtonText}>
+                                                {isLoadingExplanation ? (
+                                                    <View
+                                                        style={styles.loaderContainer}
+                                                        testID="ai-explanation-loading"
+                                                    >
+                                                        <ThemedText style={styles.aiExplanationButtonText}>
+                                                            Pretending to think...
+                                                        </ThemedText>
+                                                        <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : colors.primary} />
+                                                    </View>
+                                                ) : (
+                                                    '🤖 Break it Down for Me!'
+                                                )}
+                                            </ThemedText>
+                                        </TouchableOpacity>
+
+                                        {/* Question approval button - only show for admin users */}
+                                        {(learnerRole === 'admin' || learnerRole === 'reviewer') && showFeedback && currentQuestion && (
+                                            <TouchableOpacity
+                                                style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
+                                                onPress={handleApproveQuestion}
+                                                disabled={isApproving}
                                             >
-                                                <ThemedText style={styles.aiExplanationButtonText}>
-                                                    🤖 Pretending to think...
+                                                <ThemedText style={styles.approveButtonText}>
+                                                    {isApproving ? 'Approving...' : 'Question looks good'}
                                                 </ThemedText>
-                                                <ActivityIndicator size="small" color="#FFFFFF" />
-                                            </View>
-                                        ) : (
-                                            '🤖 Break it Down for Me!'
+                                            </TouchableOpacity>
                                         )}
-                                    </ThemedText>
-                                </TouchableOpacity>
-                            </ThemedView>
-                        )}
-
+                                    </ThemedView>
+                                )}
+                            </>
+                        ) : null}
                     </ThemedView>
                 </ThemedView>
             </ScrollView>
@@ -1990,11 +2496,11 @@ export default function QuizScreen() {
                 >
                     <TouchableOpacity
                         style={styles.buttonContent}
-                        onPress={() => router.replace('/(tabs)')}
+                        onPress={() => setSelectedPaper(null)}
                         testID="home-button"
                     >
-                        <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>Home</ThemedText>
+                        <Ionicons name="menu-outline" size={20} color="#FFFFFF" />
+                        <ThemedText style={styles.footerButtonText}>Menu</ThemedText>
                     </TouchableOpacity>
                 </LinearGradient>
             </ThemedView>
@@ -2070,9 +2576,11 @@ export default function QuizScreen() {
                         </TouchableOpacity>
                     </View>
                     <ScrollView style={styles.explanationContent}>
-                        {aiExplanation.split('\n').map((line, index) => {
+                        {aiExplanation?.split('\n').map((line, index) => {
                             const trimmedLine = line.trim();
-                            if (trimmedLine.startsWith('-')) {
+                            //formulas cant have bullet points
+                            if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                //console.log('trimmedLine', trimmedLine);
                                 const content = trimmedLine.substring(1).trim();
                                 const indentLevel = line.indexOf('-') / 2;
 
@@ -2080,19 +2588,28 @@ export default function QuizScreen() {
                                     <View
                                         key={index}
                                         style={[
-                                            styles.explanationLine,
+                                            styles.bulletPointRow,
                                             { marginLeft: indentLevel * 20 }
                                         ]}
                                     >
-                                        <ThemedText style={styles.bulletPoint}>✅</ThemedText>
-                                        <View style={styles.explanationTextContainer}>
+                                        <ThemedText style={[styles.bulletPoint, {
+                                            color: colors.text,
+                                            marginTop: 4
+                                        }]}>
+                                            {indentLevel > 0 ? '🎯' : '✅'}
+                                        </ThemedText>
+                                        <View style={styles.bulletTextWrapper}>
                                             {renderMixedContent(content, isDark, colors)}
                                         </View>
                                     </View>
                                 );
                             }
+                            if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                //remove the - at the beginning of the line
+                                line = trimmedLine.substring(1).trim();
+                            }
                             return (
-                                <View key={index} style={styles.explanationTextContainer}>
+                                <View key={index}>
                                     {renderMixedContent(line, isDark, colors)}
                                 </View>
                             );
@@ -2631,7 +3148,6 @@ const styles = StyleSheet.create({
         borderColor: '#22C55E',
         borderRadius: 8,
         marginTop: 12,
-
         padding: 12,
     },
     correctAnswerLabel: {
@@ -2644,7 +3160,12 @@ const styles = StyleSheet.create({
     correctAnswerText: {
         color: '#166534',
         marginLeft: 16,
-
+    },
+    aiExplanationContainer: {
+        backgroundColor: '#FFFFFF',
+        borderColor: '#22C55E',
+        borderRadius: 8,
+        marginTop: 12,
     },
     answerImage: {
         width: '100%',
@@ -2691,6 +3212,7 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontSize: 14,
         fontWeight: '500',
+        paddingHorizontal: 16,
     },
     completionButtons: {
         flexDirection: 'row',
@@ -3187,6 +3709,12 @@ const styles = StyleSheet.create({
         marginVertical: 8,
         lineHeight: 26,
     },
+    h4Text: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginVertical: 6,
+        lineHeight: 24,
+    },
     boldText: {
         fontWeight: '700',
     },
@@ -3467,6 +3995,56 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
     },
+    modeSelectionContainer: {
+        width: '100%',
+        paddingHorizontal: 20,
+        marginBottom: 24,
+    },
+    modeSelectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    modeButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        justifyContent: 'center',
+    },
+    modeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        maxWidth: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    modeButtonSelected: {
+        backgroundColor: '#4F46E5',
+        borderColor: '#4F46E5',
+    },
+    modeButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    modeButtonTextSelected: {
+        color: '#FFFFFF',
+    },
+    bulletPointRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginBottom: 8,
+        width: '100%',
+    }
 });
 
 function getProgressBarColor(progress: number): string {

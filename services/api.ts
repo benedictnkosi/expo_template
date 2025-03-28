@@ -267,4 +267,33 @@ export async function updatePushToken(uid: string, pushToken: string): Promise<v
   if (!response.ok) {
     throw new Error('Failed to update push token');
   }
+}
+
+export interface RandomAIQuestion {
+  status: string;
+  question: {
+    id: number;
+    question: string;
+    ai_explanation: string;
+    subject: {
+      id: number;
+      name: string;
+    };
+  };
+}
+
+export async function getRandomAIQuestion(uid: string): Promise<RandomAIQuestion> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/question/random-ai?uid=${uid}`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch random AI question');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching random AI question:', error);
+    throw error;
+  }
 } 
