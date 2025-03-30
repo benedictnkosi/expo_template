@@ -19,10 +19,6 @@ const faqs: FAQItem[] = [
     answer: "ExamQuiz helps you practice with real past exam questions tailored to your grade and curriculum. Choose your subjects, select Paper 1 or Paper 2, and start practicing! Each question comes with detailed solutions and explanations. Your progress is tracked separately for each paper and subject, helping you focus on areas that need improvement."
   },
   {
-    question: "What is the difference between Paper 1 and Paper 2?",
-    answer: "Each subject is divided into Paper 1 and Paper 2, following the official exam structure. Each paper covers different topics and sections of the curriculum. Paper 1 typically focuses on theory and conceptual understanding, while Paper 2 often covers practical applications and problem-solving. You can practice both papers separately to ensure complete preparation."
-  },
-  {
     question: "How does the AI help me learn?",
     answer: "Our AI assistant provides personalized learning support in multiple ways: it explains concepts in detail when you get a question wrong, breaks down solutions step-by-step, identifies your specific misconceptions, and provides additional examples tailored to your learning style. The AI adapts to your performance over time, focusing more on areas where you need extra help."
   },
