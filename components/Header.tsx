@@ -32,7 +32,7 @@ export function Header({ learnerInfo }: HeaderProps) {
     : avatarImages['default'];
 
   return (
-    <View style={[styles.header, { marginTop: insets.top }]}>
+    <View style={styles.header}>
       <View style={styles.greeting}>
         <ThemedText style={styles.welcomeText} testID='welcome-text'>
           <ThemedText style={styles.appName}>📚 Exam Quiz</ThemedText> <ThemedText style={styles.emoji}>✨</ThemedText>
@@ -40,7 +40,7 @@ export function Header({ learnerInfo }: HeaderProps) {
         <ThemedText style={styles.subtitle}>Explore the Joy of Learning! 🎓</ThemedText>
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
+      <TouchableOpacity onPress={() => router.push('/profile')}>
         <View style={styles.profileSection}>
           <Image
             source={avatarSource}
@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   greeting: {
     flex: 1,

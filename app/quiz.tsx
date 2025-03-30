@@ -1385,7 +1385,7 @@ export default function QuizScreen() {
                                         style={[styles.favoriteButton, {
                                             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
                                             marginLeft: 'auto',
-                                            marginRight: 56 // Add margin to create space from the close button
+                                            marginRight: 8
                                         }]}
                                     >
                                         {isFavoriting ? (
@@ -1393,7 +1393,7 @@ export default function QuizScreen() {
                                         ) : (
                                             <Ionicons
                                                 name={isCurrentQuestionFavorited ? "star" : "star-outline"}
-                                                size={14} // Increase size for better visibility
+                                                size={14}
                                                 color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
                                             />
                                         )}
@@ -1403,24 +1403,9 @@ export default function QuizScreen() {
                         )}
                     </View>
                 </View>
-
-
             </View>
 
-            <View style={styles.headerButtonsContainer}>
-                <TouchableOpacity
-                    style={[styles.headerButton, {
-                        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
-                    }]}
-                    onPress={() => {
-                        // Reset selected paper to show paper selection screen
-                        setSelectedPaper(null);
-                    }}
-                    testID="close-button"
-                >
-                    <Ionicons name="close" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-            </View>
+
         </LinearGradient>
     );
 
@@ -1648,7 +1633,7 @@ export default function QuizScreen() {
                 <ScrollView style={styles.container}>
                     <View style={styles.paperSelectionContainer}>
                         <TouchableOpacity
-                            style={[styles.closeHeaderButton, {
+                            style={[styles.closeButton, {
                                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
                             }]}
                             onPress={() => router.back()}
@@ -1792,6 +1777,7 @@ export default function QuizScreen() {
                                 </TouchableOpacity>
                             </LinearGradient>
                         </View>
+
 
                         {/* Divider */}
                         <View style={[styles.divider, {
@@ -2875,13 +2861,11 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     headerButton: {
-        padding: 8,
-        borderRadius: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
         width: 40,
         height: 40,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     iconContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -3135,6 +3119,24 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         padding: 8,
+        borderRadius: 25,
+        position: 'absolute',
+        top: 20,
+        left: 20,
+        zIndex: 10,
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(229, 231, 235, 0.9)',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 2.5,
+        elevation: 3,
     },
     feedbackContainer: {
         borderRadius: 12,
@@ -4044,7 +4046,18 @@ const styles = StyleSheet.create({
         gap: 12,
         marginBottom: 8,
         width: '100%',
-    }
+    },
+    headerButtons: {
+        position: 'absolute',
+        top: 16,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        zIndex: 10,
+    },
+
 });
 
 function getProgressBarColor(progress: number): string {

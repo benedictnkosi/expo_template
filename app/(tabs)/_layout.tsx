@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 import { HapticTab } from '../../components/HapticTab';
 import TabBarBackground from '../../components/ui/TabBarBackground';
@@ -11,17 +12,17 @@ import TabBarBackground from '../../components/ui/TabBarBackground';
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const { colors, isDark } = useTheme();
 
   return (
     <Tabs
       screenOptions={{
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E2E8F0',
-          borderTopWidth: 1,
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderTopColor: isDark ? colors.border : '#E5E7EB',
         },
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: '#64748B',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
@@ -44,16 +45,16 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} testID="home-tab-icon" />
+            <Ionicons name="home-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="chat"
         options={{
-          title: 'Profile',
+          title: 'Chats',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} testID="profile-tab-icon" />
+            <Ionicons name="chatbubbles-outline" size={size} color={color} />
           ),
         }}
       />

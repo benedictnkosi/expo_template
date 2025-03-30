@@ -1,24 +1,25 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { ThemedView } from '../../components/ThemedView';
-import { ThemedText } from '../../components/ThemedText';
+import { useAuth } from '@/contexts/AuthContext';
+import { ThemedView } from '@/components/ThemedView';
+import { ThemedText } from '@/components/ThemedText';
 import { useState, useEffect } from 'react';
-import { getLearner, createLearner, fetchGrades } from '../../services/api';
+import { getLearner, createLearner, fetchGrades } from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
-import { Header } from '../../components/Header';
+import { Header } from '@/components/Header';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
-import { analytics } from '../../services/analytics';
-import { API_BASE_URL } from '../../config/api';
+import { analytics } from '@/services/analytics';
+import { API_BASE_URL } from '@/config/api';
 import { deleteUser } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -85,6 +86,7 @@ export default function ProfileScreen() {
   const CURRICULA = ['CAPS', 'IEB'];
 
   useEffect(() => {
+    console.log('user', user);
     async function fetchLearnerInfo() {
       if (!user?.uid) return;
       try {
@@ -442,6 +444,15 @@ export default function ProfileScreen() {
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
       >
+        <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+          <TouchableOpacity
+            style={[styles.closeIconButton, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }]}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="close" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
         <Header
           learnerInfo={learnerInfo}
         />
@@ -724,7 +735,7 @@ export default function ProfileScreen() {
                 testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
-                  {isSaving ? 'Saving...' : 'Lock in your settings! 🔒'}
+                  {isSaving ? 'Saving...' : 'Save your settings! 🔒'}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -754,20 +765,35 @@ export default function ProfileScreen() {
         </ThemedView>
 
         <ThemedView style={styles.signOutContainer}>
-          <TouchableOpacity
-            style={[
-              styles.signOutButton,
-              { backgroundColor: isDark ? '#DC2626' : '#F43F5E' },
-              isLoggingOut && styles.buttonDisabled
-            ]}
-            onPress={handleLogout}
-            disabled={isLoggingOut}
-            testID='sign-out-button'
-          >
-            <ThemedText style={styles.signOutText}>
-              {isLoggingOut ? 'Signing out...' : 'Sign Out'}
-            </ThemedText>
-          </TouchableOpacity>
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                { backgroundColor: isDark ? colors.surface : '#F8FAFC', borderColor: colors.border },
+              ]}
+              onPress={() => router.back()}
+              disabled={isLoggingOut}
+            >
+              <ThemedText style={[styles.actionButtonText, { color: colors.text }]}>
+                Close
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                { backgroundColor: isDark ? '#DC2626' : '#F43F5E' },
+                isLoggingOut && styles.buttonDisabled
+              ]}
+              onPress={handleLogout}
+              disabled={isLoggingOut}
+              testID='sign-out-button'
+            >
+              <ThemedText style={[styles.actionButtonText, { color: '#FFFFFF' }]}>
+                {isLoggingOut ? 'Signing out...' : 'Sign Out'}
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[
@@ -920,6 +946,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  closeIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   homeButton: {
     backgroundColor: '#8B5CF6',
@@ -1050,16 +1089,21 @@ const styles = StyleSheet.create({
     marginTop: 20,
     backgroundColor: 'transparent',
   },
-  signOutButton: {
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 8,
+  },
+  actionButton: {
+    flex: 1,
     padding: 16,
     borderRadius: 8,
-    marginVertical: 8,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  signOutText: {
-    color: '#FFFFFF',
+  actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1330,5 +1374,9 @@ const styles = StyleSheet.create({
     padding: 6,
     alignSelf: 'flex-start',
     borderRadius: 4,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 

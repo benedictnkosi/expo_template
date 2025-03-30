@@ -264,6 +264,11 @@ export default function HomeScreen() {
       setIsLoading(true);
       const learner = await getLearner(user.uid);
 
+      //save learner name in AsyncStorage
+      await AsyncStorage.setItem('learnerName', learner.name);
+      //save learner grade number in AsyncStorage
+      await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
+
       if (learner.name && learner.grade) {
         setLearnerInfo(learner as LearnerInfo);
         const enrolledResponse = await fetchMySubjects(user.uid);
@@ -609,7 +614,6 @@ export default function HomeScreen() {
                           {subject.answered_questions === 0 ? 0 :
                             Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
                         </ThemedText>
-
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -1257,6 +1261,21 @@ const styles = StyleSheet.create({
   randomLessonContent: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginTop: 12,
+    gap: 6,
+  },
+  chatButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

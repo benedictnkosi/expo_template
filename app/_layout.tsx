@@ -49,6 +49,13 @@ function RootLayoutNav() {
             presentation: 'fullScreenModal'
           }}
         />
+        <Stack.Screen
+          name="profile"
+          options={{
+            headerShown: false,
+            presentation: 'modal'
+          }}
+        />
       </Stack>
       <Toast />
     </AuthProvider>
