@@ -1,7 +1,7 @@
 import '../utils/crypto-polyfill';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { SplashScreen } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -10,6 +10,12 @@ import AuthLayout from './_auth';
 import Toast from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { app } from '@/config/firebase';
+import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync } from '@/services/notifications';
+import { Platform } from 'react-native';
+import { router } from 'expo-router';
+import { styles } from '@/styles/global';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -54,6 +60,9 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  const notificationListener = useRef<Notifications.Subscription>();
+  const responseListener = useRef<Notifications.Subscription>();
+
   useEffect(() => {
     if (error) throw error;
   }, [error]);
@@ -65,34 +74,57 @@ export default function RootLayout() {
   }, [loaded]);
 
   useEffect(() => {
-    // Set up notification listeners
-    // notificationListener.current = addNotificationListener(notification => {
-    //   console.log('Received notification:', notification);
-    // });
-
-    // responseListener.current = addNotificationResponseListener(response => {
-    //   const data = response.notification.request.content.data;
-
-    //   // Handle notification tap
-    //   if (data?.screen) {
-    //     router.push(data.screen);
-    //   }
-    // });
-
-    // Cleanup listeners on unmount
-    // return () => {
-    //   if (notificationListener.current) {
-    //     removeNotificationListener(notificationListener.current);
-    //   }
-    //   if (responseListener.current) {
-    //     removeNotificationListener(responseListener.current);
-    //   }
-    // };
-  }, []);
-
-  useEffect(() => {
     // Initialize notifications when app starts
-    // initializeNotifications();
+    async function initializeNotifications() {
+      try {
+        console.log('[Notifications] Initializing notifications...');
+
+        // Ensure Firebase is initialized
+        if (!app) {
+          console.error('[Notifications] Firebase app not initialized');
+          return;
+        }
+
+        // Register for push notifications
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          console.log('[Notifications] Successfully registered for push notifications');
+        }
+
+        // Set up notification listeners
+        notificationListener.current = Notifications.addNotificationReceivedListener(
+          (notification: Notifications.Notification) => {
+            console.log('[Notifications] Received notification:', notification);
+          }
+        );
+
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(
+          (response: Notifications.NotificationResponse) => {
+            const data = response.notification.request.content.data;
+            console.log('[Notifications] Received notification response:', data);
+
+            // Handle notification tap
+            if (data?.screen) {
+              router.push(data.screen);
+            }
+          }
+        );
+
+        // Cleanup listeners on unmount
+        return () => {
+          if (notificationListener.current) {
+            Notifications.removeNotificationSubscription(notificationListener.current);
+          }
+          if (responseListener.current) {
+            Notifications.removeNotificationSubscription(responseListener.current);
+          }
+        };
+      } catch (error) {
+        console.error('[Notifications] Error initializing notifications:', error);
+      }
+    }
+
+    initializeNotifications();
   }, []);
 
   if (!loaded) {
@@ -107,10 +139,4 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  }
-});
 
