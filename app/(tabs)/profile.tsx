@@ -460,7 +460,7 @@ export default function ProfileScreen() {
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Enter your name"
-                  placeholderTextColor={isDark ? '#666666' : '#999999'}
+                  placeholderTextColor={isDark ? colors.textSecondary : '#94A3B8'}
                   testID='profile-name-input'
                   maxLength={50}
                 />
@@ -470,29 +470,37 @@ export default function ProfileScreen() {
                 <ThemedText style={[styles.label, { color: colors.text }]}>🏆 Grade</ThemedText>
                 <View style={[styles.pickerContainer, {
                   backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                  borderColor: isDark ? colors.border : '#E2E8F0',
+                  borderColor: colors.border,
                   borderWidth: 1,
                   borderRadius: 12,
-                  overflow: 'hidden'
+                  ...(Platform.OS === 'android' && {
+                    elevation: 0,
+                    overflow: 'hidden'
+                  })
                 }]}>
                   <Picker
                     selectedValue={editGrade}
                     onValueChange={setEditGrade}
                     style={[
                       styles.picker,
-                      Platform.OS === 'ios' && styles.pickerIOS,
-                      { color: colors.text }
-                    ]}
-                    itemStyle={[
-                      Platform.OS === 'ios' ? styles.pickerItemIOS : undefined,
-                      { color: colors.text }
+                      Platform.OS === 'android' ? {
+                        backgroundColor: 'transparent',
+                        color: colors.text,
+                        height: 50
+                      } : {
+                        color: colors.text
+                      }
                     ]}
                     dropdownIconColor={colors.text}
+                    mode="dropdown"
                   >
                     <Picker.Item
                       label="Select Grade"
                       value=""
                       color={isDark ? colors.textSecondary : '#94A3B8'}
+                      style={{
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                      }}
                     />
                     {grades.map((grade) => (
                       <Picker.Item
@@ -500,6 +508,9 @@ export default function ProfileScreen() {
                         label={`Grade ${grade.number}`}
                         value={grade.number.toString()}
                         color={isDark ? colors.text : '#1E293B'}
+                        style={{
+                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                        }}
                       />
                     ))}
                   </Picker>
@@ -559,16 +570,14 @@ export default function ProfileScreen() {
                       clearButtonMode: 'while-editing',
                       autoCorrect: false,
                       autoCapitalize: 'none',
+                      placeholderTextColor: isDark ? colors.textSecondary : '#94A3B8',
+                      selectionColor: colors.primary,
                     }}
-                    key={`school-search-${editSchool}`} // Add a key to force re-render when school changes
-                    listViewDisplayed={false} // Only show list when user is typing
-                    disableScroll={true} // Disable scrolling in the component
-                    keyboardShouldPersistTaps="handled"
-                    nearbyPlacesAPI="GooglePlacesSearch"
-                    debounce={300}
-                    minLength={2}
                     styles={{
-                      container: styles.searchContainer,
+                      container: [
+                        styles.searchContainer,
+                        Platform.OS === 'android' && { elevation: 0 }
+                      ],
                       textInput: [
                         styles.searchInput,
                         {
@@ -580,14 +589,23 @@ export default function ProfileScreen() {
                       listView: [
                         styles.searchListView,
                         {
-                          backgroundColor: isDark ? colors.surface : '#FFFFFF'
+                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                          borderColor: colors.border,
+                          borderWidth: Platform.OS === 'android' ? 1 : 0,
                         }
                       ],
                       row: {
                         backgroundColor: isDark ? colors.surface : '#FFFFFF'
                       },
+                      separator: {
+                        backgroundColor: colors.border,
+                        height: StyleSheet.hairlineWidth
+                      },
                       description: {
                         color: colors.text
+                      },
+                      powered: {
+                        display: 'none'
                       }
                     }}
                     ref={googlePlacesRef}
@@ -699,7 +717,7 @@ export default function ProfileScreen() {
                   styles.saveButton,
                   { backgroundColor: colors.primary },
                   (!editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length) &&
-                  [styles.buttonDisabled, { backgroundColor: isDark ? '#555555' : '#A0AEC0' }]
+                  styles.buttonDisabled
                 ]}
                 onPress={handleSave}
                 disabled={isSaving || !editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length}
@@ -728,7 +746,7 @@ export default function ProfileScreen() {
             <Switch
               value={soundEnabled}
               onValueChange={toggleSound}
-              trackColor={{ false: isDark ? '#555555' : '#E2E8F0', true: colors.primary }}
+              trackColor={{ false: isDark ? colors.border : '#E2E8F0', true: colors.primary }}
               thumbColor={soundEnabled ? '#FFFFFF' : '#FFFFFF'}
               testID="sound-toggle-switch"
             />
@@ -740,7 +758,7 @@ export default function ProfileScreen() {
             style={[
               styles.signOutButton,
               { backgroundColor: isDark ? '#DC2626' : '#F43F5E' },
-              isLoggingOut && [styles.buttonDisabled, { backgroundColor: isDark ? '#555555' : '#A0AEC0' }]
+              isLoggingOut && styles.buttonDisabled
             ]}
             onPress={handleLogout}
             disabled={isLoggingOut}
@@ -756,7 +774,7 @@ export default function ProfileScreen() {
               styles.deleteAccountButton,
               {
                 backgroundColor: isDark ? colors.surface : '#FEE2E2',
-                borderColor: isDark ? '#DC2626' : '#DC2626'
+                borderColor: '#DC2626'
               },
               isLoggingOut && styles.buttonDisabled
             ]}
@@ -928,7 +946,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   profileCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginVertical: 16,
@@ -978,17 +995,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#555',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#000000',
     width: '100%',
   },
   button: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 8,
     padding: 16,
     marginVertical: 8,
@@ -997,10 +1010,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   saveButton: {
-    backgroundColor: '#8B5CF6',
-    borderColor: '#7C3AED',
-    padding: 16,
     borderRadius: 8,
+    padding: 16,
     marginVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1013,11 +1024,19 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     marginBottom: 16,
-    overflow: Platform.OS === 'android' ? 'hidden' : 'visible',
+    overflow: 'hidden',
+    ...(Platform.OS === 'ios' && {
+      overflow: 'visible'
+    })
   },
   picker: {
-    height: 50,
     width: '100%',
+    ...(Platform.OS === 'ios' && {
+      height: 150
+    }),
+    ...(Platform.OS === 'android' && {
+      height: 50
+    })
   },
   pickerIOS: {
     height: 150,
@@ -1032,8 +1051,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   signOutButton: {
-    backgroundColor: '#F43F5E',
-    borderColor: '#E11D48',
     padding: 16,
     borderRadius: 8,
     marginVertical: 8,
@@ -1053,7 +1070,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   alertContainer: {
-    backgroundColor: 'white',
     borderRadius: 12,
     padding: 24,
     width: Platform.OS === 'web' ? 400 : '80%',
@@ -1063,11 +1079,9 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#333',
   },
   alertMessage: {
     fontSize: 16,
-    color: '#666',
     marginBottom: 24,
   },
   alertButtons: {
@@ -1097,7 +1111,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmationModal: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
     width: '90%',
@@ -1109,12 +1122,10 @@ const styles = StyleSheet.create({
   confirmationTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1E293B',
     textAlign: 'center',
   },
   confirmationText: {
     fontSize: 16,
-    color: '#64748B',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
@@ -1151,26 +1162,21 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1E293B',
     marginTop: 12,
   },
   email: {
     fontSize: 16,
-    color: '#64748B',
     marginTop: 4,
   },
   sectionCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1E293B',
     marginBottom: 12,
   },
   settingRow: {
@@ -1186,16 +1192,13 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E293B',
     marginBottom: 4,
   },
   settingDescription: {
     fontSize: 14,
-    color: '#64748B',
     lineHeight: 20,
   },
   logoutButton: {
-    backgroundColor: '#FEE2E2',
     borderColor: '#DC2626',
   },
   logoutText: {
@@ -1207,19 +1210,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
   },
   infoLabel: {
     fontSize: 16,
-    color: '#666666',
   },
   infoValue: {
     fontSize: 16,
-    color: '#000000',
     fontWeight: '500',
   },
   buttonDisabled: {
-    backgroundColor: '#555',
+    opacity: 0.5,
   },
   searchWrapper: {
     marginTop: 8,
@@ -1237,15 +1237,11 @@ const styles = StyleSheet.create({
   searchInput: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
-    color: '#1E293B',
   },
   searchListView: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     zIndex: 1000,
     elevation: 3,
@@ -1261,17 +1257,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    backgroundColor: 'rgba(226, 232, 240, 0.3)',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
   optionButtonSelected: {
-    backgroundColor: '#8B5CF6',
     borderColor: '#7C3AED',
   },
   optionButtonText: {
     fontSize: 14,
-    color: '#1E293B',
   },
   optionButtonTextSelected: {
     color: '#FFFFFF',
@@ -1279,7 +1271,6 @@ const styles = StyleSheet.create({
   timeContainer: {
     height: 300,
     marginTop: 8,
-    backgroundColor: 'rgba(226, 232, 240, 0.3)',
     borderRadius: 12,
     overflow: Platform.OS === 'android' ? 'visible' : 'hidden',
     ...(Platform.OS === 'android' && {
@@ -1290,22 +1281,18 @@ const styles = StyleSheet.create({
   selectedSchoolContainer: {
     marginBottom: 12,
     padding: 12,
-    backgroundColor: 'rgba(226, 232, 240, 0.3)',
     borderRadius: 12,
   },
   selectedSchoolName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1E293B',
   },
   selectedSchoolAddress: {
     fontSize: 14,
-    color: '#64748B',
     marginTop: 4,
   },
   deleteAccountButton: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#DC2626',
+    borderWidth: 1,
     padding: 16,
     borderRadius: 8,
     marginVertical: 8,
@@ -1314,7 +1301,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteAccountText: {
-    color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -1324,21 +1310,16 @@ const styles = StyleSheet.create({
   },
   deleteConfirmationText: {
     fontSize: 14,
-    color: '#64748B',
     marginBottom: 8,
   },
   deleteConfirmationHighlight: {
-    color: '#DC2626',
     fontWeight: '600',
   },
   deleteConfirmationInput: {
-    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: '#1E293B',
     width: '100%',
   },
   paperButtonDisabled: {
@@ -1349,6 +1330,5 @@ const styles = StyleSheet.create({
     padding: 6,
     alignSelf: 'flex-start',
     borderRadius: 4,
-    backgroundColor: 'rgba(220, 38, 38, 0.1)',
   },
 }); 

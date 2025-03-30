@@ -24,7 +24,9 @@ export async function registerForPushNotificationsAsync() {
             try {
                 // Ensure Firebase is initialized
                 if (!app) {
+                    //alert('[PushNotifications] Firebase app not initialized');
                     console.error('[PushNotifications] Firebase app not initialized');
+                    //alert('Firebase app not initialized');
                     return null;
                 }
 
@@ -35,7 +37,9 @@ export async function registerForPushNotificationsAsync() {
                     lightColor: '#FF231F7C',
                 });
                 console.log('[PushNotifications] Android notification channel setup successful');
+                //alert('Android notification channel setup successful');
             } catch (error) {
+                //alert('Failed to set up Android notification channel:' + error);
                 console.error('[PushNotifications] Failed to set up Android notification channel:', error);
                 throw error;
             }
@@ -43,6 +47,7 @@ export async function registerForPushNotificationsAsync() {
 
         if (Device.isDevice) {
             console.log('[PushNotifications] Device is physical, checking permissions...');
+            //alert('Device is physical, checking permissions...');
             try {
                 const { status: existingStatus } = await Notifications.getPermissionsAsync();
                 console.log('[PushNotifications] Current permission status:', existingStatus);
@@ -94,13 +99,17 @@ export async function registerForPushNotificationsAsync() {
                 }
 
                 console.log('[PushNotifications] Returning token:', token);
+                //alert('Returning token:' + token);
                 return token;
             } catch (error) {
+                //alert('Error during permission/token process:' + error);
+                //('[PushNotifications] Error during permission/token process:' + error);
                 console.error('[PushNotifications] Error during permission/token process:', error);
                 throw error;
             }
         } else {
             console.log('[PushNotifications] Not running on a physical device, skipping registration');
+            //alert('[PushNotifications] Not running on a physical device, skipping registration');
         }
 
         return null;

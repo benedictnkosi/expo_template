@@ -243,3 +243,31 @@ menu - > Product -> archive
 npx expo run:ios --device
 
 npx expo-doctor
+
+
+## expo notifications 
+
+### android/app/build.gradle
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+apply plugin: 'com.google.gms.google-services' // This must be at the bottom
+
+
+### android/build.gradle
+dependencies {
+        classpath('com.android.tools.build:gradle')
+        classpath('com.facebook.react:react-native-gradle-plugin')
+        classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+        classpath('com.google.gms:google-services:4.4.1')   
+    }
+
+### make sure file exists
+android/app/google-services.json
+
+### make sure file exists - google-services.json
+"api_key": [
+        {
+          "current_key": "AIzaSyByCggGOKgD-STXUohFPRg6c1YRsT_C2jo"
+        }
+      ],

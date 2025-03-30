@@ -4032,7 +4032,7 @@ const styles = StyleSheet.create({
         borderColor: '#4F46E5',
     },
     modeButtonText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
     },
     modeButtonTextSelected: {

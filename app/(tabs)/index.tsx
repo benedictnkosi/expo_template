@@ -1251,7 +1251,7 @@ const styles = StyleSheet.create({
     height: 32,
   },
   randomLessonTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   randomLessonContent: {
