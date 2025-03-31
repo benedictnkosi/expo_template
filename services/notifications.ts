@@ -16,17 +16,13 @@ Notifications.setNotificationHandler({
 
 export async function registerForPushNotificationsAsync() {
     try {
-        console.log('[PushNotifications] Starting registration process...');
         let token;
 
         if (Platform.OS === 'android') {
-            console.log('[PushNotifications] Setting up Android notification channel...');
             try {
                 // Ensure Firebase is initialized
                 if (!app) {
-                    //alert('[PushNotifications] Firebase app not initialized');
                     console.error('[PushNotifications] Firebase app not initialized');
-                    //alert('Firebase app not initialized');
                     return null;
                 }
 
@@ -36,41 +32,30 @@ export async function registerForPushNotificationsAsync() {
                     vibrationPattern: [0, 250, 250, 250],
                     lightColor: '#FF231F7C',
                 });
-                console.log('[PushNotifications] Android notification channel setup successful');
-                //alert('Android notification channel setup successful');
             } catch (error) {
-                //alert('Failed to set up Android notification channel:' + error);
                 console.error('[PushNotifications] Failed to set up Android notification channel:', error);
                 throw error;
             }
         }
 
         if (Device.isDevice) {
-            console.log('[PushNotifications] Device is physical, checking permissions...');
-            //alert('Device is physical, checking permissions...');
             try {
                 const { status: existingStatus } = await Notifications.getPermissionsAsync();
-                console.log('[PushNotifications] Current permission status:', existingStatus);
                 let finalStatus = existingStatus;
 
                 if (existingStatus !== 'granted') {
-                    console.log('[PushNotifications] Requesting permissions...');
                     const { status } = await Notifications.requestPermissionsAsync();
                     finalStatus = status;
-                    console.log('[PushNotifications] New permission status:', status);
                 }
 
                 if (finalStatus !== 'granted') {
-                    console.warn('[PushNotifications] Permission not granted. Status:', finalStatus);
                     return null;
                 }
 
-                console.log('[PushNotifications] Getting Expo push token...');
                 try {
                     token = (await Notifications.getExpoPushTokenAsync({
                         projectId: 'b4f9ab87-947e-4014-8990-0c11fa29cb2c'
                     })).data;
-                    console.log('[PushNotifications] Successfully obtained push token');
                 } catch (tokenError) {
                     console.error('[PushNotifications] Failed to get push token:', tokenError);
                     if (Platform.OS === 'android') {
@@ -81,7 +66,6 @@ export async function registerForPushNotificationsAsync() {
 
                 try {
                     await AsyncStorage.setItem('pushToken', token);
-                    console.log('[PushNotifications] Successfully stored push token');
                 } catch (storageError) {
                     console.error('[PushNotifications] Failed to store push token:', storageError);
                     throw storageError;
@@ -92,24 +76,15 @@ export async function registerForPushNotificationsAsync() {
                         platform: Platform.OS,
                         token: token
                     });
-                    console.log('[PushNotifications] Successfully tracked permission event');
                 } catch (analyticsError) {
                     console.error('[PushNotifications] Failed to track analytics event:', analyticsError);
-                    // Don't throw here as this is not critical
                 }
 
-                console.log('[PushNotifications] Returning token:', token);
-                //alert('Returning token:' + token);
                 return token;
             } catch (error) {
-                //alert('Error during permission/token process:' + error);
-                //('[PushNotifications] Error during permission/token process:' + error);
                 console.error('[PushNotifications] Error during permission/token process:', error);
                 throw error;
             }
-        } else {
-            console.log('[PushNotifications] Not running on a physical device, skipping registration');
-            //alert('[PushNotifications] Not running on a physical device, skipping registration');
         }
 
         return null;

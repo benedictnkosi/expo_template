@@ -7,9 +7,10 @@ import { API_BASE_URL, IMAGE_BASE_URL } from '@/config/api';
 interface Props {
     imageUrl: string;
     rotation?: number;
+    onClose?: () => void;
 }
 
-function ZoomableImageNew({ imageUrl, rotation = 0 }: Props) {
+function ZoomableImageNew({ imageUrl, rotation = 0, onClose }: Props) {
     const scale = useSharedValue(1);
     const savedScale = useSharedValue(1);
     const positionX = useSharedValue(0);
@@ -55,7 +56,16 @@ function ZoomableImageNew({ imageUrl, rotation = 0 }: Props) {
             savedPositionY.value = positionY.value;
         });
 
-    const composed = Gesture.Simultaneous(pinchGesture, panGesture);
+    // Add double tap gesture to close
+    const tapGesture = Gesture.Tap()
+        .numberOfTaps(2)
+        .onEnd(() => {
+            if (onClose) {
+                onClose();
+            }
+        });
+
+    const composed = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [

@@ -15,7 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ThemedText } from '@/components/ThemedText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { collection, query, where, getDocs, addDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,8 +37,12 @@ export default function SubjectChatScreen() {
     const { colors, isDark } = useTheme();
     const [threads, setThreads] = useState<Thread[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [lastVisible, setLastVisible] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
     const [showNewThreadModal, setShowNewThreadModal] = useState(false);
     const [newThreadTitle, setNewThreadTitle] = useState('');
+    const THREADS_PER_PAGE = 100;
 
     useEffect(() => {
         if (subjectName) {
@@ -48,10 +52,9 @@ export default function SubjectChatScreen() {
         }
     }, [subjectName]);
 
-    const loadThreads = async () => {
+    const loadThreads = async (loadMore = false) => {
         try {
             const learnerGrade = await AsyncStorage.getItem('learnerGrade');
-            console.log('learnerGrade', learnerGrade);
             if (!learnerGrade) {
                 Toast.show({
                     type: 'error',
@@ -61,14 +64,32 @@ export default function SubjectChatScreen() {
                 });
                 return;
             }
-            setIsLoading(true);
+
+            if (!loadMore) {
+                setIsLoading(true);
+            } else {
+                setIsLoadingMore(true);
+            }
+
             const threadsRef = collection(db, 'threads');
-            const q = query(
+            let q = query(
                 threadsRef,
                 where('subjectName', '==', subjectName),
                 where('grade', '==', 12),
-                orderBy('createdAt', 'desc')
+                orderBy('createdAt', 'desc'),
+                limit(THREADS_PER_PAGE)
             );
+
+            if (loadMore && lastVisible) {
+                q = query(
+                    threadsRef,
+                    where('subjectName', '==', subjectName),
+                    where('grade', '==', 12),
+                    orderBy('createdAt', 'desc'),
+                    startAfter(lastVisible),
+                    limit(THREADS_PER_PAGE)
+                );
+            }
 
             const querySnapshot = await getDocs(q);
             const threadsData = querySnapshot.docs.map(doc => ({
@@ -77,7 +98,14 @@ export default function SubjectChatScreen() {
                 createdAt: doc.data().createdAt.toDate()
             })) as Thread[];
 
-            setThreads(threadsData);
+            setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
+            setHasMore(querySnapshot.docs.length === THREADS_PER_PAGE);
+
+            if (loadMore) {
+                setThreads(prev => [...prev, ...threadsData]);
+            } else {
+                setThreads(threadsData);
+            }
         } catch (error) {
             console.error('Error loading threads:', error);
             Toast.show({
@@ -88,6 +116,13 @@ export default function SubjectChatScreen() {
             });
         } finally {
             setIsLoading(false);
+            setIsLoadingMore(false);
+        }
+    };
+
+    const handleLoadMore = () => {
+        if (!isLoadingMore && hasMore) {
+            loadThreads(true);
         }
     };
 
@@ -168,6 +203,24 @@ export default function SubjectChatScreen() {
         </TouchableOpacity>
     );
 
+    const renderFooter = () => {
+        if (!hasMore) return null;
+
+        return (
+            <TouchableOpacity
+                style={[styles.loadMoreButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
+                onPress={handleLoadMore}
+                disabled={isLoadingMore}
+            >
+                {isLoadingMore ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                    <ThemedText style={styles.loadMoreText}>Load More</ThemedText>
+                )}
+            </TouchableOpacity>
+        );
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
             <LinearGradient
@@ -187,7 +240,7 @@ export default function SubjectChatScreen() {
                     style={styles.newThreadButton}
                     onPress={() => setShowNewThreadModal(true)}
                 >
-                    <Ionicons name="add" size={24} color="#FFFFFF" />
+                    <ThemedText style={styles.newThreadButtonText}>Create New Topic</ThemedText>
                 </TouchableOpacity>
             </LinearGradient>
 
@@ -202,6 +255,7 @@ export default function SubjectChatScreen() {
                     renderItem={renderThread}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.threadsList}
+                    ListFooterComponent={renderFooter}
                 />
             )}
 
@@ -265,6 +319,13 @@ const styles = StyleSheet.create({
     },
     newThreadButton: {
         padding: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 8,
+    },
+    newThreadButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
     },
     loadingContainer: {
         flex: 1,
@@ -335,6 +396,21 @@ const styles = StyleSheet.create({
     },
     modalButtonText: {
         color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    loadMoreButton: {
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 8,
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    loadMoreText: {
         fontSize: 16,
         fontWeight: '600',
     },

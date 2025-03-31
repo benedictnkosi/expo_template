@@ -296,4 +296,58 @@ export async function getRandomAIQuestion(uid: string): Promise<RandomAIQuestion
     console.error('Error fetching random AI question:', error);
     throw error;
   }
+}
+
+interface ReportMessageData {
+  author_id: string;
+  reporter_id: string;
+  message_uid: string;
+  message: string;
+}
+
+export async function reportMessage(data: ReportMessageData): Promise<void> {
+  try {
+    const response = await fetch(
+      ensureHttps(`${API_BASE_URL}/report/create`),
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to report message');
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Error reporting message:', error);
+    throw error;
+  }
+}
+
+interface UploadFileResponse {
+  fileName: string;
+  status: string;
+}
+
+export async function uploadFile(formData: FormData): Promise<UploadFileResponse> {
+  const response = await fetch(`${API_BASE_URL}/chat/upload-file`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to upload file');
+  }
+
+  return response.json();
+}
+
+export function getFileUrl(fileName: string): string {
+  return `${API_BASE_URL}/get-chat-file?file=${fileName}`;
 } 
