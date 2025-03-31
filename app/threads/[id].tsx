@@ -9,7 +9,7 @@ import {
     ActivityIndicator,
     Platform,
 } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemedText } from '@/components/ThemedText';
@@ -29,6 +29,7 @@ interface Thread {
     createdById: string;
     createdByName: string;
     createdAt: Date;
+    newMessageCount?: number;
 }
 
 export default function SubjectChatScreen() {
@@ -42,24 +43,75 @@ export default function SubjectChatScreen() {
     const [hasMore, setHasMore] = useState(true);
     const [showNewThreadModal, setShowNewThreadModal] = useState(false);
     const [newThreadTitle, setNewThreadTitle] = useState('');
+    const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
     const THREADS_PER_PAGE = 100;
 
     useEffect(() => {
         if (subjectName) {
             loadThreads();
+            loadLastAccessTimes();
         } else {
             console.error('Subject name is missing');
         }
     }, [subjectName]);
 
+    // Add focus effect to reload threads when returning from thread detail
+    useFocusEffect(
+        React.useCallback(() => {
+            if (subjectName) {
+                loadLastAccessTimes().then(() => {
+                    loadThreads();
+                });
+            }
+        }, [subjectName])
+    );
+
+    const loadLastAccessTimes = async () => {
+        try {
+            const times = await AsyncStorage.getItem('threadLastAccessTimes');
+            if (times) {
+                setLastAccessTimes(JSON.parse(times));
+            }
+        } catch (error) {
+            console.error('Error loading last access times:', error);
+        }
+    };
+
+    const updateLastAccessTime = async (threadId: string) => {
+        try {
+            const currentTime = Date.now();
+            const newTimes = { ...lastAccessTimes, [threadId]: currentTime };
+            await AsyncStorage.setItem('threadLastAccessTimes', JSON.stringify(newTimes));
+            setLastAccessTimes(newTimes);
+        } catch (error) {
+            console.error('Error updating last access time:', error);
+        }
+    };
+
     const loadThreads = async (loadMore = false) => {
         try {
+            // Get fresh last access times before loading threads
+            const times = await AsyncStorage.getItem('threadLastAccessTimes');
+            const freshLastAccessTimes = times ? JSON.parse(times) : {};
+            setLastAccessTimes(freshLastAccessTimes);
+
             const learnerGrade = await AsyncStorage.getItem('learnerGrade');
             if (!learnerGrade) {
                 Toast.show({
                     type: 'error',
                     text1: 'Error',
-                    text2: 'Failed to load threads',
+                    text2: 'Failed to load threads - grade not found',
+                    position: 'bottom'
+                });
+                return;
+            }
+
+            const grade = parseInt(learnerGrade);
+            if (isNaN(grade) || grade < 1 || grade > 12) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Invalid grade level',
                     position: 'bottom'
                 });
                 return;
@@ -75,7 +127,7 @@ export default function SubjectChatScreen() {
             let q = query(
                 threadsRef,
                 where('subjectName', '==', subjectName),
-                where('grade', '==', 12),
+                where('grade', '==', grade),
                 orderBy('createdAt', 'desc'),
                 limit(THREADS_PER_PAGE)
             );
@@ -84,7 +136,7 @@ export default function SubjectChatScreen() {
                 q = query(
                     threadsRef,
                     where('subjectName', '==', subjectName),
-                    where('grade', '==', 12),
+                    where('grade', '==', grade),
                     orderBy('createdAt', 'desc'),
                     startAfter(lastVisible),
                     limit(THREADS_PER_PAGE)
@@ -98,13 +150,31 @@ export default function SubjectChatScreen() {
                 createdAt: doc.data().createdAt.toDate()
             })) as Thread[];
 
+            // Get new message counts for each thread using fresh last access times
+            const threadsWithCounts = await Promise.all(
+                threadsData.map(async (thread) => {
+                    const lastAccess = freshLastAccessTimes[thread.id] || 0;
+                    const messagesRef = collection(db, 'messages');
+                    const messagesQuery = query(
+                        messagesRef,
+                        where('threadId', '==', thread.id),
+                        where('createdAt', '>', new Date(lastAccess))
+                    );
+                    const messagesSnapshot = await getDocs(messagesQuery);
+                    return {
+                        ...thread,
+                        newMessageCount: messagesSnapshot.size
+                    };
+                })
+            );
+
             setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
             setHasMore(querySnapshot.docs.length === THREADS_PER_PAGE);
 
             if (loadMore) {
-                setThreads(prev => [...prev, ...threadsData]);
+                setThreads(prev => [...prev, ...threadsWithCounts]);
             } else {
-                setThreads(threadsData);
+                setThreads(threadsWithCounts);
             }
         } catch (error) {
             console.error('Error loading threads:', error);
@@ -120,10 +190,15 @@ export default function SubjectChatScreen() {
         }
     };
 
-    const handleLoadMore = () => {
-        if (!isLoadingMore && hasMore) {
-            loadThreads(true);
-        }
+    const handleThreadPress = async (thread: Thread) => {
+        await updateLastAccessTime(thread.id);
+        router.push({
+            pathname: '/posts/[threadId]',
+            params: {
+                threadId: thread.id,
+                subjectName: thread.subjectName
+            }
+        });
     };
 
     const createNewThread = async () => {
@@ -134,23 +209,67 @@ export default function SubjectChatScreen() {
             const learnerGrade = await AsyncStorage.getItem('learnerGrade');
             //get learner name from AsyncStorage
             const learnerName = await AsyncStorage.getItem('learnerName');
+
+            // Enhanced validation
             if (!learnerGrade || !learnerName) {
                 Toast.show({
                     type: 'error',
                     text1: 'Error',
-                    text2: 'Failed to create thread',
+                    text2: 'Missing user information. Please ensure you are properly logged in.',
                     position: 'bottom'
                 });
                 return;
             }
+
+
+            // Validate grade is a number and within acceptable range
+            const grade = parseInt(learnerGrade);
+            if (isNaN(grade) || grade < 1 || grade > 12) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Invalid grade level',
+                    position: 'bottom'
+                });
+                return;
+            }
+
+            // Validate title length and content
+            if (newThreadTitle.trim().length < 3) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Thread title must be at least 3 characters long',
+                    position: 'bottom'
+                });
+                return;
+            }
+
+            // Validate that title is not an email address
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (emailRegex.test(newThreadTitle.trim())) {
+                return;
+            }
+
             const threadData = {
                 title: newThreadTitle.trim(),
                 subjectName: subjectName as string,
-                grade: parseInt(learnerGrade || '12'),
+                grade: grade,
                 createdById: user.uid,
-                createdByName: learnerName || 'Anonymous',
+                createdByName: learnerName,
                 createdAt: new Date()
             };
+
+            // Validate subject name
+            if (!subjectName || typeof subjectName !== 'string') {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Invalid subject name',
+                    position: 'bottom'
+                });
+                return;
+            }
 
             const docRef = await addDoc(collection(db, 'threads'), threadData);
             const newThread = {
@@ -185,13 +304,7 @@ export default function SubjectChatScreen() {
                 styles.threadItem,
                 { backgroundColor: isDark ? colors.card : '#FFFFFF' }
             ]}
-            onPress={() => router.push({
-                pathname: '/posts/[threadId]',
-                params: {
-                    threadId: item.id,
-                    subjectName: item.subjectName
-                }
-            })}
+            onPress={() => handleThreadPress(item)}
         >
             <View style={styles.threadContent}>
                 <ThemedText style={styles.threadTitle}>{item.title}</ThemedText>
@@ -199,7 +312,14 @@ export default function SubjectChatScreen() {
                     Created by {item.createdByName} • {item.createdAt.toLocaleDateString()}
                 </ThemedText>
             </View>
-            <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+            <View style={styles.threadRightContent}>
+                {(item.newMessageCount ?? 0) > 0 && (
+                    <View style={[styles.newMessageBadge, { backgroundColor: colors.primary }]}>
+                        <ThemedText style={styles.newMessageCount}>{item.newMessageCount}</ThemedText>
+                    </View>
+                )}
+                <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+            </View>
         </TouchableOpacity>
     );
 
@@ -209,7 +329,7 @@ export default function SubjectChatScreen() {
         return (
             <TouchableOpacity
                 style={[styles.loadMoreButton, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}
-                onPress={handleLoadMore}
+                onPress={() => loadThreads(true)}
                 disabled={isLoadingMore}
             >
                 {isLoadingMore ? (
@@ -413,5 +533,23 @@ const styles = StyleSheet.create({
     loadMoreText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    threadRightContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    newMessageBadge: {
+        minWidth: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+    },
+    newMessageCount: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 }); 

@@ -74,7 +74,9 @@
     "react-native-toast-message": "~2.2.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "expo-document-picker": "~13.0.3"
+    "expo-document-picker": "~13.0.3",
+    "expo-file-system": "~18.0.12",
+    "expo-media-library": "~17.0.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

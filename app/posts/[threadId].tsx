@@ -38,6 +38,8 @@ import { DocumentPickerResult, DocumentPickerAsset } from 'expo-document-picker'
 import { API_BASE_URL } from '@/config/api';
 import ZoomableImageNew from '@/components/ZoomableImageNew';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 
 // Basic profanity detection
 const PROFANITY_WORDS = [
@@ -145,6 +147,8 @@ interface Styles {
     replyingToLabel: TextStyle;
     replyingToText: TextStyle;
     inputHint: TextStyle;
+    imageModalButtons: ViewStyle;
+    imageModalButton: ViewStyle;
 }
 
 interface SelectedFile {
@@ -309,6 +313,61 @@ const MessageItem = React.memo(({
         </PanGestureHandler>
     );
 });
+
+// Update the downloadImage function
+async function downloadImage(url: string, fileName: string) {
+    try {
+        // Request permission to access media library
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+            Toast.show({
+                type: 'error',
+                text1: 'Permission Required',
+                text2: 'Please grant permission to save images',
+                position: 'bottom'
+            });
+            return;
+        }
+
+        // Download the image to a temporary file
+        const downloadResumable = FileSystem.createDownloadResumable(
+            url,
+            FileSystem.cacheDirectory + fileName,
+            {},
+            (downloadProgress) => {
+                const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
+                console.log(`Download progress: ${Math.round(progress * 100)}%`);
+            }
+        );
+
+        const result = await downloadResumable.downloadAsync();
+
+        if (result && result.uri) {
+            // Save the image to the media library
+            const asset = await MediaLibrary.createAssetAsync(result.uri);
+
+            // Clean up the temporary file
+            await FileSystem.deleteAsync(result.uri, { idempotent: true });
+
+            Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: 'Image saved to your gallery',
+                position: 'bottom'
+            });
+            return asset.uri;
+        }
+    } catch (error) {
+        console.error('Error downloading image:', error);
+        Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Failed to save image',
+            position: 'bottom'
+        });
+        throw error;
+    }
+}
 
 export default function ThreadDetailScreen() {
     const { threadId, subjectName } = useLocalSearchParams();
@@ -1004,15 +1063,33 @@ export default function ThreadDetailScreen() {
                     }}
                 >
                     <View style={styles.imageModalContainer}>
-                        <TouchableOpacity
-                            style={styles.closeButton}
-                            onPress={() => {
-                                setIsImageModalVisible(false);
-                                setSelectedImage(null);
-                            }}
-                        >
-                            <Ionicons name="close" size={24} color="#FFFFFF" />
-                        </TouchableOpacity>
+                        <View style={styles.imageModalButtons}>
+                            <TouchableOpacity
+                                style={styles.imageModalButton}
+                                onPress={() => {
+                                    setIsImageModalVisible(false);
+                                    setSelectedImage(null);
+                                }}
+                            >
+                                <Ionicons name="close" size={24} color="#FFFFFF" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.imageModalButton}
+                                onPress={async () => {
+                                    if (selectedImage) {
+                                        try {
+                                            setIsImageModalVisible(false);
+                                            const fileName = `image_${Date.now()}.jpg`;
+                                            await downloadImage(selectedImage, fileName);
+                                        } catch (error) {
+                                            console.error('Error downloading image:', error);
+                                        }
+                                    }
+                                }}
+                            >
+                                <Ionicons name="download" size={24} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        </View>
                         {selectedImage && (
                             <ZoomableImageNew
                                 imageUrl={selectedImage}
@@ -1092,6 +1169,8 @@ const styles = StyleSheet.create<Styles & {
     contextMenuText: TextStyle;
     contextMenuDivider: ViewStyle;
     inputHint: TextStyle;
+    imageModalButtons: ViewStyle;
+    imageModalButton: ViewStyle;
 }>({
     container: {
         flex: 1,
@@ -1109,7 +1188,7 @@ const styles = StyleSheet.create<Styles & {
         flex: 1,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 16,
         fontWeight: 'bold',
         color: '#FFFFFF',
         marginBottom: 4,
@@ -1435,5 +1514,21 @@ const styles = StyleSheet.create<Styles & {
         textAlign: 'center',
         paddingBottom: 4,
         backgroundColor: 'transparent',
+    },
+    imageModalButtons: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 20,
+        right: 20,
+        zIndex: 1,
+        flexDirection: 'row',
+        gap: 16,
+    },
+    imageModalButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 }); 

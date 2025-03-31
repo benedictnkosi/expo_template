@@ -15,8 +15,18 @@ import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchMySubjects } from '@/services/api';
-import { Subject } from '@/types/api';
 import { analytics } from '@/services/analytics';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+
+interface Subject {
+    id: string;
+    name: string;
+    total_questions: number;
+    answered_questions: number;
+    correct_answers: number;
+    newThreadCount?: number;
+}
 
 export default function ChatScreen() {
     const { user } = useAuth();
@@ -24,6 +34,7 @@ export default function ChatScreen() {
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
+    const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
 
     useEffect(() => {
         async function loadData() {
@@ -36,6 +47,11 @@ export default function ChatScreen() {
                 const stored = await AsyncStorage.getItem('hiddenSubjects');
                 const hidden = stored ? JSON.parse(stored) : [];
                 setHiddenSubjects(hidden);
+
+                // Load last access times
+                const times = await AsyncStorage.getItem('subjectLastAccessTimes');
+                const accessTimes = times ? JSON.parse(times) : {};
+                setLastAccessTimes(accessTimes);
 
                 // Load subjects
                 const response = await fetchMySubjects(user.uid);
@@ -61,7 +77,26 @@ export default function ChatScreen() {
                     }, {});
 
                     const groupedSubjects = Object.values(subjectGroups);
-                    setSubjects(groupedSubjects);
+
+                    // Get new thread counts for each subject
+                    const subjectsWithCounts = await Promise.all(
+                        groupedSubjects.map(async (subject) => {
+                            const lastAccess = accessTimes[subject.name] || 0;
+                            const threadsRef = collection(db, 'threads');
+                            const threadsQuery = query(
+                                threadsRef,
+                                where('subjectName', '==', subject.name),
+                                where('createdAt', '>', new Date(lastAccess))
+                            );
+                            const threadsSnapshot = await getDocs(threadsQuery);
+                            return {
+                                ...subject,
+                                newThreadCount: threadsSnapshot.size
+                            };
+                        })
+                    );
+
+                    setSubjects(subjectsWithCounts);
                 }
             } catch (error) {
                 console.error('Error loading subjects:', error);
@@ -73,8 +108,23 @@ export default function ChatScreen() {
         loadData();
     }, [user?.uid]);
 
-    const handleSubjectPress = (subject: Subject) => {
+    const handleSubjectPress = async (subject: Subject) => {
         if (user?.uid) {
+            // Update last access time for the subject
+            const currentTime = Date.now();
+            const newTimes = { ...lastAccessTimes, [subject.name]: currentTime };
+            await AsyncStorage.setItem('subjectLastAccessTimes', JSON.stringify(newTimes));
+            setLastAccessTimes(newTimes);
+
+            // Reset the newThreadCount for this subject
+            setSubjects(prevSubjects =>
+                prevSubjects.map(s =>
+                    s.id === subject.id
+                        ? { ...s, newThreadCount: 0 }
+                        : s
+                )
+            );
+
             analytics.track('open_subject_chat', {
                 user_id: user.uid,
                 subject_name: subject.name,
@@ -112,7 +162,7 @@ export default function ChatScreen() {
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
                 <View style={[styles.warningContainer, { backgroundColor: isDark ? '#991B1B' : '#FEE2E2' }]}>
                     <ThemedText style={[styles.warningText, { color: isDark ? '#FEE2E2' : '#991B1B' }]}>
-                        ⚠️ Let’s keep it friendly and on topic! No profanity or bullying. Violations will lead to account suspension.
+                        ⚠️ Let's keep it friendly and on topic! No profanity or bullying. Violations will lead to account suspension.
                     </ThemedText>
                 </View>
 
@@ -140,11 +190,18 @@ export default function ChatScreen() {
                                     Tap to join chat
                                 </ThemedText>
                             </View>
-                            <Ionicons
-                                name="chevron-forward"
-                                size={24}
-                                color={colors.textSecondary}
-                            />
+                            <View style={styles.subjectRightContent}>
+                                {(subject.newThreadCount ?? 0) > 0 && (
+                                    <View style={[styles.newThreadBadge, { backgroundColor: colors.primary }]}>
+                                        <ThemedText style={styles.newThreadCount}>{subject.newThreadCount}</ThemedText>
+                                    </View>
+                                )}
+                                <Ionicons
+                                    name="chevron-forward"
+                                    size={24}
+                                    color={colors.textSecondary}
+                                />
+                            </View>
                         </TouchableOpacity>
                     ))
                 )}
@@ -247,5 +304,23 @@ const styles = StyleSheet.create({
     warningText: {
         fontSize: 14,
         lineHeight: 20,
+    },
+    subjectRightContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    newThreadBadge: {
+        minWidth: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+    },
+    newThreadCount: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 }); 
