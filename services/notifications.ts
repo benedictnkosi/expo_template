@@ -58,9 +58,6 @@ export async function registerForPushNotificationsAsync() {
                     })).data;
                 } catch (tokenError) {
                     console.error('[PushNotifications] Failed to get push token:', tokenError);
-                    if (Platform.OS === 'android') {
-                        console.error('[PushNotifications] Make sure Firebase is properly configured in google-services.json');
-                    }
                     throw tokenError;
                 }
 
