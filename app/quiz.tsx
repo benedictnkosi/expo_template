@@ -1899,7 +1899,7 @@ export default function QuizScreen() {
                             resizeMode="contain"
                         />
                         <ThemedText style={[styles.noQuestionsTitle, { color: colors.text }]}>
-                            🐛 Oops! Looks like the quiz gremlins ate all the questions!
+                            🚨 Alert! The quiz bank is empty! Someone call the question police! 🚔
                         </ThemedText>
                         <ThemedText style={[styles.noQuestionsSubtitle, { color: colors.textSecondary }]}>
                             Check your profile for selected school terms and curriculum
@@ -1909,7 +1909,7 @@ export default function QuizScreen() {
                             style={[styles.profileSettingsButton, {
                                 backgroundColor: isDark ? colors.primary : '#4F46E5'
                             }]}
-                            onPress={() => router.push('/(tabs)/profile')}
+                            onPress={() => router.push('/profile')}
                         >
                             <View style={styles.buttonContent}>
                                 <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
