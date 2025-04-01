@@ -898,6 +898,15 @@ export default function QuizScreen() {
                 throw new Error(`Failed to fetch random question: ${response.status} ${response.statusText}`);
             }
 
+            if (selectedMode === 'lessons') {
+                //log event
+                logAnalyticsEvent('lesson_view', {
+                    user_id: user.uid,
+                    subject_name: subjectName,
+                    paper_name: paper
+                });
+            }
+
             //if response json body status exists and it is NOK
             const data: QuestionResponse = await response.json();
             if (data.status && data.status === "NOK") {
