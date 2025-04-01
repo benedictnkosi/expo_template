@@ -13,13 +13,14 @@ import ZoomableImageNew from '../components/ZoomableImageNew';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
-import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus } from '../services/api';
-import { API_BASE_URL, IMAGE_BASE_URL } from '../config/api';
+import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus, Badge } from '../services/api';
+import { API_BASE_URL, HOST_URL, IMAGE_BASE_URL } from '../config/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { analytics } from '../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -734,6 +735,8 @@ export default function QuizScreen() {
     const [correctAnswer, setCorrectAnswer] = useState<string>('');
     const [selectedMode, setSelectedMode] = useState<'quiz' | 'lessons'>('quiz');
     const [isQuestionLoading, setIsQuestionLoading] = useState(false);
+    const [showBadgeModal, setShowBadgeModal] = useState(false);
+    const [newBadge, setNewBadge] = useState<Badge | null>(null);
     const scrollToBottom = () => {
         setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({
@@ -1073,6 +1076,11 @@ export default function QuizScreen() {
             requestAnimationFrame(() => {
                 scrollToBottom();
             });
+
+            // Check for new badges after 10 seconds
+            if (response.correct) {
+                setTimeout(checkForNewBadges, 10000);
+            }
 
         } catch (error) {
             console.error('Error submitting answer:', error);
@@ -1610,6 +1618,36 @@ export default function QuizScreen() {
         }
     };
 
+    const checkForNewBadges = async () => {
+        if (!user?.uid) return;
+
+        try {
+            const response = await fetch(`${HOST_URL}/api/badges/check/${user.uid}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            if (!response.ok) throw new Error('Failed to check badges');
+
+            const data = await response.json();
+            if (data.status === 'OK' && data.new_badges && data.new_badges.length > 0) {
+                // Show the first new badge
+                setNewBadge(data.new_badges[0]);
+                setShowBadgeModal(true);
+
+                // Log badge earned event
+                logAnalyticsEvent('badge_earned', {
+                    user_id: user.uid,
+                    badge_id: data.new_badges[0].id,
+                    badge_name: data.new_badges[0].name
+                });
+            }
+        } catch (error) {
+            console.error('Error checking for new badges:', error);
+        }
+    };
+
     if (isLoading) {
         return (
             <ImageLoadingPlaceholder />
@@ -1632,11 +1670,10 @@ export default function QuizScreen() {
             >
                 <ScrollView style={styles.container}>
                     <View style={styles.paperSelectionContainer}>
+
                         <TouchableOpacity
-                            style={[styles.closeButton, {
-                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                            }]}
                             onPress={() => router.back()}
+                            style={styles.closeButton}
                         >
                             <Ionicons name="close" size={24} color={colors.text} />
                         </TouchableOpacity>
@@ -2764,6 +2801,15 @@ export default function QuizScreen() {
                     </TouchableOpacity>
                 </View>
             </Modal>
+
+            {/* Badge Celebration Modal */}
+            {newBadge && (
+                <BadgeCelebrationModal
+                    isVisible={showBadgeModal}
+                    onClose={() => setShowBadgeModal(false)}
+                    badge={newBadge}
+                />
+            )}
         </LinearGradient>
     );
 }

@@ -18,6 +18,7 @@ import { fetchMySubjects } from '@/services/api';
 import { analytics } from '@/services/analytics';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
+import { Header } from '@/components/Header';
 
 interface Subject {
     id: string;
@@ -143,6 +144,7 @@ export default function ChatScreen() {
     if (isLoading) {
         return (
             <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                <Header learnerInfo={null} />
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
                     <ThemedText style={styles.loadingText}>Loading subjects...</ThemedText>
@@ -155,8 +157,9 @@ export default function ChatScreen() {
 
     return (
         <ThemedView style={styles.container}>
+            <Header learnerInfo={null} />
             <View style={[styles.header, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-                <ThemedText style={styles.title}>Group Chats</ThemedText>
+                <ThemedText style={styles.title}>Study Buddies Chat 💬</ThemedText>
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>

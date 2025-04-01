@@ -350,4 +350,45 @@ export async function uploadFile(formData: FormData): Promise<UploadFileResponse
 
 export function getFileUrl(fileName: string): string {
   return `${API_BASE_URL}/get-chat-file?file=${fileName}`;
+}
+
+export interface LearnerBadge {
+  id: number;
+  name: string;
+  rules: string;
+  image: string;
+  earned: boolean;
+}
+
+export async function getLearnerBadges(uid: string): Promise<LearnerBadge[]> {
+  const response = await fetch(
+    `${HOST_URL}/api/badges/learner/${uid}`
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch learner badges');
+  }
+
+  const data = await response.json();
+  return data.badges;
+}
+
+export interface Badge {
+  id: number;
+  name: string;
+  rules: string;
+  image: string;
+}
+
+export async function getAllBadges(): Promise<Badge[]> {
+  const response = await fetch(
+    `${HOST_URL}/api/badges`
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch all badges');
+  }
+
+  const data = await response.json();
+  return data.badges;
 } 

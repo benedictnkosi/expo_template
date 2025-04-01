@@ -59,11 +59,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="info"
+        name="achievements"
         options={{
-          title: 'Info',
+          title: 'Achievements',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="information-circle" size={size} color={color} testID="info-tab-icon" />
+            <Ionicons name="trophy-outline" size={size} color={color} />
           ),
         }}
       />

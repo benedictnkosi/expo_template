@@ -1,10 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, ScrollView, View, TouchableOpacity, Platform, Linking } from 'react-native';
-import { ThemedText } from '../../components/ThemedText';
+import { ThemedText } from '@/components/ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Header } from '../../components/Header';
+import { Header } from '@/components/Header';
 import { useState, useEffect } from 'react';
-import { getLearner } from '../../services/api';
+import { getLearner } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 

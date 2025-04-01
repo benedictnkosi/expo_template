@@ -444,14 +444,7 @@ export default function ProfileScreen() {
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
-          <TouchableOpacity
-            style={[styles.closeIconButton, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }]}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+
 
         <Header
           learnerInfo={learnerInfo}
@@ -762,6 +755,25 @@ export default function ProfileScreen() {
               testID="sound-toggle-switch"
             />
           </View>
+        </ThemedView>
+
+        <ThemedView style={[styles.sectionCard, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Help & Support</ThemedText>
+          <TouchableOpacity
+            style={[styles.infoButton, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}
+            onPress={() => router.push('/info')}
+          >
+            <View style={styles.infoButtonContent}>
+              <View style={styles.infoButtonLeft}>
+                <Ionicons name="information-circle-outline" size={24} color={colors.primary} />
+                <ThemedText style={[styles.infoButtonText, { color: colors.text }]}>App Information & FAQs</ThemedText>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
         </ThemedView>
 
         <ThemedView style={styles.signOutContainer}>
@@ -1378,5 +1390,24 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  infoButton: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  infoButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  infoButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 }); 

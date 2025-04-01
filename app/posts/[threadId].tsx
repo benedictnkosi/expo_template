@@ -40,6 +40,7 @@ import ZoomableImageNew from '@/components/ZoomableImageNew';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import defaultAvatar from '@/assets/images/avatars/1.png';
 
 // Basic profanity detection
 const PROFANITY_WORDS = [
@@ -63,6 +64,7 @@ interface Message {
     createdAt: Date;
     threadId: string;
     userName: string;
+    avatar?: string;
     replyTo?: {
         id: string;
         text: string;
@@ -149,6 +151,10 @@ interface Styles {
     inputHint: TextStyle;
     imageModalButtons: ViewStyle;
     imageModalButton: ViewStyle;
+    dateDividerContainer: ViewStyle;
+    dateDivider: ViewStyle;
+    dateDividerText: TextStyle;
+    messageTime: TextStyle;
 }
 
 interface SelectedFile {
@@ -174,6 +180,25 @@ interface MessageItemProps {
     failedImages: Set<string>;
     setFailedImages: React.Dispatch<React.SetStateAction<Set<string>>>;
     handleAttachmentPress: (attachment: Message['attachment']) => void;
+}
+
+// Add new helper function for date formatting
+function formatMessageTime(date: Date): string {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateDivider(date: Date): string {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+        return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+        return 'Yesterday';
+    } else {
+        return date.toLocaleDateString([], { month: 'long', day: 'numeric' });
+    }
 }
 
 const MessageItem = React.memo(({
@@ -307,6 +332,12 @@ const MessageItem = React.memo(({
                                 {item.text}
                             </ThemedText>
                         )}
+                        <ThemedText style={[
+                            styles.messageTime,
+                            { color: isOwnMessage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary }
+                        ]}>
+                            {formatMessageTime(item.createdAt)}
+                        </ThemedText>
                     </View>
                 </Pressable>
             </Animated.View>
@@ -612,6 +643,7 @@ export default function ThreadDetailScreen() {
         try {
             setIsUploading(true);
             const learnerName = await AsyncStorage.getItem('learnerName');
+            const avatar = await AsyncStorage.getItem('learnerAvatar');
             if (!learnerName) {
                 console.error('No learner name found in AsyncStorage');
                 Toast.show({
@@ -645,6 +677,7 @@ export default function ThreadDetailScreen() {
                 authorUID: user.uid,
                 threadId: threadId as string,
                 createdAt: new Date(),
+                avatar: avatar || defaultAvatar,
                 userName: learnerName || 'Anonymous',
                 ...(attachment && { attachment }),
                 ...(replyingTo && {
@@ -826,21 +859,34 @@ export default function ThreadDetailScreen() {
         }
     };
 
-    const renderMessage = ({ item }: { item: Message }) => {
+    const renderMessage = ({ item, index }: { item: Message; index: number }) => {
         const isOwnMessage = item.authorUID === user?.uid;
+        const showDateDivider = index === 0 ||
+            new Date(item.createdAt).toDateString() !== new Date(messages[index - 1].createdAt).toDateString();
 
         return (
-            <MessageItem
-                item={item}
-                isOwnMessage={isOwnMessage}
-                onReply={handleReply}
-                onLongPress={handleMessageLongPress}
-                colors={colors}
-                isDark={isDark}
-                failedImages={failedImages}
-                setFailedImages={setFailedImages}
-                handleAttachmentPress={handleAttachmentPress}
-            />
+            <>
+                {showDateDivider && (
+                    <View style={styles.dateDividerContainer}>
+                        <View style={[styles.dateDivider, { backgroundColor: isDark ? colors.border : '#E5E7EB' }]} />
+                        <ThemedText style={[styles.dateDividerText, { color: colors.textSecondary }]}>
+                            {formatDateDivider(item.createdAt)}
+                        </ThemedText>
+                        <View style={[styles.dateDivider, { backgroundColor: isDark ? colors.border : '#E5E7EB' }]} />
+                    </View>
+                )}
+                <MessageItem
+                    item={item}
+                    isOwnMessage={isOwnMessage}
+                    onReply={handleReply}
+                    onLongPress={handleMessageLongPress}
+                    colors={colors}
+                    isDark={isDark}
+                    failedImages={failedImages}
+                    setFailedImages={setFailedImages}
+                    handleAttachmentPress={handleAttachmentPress}
+                />
+            </>
         );
     };
 
@@ -1171,6 +1217,10 @@ const styles = StyleSheet.create<Styles & {
     inputHint: TextStyle;
     imageModalButtons: ViewStyle;
     imageModalButton: ViewStyle;
+    dateDividerContainer: ViewStyle;
+    dateDivider: ViewStyle;
+    dateDividerText: TextStyle;
+    messageTime: TextStyle;
 }>({
     container: {
         flex: 1,
@@ -1530,5 +1580,25 @@ const styles = StyleSheet.create<Styles & {
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    dateDividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 16,
+        paddingHorizontal: 16,
+    },
+    dateDivider: {
+        flex: 1,
+        height: 1,
+    },
+    dateDividerText: {
+        fontSize: 12,
+        marginHorizontal: 8,
+        fontWeight: '500',
+    },
+    messageTime: {
+        fontSize: 11,
+        marginTop: 4,
+        alignSelf: 'flex-end',
     },
 }); 
