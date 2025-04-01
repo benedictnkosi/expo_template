@@ -15,20 +15,34 @@ import { analytics } from '@/services/analytics';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
-
 const badgeImages: Record<string, ImageSourcePropType> = {
     '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
     '7-day-streak.png': require('@/assets/images/badges/7-day-streak.png'),
     '30-day-streak.png': require('@/assets/images/badges/30-day-streak.png'),
     '5-in-a-row.png': require('@/assets/images/badges/5-in-a-row.png'),
-    '10-in-a-row.png': require('@/assets/images/badges/10-in-a-row.png')
-
+    '3-in-a-row.png': require('@/assets/images/badges/3-in-a-row.png'),
+    '10-in-a-row.png': require('@/assets/images/badges/10-in-a-row.png'),
+    'physical-sciences.png': require('@/assets/images/badges/physical-sciences.png'),
+    'mathematics.png': require('@/assets/images/badges/mathematics.png'),
+    'agricultural-sciences.png': require('@/assets/images/badges/agricultural-sciences.png'),
+    'economics.png': require('@/assets/images/badges/economics.png'),
+    'geography.png': require('@/assets/images/badges/geography.png'),
+    'life-sciences.png': require('@/assets/images/badges/life-sciences.png'),
+    'mathematics-literacy.png': require('@/assets/images/badges/mathematics-literacy.png'),
+    'history.png': require('@/assets/images/badges/history.png'),
+    'tourism.png': require('@/assets/images/badges/tourism.png'),
+    'business-studies.png': require('@/assets/images/badges/business-studies.png')
 };
+
+interface BadgeCategory {
+    title: string;
+    badges: (Badge & { earned: boolean })[];
+}
 
 export default function AchievementsScreen() {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
-    const [badges, setBadges] = useState<(Badge & { earned: boolean })[]>([]);
+    const [badgeCategories, setBadgeCategories] = useState<BadgeCategory[]>([]);
     const { user } = useAuth();
     const [learnerInfo, setLearnerInfo] = useState<{
         name: string;
@@ -59,27 +73,68 @@ export default function AchievementsScreen() {
         async function fetchBadges() {
             if (!user?.uid) return;
             try {
-                // Fetch all available badges
                 const allBadges = await getAllBadges();
-
-                // Fetch learner's earned badges
                 const learnerBadges = await getLearnerBadges(user.uid);
-
-                // Create a map of earned badge IDs for quick lookup
                 const earnedBadgeIds = new Set(learnerBadges.map(badge => badge.id));
 
-                // Combine all badges with earned status
                 const badgesWithStatus = allBadges.map(badge => ({
                     ...badge,
                     earned: earnedBadgeIds.has(badge.id)
                 }));
 
-                setBadges(badgesWithStatus);
+                // Categorize badges
+                const categories: BadgeCategory[] = [
+                    {
+                        title: 'Learning Marathon 🏃‍♂️📚',
+                        badges: badgesWithStatus.filter(badge =>
+                            badge.image.includes('day-streak')
+                        )
+                    },
+                    {
+                        title: 'Sharp Shooter 🎯',
+                        badges: badgesWithStatus.filter(badge =>
+                            badge.image.includes('in-a-row')
+                        )
+                    },
+                    {
+                        title: 'Quiz Master 🎓',
+                        badges: badgesWithStatus.filter(badge =>
+                            !badge.image.includes('in-a-row') &&
+                            !badge.image.includes('day-streak')
+                        )
+                    }
+                ];
+
+                setBadgeCategories(categories);
             } catch (error) {
                 console.error('Failed to fetch badges:', error);
-                // If there's an error, show all badges as locked
                 const allBadges = await getAllBadges();
-                setBadges(allBadges.map(badge => ({ ...badge, earned: false })));
+                const badgesWithStatus = allBadges.map(badge => ({ ...badge, earned: false }));
+
+                // Categorize badges even when there's an error
+                const categories: BadgeCategory[] = [
+                    {
+                        title: 'Learning Marathon 🏃‍♂️📚',
+                        badges: badgesWithStatus.filter(badge =>
+                            badge.image.includes('day-streak')
+                        )
+                    },
+                    {
+                        title: 'Sharp Shooter 🎯',
+                        badges: badgesWithStatus.filter(badge =>
+                            badge.image.includes('in-a-row')
+                        )
+                    },
+                    {
+                        title: 'Quiz Master 🎓',
+                        badges: badgesWithStatus.filter(badge =>
+                            !badge.image.includes('in-a-row') &&
+                            !badge.image.includes('day-streak')
+                        )
+                    }
+                ];
+
+                setBadgeCategories(categories);
             }
         }
         fetchBadges();
@@ -105,12 +160,6 @@ export default function AchievementsScreen() {
                     });
 
                     // Share the text message
-                    const message = `I just earned the ${badge.name} badge on Exam Quiz! 🎉\n\n${badge.rules}\n\nJoin me on Exam Quiz and start earning badges too! https://examquiz.co.za`;
-                    await Share.share({
-                        message,
-                        title: 'Share Badge Achievement'
-                    });
-
                     if (user?.uid) {
                         await analytics.track('share_badge', {
                             user_id: user.uid,
@@ -154,57 +203,64 @@ export default function AchievementsScreen() {
                     </ThemedText>
                 </View>
 
-                <View style={styles.badgesGrid}>
-                    {badges.map((badge) => (
-                        <View
-                            key={badge.id}
-                            style={[
-                                styles.badgeCard,
-                                {
-                                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                                    opacity: badge.earned ? 1 : 0.5
-                                }
-                            ]}
-                        >
-                            <View style={styles.badgeImageContainer}>
-                                <Image
-                                    source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
+                {badgeCategories.map((category, index) => (
+                    <View key={category.title} style={styles.categoryContainer}>
+                        <ThemedText style={[styles.categoryTitle, { color: colors.text }]}>
+                            {category.title}
+                        </ThemedText>
+                        <View style={styles.badgesGrid}>
+                            {category.badges.map((badge) => (
+                                <View
+                                    key={badge.id}
                                     style={[
-                                        styles.badgeImage,
-                                        !badge.earned && styles.lockedBadgeImage
+                                        styles.badgeCard,
+                                        {
+                                            backgroundColor: '#F8FAFC',
+                                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                                            opacity: badge.earned ? 1 : 0.5
+                                        }
                                     ]}
-                                    resizeMode="contain"
-                                />
-                                {!badge.earned && (
-                                    <View style={styles.lockOverlay}>
-                                        <Ionicons name="lock-closed" size={48} color={isDark ? '#FFFFFF' : '#000000'} />
-                                    </View>
-                                )}
-                            </View>
-                            <View style={styles.badgeInfo}>
-                                <ThemedText style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
-                                    {badge.name}
-                                </ThemedText>
-                                <ThemedText
-                                    style={[styles.badgeRules, { color: colors.textSecondary }]}
-                                    numberOfLines={2}
                                 >
-                                    {badge.rules}
-                                </ThemedText>
-                                {badge.earned && (
-                                    <TouchableOpacity
-                                        style={[styles.shareButton, { backgroundColor: isDark ? colors.primary : '#022b66' }]}
-                                        onPress={() => handleShareBadge(badge)}
-                                    >
-                                        <Ionicons name="share-social" size={16} color="#FFFFFF" />
-                                        <ThemedText style={styles.shareButtonText}>Share</ThemedText>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
+                                    <View style={styles.badgeImageContainer}>
+                                        <Image
+                                            source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
+                                            style={[
+                                                styles.badgeImage,
+                                                !badge.earned && styles.lockedBadgeImage
+                                            ]}
+                                            resizeMode="contain"
+                                        />
+                                        {!badge.earned && (
+                                            <View style={styles.lockOverlay}>
+                                                <Ionicons name="lock-closed" size={48} color={isDark ? '#FFFFFF' : '#000000'} />
+                                            </View>
+                                        )}
+                                    </View>
+                                    <View style={styles.badgeInfo}>
+                                        <ThemedText style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
+                                            {badge.name}
+                                        </ThemedText>
+                                        <ThemedText
+                                            style={[styles.badgeRules, { color: colors.textSecondary }]}
+                                            numberOfLines={2}
+                                        >
+                                            {badge.rules}
+                                        </ThemedText>
+                                        {badge.earned && (
+                                            <TouchableOpacity
+                                                style={[styles.shareButton, { backgroundColor: isDark ? colors.primary : '#022b66' }]}
+                                                onPress={() => handleShareBadge(badge)}
+                                            >
+                                                <Ionicons name="share-social" size={16} color="#FFFFFF" />
+                                                <ThemedText style={styles.shareButtonText}>Share</ThemedText>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+                            ))}
                         </View>
-                    ))}
-                </View>
+                    </View>
+                ))}
             </ScrollView>
         </LinearGradient>
     );
@@ -243,9 +299,9 @@ const styles = StyleSheet.create({
         alignItems: 'stretch',
     },
     badgeCard: {
-        width: '48%',
+        width: '31%',
         borderRadius: 16,
-        padding: 16,
+        padding: 12,
         alignItems: 'center',
         borderWidth: 1,
         shadowColor: '#000',
@@ -261,8 +317,8 @@ const styles = StyleSheet.create({
     badgeImageContainer: {
         position: 'relative',
         width: '100%',
-        height: '70%',
-        marginBottom: 12,
+        height: '65%',
+        marginBottom: 8,
     },
     badgeImage: {
         width: '100%',
@@ -287,15 +343,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     badgeName: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     badgeRules: {
-        fontSize: 12,
+        fontSize: 10,
         textAlign: 'center',
-        lineHeight: 16,
+        lineHeight: 14,
     },
     headerContainer: {
         flexDirection: 'row',
@@ -329,5 +385,15 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: '600',
+    },
+    categoryContainer: {
+        marginBottom: 32,
+        marginTop: 16,
+    },
+    categoryTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        marginBottom: 16,
+        marginTop: 8,
     },
 }); 

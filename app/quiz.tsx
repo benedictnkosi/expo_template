@@ -1535,7 +1535,7 @@ export default function QuizScreen() {
         setShowRatingModal(false);
         // Store the current date for next prompt
         const nextPromptDate = new Date();
-        nextPromptDate.setDate(nextPromptDate.getDate() + 10); // Add 10 days
+        nextPromptDate.setDate(nextPromptDate.getDate() + 5); // Add 5 days
         await SecureStore.setItemAsync('next_rating_prompt_date', nextPromptDate.toISOString());
     };
 
