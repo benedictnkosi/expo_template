@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { getLearner } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { router } from 'expo-router';
 
 interface FAQItem {
   question: string;
@@ -129,6 +130,21 @@ export default function InfoScreen() {
           </View>
         ))}
 
+        <TouchableOpacity
+          style={[styles.closeButton, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border,
+            borderWidth: 1
+          }]}
+          onPress={() => router.back()}
+        >
+          <ThemedText style={[styles.closeButtonText, {
+            color: colors.text
+          }]}>
+            Close
+          </ThemedText>
+        </TouchableOpacity>
+
       </ScrollView>
     </LinearGradient>
   );
@@ -196,6 +212,34 @@ const styles = StyleSheet.create({
     }),
   },
   whatsappText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  closeButton: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 32,
+    padding: 16,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+    }),
+  },
+  closeButtonText: {
     fontSize: 18,
     fontWeight: '600',
   },

@@ -19,6 +19,7 @@ import {
     Alert,
     GestureResponderEvent,
     Animated,
+    ImageSourcePropType,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +42,14 @@ import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-g
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import defaultAvatar from '@/assets/images/avatars/1.png';
+import avatar2 from '@/assets/images/avatars/2.png';
+import avatar3 from '@/assets/images/avatars/3.png';
+import avatar4 from '@/assets/images/avatars/4.png';
+import avatar5 from '@/assets/images/avatars/5.png';
+import avatar6 from '@/assets/images/avatars/6.png';
+import avatar7 from '@/assets/images/avatars/7.png';
+import avatar8 from '@/assets/images/avatars/8.png';
+import avatar9 from '@/assets/images/avatars/9.png';
 
 // Basic profanity detection
 const PROFANITY_WORDS = [
@@ -155,6 +164,9 @@ interface Styles {
     dateDivider: ViewStyle;
     dateDividerText: TextStyle;
     messageTime: TextStyle;
+    messageHeader: ViewStyle;
+    messageContent: ViewStyle;
+    avatar: ImageStyle;
 }
 
 interface SelectedFile {
@@ -200,6 +212,18 @@ function formatDateDivider(date: Date): string {
         return date.toLocaleDateString([], { month: 'long', day: 'numeric' });
     }
 }
+
+const avatarMapping: Record<string, ImageSourcePropType> = {
+    '1.png': defaultAvatar,
+    '2.png': avatar2,
+    '3.png': avatar3,
+    '4.png': avatar4,
+    '5.png': avatar5,
+    '6.png': avatar6,
+    '7.png': avatar7,
+    '8.png': avatar8,
+    '9.png': avatar9
+};
 
 const MessageItem = React.memo(({
     item,
@@ -258,86 +282,106 @@ const MessageItem = React.memo(({
                     onLongPress={(event) => onLongPress(item, event)}
                     delayLongPress={500}
                 >
-                    <ThemedText style={[
-                        styles.userName,
-                        isOwnMessage ? styles.ownUserName : styles.otherUserName
-                    ]}>
-                        {item.userName || 'Anonymous'}
-                    </ThemedText>
-                    <View style={[
-                        styles.messageBubble,
-                        isOwnMessage ? styles.ownBubble : styles.otherBubble,
-                        { backgroundColor: isOwnMessage ? colors.primary : (isDark ? colors.card : '#E5E7EB') }
-                    ]}>
-                        {item.replyTo && (
-                            <TouchableOpacity
-                                style={[styles.replyContainer, {
-                                    backgroundColor: isOwnMessage
-                                        ? 'rgba(255, 255, 255, 0.1)'
-                                        : (isDark ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.05)')
-                                }]}
-                            >
-                                <ThemedText style={[styles.replyUserName, { color: isOwnMessage ? '#FFFFFF' : colors.text }]}>
-                                    {item.replyTo.userName}
-                                </ThemedText>
-                                <ThemedText
-                                    style={[styles.replyText, { color: isOwnMessage ? '#FFFFFF' : colors.text }]}
-                                    numberOfLines={1}
-                                >
-                                    {item.replyTo.text}
-                                </ThemedText>
-                            </TouchableOpacity>
+                    <View style={styles.messageHeader}>
+                        {!isOwnMessage && (
+                            <Image
+                                source={item.avatar ? avatarMapping[item.avatar] || defaultAvatar : defaultAvatar}
+                                style={styles.avatar}
+                            />
                         )}
-                        {item.attachment && (
-                            <View style={styles.attachmentContainer}>
-                                {item.attachment.type === 'image' ? (
+                        <View style={styles.messageContent}>
+                            <ThemedText style={[
+                                styles.userName,
+                                isOwnMessage ? styles.ownUserName : styles.otherUserName
+                            ]}>
+                                {item.userName || 'Anonymous'}
+                            </ThemedText>
+                            <View style={[
+                                styles.messageBubble,
+                                isOwnMessage ? styles.ownBubble : styles.otherBubble,
+                                {
+                                    padding: 12,
+                                    paddingVertical: 10,
+                                    borderRadius: 16,
+                                }
+                            ]}>
+                                {item.replyTo && (
                                     <TouchableOpacity
-                                        onPress={() => !failedImages.has(item.attachment?.url || '') && handleAttachmentPress(item.attachment)}
-                                        style={styles.attachmentImageContainer}
+                                        style={[styles.replyContainer, {
+                                            backgroundColor: isOwnMessage
+                                                ? 'rgba(255, 255, 255, 0.1)'
+                                                : (isDark ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.05)')
+                                        }]}
                                     >
-                                        {failedImages.has(item.attachment.url) ? (
-                                            <View style={[styles.imageErrorContainer, { backgroundColor: isDark ? colors.surface : '#F3F4F6' }]}>
-                                                <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
-                                                <ThemedText style={styles.imageErrorText}>Image not available</ThemedText>
-                                            </View>
-                                        ) : (
-                                            <Image
-                                                source={{ uri: item.attachment.url }}
-                                                style={styles.attachmentImage}
-                                                resizeMode="cover"
-                                                onError={() => {
-                                                    setFailedImages((prev: Set<string>) => new Set([...prev, item.attachment?.url || '']));
-                                                }}
-                                            />
-                                        )}
-                                    </TouchableOpacity>
-                                ) : (
-                                    <TouchableOpacity
-                                        style={styles.pdfContainer}
-                                        onPress={() => handleAttachmentPress(item.attachment)}
-                                    >
-                                        <Ionicons name="document-text" size={24} color={isOwnMessage ? '#FFFFFF' : colors.text} />
-                                        <ThemedText style={[styles.pdfText, { color: isOwnMessage ? '#FFFFFF' : colors.text }]}>
-                                            {item.attachment.name}
+                                        <ThemedText style={[styles.replyUserName, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151') }]}>
+                                            {item.replyTo.userName}
+                                        </ThemedText>
+                                        <ThemedText
+                                            style={[styles.replyText, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151') }]}
+                                            numberOfLines={1}
+                                        >
+                                            {item.replyTo.text}
                                         </ThemedText>
                                     </TouchableOpacity>
                                 )}
+                                {item.attachment && (
+                                    <View style={styles.attachmentContainer}>
+                                        {item.attachment.type === 'image' ? (
+                                            <TouchableOpacity
+                                                onPress={() => !failedImages.has(item.attachment?.url || '') && handleAttachmentPress(item.attachment)}
+                                                style={styles.attachmentImageContainer}
+                                            >
+                                                {failedImages.has(item.attachment.url) ? (
+                                                    <View style={[styles.imageErrorContainer, { backgroundColor: isDark ? colors.surface : '#F3F4F6' }]}>
+                                                        <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
+                                                        <ThemedText style={styles.imageErrorText}>Image not available</ThemedText>
+                                                    </View>
+                                                ) : (
+                                                    <Image
+                                                        source={{ uri: item.attachment.url }}
+                                                        style={styles.attachmentImage}
+                                                        resizeMode="cover"
+                                                        onError={() => {
+                                                            setFailedImages((prev: Set<string>) => new Set([...prev, item.attachment?.url || '']));
+                                                        }}
+                                                    />
+                                                )}
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <TouchableOpacity
+                                                style={styles.pdfContainer}
+                                                onPress={() => handleAttachmentPress(item.attachment)}
+                                            >
+                                                <Ionicons name="document-text" size={24} color={isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151')} />
+                                                <ThemedText style={[styles.pdfText, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151') }]}>
+                                                    {item.attachment.name}
+                                                </ThemedText>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                                {item.text && (
+                                    <ThemedText style={[
+                                        styles.messageText,
+                                        { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#FFFFFF') }
+                                    ]}>
+                                        {item.text}
+                                    </ThemedText>
+                                )}
+                                <ThemedText style={[
+                                    styles.messageTime,
+                                    { color: isOwnMessage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary }
+                                ]}>
+                                    {formatMessageTime(item.createdAt)}
+                                </ThemedText>
                             </View>
+                        </View>
+                        {isOwnMessage && (
+                            <Image
+                                source={item.avatar ? avatarMapping[item.avatar] || defaultAvatar : defaultAvatar}
+                                style={styles.avatar}
+                            />
                         )}
-                        {item.text && (
-                            <ThemedText style={[
-                                styles.messageText,
-                                { color: isOwnMessage ? '#FFFFFF' : colors.text }
-                            ]}>
-                                {item.text}
-                            </ThemedText>
-                        )}
-                        <ThemedText style={[
-                            styles.messageTime,
-                            { color: isOwnMessage ? 'rgba(255, 255, 255, 0.7)' : colors.textSecondary }
-                        ]}>
-                            {formatMessageTime(item.createdAt)}
-                        </ThemedText>
                     </View>
                 </Pressable>
             </Animated.View>
@@ -952,7 +996,7 @@ export default function ThreadDetailScreen() {
                         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={styles.headerContent}>
-                        <ThemedText style={styles.headerTitle}>{thread.title}</ThemedText>
+                        <ThemedText style={styles.headerTitle}>✏️ {thread.title}</ThemedText>
                         <ThemedText style={styles.headerSubtitle}>
                             Created by {thread.createdByName} • {thread.createdAt.toLocaleDateString()}
                         </ThemedText>
@@ -1221,15 +1265,24 @@ const styles = StyleSheet.create<Styles & {
     dateDivider: ViewStyle;
     dateDividerText: TextStyle;
     messageTime: TextStyle;
+    messageHeader: ViewStyle;
+    messageContent: ViewStyle;
+    avatar: ImageStyle;
+    ownMessage: ViewStyle;
+    otherMessage: ViewStyle;
+    ownUserName: TextStyle;
+    otherUserName: TextStyle;
 }>({
     container: {
         flex: 1,
+        backgroundColor: '#0A0F1E',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
         paddingTop: Platform.OS === 'ios' ? 60 : 16,
+        backgroundColor: '#4F46E5',
     },
     backButton: {
         marginRight: 16,
@@ -1261,66 +1314,79 @@ const styles = StyleSheet.create<Styles & {
         flex: 1,
     },
     messagesList: {
-        padding: 16,
+        paddingHorizontal: 16,
     },
     messageContainer: {
-        marginBottom: 16,
+        marginBottom: 8,
         maxWidth: '80%',
-        position: 'relative',
+        width: '100%',
     },
-    ownMessage: {
-        alignSelf: 'flex-end',
+    messageHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        marginBottom: 2,
     },
-    otherMessage: {
-        alignSelf: 'flex-start',
+    messageContent: {
+        flex: 1,
+    },
+    avatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
     },
     userName: {
-        fontSize: 12,
+        fontSize: 13,
         marginBottom: 4,
-        opacity: 0.7,
-    },
-    ownUserName: {
-        textAlign: 'right',
-    },
-    otherUserName: {
-        textAlign: 'left',
+        fontWeight: '500',
     },
     messageBubble: {
         padding: 12,
+        paddingVertical: 10,
         borderRadius: 16,
     },
     ownBubble: {
         borderBottomRightRadius: 4,
+        backgroundColor: '#6366F1',
     },
     otherBubble: {
         borderBottomLeftRadius: 4,
+        backgroundColor: '#1F2937',
     },
     messageText: {
-        fontSize: 16,
+        fontSize: 15,
+        lineHeight: 20,
+        color: '#FFFFFF',
+    },
+    messageTime: {
+        fontSize: 12,
+        color: '#64748B',
+        marginTop: 4,
+        alignSelf: 'flex-end',
     },
     inputContainer: {
         flexDirection: 'row',
-        padding: 12,
+        padding: 16,
         alignItems: 'center',
         borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        minHeight: 60,
-        paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+        borderTopColor: '#1F2937',
+        backgroundColor: '#0A0F1E',
     },
     input: {
         flex: 1,
-        marginRight: 8,
-        padding: 8,
-        paddingLeft: 12,
+        marginRight: 12,
+        padding: 10,
         borderRadius: 20,
         fontSize: 16,
-        minHeight: 36,
-        maxHeight: 100,
+        color: '#FFFFFF',
+        backgroundColor: '#1A1F2E',
+        minHeight: 40,
     },
     sendButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#4F46E5',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -1596,9 +1662,19 @@ const styles = StyleSheet.create<Styles & {
         marginHorizontal: 8,
         fontWeight: '500',
     },
-    messageTime: {
-        fontSize: 11,
-        marginTop: 4,
+    ownMessage: {
         alignSelf: 'flex-end',
+        marginLeft: 'auto',
+    },
+    otherMessage: {
+        alignSelf: 'flex-start',
+    },
+    ownUserName: {
+        textAlign: 'right',
+        color: '#818CF8', // Light indigo for own username
+    },
+    otherUserName: {
+        textAlign: 'left',
+        color: '#94A3B8', // Slate-400 for other usernames
     },
 }); 

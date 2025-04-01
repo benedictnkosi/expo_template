@@ -268,7 +268,7 @@ export default function HomeScreen() {
       await AsyncStorage.setItem('learnerName', learner.name);
       //save learner grade number in AsyncStorage
       await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
-      await AsyncStorage.setItem('learnerAvatar', learner.avatar);
+      await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
 
       if (learner.name && learner.grade) {
         setLearnerInfo(learner as LearnerInfo);

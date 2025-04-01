@@ -8,6 +8,7 @@ import {
     Modal,
     ActivityIndicator,
     Platform,
+    Image,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -341,6 +342,24 @@ export default function SubjectChatScreen() {
         );
     };
 
+    function getSubjectIcon(subjectName: string) {
+        const icons = {
+            'Agricultural Sciences': require('@/assets/images/subjects/agriculture.png'),
+            'Economics': require('@/assets/images/subjects/economics.png'),
+            'Business Studies': require('@/assets/images/subjects/business-studies.png'),
+            'Geography': require('@/assets/images/subjects/geography.png'),
+            'Life Sciences': require('@/assets/images/subjects/life-science.png'),
+            'mathematics': require('@/assets/images/subjects/mathematics.png'),
+            'Physical Sciences': require('@/assets/images/subjects/physics.png'),
+            'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
+            'History': require('@/assets/images/subjects/history.png'),
+            'Life orientation': require('@/assets/images/subjects/life-orientation.png'),
+            'Tourism': require('@/assets/images/subjects/tourism.png'),
+            'default': require('@/assets/images/subjects/mathematics.png')
+        };
+        return icons[subjectName as keyof typeof icons] || icons.default;
+    }
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
             <LinearGradient
@@ -355,7 +374,13 @@ export default function SubjectChatScreen() {
                 >
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
-                <ThemedText style={styles.headerTitle}>{subjectName}</ThemedText>
+                <View style={styles.headerTitleContainer}>
+                    <Image
+                        source={getSubjectIcon(subjectName as string)}
+                        style={styles.headerIcon}
+                    />
+                    <ThemedText style={styles.headerTitle}>{subjectName}</ThemedText>
+                </View>
                 <TouchableOpacity
                     style={styles.newThreadButton}
                     onPress={() => setShowNewThreadModal(true)}
@@ -431,8 +456,17 @@ const styles = StyleSheet.create({
     backButton: {
         marginRight: 16,
     },
-    headerTitle: {
+    headerTitleContainer: {
         flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    headerIcon: {
+        width: 32,
+        height: 32,
+    },
+    headerTitle: {
         fontSize: 20,
         fontWeight: 'bold',
         color: '#FFFFFF',
