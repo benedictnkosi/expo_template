@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -16,6 +16,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { useFocusEffect } from '@react-navigation/native';
+
 const badgeImages: Record<string, ImageSourcePropType> = {
     '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
     '7-day-streak.png': require('@/assets/images/badges/7-day-streak.png'),
@@ -35,9 +36,51 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'business-studies.png': require('@/assets/images/badges/business-studies.png')
 };
 
+const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
+    '1': require('@/assets/images/avatars/1.png'),
+    '2': require('@/assets/images/avatars/2.png'),
+    '3': require('@/assets/images/avatars/3.png'),
+    '4': require('@/assets/images/avatars/4.png'),
+    '5': require('@/assets/images/avatars/5.png'),
+    '6': require('@/assets/images/avatars/6.png'),
+    '7': require('@/assets/images/avatars/7.png'),
+    '8': require('@/assets/images/avatars/8.png'),
+    '9': require('@/assets/images/avatars/9.png'),
+};
+
 interface BadgeCategory {
     title: string;
     badges: (Badge & { earned: boolean })[];
+}
+
+interface LeaderboardEntry {
+    name: string;
+    points: number;
+    position: number;
+    isCurrentLearner: boolean;
+    avatar: string;
+}
+
+interface LeaderboardResponse {
+    status: string;
+    rankings: LeaderboardEntry[];
+    currentLearnerPoints: number;
+    currentLearnerPosition: number | null;
+    totalLearners: number;
+}
+
+async function getLeaderboard(uid: string, limit: number = 10): Promise<LeaderboardResponse> {
+    try {
+        const response = await fetch(`${HOST_URL}/api/leaderboard?uid=${uid}&limit=${limit}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch leaderboard');
+        }
+        const data = await response.json();
+        return data.data;
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        throw error;
+    }
 }
 
 export default function AchievementsScreen() {
@@ -46,12 +89,52 @@ export default function AchievementsScreen() {
     const [badgeCategories, setBadgeCategories] = useState<BadgeCategory[]>([]);
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'badges' | 'scoreboard'>('scoreboard');
+    const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
     const [learnerInfo, setLearnerInfo] = useState<{
         name: string;
         grade: string;
         school?: string;
         avatar?: string;
     } | null>(null);
+
+    // Define tab styles here to access isDark
+    const tabStyles = {
+        container: {
+            flexDirection: 'row' as const,
+            justifyContent: 'center' as const,
+            marginBottom: 8,
+            paddingHorizontal: 16,
+            marginRight: 16,
+        },
+        button: {
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            marginHorizontal: 4,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        },
+        activeButton: {
+            backgroundColor: '#3B82F6',
+        },
+        text: {
+            fontSize: 16,
+            color: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+        },
+        activeText: {
+            color: '#FFFFFF',
+        },
+    };
+
+    const fetchLeaderboard = useCallback(async () => {
+        if (!user?.uid) return;
+        try {
+            const data = await getLeaderboard(user.uid);
+            setLeaderboard(data);
+        } catch (error) {
+            console.error('Failed to fetch leaderboard:', error);
+        }
+    }, [user?.uid]);
 
     const fetchLearnerInfo = useCallback(async () => {
         if (!user?.uid) return;
@@ -144,7 +227,8 @@ export default function AchievementsScreen() {
         useCallback(() => {
             fetchLearnerInfo();
             fetchBadges();
-        }, [fetchLearnerInfo, fetchBadges])
+            fetchLeaderboard();
+        }, [fetchLearnerInfo, fetchBadges, fetchLeaderboard])
     );
 
     const handleShareBadge = async (badge: Badge) => {
@@ -188,6 +272,132 @@ export default function AchievementsScreen() {
         }
     };
 
+    const renderLeaderboardEntry = useCallback((entry: LeaderboardEntry, index: number) => {
+        const isTopThree = index < 3;
+        const medalEmoji = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
+        const avatarImage = entry.avatar ? AVATAR_IMAGES[entry.avatar] : AVATAR_IMAGES['1'];
+
+        return (
+            <ThemedView
+                key={`${entry.name}-${entry.position}`}
+                style={[
+                    styles.leaderboardEntry,
+                    entry.isCurrentLearner && styles.currentLearnerEntry,
+                    isTopThree && styles.topThreeEntry
+                ]}
+            >
+                <View style={styles.leaderboardEntryContent}>
+                    <View style={styles.positionContainer}>
+                        {medalEmoji ? (
+                            <ThemedText style={styles.medalEmoji}>{medalEmoji}</ThemedText>
+                        ) : (
+                            <ThemedText style={styles.position}>#{entry.position}</ThemedText>
+                        )}
+                    </View>
+                    <View style={styles.avatarContainer}>
+                        <Image
+                            source={avatarImage}
+                            style={styles.avatar}
+                        />
+                    </View>
+                    <View style={styles.nameContainer}>
+                        <ThemedText style={styles.name}>{entry.name}</ThemedText>
+                    </View>
+                    <View style={styles.pointsContainer}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.pointsIcon}
+                        />
+                        <ThemedText style={styles.points}>{entry.points}</ThemedText>
+                    </View>
+                </View>
+            </ThemedView>
+        );
+    }, []);
+
+    const renderTopThree = useCallback((rankings: LeaderboardEntry[]) => {
+        if (!rankings || rankings.length < 3) return null;
+
+        return (
+            <View style={styles.topThreeContainer}>
+                {/* Second Place */}
+                <View style={styles.topThreeItem}>
+                    <View style={styles.topThreeAvatarContainer}>
+                        <Image
+                            source={rankings[1].avatar ? AVATAR_IMAGES[rankings[1].avatar] : AVATAR_IMAGES['1']}
+                            style={styles.topThreeAvatar}
+                        />
+                    </View>
+                    <View style={styles.topThreeMedal}>
+                        <ThemedText style={styles.topThreeMedalText}>🥈</ThemedText>
+                    </View>
+                    <ThemedText style={styles.topThreeName} numberOfLines={1}>
+                        {rankings[1].name}
+                    </ThemedText>
+                    <View style={styles.topThreePoints}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.topThreePointsIcon}
+                        />
+                        <ThemedText style={styles.topThreePointsText}>
+                            {rankings[1].points}
+                        </ThemedText>
+                    </View>
+                </View>
+
+                {/* First Place */}
+                <View style={[styles.topThreeItem, styles.firstPlace]}>
+                    <View style={styles.crownContainer}>
+                        <ThemedText style={styles.crown}>👑</ThemedText>
+                    </View>
+                    <View style={[styles.topThreeAvatarContainer, styles.firstPlaceAvatar]}>
+                        <Image
+                            source={rankings[0].avatar ? AVATAR_IMAGES[rankings[0].avatar] : AVATAR_IMAGES['1']}
+                            style={styles.topThreeAvatar}
+                        />
+                    </View>
+                    <ThemedText style={[styles.topThreeName, styles.firstPlaceName]} numberOfLines={1}>
+                        {rankings[0].name}
+                    </ThemedText>
+                    <View style={styles.topThreePoints}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.topThreePointsIcon}
+                        />
+                        <ThemedText style={[styles.topThreePointsText, styles.firstPlacePoints]}>
+                            {rankings[0].points}
+                        </ThemedText>
+                    </View>
+                </View>
+
+                {/* Third Place */}
+                <View style={styles.topThreeItem}>
+                    <View style={styles.topThreeAvatarContainer}>
+                        <Image
+                            source={rankings[2].avatar ? AVATAR_IMAGES[rankings[2].avatar] : AVATAR_IMAGES['1']}
+                            style={styles.topThreeAvatar}
+                        />
+                    </View>
+                    <View style={styles.topThreeMedal}>
+                        <ThemedText style={styles.topThreeMedalText}>🥉</ThemedText>
+                    </View>
+                    <ThemedText style={styles.topThreeName} numberOfLines={1}>
+                        {rankings[2].name}
+                    </ThemedText>
+                    <View style={styles.topThreePoints}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.topThreePointsIcon}
+                        />
+                        <ThemedText style={styles.topThreePointsText}>
+                            {rankings[2].points}
+                        </ThemedText>
+                    </View>
+                </View>
+            </View>
+        );
+    }, []);
+
     return (
         <LinearGradient
             colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -195,29 +405,60 @@ export default function AchievementsScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
         >
+            <Header learnerInfo={learnerInfo} />
+
+            <View style={styles.header}>
+                <ThemedText style={styles.title}>🏆 Achievements</ThemedText>
+                <ThemedText style={styles.subtitle}>
+                    Track your progress and compete with others!
+                </ThemedText>
+            </View>
+
+            <View style={tabStyles.container}>
+                <TouchableOpacity
+                    style={[
+                        tabStyles.button,
+                        activeTab === 'scoreboard' && tabStyles.activeButton
+                    ]}
+                    onPress={() => setActiveTab('scoreboard')}
+                >
+                    <ThemedText
+                        style={[
+                            tabStyles.text,
+                            activeTab === 'scoreboard' && tabStyles.activeText
+                        ]}
+                    >
+                        Scoreboard
+                    </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        tabStyles.button,
+                        activeTab === 'badges' && tabStyles.activeButton
+                    ]}
+                    onPress={() => setActiveTab('badges')}
+                >
+                    <ThemedText
+                        style={[
+                            tabStyles.text,
+                            activeTab === 'badges' && tabStyles.activeText
+                        ]}
+                    >
+                        Badges
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
+
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.contentContainer}
             >
-                <Header
-                    learnerInfo={learnerInfo}
-                />
-
-                <View style={styles.header}>
-                    <ThemedText style={[styles.title, { color: colors.text }]}>🏆 Achievements</ThemedText>
-                    <ThemedText style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        Collect badges as you progress!
-                    </ThemedText>
-                </View>
-
                 {isLoading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
-                        <ThemedText style={[styles.loadingText, { color: colors.textSecondary }]}>
-                            Loading your achievements...
-                        </ThemedText>
+                        <ThemedText style={styles.loadingText}>Loading...</ThemedText>
                     </View>
-                ) : (
+                ) : activeTab === 'badges' ? (
                     badgeCategories.map((category, index) => (
                         <View key={category.title} style={styles.categoryContainer}>
                             <ThemedText style={[styles.categoryTitle, { color: colors.text }]}>
@@ -276,6 +517,49 @@ export default function AchievementsScreen() {
                             </View>
                         </View>
                     ))
+                ) : (
+                    <View style={styles.leaderboardContainer}>
+                        {leaderboard && renderTopThree(leaderboard.rankings)}
+                        
+                        {/* Rest of the leaderboard */}
+                        <View style={styles.rankingsList}>
+                            {leaderboard && leaderboard.rankings.slice(3).map((entry, index) => 
+                                renderLeaderboardEntry(entry, index + 3)
+                            )}
+                        </View>
+                        
+                        {/* Current Learner Position (if not in top 10) */}
+                        {leaderboard && leaderboard.currentLearnerPosition !== null &&
+                            !leaderboard.rankings.some(r => r.isCurrentLearner) && (
+                                <ThemedView style={[styles.leaderboardEntry, styles.currentLearnerEntry]}>
+                                    <View style={styles.leaderboardEntryContent}>
+                                        <View style={styles.positionContainer}>
+                                            <ThemedText style={styles.position}>
+                                                #{leaderboard.currentLearnerPosition}
+                                            </ThemedText>
+                                        </View>
+                                        <View style={styles.avatarContainer}>
+                                            <Image
+                                                source={learnerInfo?.avatar ? AVATAR_IMAGES[learnerInfo.avatar] : AVATAR_IMAGES['1']}
+                                                style={styles.avatar}
+                                            />
+                                        </View>
+                                        <View style={styles.nameContainer}>
+                                            <ThemedText style={styles.name}>You</ThemedText>
+                                        </View>
+                                        <View style={styles.pointsContainer}>
+                                            <Image
+                                                source={require('@/assets/images/points.png')}
+                                                style={styles.pointsIcon}
+                                            />
+                                            <ThemedText style={styles.points}>
+                                                {leaderboard.currentLearnerPoints}
+                                            </ThemedText>
+                                        </View>
+                                    </View>
+                                </ThemedView>
+                            )}
+                    </View>
                 )}
             </ScrollView>
         </LinearGradient>
@@ -288,24 +572,100 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        paddingHorizontal: 16,
     },
     contentContainer: {
-        flexGrow: 1,
-        paddingBottom: 20,
+        padding: 16,
     },
     header: {
-        marginBottom: 24,
-        marginTop: 20,
+        padding: 16,
+        alignItems: 'center',
     },
     title: {
-        fontSize: 28,
+        fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        opacity: 0.8,
+        opacity: 0.7,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    loadingText: {
+        marginTop: 10,
+        fontSize: 16,
+    },
+    leaderboardContainer: {
+        paddingHorizontal: 16,
+    },
+    leaderboardEntry: {
+        marginBottom: 12,
+        borderRadius: 12,
+        padding: 12,
+    },
+    currentLearnerEntry: {
+        backgroundColor: '#3B82F6',
+    },
+    topThreeEntry: {
+        borderWidth: 1,
+        borderColor: '#FFD700',
+    },
+    leaderboardEntryContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    positionContainer: {
+        width: 40,
+        alignItems: 'center',
+    },
+    position: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    medalEmoji: {
+        fontSize: 20,
+    },
+    avatarContainer: {
+        marginRight: 12,
+    },
+    avatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    nameContainer: {
+        flex: 1,
+    },
+    name: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    pointsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    pointsIcon: {
+        width: 20,
+        height: 20,
+        marginRight: 4,
+    },
+    points: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    categoryContainer: {
+        marginBottom: 32,
+        marginTop: 16,
+    },
+    categoryTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        marginBottom: 16,
+        marginTop: 8,
     },
     badgesGrid: {
         flexDirection: 'row',
@@ -369,24 +729,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 14,
     },
-    headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingBottom: 16,
-    },
-    closeIconButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
     shareButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -402,25 +744,106 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
-    categoryContainer: {
-        marginBottom: 32,
-        marginTop: 16,
-    },
-    categoryTitle: {
-        fontSize: 20,
-        fontWeight: '600',
-        marginBottom: 16,
-        marginTop: 8,
-    },
-    loadingContainer: {
-        flex: 1,
+    topThreeContainer: {
+        flexDirection: 'row',
         justifyContent: 'center',
-        alignItems: 'center',
-        paddingVertical: 40,
+        alignItems: 'flex-end',
+        marginBottom: 32,
+        marginTop: 20,
+        paddingHorizontal: 16,
+        height: 220,
     },
-    loadingText: {
-        marginTop: 16,
-        fontSize: 16,
+    topThreeItem: {
+        flex: 1,
+        alignItems: 'center',
+        maxWidth: 120,
+        paddingBottom: 16,
+        marginTop: 20,
+    },
+    firstPlace: {
+        marginTop: -80,
+        transform: [{ translateY: -50 }],
+        marginHorizontal: 20,
+    },
+    topThreeAvatarContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#fff',
+        padding: 2,
+        marginBottom: 8,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    firstPlaceAvatar: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        borderWidth: 3,
+        borderColor: '#FFD700',
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+    },
+    topThreeAvatar: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 999,
+    },
+    crownContainer: {
+        position: 'absolute',
+        top: -24,
+        left: '50%',
+        transform: [{ translateX: -12 }],
+    },
+    crown: {
+        fontSize: 24,
+    },
+    topThreeMedal: {
+        marginBottom: 4,
+    },
+    topThreeMedalText: {
+        fontSize: 20,
+    },
+    topThreeName: {
+        fontSize: 14,
+        fontWeight: '600',
         textAlign: 'center',
+        marginBottom: 4,
+        maxWidth: '100%',
+    },
+    firstPlaceName: {
+        fontSize: 16,
+    },
+    topThreePoints: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    topThreePointsIcon: {
+        width: 16,
+        height: 16,
+        marginRight: 4,
+    },
+    topThreePointsText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    firstPlacePoints: {
+        fontSize: 16,
+    },
+    rankingsList: {
+        marginTop: 16,
     },
 }); 
