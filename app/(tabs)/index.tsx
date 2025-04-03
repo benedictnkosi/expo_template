@@ -570,8 +570,8 @@ export default function HomeScreen() {
                       <ThemedText
                         style={[
                           styles.subjectName,
-                          { color: '#FFFFFF' },
-                          isDisabled && { color: 'rgba(255, 255, 255, 0.4)' }
+                          { color: isDark ? '#FFFFFF' : colors.text },
+                          isDisabled && { color: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)' }
                         ]}
                         testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                       >
@@ -580,7 +580,7 @@ export default function HomeScreen() {
                       <ThemedText
                         style={[
                           styles.totalQuestionsText,
-                          { color: 'rgba(255, 255, 255, 0.6)' }
+                          { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
                         ]}
                       >
                         {subject.total_questions} questions
@@ -635,7 +635,9 @@ export default function HomeScreen() {
                         </View>
                       </View>
 
-                      <View style={styles.progressBarContainer}>
+                      <View style={[styles.progressBarContainer, {
+                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                      }]}>
                         <View
                           style={[
                             styles.progressBar,
@@ -650,7 +652,7 @@ export default function HomeScreen() {
                       <ThemedText
                         style={[
                           styles.masteryText,
-                          { color: 'rgba(255, 255, 255, 0.6)' }
+                          { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
                         ]}
                       >
                         {subject.answered_questions === 0 ? 0 :
@@ -831,14 +833,13 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     position: 'absolute',
-    top: -24,
+    top: -52,
     left: 16,
-    width: 48,
-    height: 48,
+    width: 85,
+    height: 85,
     zIndex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 8,
+    borderRadius: 16,
+    padding: 12,
   },
   subjectIcon: {
     width: '100%',
@@ -866,14 +867,14 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     width: 'auto',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     height: 4,
     overflow: 'hidden',
     marginTop: 8,
+    borderRadius: 2,
   },
   progressBar: {
     height: '100%',
-    
+    borderRadius: 2,
   },
   masteryText: {
     fontSize: 12,

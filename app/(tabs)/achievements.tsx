@@ -410,7 +410,7 @@ export default function AchievementsScreen() {
             <View style={styles.header}>
                 <ThemedText style={styles.title}>🏆 Achievements</ThemedText>
                 <ThemedText style={styles.subtitle}>
-                    Track your progress and compete with others!
+                    Track your progress and compete with others in your grade!
                 </ThemedText>
             </View>
 
