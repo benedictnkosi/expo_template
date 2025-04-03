@@ -40,15 +40,17 @@ export function Header({ learnerInfo }: HeaderProps) {
         <ThemedText style={styles.subtitle}>Explore the Joy of Learning! 🎓</ThemedText>
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/profile')}>
-        <View style={styles.profileSection}>
-          <Image
-            source={avatarSource}
-            style={styles.profileImage}
-            resizeMode="cover"
-          />
-        </View>
-      </TouchableOpacity>
+      {learnerInfo && (
+        <TouchableOpacity onPress={() => router.push('/profile')}>
+          <View style={styles.profileSection}>
+            <Image
+              source={avatarSource}
+              style={styles.profileImage}
+              resizeMode="cover"
+            />
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -60,6 +62,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    
   },
   greeting: {
     flex: 1,

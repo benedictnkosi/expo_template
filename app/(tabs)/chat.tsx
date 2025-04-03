@@ -14,7 +14,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchMySubjects } from '@/services/api';
+import { fetchMySubjects, getLearner } from '@/services/api';
 import { analytics } from '@/services/analytics';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
@@ -36,6 +36,12 @@ export default function ChatScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
     const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
+    const [learnerInfo, setLearnerInfo] = useState<{
+        name: string;
+        grade: string;
+        school?: string;
+        avatar?: string;
+    } | null>(null);
 
     useEffect(() => {
         async function loadData() {
@@ -53,6 +59,15 @@ export default function ChatScreen() {
                 const times = await AsyncStorage.getItem('subjectLastAccessTimes');
                 const accessTimes = times ? JSON.parse(times) : {};
                 setLastAccessTimes(accessTimes);
+
+                // Fetch learner info
+                const learner = await getLearner(user.uid);
+                setLearnerInfo({
+                    name: learner.name || '',
+                    grade: learner.grade?.number?.toString() || '',
+                    school: learner.school_name || '',
+                    avatar: learner.avatar || ''
+                });
 
                 // Load subjects
                 const response = await fetchMySubjects(user.uid);
@@ -157,7 +172,7 @@ export default function ChatScreen() {
 
     return (
         <ThemedView style={styles.container}>
-            <Header learnerInfo={null} />
+            <Header learnerInfo={learnerInfo} />
             <View style={[styles.header, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
                 <ThemedText style={styles.title}>Study Buddies Chat 💬</ThemedText>
             </View>

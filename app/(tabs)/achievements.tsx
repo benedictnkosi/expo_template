@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -15,6 +15,7 @@ import { analytics } from '@/services/analytics';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
+import { useFocusEffect } from '@react-navigation/native';
 const badgeImages: Record<string, ImageSourcePropType> = {
     '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
     '7-day-streak.png': require('@/assets/images/badges/7-day-streak.png'),
@@ -44,6 +45,7 @@ export default function AchievementsScreen() {
     const insets = useSafeAreaInsets();
     const [badgeCategories, setBadgeCategories] = useState<BadgeCategory[]>([]);
     const { user } = useAuth();
+    const [isLoading, setIsLoading] = useState(true);
     const [learnerInfo, setLearnerInfo] = useState<{
         name: string;
         grade: string;
@@ -51,94 +53,99 @@ export default function AchievementsScreen() {
         avatar?: string;
     } | null>(null);
 
-    useEffect(() => {
-        async function fetchLearnerInfo() {
-            if (!user?.uid) return;
-            try {
-                const learner = await getLearner(user.uid);
-                setLearnerInfo({
-                    name: learner.name || '',
-                    grade: learner.grade?.number?.toString() || '',
-                    school: learner.school_name || '',
-                    avatar: learner.avatar || ''
-                });
-            } catch (error) {
-                console.error('Failed to fetch learner info:', error);
-            }
+    const fetchLearnerInfo = useCallback(async () => {
+        if (!user?.uid) return;
+        try {
+            const learner = await getLearner(user.uid);
+            setLearnerInfo({
+                name: learner.name || '',
+                grade: learner.grade?.number?.toString() || '',
+                school: learner.school_name || '',
+                avatar: learner.avatar || ''
+            });
+        } catch (error) {
+            console.error('Failed to fetch learner info:', error);
         }
-        fetchLearnerInfo();
     }, [user?.uid]);
 
-    useEffect(() => {
-        async function fetchBadges() {
-            if (!user?.uid) return;
-            try {
-                const allBadges = await getAllBadges();
-                const learnerBadges = await getLearnerBadges(user.uid);
-                const earnedBadgeIds = new Set(learnerBadges.map(badge => badge.id));
+    const fetchBadges = useCallback(async () => {
+        if (!user?.uid) return;
+        setIsLoading(true);
+        try {
+            const allBadges = await getAllBadges();
+            const learnerBadges = await getLearnerBadges(user.uid);
+            const earnedBadgeIds = new Set(learnerBadges.map(badge => badge.id));
 
-                const badgesWithStatus = allBadges.map(badge => ({
-                    ...badge,
-                    earned: earnedBadgeIds.has(badge.id)
-                }));
+            const badgesWithStatus = allBadges.map(badge => ({
+                ...badge,
+                earned: earnedBadgeIds.has(badge.id)
+            }));
 
-                // Categorize badges
-                const categories: BadgeCategory[] = [
-                    {
-                        title: 'Learning Marathon 🏃‍♂️📚',
-                        badges: badgesWithStatus.filter(badge =>
-                            badge.image.includes('day-streak')
-                        )
-                    },
-                    {
-                        title: 'Sharp Shooter 🎯',
-                        badges: badgesWithStatus.filter(badge =>
-                            badge.image.includes('in-a-row')
-                        )
-                    },
-                    {
-                        title: 'Quiz Master 🎓',
-                        badges: badgesWithStatus.filter(badge =>
-                            !badge.image.includes('in-a-row') &&
-                            !badge.image.includes('day-streak')
-                        )
-                    }
-                ];
+            // Categorize badges
+            const categories: BadgeCategory[] = [
+                {
+                    title: 'Learning Marathon 🏃‍♂️📚',
+                    badges: badgesWithStatus.filter(badge =>
+                        badge.image.includes('day-streak')
+                    )
+                },
+                {
+                    title: 'Sharp Shooter 🎯',
+                    badges: badgesWithStatus.filter(badge =>
+                        badge.image.includes('in-a-row')
+                    )
+                },
+                {
+                    title: 'Quiz Master 🎓',
+                    badges: badgesWithStatus.filter(badge =>
+                        !badge.image.includes('in-a-row') &&
+                        !badge.image.includes('day-streak')
+                    )
+                }
+            ];
 
-                setBadgeCategories(categories);
-            } catch (error) {
-                console.error('Failed to fetch badges:', error);
-                const allBadges = await getAllBadges();
-                const badgesWithStatus = allBadges.map(badge => ({ ...badge, earned: false }));
+            setBadgeCategories(categories);
+        } catch (error) {
+            console.error('Failed to fetch badges:', error);
+            const allBadges = await getAllBadges();
+            const badgesWithStatus = allBadges.map(badge => ({ ...badge, earned: false }));
 
-                // Categorize badges even when there's an error
-                const categories: BadgeCategory[] = [
-                    {
-                        title: 'Learning Marathon 🏃‍♂️📚',
-                        badges: badgesWithStatus.filter(badge =>
-                            badge.image.includes('day-streak')
-                        )
-                    },
-                    {
-                        title: 'Sharp Shooter 🎯',
-                        badges: badgesWithStatus.filter(badge =>
-                            badge.image.includes('in-a-row')
-                        )
-                    },
-                    {
-                        title: 'Quiz Master 🎓',
-                        badges: badgesWithStatus.filter(badge =>
-                            !badge.image.includes('in-a-row') &&
-                            !badge.image.includes('day-streak')
-                        )
-                    }
-                ];
+            // Categorize badges even when there's an error
+            const categories: BadgeCategory[] = [
+                {
+                    title: 'Learning Marathon 🏃‍♂️📚',
+                    badges: badgesWithStatus.filter(badge =>
+                        badge.image.includes('day-streak')
+                    )
+                },
+                {
+                    title: 'Sharp Shooter 🎯',
+                    badges: badgesWithStatus.filter(badge =>
+                        badge.image.includes('in-a-row')
+                    )
+                },
+                {
+                    title: 'Quiz Master 🎓',
+                    badges: badgesWithStatus.filter(badge =>
+                        !badge.image.includes('in-a-row') &&
+                        !badge.image.includes('day-streak')
+                    )
+                }
+            ];
 
-                setBadgeCategories(categories);
-            }
+            setBadgeCategories(categories);
+        } finally {
+            setIsLoading(false);
         }
-        fetchBadges();
     }, [user?.uid]);
+
+    // Use useFocusEffect to fetch data when the tab is focused
+    useFocusEffect(
+        useCallback(() => {
+            fetchLearnerInfo();
+            fetchBadges();
+        }, [fetchLearnerInfo, fetchBadges])
+    );
 
     const handleShareBadge = async (badge: Badge) => {
         try {
@@ -203,64 +210,73 @@ export default function AchievementsScreen() {
                     </ThemedText>
                 </View>
 
-                {badgeCategories.map((category, index) => (
-                    <View key={category.title} style={styles.categoryContainer}>
-                        <ThemedText style={[styles.categoryTitle, { color: colors.text }]}>
-                            {category.title}
+                {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <ThemedText style={[styles.loadingText, { color: colors.textSecondary }]}>
+                            Loading your achievements...
                         </ThemedText>
-                        <View style={styles.badgesGrid}>
-                            {category.badges.map((badge) => (
-                                <View
-                                    key={badge.id}
-                                    style={[
-                                        styles.badgeCard,
-                                        {
-                                            backgroundColor: '#F8FAFC',
-                                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                                            opacity: badge.earned ? 1 : 0.5
-                                        }
-                                    ]}
-                                >
-                                    <View style={styles.badgeImageContainer}>
-                                        <Image
-                                            source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
-                                            style={[
-                                                styles.badgeImage,
-                                                !badge.earned && styles.lockedBadgeImage
-                                            ]}
-                                            resizeMode="contain"
-                                        />
-                                        {!badge.earned && (
-                                            <View style={styles.lockOverlay}>
-                                                <Ionicons name="lock-closed" size={48} color={isDark ? '#FFFFFF' : '#000000'} />
-                                            </View>
-                                        )}
-                                    </View>
-                                    <View style={styles.badgeInfo}>
-                                        <ThemedText style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
-                                            {badge.name}
-                                        </ThemedText>
-                                        <ThemedText
-                                            style={[styles.badgeRules, { color: colors.textSecondary }]}
-                                            numberOfLines={2}
-                                        >
-                                            {badge.rules}
-                                        </ThemedText>
-                                        {badge.earned && (
-                                            <TouchableOpacity
-                                                style={[styles.shareButton, { backgroundColor: isDark ? colors.primary : '#022b66' }]}
-                                                onPress={() => handleShareBadge(badge)}
-                                            >
-                                                <Ionicons name="share-social" size={16} color="#FFFFFF" />
-                                                <ThemedText style={styles.shareButtonText}>Share</ThemedText>
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
                     </View>
-                ))}
+                ) : (
+                    badgeCategories.map((category, index) => (
+                        <View key={category.title} style={styles.categoryContainer}>
+                            <ThemedText style={[styles.categoryTitle, { color: colors.text }]}>
+                                {category.title}
+                            </ThemedText>
+                            <View style={styles.badgesGrid}>
+                                {category.badges.map((badge) => (
+                                    <View
+                                        key={badge.id}
+                                        style={[
+                                            styles.badgeCard,
+                                            {
+                                                backgroundColor: '#F8FAFC',
+                                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                                                opacity: badge.earned ? 1 : 0.5
+                                            }
+                                        ]}
+                                    >
+                                        <View style={styles.badgeImageContainer}>
+                                            <Image
+                                                source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
+                                                style={[
+                                                    styles.badgeImage,
+                                                    !badge.earned && styles.lockedBadgeImage
+                                                ]}
+                                                resizeMode="contain"
+                                            />
+                                            {!badge.earned && (
+                                                <View style={styles.lockOverlay}>
+                                                    <Ionicons name="lock-closed" size={48} color={isDark ? '#FFFFFF' : '#000000'} />
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View style={styles.badgeInfo}>
+                                            <ThemedText style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
+                                                {badge.name}
+                                            </ThemedText>
+                                            <ThemedText
+                                                style={[styles.badgeRules, { color: colors.textSecondary }]}
+                                                numberOfLines={2}
+                                            >
+                                                {badge.rules}
+                                            </ThemedText>
+                                            {badge.earned && (
+                                                <TouchableOpacity
+                                                    style={[styles.shareButton, { backgroundColor: isDark ? colors.primary : '#022b66' }]}
+                                                    onPress={() => handleShareBadge(badge)}
+                                                >
+                                                    <Ionicons name="share-social" size={16} color="#FFFFFF" />
+                                                    <ThemedText style={styles.shareButtonText}>Share</ThemedText>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    ))
+                )}
             </ScrollView>
         </LinearGradient>
     );
@@ -395,5 +411,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 16,
         marginTop: 8,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        textAlign: 'center',
     },
 }); 

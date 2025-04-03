@@ -33,6 +33,20 @@ interface Thread {
     newMessageCount?: number;
 }
 
+const NoTopicsFound = ({ isDark, colors }: { isDark: boolean; colors: any }) => (
+    <View style={styles.noTopicsContainer}>
+        <Ionicons
+            name="chatbubbles-outline"
+            size={64}
+            color={isDark ? colors.textSecondary : '#9CA3AF'}
+        />
+        <ThemedText style={styles.noTopicsTitle}>No Topics Yet</ThemedText>
+        <ThemedText style={styles.noTopicsSubtitle}>
+            Be the first to start a discussion in this subject
+        </ThemedText>
+    </View>
+);
+
 export default function SubjectChatScreen() {
     const { id, subjectName } = useLocalSearchParams();
     const { user } = useAuth();
@@ -401,6 +415,7 @@ export default function SubjectChatScreen() {
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.threadsList}
                     ListFooterComponent={renderFooter}
+                    ListEmptyComponent={() => <NoTopicsFound isDark={isDark} colors={colors} />}
                 />
             )}
 
@@ -585,5 +600,22 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: 'bold',
+    },
+    noTopicsContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
+    },
+    noTopicsTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        marginTop: 16,
+        marginBottom: 8,
+    },
+    noTopicsSubtitle: {
+        fontSize: 16,
+        textAlign: 'center',
+        opacity: 0.7,
     },
 }); 
