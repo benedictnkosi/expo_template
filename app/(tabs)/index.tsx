@@ -570,8 +570,8 @@ export default function HomeScreen() {
                       <ThemedText
                         style={[
                           styles.subjectName,
-                          { color: colors.text },
-                          isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                          { color: '#FFFFFF' },
+                          isDisabled && { color: 'rgba(255, 255, 255, 0.4)' }
                         ]}
                         testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                       >
@@ -579,43 +579,83 @@ export default function HomeScreen() {
                       </ThemedText>
                       <ThemedText
                         style={[
-                          styles.questionCount,
-                          { color: colors.textSecondary },
-                          isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
+                          styles.totalQuestionsText,
+                          { color: 'rgba(255, 255, 255, 0.6)' }
                         ]}
-                        testID={`question-count-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        {isDisabled ? 'No questions available' : `${subject.total_questions} questions`}
+                        {subject.total_questions} questions
                       </ThemedText>
 
-                      <View style={isDisabled && styles.disabledProgress} testID={`progress-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                        <View style={[styles.progressBarContainer, { backgroundColor: isDark ? colors.border : '#E2E8F0' }]} testID={`progress-bar-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                          <View
-                            style={[
-                              styles.progressBar,
-                              {
-                                width: `${subject.answered_questions === 0 ? 0 :
-                                  Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
-                                backgroundColor: isDisabled ? (isDark ? colors.textSecondary : '#D1D5DB') :
-                                  getProgressBarColor(subject.answered_questions === 0 ? 0 :
-                                    Math.round((subject.correct_answers / subject.answered_questions) * 100))
-                              }
-                            ]}
-                            testID={`progress-bar-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                          />
+                      <View style={styles.statsRow}>
+                        <View style={[styles.statItem, {
+                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                          borderColor: colors.border,
+                          borderWidth: 1,
+                          shadowColor: isDark ? '#000000' : '#000000',
+                          shadowOpacity: isDark ? 0.3 : 0.1,
+                          borderRadius: 12,
+                          padding: 12,
+                          flex: 1,
+                        }]}>
+                          <View style={styles.statContent}>
+                            <ThemedText style={styles.statIcon}>🎯</ThemedText>
+                            <View style={styles.statTextContainer}>
+                              <ThemedText style={[styles.statCount, { color: colors.text }]}>
+                                {subject.correct_answers}
+                              </ThemedText>
+                              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                Bullseyes
+                              </ThemedText>
+                            </View>
+                          </View>
                         </View>
-                        <ThemedText
-                          style={[
-                            styles.masteryText,
-                            { color: colors.textSecondary },
-                            isDisabled && { color: isDark ? colors.textSecondary : '#9CA3AF' }
-                          ]}
-                          testID={`mastery-text-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                        >
-                          {subject.answered_questions === 0 ? 0 :
-                            Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
-                        </ThemedText>
+
+                        <View style={[styles.statItem, {
+                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                          borderColor: colors.border,
+                          borderWidth: 1,
+                          shadowColor: isDark ? '#000000' : '#000000',
+                          shadowOpacity: isDark ? 0.3 : 0.1,
+                          borderRadius: 12,
+                          padding: 12,
+                          flex: 1,
+                          marginLeft: 12,
+                        }]}>
+                          <View style={styles.statContent}>
+                            <ThemedText style={styles.statIcon}>💥</ThemedText>
+                            <View style={styles.statTextContainer}>
+                              <ThemedText style={[styles.statCount, { color: colors.text }]}>
+                                {subject.answered_questions - subject.correct_answers}
+                              </ThemedText>
+                              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                Oopsies
+                              </ThemedText>
+                            </View>
+                          </View>
+                        </View>
                       </View>
+
+                      <View style={styles.progressBarContainer}>
+                        <View
+                          style={[
+                            styles.progressBar,
+                            {
+                              width: `${subject.answered_questions === 0 ? 0 :
+                                Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
+                              backgroundColor: '#22C55E'
+                            }
+                          ]}
+                        />
+                      </View>
+                      <ThemedText
+                        style={[
+                          styles.masteryText,
+                          { color: 'rgba(255, 255, 255, 0.6)' }
+                        ]}
+                      >
+                        {subject.answered_questions === 0 ? 0 :
+                          Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                      </ThemedText>
                     </View>
                   </TouchableOpacity>
                 );
@@ -732,16 +772,13 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
   },
   statItem: {
     flex: 1,
-  },
-  statContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
   },
   divider: {
     width: 1,
@@ -774,49 +811,81 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   subjectsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: 16,
     paddingHorizontal: 4,
   },
   subjectCard: {
-    width: '47%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    width: '100%',
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    alignItems: 'flex-start',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
     position: 'relative',
-    marginBottom: 16,
-    height: 180,
-    justifyContent: 'space-between',
+    marginBottom: 24,
+    marginTop: 24,
   },
   iconContainer: {
     position: 'absolute',
-    top: -16,
+    top: -24,
     left: 16,
-    width: 72,
-    height: 72,
+    width: 48,
+    height: 48,
     zIndex: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 8,
   },
   subjectIcon: {
     width: '100%',
     height: '100%',
+    resizeMode: 'contain',
+  },
+  cardContent: {
+    marginTop: 8,
   },
   subjectName: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 8,
-    marginTop: 32,
+    marginBottom: 4,
   },
-  questionCount: {
+  totalQuestionsText: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  statColumn: {
+    alignItems: 'flex-start',
+  },
+  statNumber: {
+    fontSize: 32,
+    fontWeight: 'bold',
+  },
+  progressBarContainer: {
+    width: 'auto',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    height: 4,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  progressBar: {
+    height: '100%',
+    
+  },
+  masteryText: {
     fontSize: 12,
-    color: '#64748B',
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  visibilityToggle: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 2,
+    padding: 4,
   },
   loadingContainer: {
     position: 'absolute',
@@ -1097,30 +1166,6 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
   },
-  cardContent: {
-    width: '100%',
-    marginTop: 'auto',
-    paddingBottom: 8,
-  },
-  progressBarContainer: {
-    width: '100%',
-    backgroundColor: '#E2E8F0',
-    borderRadius: 2,
-    marginTop: 12,
-    height: 4,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#2563EB',
-    borderRadius: 2,
-  },
-  masteryText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-    textAlign: 'right',
-  },
   shareContainer: {
     padding: 20,
     alignItems: 'center',
@@ -1199,15 +1244,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
-  visibilityToggle: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 2,
-    padding: 4,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
   hiddenSubjectCard: {
     opacity: 0.7,
     borderStyle: 'dashed',
@@ -1277,6 +1313,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  statContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  statCount: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });
 
