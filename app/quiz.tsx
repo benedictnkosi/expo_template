@@ -21,6 +21,7 @@ import { analytics } from '../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
+import { NotesAndTodos } from './components/NotesAndTodos';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -1884,6 +1885,7 @@ export default function QuizScreen() {
                                 </View>
                             )}
                         </View>
+                        
                     </View>
                 </ScrollView>
             </LinearGradient>
@@ -2819,6 +2821,8 @@ export default function QuizScreen() {
                     badge={newBadge}
                 />
             )}
+
+            
         </LinearGradient>
     );
 }
