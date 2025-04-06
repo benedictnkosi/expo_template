@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useState, useEffect } from 'react';
-import { getLearner, createLearner, fetchGrades } from '@/services/api';
+import { getLearner, createLearner, fetchGrades, updatePushToken } from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
@@ -20,6 +20,8 @@ import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
+import { registerForPushNotificationsAsync } from '@/services/notifications';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -79,6 +81,7 @@ export default function ProfileScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const googlePlacesRef = React.useRef<any>(null);
 
   // Available options
@@ -86,7 +89,6 @@ export default function ProfileScreen() {
   const CURRICULA = ['CAPS', 'IEB'];
 
   useEffect(() => {
-    console.log('user', user);
     async function fetchLearnerInfo() {
       if (!user?.uid) return;
       try {
@@ -147,6 +149,15 @@ export default function ProfileScreen() {
       // Default to true if not set
       setSoundEnabled(value === null ? true : value === 'true');
     });
+  }, []);
+
+  useEffect(() => {
+    // Check notification permissions
+    async function checkNotificationPermissions() {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotificationsEnabled(status === 'granted');
+    }
+    checkNotificationPermissions();
   }, []);
 
   const handleSave = async () => {
@@ -432,6 +443,55 @@ export default function ProfileScreen() {
     }
   };
 
+  const toggleNotifications = async () => {
+    try {
+      if (!notificationsEnabled) {
+        // Request permissions
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status === 'granted') {
+          // Get push token
+          const token = await registerForPushNotificationsAsync();
+          if (token && user?.uid) {
+            // Update token on server
+            await updatePushToken(user.uid, token);
+            setNotificationsEnabled(true);
+            Toast.show({
+              type: 'success',
+              text1: 'Notifications enabled',
+              position: 'bottom'
+            });
+          }
+        } else {
+          Toast.show({
+            type: 'error',
+            text1: 'Permission denied',
+            text2: 'Please enable notifications in your device settings',
+            position: 'bottom'
+          });
+        }
+      } else {
+        // Disable notifications
+        setNotificationsEnabled(false);
+        if (user?.uid) {
+          await updatePushToken(user.uid, "disable");
+        }
+        Toast.show({
+          type: 'info',
+          text1: 'Notifications disabled',
+          position: 'bottom'
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling notifications:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update notification settings',
+        position: 'bottom'
+      });
+    }
+  };
+
   return (
     <LinearGradient
       colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -468,6 +528,9 @@ export default function ProfileScreen() {
                   testID='profile-name-input'
                   maxLength={50}
                 />
+                <ThemedText style={[styles.email, { color: colors.textSecondary, marginTop: 8 }]}>
+                  {user?.email}
+                </ThemedText>
               </View>
 
               <View style={styles.inputGroup}>
@@ -740,6 +803,21 @@ export default function ProfileScreen() {
           borderColor: colors.border
         }]}>
           <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Notifications</ThemedText>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Push Notifications</ThemedText>
+              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Receive updates about new questions and daily reminders to be great!
+              </ThemedText>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={toggleNotifications}
+              trackColor={{ false: isDark ? colors.border : '#E2E8F0', true: colors.primary }}
+              thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
+              testID="notifications-toggle-switch"
+            />
+          </View>
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Question Sounds</ThemedText>

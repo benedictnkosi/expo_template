@@ -21,7 +21,7 @@ import { analytics } from '../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
-import { NotesAndTodos } from './components/NotesAndTodos';
+import { NotesAndTodosAndFavorites, TabType } from '@/app/components/NotesAndTodosAndFavorites';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -692,7 +692,7 @@ const StreakModal = ({ isVisible, onClose, streak }: { isVisible: boolean; onClo
 export default function QuizScreen() {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
-    const { subjectName, learnerRole } = useLocalSearchParams();
+    const { subjectName, learnerRole, defaultTab } = useLocalSearchParams();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -730,6 +730,7 @@ export default function QuizScreen() {
     const [isCurrentQuestionFavorited, setIsCurrentQuestionFavorited] = useState(false);
     const [showPoints, setShowPoints] = useState(false);
     const [earnedPoints, setEarnedPoints] = useState(0);
+    const [isFromFavorites, setIsFromFavorites] = useState(false);
     // Add new state for streak modal
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
@@ -883,6 +884,7 @@ export default function QuizScreen() {
         setSelectedAnswer(null);
         setShowFeedback(false);
         setIsCorrect(null);
+        setIsFromFavorites(false); // Reset this flag when loading random questions
         stopTimer(); // Stop any existing timer
 
         try {
@@ -1236,6 +1238,14 @@ export default function QuizScreen() {
     const handleFavoriteQuestion = async () => {
         if (!user?.uid || !currentQuestion) return;
 
+        // Log analytics event
+        await logAnalyticsEvent('favorite_question', {
+            question_id: currentQuestion.id,
+            subject_id: currentQuestion.subject.id,
+            subject_name: currentQuestion.subject.name,
+            paper: currentQuestion.year + currentQuestion.term
+        });
+
         // Optimistically update UI
         setIsCurrentQuestionFavorited(true);
         setIsFavoriting(true);
@@ -1275,6 +1285,7 @@ export default function QuizScreen() {
                 });
                 // Update favorites list
                 await fetchFavoriteQuestions();
+                //set selected tab as favorites
             } else {
                 // Revert optimistic update if request fails
                 setIsCurrentQuestionFavorited(false);
@@ -1545,7 +1556,7 @@ export default function QuizScreen() {
         setShowRatingModal(false);
         // Store the current date for next prompt
         const nextPromptDate = new Date();
-        nextPromptDate.setDate(nextPromptDate.getDate() + 5); // Add 5 days
+        nextPromptDate.setDate(nextPromptDate.getDate() + 1); // Add 1 days
         await SecureStore.setItemAsync('next_rating_prompt_date', nextPromptDate.toISOString());
     };
 
@@ -1594,6 +1605,7 @@ export default function QuizScreen() {
         try {
             setSelectedMode('quiz');
             setIsLoading(true);
+            setIsFromFavorites(true); // Set this flag when loading from favorites
             const response = await fetch(
                 `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
             );
@@ -1835,55 +1847,15 @@ export default function QuizScreen() {
 
                         {/* Favorites Section */}
                         <View style={[styles.favoritesSection]}>
-                            <View style={styles.favoritesTitleContainer}>
-                                <ThemedText style={[styles.favoritesTitle, { color: colors.text }]}>
-                                    ⭐ Favorite Questions
-                                </ThemedText>
-                                {isFavoritesLoading && (
-                                    <ActivityIndicator size="small" color={colors.primary} />
-                                )}
-                            </View>
-
-                            {favoriteQuestions.length > 0 ? (
-                                <View style={styles.favoritesGrid}>
-                                    {favoriteQuestions.map((fav, index) => {
-                                        // Get display text for the card
-                                        const displayText = fav.question && fav.question.trim()
-                                            ? fav.question.split('\n')[0]
-                                            : fav.context && fav.context.trim()
-                                                ? fav.context.split('\n')[0]
-                                                : `Question #${fav.questionId || 'Unknown'}`;
-
-                                        return (
-                                            <TouchableOpacity
-                                                key={fav.id}
-                                                style={[
-                                                    styles.favoriteCard,
-                                                    { backgroundColor: getFavoriteCardColor(index) }
-                                                ]}
-                                                onPress={() => loadSpecificQuestion(fav.questionId)}
-                                            >
-                                                <ThemedText style={styles.favoriteCardText} numberOfLines={4}>
-                                                    {displayText.includes('$') ? (
-                                                        <ThemedText style={styles.favoriteCardText}>Question with formula #{fav.questionId}</ThemedText>
-                                                    ) : (
-                                                        <ThemedText style={styles.favoriteCardText}>{displayText}</ThemedText>
-                                                    )}
-                                                </ThemedText>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            ) : !isFavoritesLoading && (
-                                <View style={[styles.emptyFavorites, {
-                                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-                                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                                }]}>
-                                    <ThemedText style={[styles.emptyFavoritesText, { color: colors.textSecondary }]}>
-                                        No saved questions yet! 🌟
-                                    </ThemedText>
-                                </View>
-                            )}
+                            <NotesAndTodosAndFavorites
+                                subjectName={subjectName as string}
+                                currentQuestion={currentQuestion}
+                                favoriteQuestions={favoriteQuestions}
+                                isFavoritesLoading={isFavoritesLoading}
+                                loadSpecificQuestion={loadSpecificQuestion}
+                                getFavoriteCardColor={getFavoriteCardColor}
+                                defaultTab={defaultTab as TabType || 'favorites'}
+                            />
                         </View>
                         
                     </View>
@@ -2506,21 +2478,23 @@ export default function QuizScreen() {
                 }]}
                 testID="quiz-footer"
             >
-                <LinearGradient
-                    colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.footerButton}
-                >
-                    <TouchableOpacity
-                        style={styles.buttonContent}
-                        onPress={handleNext}
-                        testID="next-question-button"
+                {!isFromFavorites && (
+                    <LinearGradient
+                        colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.footerButton}
                     >
-                        <Ionicons name="play" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>🎯 Keep Going!</ThemedText>
-                    </TouchableOpacity>
-                </LinearGradient>
+                        <TouchableOpacity
+                            style={styles.buttonContent}
+                            onPress={handleNext}
+                            testID="next-question-button"
+                        >
+                            <Ionicons name="play" size={20} color="#FFFFFF" />
+                            <ThemedText style={styles.footerButtonText}>🎯 Keep Going!</ThemedText>
+                        </TouchableOpacity>
+                    </LinearGradient>
+                )}
 
                 <LinearGradient
                     colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
@@ -3791,7 +3765,7 @@ const styles = StyleSheet.create({
     },
     favoritesSection: {
         width: '100%',
-        paddingHorizontal: 16,
+        paddingHorizontal: 0,
         position: 'relative',
         paddingTop: 16,
     },
@@ -4115,6 +4089,15 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 16,
         zIndex: 10,
+    },
+    tabView: {
+        flex: 1,
+    },
+    tabContent: {
+        flex: 1,
+        padding: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
 });

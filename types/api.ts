@@ -87,4 +87,13 @@ export interface CheckAnswerResponse {
   subject: string;
   streakUpdated: boolean;
   streak: number;
+}
+
+export interface Todo {
+  id: number;
+  title: string;
+  status: 'pending' | 'completed';
+  created_at: string;
+  due_date: string;
+  subject_name?: string;
 } 

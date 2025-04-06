@@ -54,6 +54,26 @@ const faqs: FAQItem[] = [
   {
     question: "Why do I keep seeing the same question?",
     answer: "This is part of our spaced repetition learning system! We show you questions multiple times to reinforce your learning. Only after you've answered a question correctly 3 times do we consider it 'mastered,' and then it will appear less frequently. This approach is based on educational research showing that repeated exposure with increasing intervals helps move information from short-term to long-term memory."
+  },
+  {
+    question: "How does the social features work?",
+    answer: "ExamQuiz offers several social features to make learning more engaging:\n\n• Follow other learners using their unique 4-letter follow code\n• View your position on the global leaderboard\n• Track your friends' progress and achievements\n• Share your badges and accomplishments\n• Compare your performance with peers at your school\n\nThese features help create a supportive learning community while maintaining your privacy."
+  },
+  {
+    question: "How do I follow other learners?",
+    answer: "To follow another learner:\n\n1. Go to the Social tab\n2. Enter their 4-letter follow code in the input field\n3. Tap 'Follow'\n\nYou can find your own follow code in the Social tab. Share it with friends so they can follow you too! You can also follow back learners who are following you."
+  },
+  {
+    question: "What are badges and how do I earn them?",
+    answer: "Badges are achievements you can earn by reaching specific milestones:\n\n• Learning Marathon badges: Earned for maintaining daily streaks (3, 7, 30 days)\n• Sharp Shooter badges: Awarded for getting questions correct in a row (3, 5, 10)\n• Quiz Master badges: Earned for mastering specific subjects\n\nYou can view your badges in the Social tab and share them with friends!"
+  },
+  {
+    question: "How does the leaderboard work?",
+    answer: "The leaderboard ranks learners based on their total points earned from correct answers. You can see:\n\n• Top 3 learners with special medals (👑, 🥈, 🥉)\n• Your current position and points\n• How you compare to other learners\n\nThe leaderboard updates in real-time as learners earn points through practice."
+  },
+  {
+    question: "Can I control who sees my progress?",
+    answer: "Yes! You have full control over your privacy settings:\n\n• Choose who can follow you\n• Block unwanted followers\n• Control visibility of your progress and achievements\n• Manage who can see your school information\n\nYour privacy is important to us, and you can adjust these settings anytime in your profile."
   }
 ];
 

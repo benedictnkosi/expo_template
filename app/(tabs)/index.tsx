@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import { updatePushToken } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '../../components/ThemedText';
-import { fetchMySubjects, getLearner, getRandomAIQuestion, RandomAIQuestion } from '../../services/api';
+import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos, RandomAIQuestion } from '../../services/api';
 import { Subject } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
@@ -129,6 +129,14 @@ interface RandomAIQuestionResponse {
   };
 }
 
+interface Todo {
+  id: number;
+  title: string;
+  due_date: string;
+  status: string;
+  subject_name?: string;
+}
+
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
@@ -144,6 +152,8 @@ export default function HomeScreen() {
   const [ranking] = useState(0);
   const { colors, isDark } = useTheme();
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [isLoadingTodos, setIsLoadingTodos] = useState(true);
 
   // Load hidden subjects from storage
   useEffect(() => {
@@ -271,7 +281,18 @@ export default function HomeScreen() {
       await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
 
       if (learner.name && learner.grade) {
-        setLearnerInfo(learner as LearnerInfo);
+        setLearnerInfo({
+          ...learner,
+          score: 0,
+          notification_hour: 0,
+          role: learner.role || 'learner',
+          created: new Date().toISOString(),
+          lastSeen: new Date().toISOString(),
+          private_school: false,
+          rating: 0,
+          points: learner.points || 0,
+          streak: learner.streak || 0
+        });
         const enrolledResponse = await fetchMySubjects(user.uid);
 
         if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
@@ -413,20 +434,44 @@ export default function HomeScreen() {
     });
   }, [user?.uid]);
 
+  // Add this useEffect to fetch todos
+  useEffect(() => {
+    async function fetchTodos() {
+      if (!user?.uid) return;
+      try {
+        setIsLoadingTodos(true);
+        const fetchedTodos = await getTodos(user.uid);
+        console.log('Fetched todos:', fetchedTodos);
+        // Filter todos due in the next 3 days
+        const now = new Date();
+        const threeDaysFromNow = new Date(now);
+        threeDaysFromNow.setDate(now.getDate() + 3);
+        
+        const upcomingTodos = fetchedTodos.filter(todo => {
+          const dueDate = new Date(todo.due_date);
+          return dueDate <= threeDaysFromNow && todo.status === 'pending';
+        });
+        
+        setTodos(upcomingTodos);
+      } catch (error) {
+        console.error('Error fetching todos:', error);
+      } finally {
+        setIsLoadingTodos(false);
+      }
+    }
+    fetchTodos();
+  }, [user?.uid]);
+
   if (isLoading) {
     return (
-      <View style={[styles.imagePlaceholderContainer, {
-        backgroundColor: isDark ? colors.surface : '#F8FAFC'
-      }]}>
-        <View style={styles.imagePlaceholderContent}>
-          <Image
-            source={require('@/assets/images/book-loading.gif')}
-            style={styles.loadingGif}
-          />
-          <ThemedText style={[styles.loadingText, { color: isDark ? colors.textSecondary : '#6B7280' }]}>Loading...</ThemedText>
-        </View>
+      <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+          <Header learnerInfo={null} />
+          <View style={[styles.loadingContainer, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <ThemedText style={styles.loadingText}>Loading subjects...</ThemedText>
+          </View>
       </View>
-    );
+  );
   }
 
   return (
@@ -478,6 +523,22 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
+
+          <TouchableOpacity
+            style={[styles.reportButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              if (user?.uid && learnerInfo?.name) {
+                router.push({
+                  pathname: '/report/[uid]',
+                  params: { uid: user.uid, name: learnerInfo.name }
+                });
+              }
+            }}
+            testID="view-report-button"
+          >
+            <Ionicons name="analytics" size={20} color="#FFFFFF" />
+            <ThemedText style={styles.reportButtonText}>View My Report</ThemedText>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.shareContainer} testID="share-container">
@@ -496,7 +557,7 @@ export default function HomeScreen() {
         {/* Add Random Lesson Preview */}
         {randomLesson?.question && randomLesson.question.ai_explanation.includes('***Key Lesson') && (
           <View style={[styles.randomLessonContainer, {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            backgroundColor: colors.surface,
             borderRadius: 12,
             padding: 16,
             marginBottom: 24,
@@ -512,12 +573,112 @@ export default function HomeScreen() {
               <ThemedText style={[styles.randomLessonTitle, { color: colors.text }]}>
                 Quick Bite: {randomLesson.question.subject.name}
               </ThemedText>
+              <TouchableOpacity
+                onPress={fetchRandomLesson}
+                style={[{
+                  marginLeft: 'auto',
+                  padding: 10,
+                  borderRadius: 20,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  shadowColor: colors.text,
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }]}
+                testID="refresh-quick-bite-button"
+              >
+                <Ionicons name="refresh" size={18} color={colors.text} />
+              </TouchableOpacity>
             </View>
             <ThemedText style={[styles.randomLessonContent, { color: colors.textSecondary }]}>
               {randomLesson.question.ai_explanation.split('***Key Lesson:')[1]?.trim().replace('***', '').trim()}
             </ThemedText>
           </View>
         )}
+
+        {/* Add Tasks Section */}
+        <View style={[styles.tasksContainer, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <View style={styles.tasksHeader}>
+            <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
+              📝 Tasks Due Soon
+            </ThemedText>
+           
+          </View>
+          {isLoadingTodos ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : todos.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <ThemedText style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+                No tasks due in the next 3 days
+              </ThemedText>
+            </View>
+          ) : (
+            <View style={styles.tasksList}>
+              {todos.map((todo) => (
+                <TouchableOpacity
+                  key={todo.id}
+                  style={[styles.taskItem, {
+                    backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                    borderColor: colors.border
+                  }]}
+                  onPress={() => {
+                    if (todo.subject_name) {
+                      router.push({
+                        pathname: '/quiz',
+                        params: {
+                          subjectName: todo.subject_name,
+                          learnerName: learnerInfo?.name,
+                          learnerGrade: learnerInfo?.grade.number.toString(),
+                          learnerSchool: learnerInfo?.school_name,
+                          learnerRole: learnerInfo?.role,
+                          defaultTab: 'todo'
+                        }
+                      });
+                    }
+                  }}
+                >
+                  <View style={styles.taskContent}>
+                    <ThemedText style={[styles.taskTitle, { color: colors.text }]}>
+                      {todo.title}
+                    </ThemedText>
+                    {todo.subject_name && (
+                      <ThemedText style={[styles.taskSubject, { color: colors.textSecondary }]}>
+                        {todo.subject_name}
+                      </ThemedText>
+                    )}
+                    <ThemedText style={[styles.taskDueDate, { color: colors.textSecondary }]}>
+                      {(() => {
+                        const today = new Date();
+                        const dueDate = new Date(todo.due_date);
+                        const tomorrow = new Date(today);
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        
+                        if (dueDate.toDateString() === today.toDateString()) {
+                          return 'Due today';
+                        } else if (dueDate.toDateString() === tomorrow.toDateString()) {
+                          return 'Due tomorrow';
+                        } else {
+                          return `Due ${dueDate.toLocaleDateString('en-US', { weekday: 'long' })}`;
+                        }
+                      })()}
+                    </ThemedText>
+                  </View>
+                  {todo.subject_name && (
+                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
 
@@ -894,7 +1055,6 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
@@ -1323,6 +1483,70 @@ const styles = StyleSheet.create({
   statCount: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 8,
+  },
+  reportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  tasksContainer: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  tasksHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  tasksTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  viewAllButton: {
+    padding: 8,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  tasksList: {
+    gap: 12,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  taskContent: {
+    flex: 1,
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  taskSubject: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  taskDueDate: {
+    fontSize: 12,
   },
 });
 

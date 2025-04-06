@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Platform,
     Image,
+    KeyboardAvoidingView,
 } from 'react-native';
 import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,11 +17,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ThemedText } from '@/components/ThemedText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { collection, query, where, getDocs, addDoc, orderBy, limit, startAfter } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, orderBy, limit, startAfter, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getStoredPushToken } from '@/services/notifications';
 
 interface Thread {
     id: string;
@@ -31,6 +33,7 @@ interface Thread {
     createdByName: string;
     createdAt: Date;
     newMessageCount?: number;
+    isSubscribed?: boolean;
 }
 
 const NoTopicsFound = ({ isDark, colors }: { isDark: boolean; colors: any }) => (
@@ -103,6 +106,70 @@ export default function SubjectChatScreen() {
         }
     };
 
+    const toggleThreadNotifications = async (thread: Thread) => {
+        if (!user?.uid) return;
+
+        try {
+            const pushToken = await getStoredPushToken();
+            if (!pushToken) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Push notification token not found',
+                    position: 'bottom'
+                });
+                return;
+            }
+
+            const notificationsRef = collection(db, 'notifications');
+            const notificationQuery = query(
+                notificationsRef,
+                where('authorID', '==', user.uid),
+                where('threadId', '==', thread.id)
+            );
+            const querySnapshot = await getDocs(notificationQuery);
+
+            if (querySnapshot.empty) {
+                // Enable notifications
+                await addDoc(notificationsRef, {
+                    authorID: user.uid,
+                    pushToken,
+                    threadId: thread.id
+                });
+                setThreads(prev => prev.map(t => 
+                    t.id === thread.id ? { ...t, isSubscribed: true } : t
+                ));
+                Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'Notifications enabled for this thread',
+                    position: 'bottom'
+                });
+            } else {
+                // Disable notifications
+                const docRef = doc(db, 'notifications', querySnapshot.docs[0].id);
+                await deleteDoc(docRef);
+                setThreads(prev => prev.map(t => 
+                    t.id === thread.id ? { ...t, isSubscribed: false } : t
+                ));
+                Toast.show({
+                    type: 'info',
+                    text1: 'Success',
+                    text2: 'Notifications disabled for this thread',
+                    position: 'bottom'
+                });
+            }
+        } catch (error) {
+            console.error('Error toggling thread notifications:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to update notification settings',
+                position: 'bottom'
+            });
+        }
+    };
+
     const loadThreads = async (loadMore = false) => {
         try {
             // Get fresh last access times before loading threads
@@ -159,15 +226,15 @@ export default function SubjectChatScreen() {
             }
 
             const querySnapshot = await getDocs(q);
-            const threadsData = querySnapshot.docs.map(doc => ({
+            let threadsWithCounts = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
                 createdAt: doc.data().createdAt.toDate()
             })) as Thread[];
 
             // Get new message counts for each thread using fresh last access times
-            const threadsWithCounts = await Promise.all(
-                threadsData.map(async (thread) => {
+            threadsWithCounts = await Promise.all(
+                threadsWithCounts.map(async (thread) => {
                     const lastAccess = freshLastAccessTimes[thread.id] || 0;
                     const messagesRef = collection(db, 'messages');
                     const messagesQuery = query(
@@ -182,6 +249,23 @@ export default function SubjectChatScreen() {
                     };
                 })
             );
+
+            // Get notification subscriptions for the current user
+            if (user?.uid) {
+                const notificationsRef = collection(db, 'notifications');
+                const notificationQuery = query(
+                    notificationsRef,
+                    where('authorID', '==', user.uid)
+                );
+                const notificationSnapshot = await getDocs(notificationQuery);
+                const subscribedThreadIds = new Set(notificationSnapshot.docs.map(doc => doc.data().threadId));
+
+                // Add isSubscribed flag to threads
+                threadsWithCounts = threadsWithCounts.map(thread => ({
+                    ...thread,
+                    isSubscribed: subscribedThreadIds.has(thread.id)
+                }));
+            }
 
             setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
             setHasMore(querySnapshot.docs.length === THREADS_PER_PAGE);
@@ -333,6 +417,19 @@ export default function SubjectChatScreen() {
                         <ThemedText style={styles.newMessageCount}>{item.newMessageCount}</ThemedText>
                     </View>
                 )}
+                <TouchableOpacity
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        toggleThreadNotifications(item);
+                    }}
+                    style={styles.notificationButton}
+                >
+                    <Ionicons
+                        name={item.isSubscribed ? "notifications" : "notifications-outline"}
+                        size={24}
+                        color={item.isSubscribed ? colors.primary : colors.textSecondary}
+                    />
+                </TouchableOpacity>
                 <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
             </View>
         </TouchableOpacity>
@@ -396,10 +493,10 @@ export default function SubjectChatScreen() {
                     <ThemedText style={styles.headerTitle}>{subjectName}</ThemedText>
                 </View>
                 <TouchableOpacity
-                    style={styles.newThreadButton}
+                    style={[styles.newThreadButton, { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]}
                     onPress={() => setShowNewThreadModal(true)}
                 >
-                    <ThemedText style={styles.newThreadButtonText}>Create New Topic</ThemedText>
+                    <Ionicons name="add" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
             </LinearGradient>
 
@@ -425,34 +522,44 @@ export default function SubjectChatScreen() {
                 animationType="slide"
                 onRequestClose={() => setShowNewThreadModal(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-                        <View style={styles.modalHeader}>
-                            <ThemedText style={styles.modalTitle}>New Discussion</ThemedText>
-                            <TouchableOpacity onPress={() => setShowNewThreadModal(false)}>
-                                <Ionicons name="close" size={24} color={colors.text} />
+                <KeyboardAvoidingView 
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    style={styles.modalOverlay}
+                >
+                    <TouchableOpacity 
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setShowNewThreadModal(false)}
+                    >
+                        <View style={[styles.modalContent, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+                            <View style={styles.modalHeader}>
+                                <ThemedText style={styles.modalTitle}>New Discussion</ThemedText>
+                                <TouchableOpacity onPress={() => setShowNewThreadModal(false)}>
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={[
+                                    styles.modalInput,
+                                    { color: colors.text, backgroundColor: isDark ? colors.surface : '#F3F4F6' }
+                                ]}
+                                value={newThreadTitle}
+                                onChangeText={setNewThreadTitle}
+                                placeholder="Enter discussion title..."
+                                placeholderTextColor={isDark ? colors.textSecondary : '#9CA3AF'}
+                                maxLength={50}
+                                autoFocus
+                            />
+                            <TouchableOpacity
+                                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                                onPress={createNewThread}
+                                disabled={!newThreadTitle.trim()}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Create Discussion</ThemedText>
                             </TouchableOpacity>
                         </View>
-                        <TextInput
-                            style={[
-                                styles.modalInput,
-                                { color: colors.text, backgroundColor: isDark ? colors.surface : '#F3F4F6' }
-                            ]}
-                            value={newThreadTitle}
-                            onChangeText={setNewThreadTitle}
-                            placeholder="Enter discussion title..."
-                            placeholderTextColor={isDark ? colors.textSecondary : '#9CA3AF'}
-                            maxLength={50}
-                        />
-                        <TouchableOpacity
-                            style={[styles.modalButton, { backgroundColor: colors.primary }]}
-                            onPress={createNewThread}
-                            disabled={!newThreadTitle.trim()}
-                        >
-                            <ThemedText style={styles.modalButtonText}>Create Discussion</ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -466,7 +573,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        paddingTop: Platform.OS === 'ios' ? 60 : 16,
+        paddingTop: Platform.OS === 'ios' ? 16 : 16,
     },
     backButton: {
         marginRight: 16,
@@ -487,14 +594,11 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     newThreadButton: {
-        padding: 8,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: 8,
-    },
-    newThreadButtonText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     loadingContainer: {
         flex: 1,
@@ -541,6 +645,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -617,5 +722,8 @@ const styles = StyleSheet.create({
         fontSize: 16,
         textAlign: 'center',
         opacity: 0.7,
+    },
+    notificationButton: {
+        padding: 8,
     },
 }); 

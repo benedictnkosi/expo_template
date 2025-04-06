@@ -1,4 +1,4 @@
-import { CheckAnswerResponse } from '@/types/api';
+import { CheckAnswerResponse, Subject, QuizResult, Learner, RandomAIQuestion, Todo } from '@/types/api';
 import { API_BASE_URL, HOST_URL } from '@/config/api';
 
 export interface MySubjectsResponse {
@@ -82,6 +82,7 @@ export async function getLearner(uid: string): Promise<{
   points: number;
   streak: number;
   avatar: string;
+  follow_me_code: string;
 }> {
   const response = await fetch(
     `${API_BASE_URL}/learner?uid=${uid}`
@@ -391,4 +392,45 @@ export async function getAllBadges(): Promise<Badge[]> {
 
   const data = await response.json();
   return data.badges;
+} 
+
+export interface SubjectPerformance {
+  subject: string;
+  totalAnswers: number;
+  correctAnswers: string;
+  incorrectAnswers: string;
+  percentage: number;
+  grade: number;
+  gradeDescription: string;
+}
+
+export interface LearnerPerformanceResponse {
+  data: SubjectPerformance[];
+}
+
+export async function getLearnerPerformance(uid: string): Promise<LearnerPerformanceResponse> {
+  try {
+      const response = await fetch(`${HOST_URL}/api/learner/${uid}/subject-performance`);
+      if (!response.ok) {
+          throw new Error('Failed to fetch learner performance');
+      }
+      const data = await response.json();
+      return data;
+  } catch (error) {
+      console.error('Error fetching learner performance:', error);
+      throw error;
+  }
+}
+
+export async function getTodos(learnerUid: string): Promise<Todo[]> {
+  try {
+    const response = await fetch(`${HOST_URL}/api/todos?learnerUid=${learnerUid}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch todos');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching todos:', error);
+    return [];
+  }
 } 

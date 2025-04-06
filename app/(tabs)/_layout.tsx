@@ -50,15 +50,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="notes"
-        options={{
-          title: 'Notes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="chat"
         options={{
           title: 'Chats',
@@ -68,11 +59,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="achievements"
+        name="social"
         options={{
-          title: 'Achievements',
+          title: 'Social',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="trophy-outline" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />

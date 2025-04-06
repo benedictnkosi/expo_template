@@ -36,7 +36,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reportMessage, uploadFile, getFileUrl } from '@/services/api';
 import { getDocumentAsync } from 'expo-document-picker';
 import { DocumentPickerResult, DocumentPickerAsset } from 'expo-document-picker';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, HOST_URL } from '@/config/api';
 import ZoomableImageNew from '@/components/ZoomableImageNew';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import * as FileSystem from 'expo-file-system';
@@ -50,6 +50,7 @@ import avatar6 from '@/assets/images/avatars/6.png';
 import avatar7 from '@/assets/images/avatars/7.png';
 import avatar8 from '@/assets/images/avatars/8.png';
 import avatar9 from '@/assets/images/avatars/9.png';
+import { getStoredPushToken } from '@/services/notifications';
 
 // Basic profanity detection
 const PROFANITY_WORDS = [
@@ -97,6 +98,8 @@ interface Thread {
 }
 
 const MESSAGES_PER_PAGE = 100;
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 interface Styles {
     container: ViewStyle;
@@ -411,7 +414,6 @@ async function downloadImage(url: string, fileName: string) {
             {},
             (downloadProgress) => {
                 const progress = downloadProgress.totalBytesWritten / downloadProgress.totalBytesExpectedToWrite;
-                console.log(`Download progress: ${Math.round(progress * 100)}%`);
             }
         );
 
@@ -531,6 +533,11 @@ export default function ThreadDetailScreen() {
                 setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
                 setHasMoreMessages(snapshot.docs.length === MESSAGES_PER_PAGE);
                 setIsLoading(false);
+                
+                // Scroll to bottom after messages are set
+                setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                }, 100);
             }, (error) => {
                 console.error('Error listening to messages:', error);
                 setLoadError('Failed to load messages');
@@ -544,6 +551,13 @@ export default function ThreadDetailScreen() {
             setIsLoading(false);
         }
     };
+
+    // Add useEffect to handle initial scroll
+    useEffect(() => {
+        if (messages.length > 0 && !isLoading) {
+            flatListRef.current?.scrollToEnd({ animated: true });
+        }
+    }, [messages.length, isLoading]);
 
     const loadMoreMessages = async () => {
         if (!lastVisible || isLoadingMore || !hasMoreMessages) return;
@@ -595,6 +609,29 @@ export default function ThreadDetailScreen() {
 
             if (result.assets && result.assets.length > 0) {
                 const selectedAsset = result.assets[0];
+                
+                // Check file size (5MB limit)
+                if (!selectedAsset.size) {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'File Error',
+                        text2: 'Could not determine file size',
+                        position: 'bottom'
+                    });
+                    return;
+                }
+
+                const fileSizeInMB = selectedAsset.size / (1024 * 1024);
+                if (fileSizeInMB > MAX_FILE_SIZE_MB) {
+                    Toast.show({
+                        type: 'error',
+                        text1: 'File Too Large',
+                        text2: `Please select a file under ${MAX_FILE_SIZE_MB}MB`,
+                        position: 'bottom'
+                    });
+                    return;
+                }
+
                 setSelectedFile({
                     uri: selectedAsset.uri,
                     name: selectedAsset.name,
@@ -603,7 +640,7 @@ export default function ThreadDetailScreen() {
                 Toast.show({
                     type: 'success',
                     text1: 'File Selected',
-                    text2: `Selected: ${selectedAsset.name}`,
+                    text2: `Selected: ${selectedAsset.name} (${fileSizeInMB.toFixed(2)}MB)`,
                     position: 'bottom'
                 });
             } else {
@@ -627,7 +664,16 @@ export default function ThreadDetailScreen() {
 
     const uploadFileToServer = async (uri: string, fileName: string, mimeType: string) => {
         try {
-            console.log('Starting file upload:', { uri, fileName, mimeType });
+            // Double check file size before upload
+            const fileInfo = await FileSystem.getInfoAsync(uri);
+            if (!fileInfo.exists || !fileInfo.size) {
+                throw new Error('File not found or could not determine size');
+            }
+
+            if (fileInfo.size > MAX_FILE_SIZE_BYTES) {
+                throw new Error(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit`);
+            }
+
             const formData = new FormData();
             formData.append('file', {
                 uri,
@@ -635,23 +681,20 @@ export default function ThreadDetailScreen() {
                 name: fileName
             } as any);
 
-            console.log('FormData created, sending request...');
             const response = await uploadFile(formData);
-            console.log('Upload response:', response);
 
             if (!response.fileName) {
                 throw new Error('No file name in response');
             }
 
             const fileUrl = `${API_BASE_URL}/get-chat-file?file=${response.fileName}`;
-
             return fileUrl;
         } catch (error) {
             console.error('Error uploading file:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Upload Failed',
-                text2: 'Failed to upload file. Please try again.',
+                text2: error instanceof Error ? error.message : 'Failed to upload file. Please try again.',
                 position: 'bottom'
             });
             throw error;
@@ -664,7 +707,7 @@ export default function ThreadDetailScreen() {
 
     const sendMessage = async () => {
         if ((!newMessage.trim() && !selectedFile) || !user?.uid || !threadId) {
-            console.log('Cannot send message:', {
+            console.error('Cannot send message:', {
                 hasText: !!newMessage.trim(),
                 hasFile: !!selectedFile,
                 hasUser: !!user?.uid,
@@ -701,7 +744,6 @@ export default function ThreadDetailScreen() {
 
             let attachment: Message['attachment'];
             if (selectedFile) {
-                console.log('Processing file attachment:', selectedFile);
                 const fileType = selectedFile.mimeType.startsWith('image/') ? 'image' as const : 'pdf' as const;
                 const fileUrl = await uploadFileToServer(
                     selectedFile.uri,
@@ -713,7 +755,6 @@ export default function ThreadDetailScreen() {
                     type: fileType,
                     name: selectedFile.name
                 };
-                console.log('File uploaded successfully:', attachment);
             }
 
             const messageData: Omit<Message, 'id'> = {
@@ -733,7 +774,60 @@ export default function ThreadDetailScreen() {
                 })
             };
 
+            // Send message
             await addDoc(collection(db, 'messages'), messageData);
+
+            // Enable notifications for this thread if not already enabled
+            const pushToken = await getStoredPushToken();
+            if (pushToken) {
+                const notificationsRef = collection(db, 'notifications');
+                const notificationQuery = query(
+                    notificationsRef,
+                    where('authorID', '==', user.uid),
+                    where('threadId', '==', threadId)
+                );
+                const querySnapshot = await getDocs(notificationQuery);
+
+                if (querySnapshot.empty) {
+                    await addDoc(notificationsRef, {
+                        authorID: user.uid,
+                        pushToken,
+                        threadId: threadId
+                    });
+                }
+            }
+
+            // Get all subscribers for this thread
+            const subscribersQuery = query(
+                collection(db, 'notifications'),
+                where('threadId', '==', threadId)
+            );
+            const subscribersSnapshot = await getDocs(subscribersQuery);
+            
+            
+            // Filter out the sender's token and collect all other tokens
+            const pushTokens = subscribersSnapshot.docs
+                .filter(doc => doc.data().authorID !== user.uid)
+                .map(doc => doc.data().pushToken);
+
+            // Send push notifications to all subscribers
+            if (pushTokens.length > 0) {
+                // Make the notification call asynchronous
+                fetch(`${HOST_URL}/api/push-notifications/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: newMessage.trim().substring(0, 100), // Limit message length
+                        pushTokens,
+                        title: `💬 ${thread?.title || 'New Group Message'}`
+                    })
+                }).catch(error => {
+                    console.error('Error sending push notifications:', error);
+                });
+            }
+
             setNewMessage('');
             setSelectedFile(null);
             setReplyingTo(null);
@@ -854,7 +948,6 @@ export default function ThreadDetailScreen() {
 
         if (attachment.type === 'pdf') {
             try {
-                console.log('Opening PDF URL:', attachment.url);
                 const url = attachment.url;
 
                 if (!url) {
@@ -1281,7 +1374,7 @@ const styles = StyleSheet.create<Styles & {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
-        paddingTop: Platform.OS === 'ios' ? 60 : 16,
+        paddingTop: Platform.OS === 'ios' ? 16 : 16,
         backgroundColor: '#4F46E5',
     },
     backButton: {
@@ -1371,6 +1464,7 @@ const styles = StyleSheet.create<Styles & {
         borderTopWidth: 1,
         borderTopColor: '#1F2937',
         backgroundColor: '#0A0F1E',
+        marginBottom: 20,
     },
     input: {
         flex: 1,

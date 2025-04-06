@@ -1,13 +1,14 @@
 import { Stack } from 'expo-router';
-import { StyleSheet, Image } from 'react-native';
+import { StyleSheet, Image, View, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedView } from '../components/ThemedView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
-
-const LOADING_GIF = require('@/assets/images/book-loading.gif');
+import { ThemedText } from '@/components/ThemedText';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function NotFoundScreen() {
+  const { colors } = useTheme();
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <Stack.Screen options={{ title: 'Oops!' }} />
@@ -15,13 +16,10 @@ export default function NotFoundScreen() {
         colors={['#FFFFFF', '#FFFFFF']}
         style={styles.gradient}
       >
-        <ThemedView style={styles.container}>
-          <Image
-            source={LOADING_GIF}
-            style={styles.loadingGif}
-            resizeMode="contain"
-          />
-        </ThemedView>
+       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <ThemedText style={[styles.loadingText, { color: colors.text }]}>Loading subjects...</ThemedText>
+          </View>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -57,4 +55,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textDecorationLine: 'underline',
   },
+  loadingContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingText: {
+    marginTop: 10,
+  }
 });

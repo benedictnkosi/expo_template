@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Image,
+    Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,18 +31,29 @@ interface Subject {
 }
 
 export default function ChatScreen() {
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const { colors, isDark } = useTheme();
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
-    const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
     const [learnerInfo, setLearnerInfo] = useState<{
         name: string;
         grade: string;
         school?: string;
         avatar?: string;
     } | null>(null);
+    const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
+    const [learnerGrade, setLearnerGrade] = useState<string>('');
+    const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
+
+    useEffect(() => {
+        async function loadLearnerGrade() {
+            const grade = await AsyncStorage.getItem('learnerGrade');
+            if (grade) {
+                setLearnerGrade(grade);
+            }
+        }
+        loadLearnerGrade();
+    }, []);
 
     useEffect(() => {
         async function loadData() {
@@ -174,7 +186,7 @@ export default function ChatScreen() {
         <ThemedView style={styles.container}>
             <Header learnerInfo={learnerInfo} />
             <View style={[styles.header, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
-                <ThemedText style={styles.title}>Study Buddies Chat 💬</ThemedText>
+                <ThemedText style={styles.title}>Grade {learnerGrade} Chat Groups 💬</ThemedText>
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -249,6 +261,8 @@ function getSubjectIcon(subjectName: string) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        paddingTop: 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 16,
     },
     header: {
         padding: 16,
