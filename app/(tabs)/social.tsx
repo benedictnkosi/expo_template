@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator, Dimensions, TextInput, Clipboard } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator, Dimensions, TextInput, Clipboard, KeyboardAvoidingView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -60,6 +60,32 @@ interface LeaderboardEntry {
     position: number;
     isCurrentLearner: boolean;
     avatar: string;
+    school?: string;
+}
+
+interface WeeklyScoreboardEntry {
+    name: string;
+    score: number;
+    totalAnswers: number;
+    position: number;
+    isCurrentLearner: boolean;
+    avatar: string;
+    school?: string;
+}
+
+interface WeeklyScoreboardResponse {
+    status: string;
+    scoreboard: WeeklyScoreboardEntry[];
+    weekStart: string;
+    weekEnd: string;
+    totalParticipants: number;
+}
+
+interface TodayScoreboardResponse {
+    status: string;
+    scoreboard: WeeklyScoreboardEntry[];
+    date: string;
+    totalParticipants: number;
 }
 
 interface LeaderboardResponse {
@@ -151,6 +177,34 @@ async function getLeaderboard(uid: string, limit: number = 10): Promise<Leaderbo
     }
 }
 
+async function getWeeklyScoreboard(uid: string): Promise<WeeklyScoreboardResponse> {
+    try {
+        const response = await fetch(`${HOST_URL}/public/learn/scoreboard?uid=${uid}&period=weekly`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch weekly scoreboard');
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching weekly scoreboard:', error);
+        throw error;
+    }
+}
+
+async function getTodayScoreboard(uid: string): Promise<TodayScoreboardResponse> {
+    try {
+        const response = await fetch(`${HOST_URL}/public/learn/scoreboard?uid=${uid}&period=daily`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch today scoreboard');
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching today scoreboard:', error);
+        throw error;
+    }
+}
+
 async function followLearner(uid: string, followCode: string): Promise<FollowingResponse> {
     try {
         const response = await fetch(`${HOST_URL}/api/learner-following/follow/${uid}/${followCode}`,
@@ -220,15 +274,222 @@ async function updateFollowerStatus(uid: string, followerUid: string, status: 'a
     }
 }
 
+interface ScoreboardProps {
+    entries: Array<{
+        name: string;
+        score: number;
+        position: number;
+        isCurrentLearner: boolean;
+        avatar: string;
+        totalAnswers?: number;
+        school?: string;
+    }>;
+    showTotalAnswers?: boolean;
+}
+
+function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
+    const { colors, isDark } = useTheme();
+    const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
+        '1': require('@/assets/images/avatars/1.png'),
+        '2': require('@/assets/images/avatars/2.png'),
+        '3': require('@/assets/images/avatars/3.png'),
+        '4': require('@/assets/images/avatars/4.png'),
+        '5': require('@/assets/images/avatars/5.png'),
+        '6': require('@/assets/images/avatars/6.png'),
+        '7': require('@/assets/images/avatars/7.png'),
+        '8': require('@/assets/images/avatars/8.png'),
+        '9': require('@/assets/images/avatars/9.png'),
+    };
+
+    const renderTopThree = (rankings: ScoreboardProps['entries']) => {
+        if (!rankings || rankings.length < 3) return null;
+
+        return (
+            <View style={styles.topThreeContainer}>
+                {/* Second Place */}
+                <View style={styles.topThreeItem}>
+                    <View style={styles.topThreeAvatarContainer}>
+                        <Image
+                            source={rankings[1].avatar ? AVATAR_IMAGES[rankings[1].avatar] : AVATAR_IMAGES['1']}
+                            style={styles.topThreeAvatar}
+                        />
+                    </View>
+                    <View style={styles.topThreeMedal}>
+                        <ThemedText style={styles.topThreeMedalText}>🥈</ThemedText>
+                    </View>
+                    <ThemedText style={styles.topThreeName}>
+                        {rankings[1].name}
+                    </ThemedText>
+                    {rankings[1].school && (
+                        <ThemedText style={styles.topThreeSchool}>
+                            {rankings[1].school}
+                        </ThemedText>
+                    )}
+                    <View style={styles.topThreePoints}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.topThreePointsIcon}
+                        />
+                        <ThemedText style={styles.topThreePointsText}>
+                            {rankings[1].score}
+                        </ThemedText>
+                    </View>
+                    {showTotalAnswers && (
+                        <ThemedText style={styles.topThreeAnswers}>
+                            {rankings[1].totalAnswers} answers
+                        </ThemedText>
+                    )}
+                </View>
+
+                {/* First Place */}
+                <View style={[styles.topThreeItem, styles.firstPlace]}>
+                    <View style={styles.crownContainer}>
+                        <ThemedText style={styles.crown}>👑</ThemedText>
+                    </View>
+                    <View style={[styles.topThreeAvatarContainer, styles.firstPlaceAvatar]}>
+                        <Image
+                            source={rankings[0].avatar ? AVATAR_IMAGES[rankings[0].avatar] : AVATAR_IMAGES['1']}
+                            style={styles.topThreeAvatar}
+                        />
+                    </View>
+                    <ThemedText style={[styles.topThreeName, styles.firstPlaceName]}>
+                        {rankings[0].name}
+                    </ThemedText>
+                    {rankings[0].school && (
+                        <ThemedText style={[styles.topThreeSchool, styles.firstPlaceSchool]}>
+                            {rankings[0].school}
+                        </ThemedText>
+                    )}
+                    <View style={styles.topThreePoints}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.topThreePointsIcon}
+                        />
+                        <ThemedText style={[styles.topThreePointsText, styles.firstPlacePoints]}>
+                            {rankings[0].score}
+                        </ThemedText>
+                    </View>
+                    {showTotalAnswers && (
+                        <ThemedText style={[styles.topThreeAnswers, styles.firstPlaceAnswers]}>
+                            {rankings[0].totalAnswers} answers
+                        </ThemedText>
+                    )}
+                </View>
+
+                {/* Third Place */}
+                <View style={styles.topThreeItem}>
+                    <View style={styles.topThreeAvatarContainer}>
+                        <Image
+                            source={rankings[2].avatar ? AVATAR_IMAGES[rankings[2].avatar] : AVATAR_IMAGES['1']}
+                            style={styles.topThreeAvatar}
+                        />
+                    </View>
+                    <View style={styles.topThreeMedal}>
+                        <ThemedText style={styles.topThreeMedalText}>🥉</ThemedText>
+                    </View>
+                    <ThemedText style={styles.topThreeName}>
+                        {rankings[2].name}
+                    </ThemedText>
+                    {rankings[2].school && (
+                        <ThemedText style={styles.topThreeSchool}>
+                            {rankings[2].school}
+                        </ThemedText>
+                    )}
+                    <View style={styles.topThreePoints}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.topThreePointsIcon}
+                        />
+                        <ThemedText style={styles.topThreePointsText}>
+                            {rankings[2].score}
+                        </ThemedText>
+                    </View>
+                    {showTotalAnswers && (
+                        <ThemedText style={styles.topThreeAnswers}>
+                            {rankings[2].totalAnswers} answers
+                        </ThemedText>
+                    )}
+                </View>
+            </View>
+        );
+    };
+
+    const renderEntry = (entry: ScoreboardProps['entries'][0], index: number) => {
+        const isTopThree = index < 3;
+        const medalEmoji = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
+        const avatarImage = entry.avatar ? AVATAR_IMAGES[entry.avatar] : AVATAR_IMAGES['1'];
+
+        return (
+            <ThemedView
+                key={`${entry.name}-${entry.position}`}
+                style={[
+                    styles.leaderboardEntry,
+                    entry.isCurrentLearner && styles.currentLearnerEntry,
+                    isTopThree && styles.topThreeEntry
+                ]}
+            >
+                <View style={styles.leaderboardEntryContent}>
+                    <View style={styles.positionContainer}>
+                        {medalEmoji ? (
+                            <ThemedText style={styles.medalEmoji}>{medalEmoji}</ThemedText>
+                        ) : (
+                            <ThemedText style={styles.position}>#{entry.position}</ThemedText>
+                        )}
+                    </View>
+                    <View style={styles.avatarContainer}>
+                        <Image
+                            source={avatarImage}
+                            style={styles.avatar}
+                        />
+                    </View>
+                    <View style={styles.nameContainer}>
+                        <ThemedText style={styles.name}>{entry.isCurrentLearner ? 'You' : entry.name}</ThemedText>
+                        {entry.school && (
+                            <ThemedText style={styles.schoolName}>
+                                {entry.school}
+                            </ThemedText>
+                        )}
+                        {showTotalAnswers && (
+                            <ThemedText style={styles.scoreboardAnswers}>
+                                {entry.totalAnswers} answers
+                            </ThemedText>
+                        )}
+                    </View>
+                    <View style={styles.pointsContainer}>
+                        <Image
+                            source={require('@/assets/images/points.png')}
+                            style={styles.pointsIcon}
+                        />
+                        <ThemedText style={styles.points}>{entry.score}</ThemedText>
+                    </View>
+                </View>
+            </ThemedView>
+        );
+    };
+
+    return (
+        <View style={styles.leaderboardContainer}>
+            {renderTopThree(entries.slice(0, 3))}
+            
+            <View style={styles.rankingsList}>
+                {entries.slice(3).map((entry, index) => renderEntry(entry, index + 3))}
+            </View>
+        </View>
+    );
+}
+
 export default function AchievementsScreen() {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const { activeTab: initialTab } = useLocalSearchParams<{ activeTab: string }>();
     const [activeTab, setActiveTab] = useState<'badges' | 'scoreboard' | 'following'>(initialTab as 'badges' | 'scoreboard' | 'following' || 'scoreboard');
+    const [scoreboardType, setScoreboardType] = useState<'all-time' | 'weekly' | 'today'>('today');
     const [badgeCategories, setBadgeCategories] = useState<BadgeCategory[]>([]);
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
+    const [weeklyScoreboard, setWeeklyScoreboard] = useState<WeeklyScoreboardResponse | null>(null);
+    const [todayScoreboard, setTodayScoreboard] = useState<TodayScoreboardResponse | null>(null);
     const [learnerInfo, setLearnerInfo] = useState<{
         name: string;
         grade: string;
@@ -272,10 +533,38 @@ export default function AchievementsScreen() {
         },
     };
 
+    const subTabStyles = {
+        container: {
+            flexDirection: 'row' as const,
+            justifyContent: 'center' as const,
+            marginBottom: 16,
+            paddingHorizontal: 16,
+            marginHorizontal: 16,
+        },
+        button: {
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            borderRadius: 20,
+            marginHorizontal: 4,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        },
+        activeButton: {
+            backgroundColor: '#3B82F6',
+        },
+        text: {
+            fontSize: 14,
+            color: isDark ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)',
+        },
+        activeText: {
+            color: '#FFFFFF',
+        },
+    };
+
     const fetchLeaderboard = useCallback(async () => {
         if (!user?.uid) return;
         try {
             const data = await getLeaderboard(user.uid);
+            console.log('Leaderboard Data:', data);
             setLeaderboard(data);
         } catch (error) {
             console.error('Failed to fetch leaderboard:', error);
@@ -366,6 +655,28 @@ export default function AchievementsScreen() {
             setBadgeCategories(categories);
         } finally {
             setIsLoading(false);
+        }
+    }, [user?.uid]);
+
+    const fetchWeeklyScoreboard = useCallback(async () => {
+        if (!user?.uid) return;
+        try {
+            const data = await getWeeklyScoreboard(user.uid);
+            console.log('Weekly Scoreboard Data:', data);
+            setWeeklyScoreboard(data);
+        } catch (error) {
+            console.error('Failed to fetch weekly scoreboard:', error);
+        }
+    }, [user?.uid]);
+
+    const fetchTodayScoreboard = useCallback(async () => {
+        if (!user?.uid) return;
+        try {
+            const data = await getTodayScoreboard(user.uid);
+            console.log('Today Scoreboard Data:', data);
+            setTodayScoreboard(data);
+        } catch (error) {
+            console.error('Failed to fetch today scoreboard:', error);
         }
     }, [user?.uid]);
 
@@ -489,9 +800,11 @@ export default function AchievementsScreen() {
             fetchLearnerInfo();
             fetchBadges();
             fetchLeaderboard();
+            fetchWeeklyScoreboard();
+            fetchTodayScoreboard();
             fetchFollowingList();
             fetchFollowers();
-        }, [fetchLearnerInfo, fetchBadges, fetchLeaderboard, fetchFollowingList, fetchFollowers])
+        }, [fetchLearnerInfo, fetchBadges, fetchLeaderboard, fetchWeeklyScoreboard, fetchTodayScoreboard, fetchFollowingList, fetchFollowers])
     );
 
     const handleShareBadge = async (badge: Badge) => {
@@ -535,151 +848,14 @@ export default function AchievementsScreen() {
         }
     };
 
-    const renderLeaderboardEntry = useCallback((entry: LeaderboardEntry, index: number) => {
-        const isTopThree = index < 3;
-        const medalEmoji = index === 0 ? '👑' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
-        const avatarImage = entry.avatar ? AVATAR_IMAGES[entry.avatar] : AVATAR_IMAGES['1'];
-
-        return (
-            <ThemedView
-                key={`${entry.name}-${entry.position}`}
-                style={[
-                    styles.leaderboardEntry,
-                    entry.isCurrentLearner && styles.currentLearnerEntry,
-                    isTopThree && styles.topThreeEntry
-                ]}
-            >
-                <View style={styles.leaderboardEntryContent}>
-                    <View style={styles.positionContainer}>
-                        {medalEmoji ? (
-                            <ThemedText style={styles.medalEmoji}>{medalEmoji}</ThemedText>
-                        ) : (
-                            <ThemedText style={styles.position}>#{entry.position}</ThemedText>
-                        )}
-                    </View>
-                    <View style={styles.avatarContainer}>
-                        <Image
-                            source={avatarImage}
-                            style={styles.avatar}
-                        />
-                    </View>
-                    <View style={styles.nameContainer}>
-                        <ThemedText style={styles.name}>{entry.name}</ThemedText>
-                    </View>
-                    <View style={styles.pointsContainer}>
-                        <Image
-                            source={require('@/assets/images/points.png')}
-                            style={styles.pointsIcon}
-                        />
-                        <ThemedText style={styles.points}>{entry.points}</ThemedText>
-                    </View>
-                </View>
-            </ThemedView>
-        );
-    }, []);
-
-    const renderTopThree = useCallback((rankings: LeaderboardEntry[]) => {
-        if (!rankings || rankings.length < 3) return null;
-
-        return (
-            <View style={styles.topThreeContainer}>
-                {/* Second Place */}
-                <View style={styles.topThreeItem}>
-                    <View style={styles.topThreeAvatarContainer}>
-                        <Image
-                            source={rankings[1].avatar ? AVATAR_IMAGES[rankings[1].avatar] : AVATAR_IMAGES['1']}
-                            style={styles.topThreeAvatar}
-                        />
-                    </View>
-                    <View style={styles.topThreeMedal}>
-                        <ThemedText style={styles.topThreeMedalText}>🥈</ThemedText>
-                    </View>
-                    <ThemedText style={styles.topThreeName}>
-                        {rankings[1].name}
-                    </ThemedText>
-                    <View style={styles.topThreePoints}>
-                        <Image
-                            source={require('@/assets/images/points.png')}
-                            style={styles.topThreePointsIcon}
-                        />
-                        <ThemedText style={styles.topThreePointsText}>
-                            {rankings[1].points}
-                        </ThemedText>
-                    </View>
-                </View>
-
-                {/* First Place */}
-                <View style={[styles.topThreeItem, styles.firstPlace]}>
-                    <View style={styles.crownContainer}>
-                        <ThemedText style={styles.crown}>👑</ThemedText>
-                    </View>
-                    <View style={[styles.topThreeAvatarContainer, styles.firstPlaceAvatar]}>
-                        <Image
-                            source={rankings[0].avatar ? AVATAR_IMAGES[rankings[0].avatar] : AVATAR_IMAGES['1']}
-                            style={styles.topThreeAvatar}
-                        />
-                    </View>
-                    <ThemedText style={[styles.topThreeName, styles.firstPlaceName]}>
-                        {rankings[0].name}
-                    </ThemedText>
-                    <View style={styles.topThreePoints}>
-                        <Image
-                            source={require('@/assets/images/points.png')}
-                            style={styles.topThreePointsIcon}
-                        />
-                        <ThemedText style={[styles.topThreePointsText, styles.firstPlacePoints]}>
-                            {rankings[0].points}
-                        </ThemedText>
-                    </View>
-                </View>
-
-                {/* Third Place */}
-                <View style={styles.topThreeItem}>
-                    <View style={styles.topThreeAvatarContainer}>
-                        <Image
-                            source={rankings[2].avatar ? AVATAR_IMAGES[rankings[2].avatar] : AVATAR_IMAGES['1']}
-                            style={styles.topThreeAvatar}
-                        />
-                    </View>
-                    <View style={styles.topThreeMedal}>
-                        <ThemedText style={styles.topThreeMedalText}>🥉</ThemedText>
-                    </View>
-                    <ThemedText style={styles.topThreeName}>
-                        {rankings[2].name}
-                    </ThemedText>
-                    <View style={styles.topThreePoints}>
-                        <Image
-                            source={require('@/assets/images/points.png')}
-                            style={styles.topThreePointsIcon}
-                        />
-                        <ThemedText style={styles.topThreePointsText}>
-                            {rankings[2].points}
-                        </ThemedText>
-                    </View>
-                </View>
-            </View>
-        );
-    }, []);
-
-    const dynamicStyles = {
-        questionsContainer: {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.03)',
-        },
-        questionStat: {
-            opacity: isDark ? 1 : 0.8,
-        },
-        statsRow: {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.03)',
-        },
-        statsValue: {
-            color: isDark ? colors.text : '#4B5563',
-        },
-        statsDivider: {
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-        },
-    };
+    // Add effect to refetch data when scoreboardType changes
+    useEffect(() => {
+        if (scoreboardType === 'weekly') {
+            fetchWeeklyScoreboard();
+        } else if (scoreboardType === 'today') {
+            fetchTodayScoreboard();
+        }
+    }, [scoreboardType, fetchWeeklyScoreboard, fetchTodayScoreboard]);
 
     return (
         <LinearGradient
@@ -816,6 +992,98 @@ export default function AchievementsScreen() {
                             </View>
                         </View>
                     ))
+                ) : activeTab === 'scoreboard' ? (
+                    <>
+                        <View style={subTabStyles.container}>
+                            <TouchableOpacity
+                                style={[
+                                    subTabStyles.button,
+                                    scoreboardType === 'today' && subTabStyles.activeButton
+                                ]}
+                                onPress={() => setScoreboardType('today')}
+                            >
+                                <ThemedText
+                                    style={[
+                                        subTabStyles.text,
+                                        scoreboardType === 'today' && subTabStyles.activeText
+                                    ]}
+                                >
+                                    Today
+                                </ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    subTabStyles.button,
+                                    scoreboardType === 'weekly' && subTabStyles.activeButton
+                                ]}
+                                onPress={() => setScoreboardType('weekly')}
+                            >
+                                <ThemedText
+                                    style={[
+                                        subTabStyles.text,
+                                        scoreboardType === 'weekly' && subTabStyles.activeText
+                                    ]}
+                                >
+                                    This Week
+                                </ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    subTabStyles.button,
+                                    scoreboardType === 'all-time' && subTabStyles.activeButton
+                                ]}
+                                onPress={() => setScoreboardType('all-time')}
+                            >
+                                <ThemedText
+                                    style={[
+                                        subTabStyles.text,
+                                        scoreboardType === 'all-time' && subTabStyles.activeText
+                                    ]}
+                                >
+                                    All Time
+                                </ThemedText>
+                            </TouchableOpacity>
+                        </View>
+
+                        {scoreboardType === 'all-time' ? (
+                            <Scoreboard
+                                entries={leaderboard?.rankings.map(entry => ({
+                                    name: entry.name,
+                                    score: entry.points,
+                                    position: entry.position,
+                                    isCurrentLearner: entry.isCurrentLearner,
+                                    avatar: entry.avatar,
+                                    school: entry.school?.toLowerCase().includes('default') ? undefined : entry.school?.replace(/school/gi, '').trim()
+                                })) || []}
+                            />
+                        ) : scoreboardType === 'weekly' ? (
+                            <>
+                                <Scoreboard
+                                    entries={weeklyScoreboard?.scoreboard.map(entry => ({
+                                        name: entry.name,
+                                        score: entry.score,
+                                        position: entry.position,
+                                        isCurrentLearner: entry.isCurrentLearner,
+                                        avatar: entry.avatar,
+                                        school: entry.school?.toLowerCase().includes('default') ? undefined : entry.school?.replace(/school/gi, '').trim()
+                                    })) || []}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <Scoreboard
+                                    entries={todayScoreboard?.scoreboard.map(entry => ({
+                                        name: entry.name,
+                                        score: entry.score,
+                                        position: entry.position,
+                                        isCurrentLearner: entry.isCurrentLearner,
+                                        avatar: entry.avatar,
+                                        school: entry.school?.toLowerCase().includes('default') ? undefined : entry.school?.replace(/school/gi, '').trim()
+                                    })) || []}
+                                />
+                            </>
+                        )}
+                    </>
                 ) : activeTab === 'following' ? (
                     <View style={styles.followingContainer}>
                         <View style={styles.followCodeContainer}>
@@ -823,6 +1091,47 @@ export default function AchievementsScreen() {
                             <ThemedText style={styles.followCodeSubtitle}>
                             Got a friend on here? Type in their 4-letter code and start leveling up together!
                             </ThemedText>
+                            
+                            <View style={styles.followCodeInputContainer}>
+                                <TextInput
+                                    style={[
+                                        styles.followCodeInput,
+                                        { 
+                                            color: colors.text,
+                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+                                            borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
+                                        }
+                                    ]}
+                                    placeholder="CODE"
+                                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'}
+                                    value={followCode}
+                                    onChangeText={(text) => {
+                                        const cleanText = text.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                                        setFollowCode(cleanText.slice(0, 4));
+                                    }}
+                                    maxLength={4}
+                                    autoCapitalize="characters"
+                                    keyboardType="default"
+                                />
+                                
+                                <TouchableOpacity
+                                    style={[
+                                        styles.followButton,
+                                        { 
+                                            backgroundColor: colors.primary,
+                                            opacity: followCode.length === 4 ? 1 : 0.5
+                                        }
+                                    ]}
+                                    onPress={() => handleFollowLearner(followCode)}
+                                    disabled={followCode.length !== 4 || isFollowingLoading}
+                                >
+                                    {isFollowingLoading ? (
+                                        <ActivityIndicator color="#FFFFFF" />
+                                    ) : (
+                                        <ThemedText style={styles.followButtonText}>🤝 Follow</ThemedText>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                             
                             {learnerInfo?.follow_me_code && (
                                 <View style={styles.ownFollowCodeContainer}>
@@ -858,44 +1167,7 @@ export default function AchievementsScreen() {
                                 </View>
                             )}
                             
-                            <View style={styles.followCodeInputContainer}>
-                                <TextInput
-                                    style={[
-                                        styles.followCodeInput,
-                                        { 
-                                            color: colors.text,
-                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
-                                            borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
-                                        }
-                                    ]}
-                                    placeholder="Enter follow code"
-                                    placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)'}
-                                    value={followCode}
-                                    onChangeText={(text) => {
-                                        setFollowCode(text.toUpperCase().slice(0, 4));
-                                    }}
-                                    maxLength={4}
-                                    autoCapitalize="characters"
-                                />
-                                
-                                <TouchableOpacity
-                                    style={[
-                                        styles.followButton,
-                                        { 
-                                            backgroundColor: colors.primary,
-                                            opacity: followCode.length === 4 ? 1 : 0.5
-                                        }
-                                    ]}
-                                    onPress={() => handleFollowLearner(followCode)}
-                                    disabled={followCode.length !== 4 || isFollowingLoading}
-                                >
-                                    {isFollowingLoading ? (
-                                        <ActivityIndicator color="#FFFFFF" />
-                                    ) : (
-                                        <ThemedText style={styles.followButtonText}>🤝Follow</ThemedText>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                            
                         </View>
 
                         <View style={styles.followingListContainer}>
@@ -1039,50 +1311,7 @@ export default function AchievementsScreen() {
                             )}
                         </View>
                     </View>
-                ) : (
-                    <View style={styles.leaderboardContainer}>
-                        {leaderboard && renderTopThree(leaderboard.rankings)}
-                        
-                        {/* Rest of the leaderboard */}
-                        <View style={styles.rankingsList}>
-                            {leaderboard && leaderboard.rankings.slice(3).map((entry, index) => 
-                                renderLeaderboardEntry(entry, index + 3)
-                            )}
-                        </View>
-                        
-                        {/* Current Learner Position (if not in top 10) */}
-                        {leaderboard && leaderboard.currentLearnerPosition !== null &&
-                            !leaderboard.rankings.some(r => r.isCurrentLearner) && (
-                                <ThemedView style={[styles.leaderboardEntry, styles.currentLearnerEntry]}>
-                                    <View style={styles.leaderboardEntryContent}>
-                                        <View style={styles.positionContainer}>
-                                            <ThemedText style={styles.position}>
-                                                #{leaderboard.currentLearnerPosition}
-                                            </ThemedText>
-                                        </View>
-                                        <View style={styles.avatarContainer}>
-                                            <Image
-                                                source={learnerInfo?.avatar ? AVATAR_IMAGES[learnerInfo.avatar] : AVATAR_IMAGES['1']}
-                                                style={styles.avatar}
-                                            />
-                                        </View>
-                                        <View style={styles.nameContainer}>
-                                            <ThemedText style={styles.name}>You</ThemedText>
-                                        </View>
-                                        <View style={styles.pointsContainer}>
-                                            <Image
-                                                source={require('@/assets/images/points.png')}
-                                                style={styles.pointsIcon}
-                                            />
-                                            <ThemedText style={styles.points}>
-                                                {leaderboard.currentLearnerPoints}
-                                            </ThemedText>
-                                        </View>
-                                    </View>
-                                </ThemedView>
-                            )}
-                    </View>
-                )}
+                ) : null}
             </ScrollView>
             <Toast />
         </LinearGradient>
@@ -1124,6 +1353,7 @@ const styles = StyleSheet.create({
     },
     leaderboardContainer: {
         paddingHorizontal: 16,
+        marginTop: 32,
     },
     leaderboardEntry: {
         marginBottom: 12,
@@ -1273,7 +1503,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'flex-end',
         marginBottom: 32,
-        marginTop: 20,
+        marginTop: 32,
         paddingHorizontal: 16,
         height: 220,
     },
@@ -1392,15 +1622,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 8,
         marginBottom: 16,
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        width: '100%',
     },
     followCodeInput: {
         flex: 1,
         height: 48,
         borderRadius: 8,
         paddingHorizontal: 16,
-        fontSize: 16,
-        fontWeight: '500',
+        fontSize: 20,
+        fontWeight: '600',
         borderWidth: 1,
+        textAlign: 'center',
+        letterSpacing: 4,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
@@ -1411,11 +1646,13 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     followButton: {
+        flex: 1,
         height: 48,
-        paddingHorizontal: 24,
         borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
+        flexDirection: 'row',
+        gap: 8,
     },
     followButtonText: {
         color: '#FFFFFF',
@@ -1649,5 +1886,101 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         aspectRatio: 1,
+    },
+    weeklyScoreboardContainer: {
+        padding: 16,
+    },
+    weeklyScoreboardHeader: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    weeklyScoreboardTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 8,
+    },
+    weeklyScoreboardSubtitle: {
+        fontSize: 16,
+        opacity: 0.7,
+        marginBottom: 4,
+    },
+    weeklyScoreboardParticipants: {
+        fontSize: 14,
+        opacity: 0.5,
+    },
+    scoreboardTable: {
+        marginTop: 16,
+    },
+    scoreboardRow: {
+        marginBottom: 12,
+        borderRadius: 12,
+        padding: 12,
+    },
+    scoreboardEntryContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    scoreboardPositionContainer: {
+        width: 40,
+        alignItems: 'center',
+    },
+    scoreboardPositionText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    scoreboardAvatarContainer: {
+        marginRight: 12,
+    },
+    scoreboardAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+    },
+    scoreboardInfo: {
+        flex: 1,
+        paddingRight: 8,
+    },
+    scoreboardName: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    scoreboardAnswers: {
+        fontSize: 12,
+        opacity: 0.7,
+    },
+    scoreboardScoreContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    scoreboardPointsIcon: {
+        width: 20,
+        height: 20,
+        marginRight: 4,
+    },
+    scoreboardScore: {
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    topThreeAnswers: {
+        fontSize: 12,
+        opacity: 0.7,
+        marginTop: 4,
+    },
+    firstPlaceAnswers: {
+        fontSize: 14,
+    },
+    schoolName: {
+        fontSize: 12,
+        opacity: 0.7,
+        marginTop: 2,
+    },
+    topThreeSchool: {
+        fontSize: 12,
+        opacity: 0.7,
+        marginTop: 2,
+        textAlign: 'center',
+    },
+    firstPlaceSchool: {
+        fontSize: 14,
     },
 }); 

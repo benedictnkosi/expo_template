@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,12 +10,16 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { registerForPushNotificationsAsync } from '@/services/notifications';
 import { updatePushToken } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import Toast from 'react-native-toast-message';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos, RandomAIQuestion } from '../../services/api';
 import { Subject } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
+import { getMessages, Message } from '@/services/api';
+import { MessageModal } from '@/components/MessageModal';
 
 // Temporary mock data
 
@@ -137,6 +141,53 @@ interface Todo {
   subject_name?: string;
 }
 
+// Add SettingsModal component before HomeScreen
+interface SettingsModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onOpenSettings: () => void;
+}
+
+const SettingsModal = ({ visible, onClose, onOpenSettings }: SettingsModalProps) => {
+  const { colors, isDark } = useTheme();
+  
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+    >
+      <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+        <View style={[styles.settingsModalContainer, { 
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <ThemedText style={[styles.settingsModalTitle, { color: colors.text }]}>
+            🔔 Enable Notifications
+          </ThemedText>
+          <ThemedText style={[styles.settingsModalText, { color: colors.textSecondary }]}>
+            To receive notifications about new questions and updates, please enable notifications in your device settings.
+          </ThemedText>
+          <View style={styles.settingsModalButtons}>
+            <TouchableOpacity
+              style={[styles.settingsModalButton, { backgroundColor: colors.primary }]}
+              onPress={onOpenSettings}
+            >
+              <ThemedText style={styles.settingsModalButtonText}>Open Settings</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingsModalButton, { backgroundColor: isDark ? colors.surface : '#F3F4F6' }]}
+              onPress={onClose}
+            >
+              <ThemedText style={[styles.settingsModalButtonText, { color: colors.text }]}>Cancel</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
@@ -154,6 +205,10 @@ export default function HomeScreen() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoadingTodos, setIsLoadingTodos] = useState(true);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [currentMessage, setCurrentMessage] = useState<Message | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Load hidden subjects from storage
   useEffect(() => {
@@ -169,6 +224,130 @@ export default function HomeScreen() {
     }
     loadHiddenSubjects();
   }, []);
+
+  // Initial data load
+  useEffect(() => {
+    async function loadInitialData() {
+      if (!user?.uid) return;
+
+      try {
+        setIsLoading(true);
+        const learner = await getLearner(user.uid);
+
+        //save learner name in AsyncStorage
+        await AsyncStorage.setItem('learnerName', learner.name);
+        await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
+        await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
+
+        if (learner.name && learner.grade) {
+          setLearnerInfo({
+            ...learner,
+            score: 0,
+            notification_hour: 0,
+            role: learner.role || 'learner',
+            created: new Date().toISOString(),
+            lastSeen: new Date().toISOString(),
+            private_school: false,
+            rating: 0,
+            points: learner.points || 0,
+            streak: learner.streak || 0
+          });
+
+          // Always fetch subjects on initial load
+          console.log('Fetching subjects');
+          const enrolledResponse = await fetchMySubjects(user.uid);
+          if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+            const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+              if (!curr?.name) return acc;
+
+              const baseName = curr.name.split(' P')[0];
+
+              if (!acc[baseName]) {
+                acc[baseName] = {
+                  id: curr.id.toString(),
+                  name: baseName,
+                  total_questions: curr.totalSubjectQuestions || 0,
+                  answered_questions: curr.totalResults || 0,
+                  correct_answers: curr.correctAnswers || 0
+                };
+              } else {
+                acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+                acc[baseName].answered_questions += curr.totalResults || 0;
+                acc[baseName].correct_answers += curr.correctAnswers || 0;
+              }
+
+              return acc;
+            }, {});
+
+            const groupedSubjects = Object.values(subjectGroups);
+            setMySubjects(groupedSubjects);
+          } else {
+            setMySubjects([]);
+          }
+        } else {
+          signOut();
+        }
+
+        // Fetch random lesson
+        await fetchRandomLesson();
+      } catch (error) {
+        signOut();
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadInitialData();
+  }, [user?.uid]);
+
+  // Check for new answers on focus
+  useFocusEffect(
+    useCallback(() => {
+      async function checkForNewAnswers() {
+        if (!user?.uid) return;
+
+        const hasNewAnswers = await AsyncStorage.getItem('hasNewAnswers');
+        if (hasNewAnswers === 'true') {
+          try {
+            const enrolledResponse = await fetchMySubjects(user.uid);
+            if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+              const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+                if (!curr?.name) return acc;
+
+                const baseName = curr.name.split(' P')[0];
+
+                if (!acc[baseName]) {
+                  acc[baseName] = {
+                    id: curr.id.toString(),
+                    name: baseName,
+                    total_questions: curr.totalSubjectQuestions || 0,
+                    answered_questions: curr.totalResults || 0,
+                    correct_answers: curr.correctAnswers || 0
+                  };
+                } else {
+                  acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+                  acc[baseName].answered_questions += curr.totalResults || 0;
+                  acc[baseName].correct_answers += curr.correctAnswers || 0;
+                }
+
+                return acc;
+              }, {});
+
+              const groupedSubjects = Object.values(subjectGroups);
+              setMySubjects(groupedSubjects);
+              
+              // Clear the flag after refreshing
+              await AsyncStorage.removeItem('hasNewAnswers');
+            }
+          } catch (error) {
+            console.error('Error refreshing subjects:', error);
+          }
+        }
+      }
+
+      checkForNewAnswers();
+    }, [user?.uid])
+  );
 
   // Function to toggle subject visibility
   const toggleSubjectVisibility = useCallback(async (subjectId: string) => {
@@ -265,84 +444,6 @@ export default function HomeScreen() {
       setRandomLesson(null);
     }
   };
-
-  // Update the initializeData function to include random lesson fetch
-  const initializeData = useCallback(async () => {
-    if (!user?.uid) return;
-
-    try {
-      setIsLoading(true);
-      const learner = await getLearner(user.uid);
-
-      //save learner name in AsyncStorage
-      await AsyncStorage.setItem('learnerName', learner.name);
-      //save learner grade number in AsyncStorage
-      await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
-      await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
-
-      if (learner.name && learner.grade) {
-        setLearnerInfo({
-          ...learner,
-          score: 0,
-          notification_hour: 0,
-          role: learner.role || 'learner',
-          created: new Date().toISOString(),
-          lastSeen: new Date().toISOString(),
-          private_school: false,
-          rating: 0,
-          points: learner.points || 0,
-          streak: learner.streak || 0
-        });
-        const enrolledResponse = await fetchMySubjects(user.uid);
-
-        if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
-          const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
-            if (!curr?.name) return acc;
-
-            // Extract base subject name without P1/P2
-            const baseName = curr.name.split(' P')[0];
-
-            if (!acc[baseName]) {
-              acc[baseName] = {
-                id: curr.id.toString(),
-                name: baseName,
-                total_questions: curr.totalSubjectQuestions || 0,
-                answered_questions: curr.totalResults || 0,
-                correct_answers: curr.correctAnswers || 0
-              };
-            } else {
-              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-              acc[baseName].answered_questions += curr.totalResults || 0;
-              acc[baseName].correct_answers += curr.correctAnswers || 0;
-            }
-
-            return acc;
-          }, {});
-
-          const groupedSubjects = Object.values(subjectGroups);
-          setMySubjects(groupedSubjects);
-        } else {
-          setMySubjects([]);
-        }
-      } else {
-        signOut();
-      }
-
-      // Fetch random lesson
-      await fetchRandomLesson();
-    } catch (error) {
-      signOut();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.uid, handleError]);
-
-  // Use useFocusEffect for data initialization
-  useFocusEffect(
-    useCallback(() => {
-      initializeData();
-    }, [initializeData])
-  );
 
   // Handle share with analytics
   const handleShare = useCallback(async () => {
@@ -462,13 +563,120 @@ export default function HomeScreen() {
     fetchTodos();
   }, [user?.uid]);
 
+  // Function to check and show messages
+  const checkMessages = useCallback(async () => {
+    try {
+      // Get last check time from storage
+      
+      const lastCheck = await AsyncStorage.getItem('lastMessageCheck');
+      const now = new Date().getTime();
+      
+      // Check if we need to check messages (once per day)
+      if (lastCheck) {
+        const lastCheckTime = parseInt(lastCheck);
+        const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        if (now - lastCheckTime < oneDay) {
+          console.log('Less than 24 hours since last check');
+          return; // Skip if less than 24 hours since last check
+        }
+      }
+
+      // Get shown message IDs from storage
+      const shownMessageIds = await AsyncStorage.getItem('shownMessageIds');
+      const shownIds = shownMessageIds ? JSON.parse(shownMessageIds) : [];
+
+      // Fetch messages
+      const response = await getMessages();
+      console.log('Messages:', response);
+      if (response.success && response.data.length > 0) {
+        // Find first unshown message
+        const unshownMessage = response.data.find(msg => !shownIds.includes(msg.id));
+        
+        if (unshownMessage) {
+          setCurrentMessage(unshownMessage);
+          setShowMessageModal(true);
+          
+          // Update shown message IDs
+          const newShownIds = [...shownIds, unshownMessage.id];
+          await AsyncStorage.setItem('shownMessageIds', JSON.stringify(newShownIds));
+        }
+      }
+
+      // Update last check time
+      await AsyncStorage.setItem('lastMessageCheck', now.toString());
+    } catch (error) {
+      console.error('Error checking messages:', error);
+    }
+  }, []);
+
+  // Check messages on mount
+  useEffect(() => {
+    checkMessages();
+  }, [checkMessages]);
+
+  // Add AppState listener for checking permissions when app becomes active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active') {
+        const { status } = await Notifications.getPermissionsAsync();
+        setNotificationsEnabled(status === 'granted');
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  // Add notification toggle handler
+  const toggleNotifications = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        if (existingStatus === 'denied') {
+          setShowSettingsModal(true);
+          return;
+        }
+        
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus === 'granted') {
+        const token = await registerForPushNotificationsAsync();
+        
+        if (token && user?.uid) {
+          await updatePushToken(user.uid, token);
+          setNotificationsEnabled(true);
+          Toast.show({
+            type: 'success',
+            text1: 'Notifications enabled',
+            text2: 'You will now receive updates about new questions and reminders',
+            position: 'bottom'
+          });
+        }
+      } else {
+        setShowSettingsModal(true);
+      }
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to enable notifications. Please try again.',
+        position: 'bottom'
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
           <Header learnerInfo={null} />
           <View style={[styles.loadingContainer, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <ThemedText style={styles.loadingText}>Loading subjects...</ThemedText>
+              <ThemedText style={styles.loadingText}>Loading...</ThemedText>
           </View>
       </View>
   );
@@ -495,6 +703,30 @@ export default function HomeScreen() {
             avatar: learnerInfo.avatar
           } : null}
         />
+
+        {/* Add Notification Settings Card - Only show when notifications are disabled */}
+        {!notificationsEnabled && (
+          <View style={[styles.sectionCard, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border
+          }]}>
+            <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>🔔 Enable Notifications</ThemedText>
+            <View style={styles.settingRow}>
+              <View style={styles.settingInfo}>
+                <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                  📚 Get notified about new questions, ⏰ daily reminders, and 📢 important updates
+                </ThemedText>
+              </View>
+              <TouchableOpacity
+                style={[styles.enableButton, { backgroundColor: colors.primary }]}
+                onPress={toggleNotifications}
+                testID="enable-notifications-button"
+              >
+                <ThemedText style={styles.enableButtonText}>Enable</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         <View style={[styles.statsContainer, {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
@@ -853,6 +1085,12 @@ export default function HomeScreen() {
         testID="rating-modal"
       />
 
+      <MessageModal
+        visible={showMessageModal}
+        message={currentMessage}
+        onDismiss={() => setShowMessageModal(false)}
+      />
+
       <Modal
         visible={showErrorModal}
         transparent
@@ -872,6 +1110,19 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      <SettingsModal
+        visible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onOpenSettings={() => {
+          if (Platform.OS === 'ios') {
+            Linking.openURL('app-settings:');
+          } else {
+            Linking.openSettings();
+          }
+          setShowSettingsModal(false);
+        }}
+      />
     </LinearGradient>
   );
 }
@@ -967,11 +1218,9 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#999',
-    marginBottom: 40,
-    marginTop: 20,
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
   },
   subjectsGrid: {
     flexDirection: 'column',
@@ -1547,6 +1796,76 @@ const styles = StyleSheet.create({
   },
   taskDueDate: {
     fontSize: 12,
+  },
+  sectionCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    marginHorizontal: 16,
+    borderWidth: 1,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 14,
+  },
+  enableButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  enableButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  settingsModalContainer: {
+    margin: 20,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  settingsModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  settingsModalText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  settingsModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  settingsModalButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  settingsModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

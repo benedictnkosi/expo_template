@@ -208,6 +208,27 @@ function createStyles(isDark: boolean) {
             fontWeight: '600',
             color: '#fff',
         },
+        datePickerModal: {
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+        },
+        datePickerHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: 'rgba(128, 128, 128, 0.3)',
+        },
+        datePickerHeaderButton: {
+            padding: 8,
+        },
+        datePickerHeaderButtonText: {
+            fontSize: 16,
+            fontWeight: '500',
+        },
     });
 }
 
@@ -335,6 +356,13 @@ export function TodoList({
         if (!userUid) return;
 
         try {
+            // Set time to 23:59 for the due date if it exists
+            const updatedDueDate = updates.dueDate ? (() => {
+                const date = new Date(updates.dueDate);
+                date.setHours(23, 59, 0, 0);
+                return date.toISOString();
+            })() : undefined;
+
             const response = await fetch(`${HOST_URL}/api/todos/${todoId}`, {
                 method: 'PUT',
                 headers: {
@@ -342,7 +370,8 @@ export function TodoList({
                 },
                 body: JSON.stringify({
                     learnerUid: userUid,
-                    ...updates
+                    ...updates,
+                    dueDate: updatedDueDate
                 })
             });
 
@@ -665,6 +694,18 @@ export function TodoList({
                 </View>
             </Modal>
 
+            {/* Android Date Picker */}
+            {Platform.OS === 'android' && showDatePicker && (
+                <DateTimePicker
+                    value={selectedDate || new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                    minimumDate={new Date()}
+                    themeVariant={isDark ? 'dark' : 'light'}
+                />
+            )}
+
             {/* Edit Todo Modal */}
             <Modal isVisible={showEditTodoModal} onBackdropPress={() => setShowEditTodoModal(false)}>
                 <View style={[styles.modalContent, { backgroundColor: isDark ? '#2a2a2a' : '#fff' }]}>
@@ -699,6 +740,36 @@ export function TodoList({
                             />
                         </TouchableOpacity>
                     </View>
+                    {Platform.OS === 'ios' && showEditDatePicker && (
+                        <View>
+                            <DateTimePicker
+                                value={editTodoDueDate || new Date()}
+                                mode="date"
+                                display="spinner"
+                                onChange={(event, date) => {
+                                    if (date) {
+                                        setEditTodoDueDate(date);
+                                    }
+                                }}
+                                minimumDate={new Date()}
+                                themeVariant={isDark ? 'dark' : 'light'}
+                            />
+                            <View style={styles.iosDatePickerButtons}>
+                                <TouchableOpacity
+                                    style={[styles.iosDateButton, styles.iosDateButtonCancel]}
+                                    onPress={() => setShowEditDatePicker(false)}
+                                >
+                                    <ThemedText style={styles.iosDateButtonText}>Cancel</ThemedText>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.iosDateButton, styles.iosDateButtonConfirm]}
+                                    onPress={() => setShowEditDatePicker(false)}
+                                >
+                                    <ThemedText style={styles.iosDateButtonText}>Confirm</ThemedText>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
                     <View style={styles.modalButtons}>
                         <TouchableOpacity
                             style={[styles.modalButton, styles.cancelButton]}
@@ -722,23 +793,18 @@ export function TodoList({
                 </View>
             </Modal>
 
-            {Platform.OS === 'android' && showDatePicker && (
-                <DateTimePicker
-                    value={selectedDate || new Date()}
-                    mode="date"
-                    display="default"
-                    onChange={handleDateChange}
-                    minimumDate={new Date()}
-                    themeVariant={isDark ? 'dark' : 'light'}
-                />
-            )}
-
-            {showEditDatePicker && (
+            {/* Android Edit Date Picker */}
+            {Platform.OS === 'android' && showEditDatePicker && (
                 <DateTimePicker
                     value={editTodoDueDate || new Date()}
                     mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={handleEditDateChange}
+                    display="default"
+                    onChange={(event, date) => {
+                        setShowEditDatePicker(false);
+                        if (date) {
+                            setEditTodoDueDate(date);
+                        }
+                    }}
                     minimumDate={new Date()}
                     themeVariant={isDark ? 'dark' : 'light'}
                 />

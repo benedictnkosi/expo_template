@@ -18,7 +18,7 @@ export default function NotFoundScreen() {
       >
        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <ThemedText style={[styles.loadingText, { color: colors.text }]}>Loading subjects...</ThemedText>
+              <ThemedText style={[styles.loadingText, { color: colors.text }]}>Loading ...</ThemedText>
           </View>
       </LinearGradient>
     </SafeAreaView>

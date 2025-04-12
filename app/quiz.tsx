@@ -720,7 +720,6 @@ export default function QuizScreen() {
     const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
     const [imageRotation, setImageRotation] = useState(0);
     const [isRestartModalVisible, setIsRestartModalVisible] = useState(false);
-    const [showRatingModal, setShowRatingModal] = useState(false);
     const [hasShownRating, setHasShownRating] = useState(false);
     const [duration, setDuration] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -993,6 +992,11 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !currentQuestion) return;
 
+        const isCorrect = cleanAnswer(answer) === cleanAnswer(currentQuestion.answer);
+        
+        // Set flag to indicate answers were submitted
+        await AsyncStorage.setItem('hasNewAnswers', 'true');
+        
         try {
             stopTimer();
             setIsAnswerLoading(true);
@@ -1054,8 +1058,6 @@ export default function QuizScreen() {
             // Check if we should show rating prompt after correct answer
             if (response.correct) {
                 try {
-
-
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
                     const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
 
@@ -1065,17 +1067,16 @@ export default function QuizScreen() {
                             const now = new Date();
 
                             // Only show if we've passed the next prompt date
-                            //console.log(now, nextPromptDate);
                             if (now >= nextPromptDate) {
                                 setTimeout(() => {
-                                    setShowRatingModal(true);
+                                    handleRating();
                                     setHasShownRating(true);
                                 }, 2000);
                             }
                         } else {
                             // First time showing the prompt
                             setTimeout(() => {
-                                setShowRatingModal(true);
+                                handleRating();
                                 setHasShownRating(true);
                             }, 2000);
                         }
@@ -1528,35 +1529,71 @@ export default function QuizScreen() {
     // Add this function to handle rating
     const handleRating = async () => {
         try {
-            if (Platform.OS === 'android') {
-                // Direct Play Store link for Android
-                await Linking.openURL('market://details?id=za.co.examquizafrica');
-            } else {
-                // Use StoreReview for iOS
-                if (await StoreReview.hasAction()) {
-                    await StoreReview.requestReview();
-                } else {
-                    await Linking.openURL('https://apps.apple.com/app/6742684696');
+            // Check if we should show the rating prompt
+            const nextPromptDateStr = await SecureStore.getItemAsync('next_rating_prompt_date');
+            if (nextPromptDateStr) {
+                const nextPromptDate = new Date(nextPromptDateStr);
+                const now = new Date();
+                if (now < nextPromptDate) {
+                    // Don't show the prompt yet
+                    return;
                 }
             }
-            // Store that user has reviewed
-            await SecureStore.setItemAsync('has_reviewed_app', 'true');
-            setShowRatingModal(false);
-        } catch (error) {
-            // If market:// scheme fails, try the web URL
-            if (Platform.OS === 'android') {
-                await Linking.openURL('https://play.google.com/store/apps/details?id=za.co.examquizafrica');
+
+            // First check if the StoreReview API is available
+            const isAvailable = await StoreReview.isAvailableAsync();
+            
+            if (isAvailable) {
+                // Try to use the native StoreReview API first
+                await StoreReview.requestReview();
+                // Store that user has reviewed regardless of the outcome
+                // since we can't detect if they actually reviewed
+                await SecureStore.setItemAsync('has_reviewed_app', 'true');
+            } else {
+                // Fallback to store URLs if native review not available
+                const storeUrl = await StoreReview.storeUrl();
+                if (storeUrl) {
+                    await Linking.openURL(storeUrl);
+                } else {
+                    // Manual fallback URLs if storeUrl() returns null
+                    if (Platform.OS === 'android') {
+                        await Linking.openURL('market://details?id=za.co.examquizafrica');
+                    } else {
+                        await Linking.openURL('https://apps.apple.com/app/6742684696?action=write-review');
+                    }
+                }
             }
-            console.error('Error opening store:', error);
+            
+            // Set next prompt date to tomorrow
+            const nextPromptDate = new Date();
+            nextPromptDate.setDate(nextPromptDate.getDate() + 1);
+            await SecureStore.setItemAsync('next_rating_prompt_date', nextPromptDate.toISOString());
+        } catch (error) {
+            console.error('Error requesting review:', error);
+            // Fallback to web URLs if all else fails
+            try {
+                if (Platform.OS === 'android') {
+                    await Linking.openURL('https://play.google.com/store/apps/details?id=za.co.examquizafrica');
+                } else {
+                    await Linking.openURL('https://apps.apple.com/app/6742684696?action=write-review');
+                }
+            } catch (fallbackError) {
+                console.error('Error opening store URL:', fallbackError);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Could not open app store. Please try again later.',
+                    position: 'bottom'
+                });
+            }
         }
     };
 
     // Add this function to handle postponing the rating
     const handlePostponeRating = async () => {
-        setShowRatingModal(false);
-        // Store the current date for next prompt
+        // Set a future date to ask for review again (in 24 hours)
         const nextPromptDate = new Date();
-        nextPromptDate.setDate(nextPromptDate.getDate() + 1); // Add 1 days
+        nextPromptDate.setDate(nextPromptDate.getDate() + 1);
         await SecureStore.setItemAsync('next_rating_prompt_date', nextPromptDate.toISOString());
     };
 
@@ -1710,6 +1747,7 @@ export default function QuizScreen() {
 
                         {/* Add Mode Selection */}
                         <View style={styles.modeSelectionContainer}>
+                        
                             <ThemedText style={[styles.modeSelectionTitle, { color: colors.text }]}>
                                 Choose Your Learning Mode
                             </ThemedText>
@@ -1926,6 +1964,8 @@ export default function QuizScreen() {
                                     <ThemedText style={styles.buttonText}>Go Back</ThemedText>
                                 </View>
                             </TouchableOpacity>
+
+                            
                         </View>
                     </ThemedView>
                 </ScrollView>
@@ -2707,41 +2747,6 @@ export default function QuizScreen() {
                 </View>
             </Modal>
 
-            <Modal
-                isVisible={showRatingModal}
-                onBackdropPress={handlePostponeRating}
-                style={styles.modal}
-                animationIn="fadeIn"
-                animationOut="fadeOut"
-            >
-                <View style={[styles.ratingModalContent, {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF'
-                }]}>
-                    <ThemedText style={[styles.ratingTitle, { color: colors.text }]}>Loving Exam Quiz? 🎉✨</ThemedText>
-                    <ThemedText style={[styles.ratingText, { color: colors.textSecondary }]}>
-                        Hey superstar! 🌟 Your opinion matters! Give us a quick rating and help make Exam Quiz even more awesome! 🚀💡
-                    </ThemedText>
-                    <View style={styles.ratingButtons}>
-                        <TouchableOpacity
-                            style={[styles.ratingButton, styles.ratingSecondaryButton, {
-                                backgroundColor: isDark ? colors.surface : '#E2E8F0'
-                            }]}
-                            onPress={handlePostponeRating}
-                        >
-                            <ThemedText style={[styles.ratingSecondaryButtonText, { color: colors.text }]}>Maybe Later</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.ratingButton, styles.ratingPrimaryButton, {
-                                backgroundColor: isDark ? colors.primary : '#8B5CF6'
-                            }]}
-                            onPress={handleRating}
-                        >
-                            <ThemedText style={styles.ratingPrimaryButtonText}>Rate Now!</ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
             {/* Add PointsAnimation component */}
             <PointsAnimation points={earnedPoints} isVisible={showPoints} />
 
@@ -3155,7 +3160,7 @@ const styles = StyleSheet.create({
         borderRadius: 25,
         position: 'absolute',
         top: 10,
-        right: 10,
+        right: 30,
         zIndex: 10,
         width: 36,
         height: 36,
@@ -3201,6 +3206,9 @@ const styles = StyleSheet.create({
         borderColor: '#22C55E',
         borderRadius: 8,
         marginTop: 12,
+        padding: 16,
+        width: '100%',
+        flexShrink: 1,
     },
     answerImage: {
         width: '100%',
@@ -3540,19 +3548,22 @@ const styles = StyleSheet.create({
     },
     explanationContent: {
         maxHeight: '100%',
-        paddingHorizontal: 8,
+        paddingHorizontal: 16,
+        paddingBottom: 20,
         width: '100%',
+        flexGrow: 1,
     },
     explanationLine: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         marginBottom: 16,
-        paddingRight: 8,
+        paddingRight: 16,
         width: '100%',
+        flexWrap: 'wrap',
     },
     explanationTextContainer: {
         flex: 1,
-        paddingRight: 4,
+        paddingRight: 16,
         width: '100%',
     },
     explanationText: {
@@ -3561,6 +3572,7 @@ const styles = StyleSheet.create({
         color: '#1E293B',
         paddingVertical: 20,
         width: '100%',
+        flexShrink: 1,
     },
     questionMeta: {
         fontSize: 14,
@@ -4098,6 +4110,19 @@ const styles = StyleSheet.create({
         padding: 16,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    reviewButton: {
+        flex: 1,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 4,
+        marginTop: 8,
+        elevation: 2,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
 
 });

@@ -127,7 +127,7 @@ export default function ChatScreen() {
                     setSubjects(subjectsWithCounts);
                 }
             } catch (error) {
-                console.error('Error loading subjects:', error);
+                console.error('Error loading chats:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -174,7 +174,7 @@ export default function ChatScreen() {
                 <Header learnerInfo={null} />
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={colors.primary} />
-                    <ThemedText style={styles.loadingText}>Loading subjects...</ThemedText>
+                    <ThemedText style={styles.loadingText}>Loading Chats...</ThemedText>
                 </View>
             </View>
         );

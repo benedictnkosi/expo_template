@@ -128,7 +128,7 @@ export default function InfoScreen() {
             borderColor: colors.border,
             borderWidth: 1
           }]}
-          onPress={() => Linking.openURL('https://api.whatsapp.com/send/?phone=27837917430&text=Hi')}
+          onPress={() => Linking.openURL('https://api.whatsapp.com/send/?phone=27786864479&text=Hi')}
         >
           <ThemedText style={[styles.whatsappText, {
             color: isDark ? '#25D366' : '#25D366'

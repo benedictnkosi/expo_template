@@ -433,4 +433,24 @@ export async function getTodos(learnerUid: string): Promise<Todo[]> {
     console.error('Error fetching todos:', error);
     return [];
   }
+}
+
+export interface Message {
+  id: number;
+  title: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface MessagesResponse {
+  success: boolean;
+  data: Message[];
+}
+
+export async function getMessages(): Promise<MessagesResponse> {
+  const response = await fetch(`${HOST_URL}/public/learn/messages`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch messages');
+  }
+  return response.json();
 } 

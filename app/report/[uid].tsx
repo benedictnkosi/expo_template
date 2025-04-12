@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity, Modal, Image, ImageSourcePropType } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { Header } from '@/components/Header';
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { getLearnerBadges, LearnerBadge } from '@/services/api';
 
 function getGradeColor(grade: number): string {
     switch (grade) {
@@ -52,6 +53,25 @@ interface WeeklyProgress {
     grade: number;
     gradeDescription: string;
 }
+
+const badgeImages: Record<string, ImageSourcePropType> = {
+    '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
+    '7-day-streak.png': require('@/assets/images/badges/7-day-streak.png'),
+    '30-day-streak.png': require('@/assets/images/badges/30-day-streak.png'),
+    '5-in-a-row.png': require('@/assets/images/badges/5-in-a-row.png'),
+    '3-in-a-row.png': require('@/assets/images/badges/3-in-a-row.png'),
+    '10-in-a-row.png': require('@/assets/images/badges/10-in-a-row.png'),
+    'physical-sciences.png': require('@/assets/images/badges/physical-sciences.png'),
+    'mathematics.png': require('@/assets/images/badges/mathematics.png'),
+    'agricultural-sciences.png': require('@/assets/images/badges/agricultural-sciences.png'),
+    'economics.png': require('@/assets/images/badges/economics.png'),
+    'geography.png': require('@/assets/images/badges/geography.png'),
+    'life-sciences.png': require('@/assets/images/badges/life-sciences.png'),
+    'mathematics-literacy.png': require('@/assets/images/badges/mathematics-literacy.png'),
+    'history.png': require('@/assets/images/badges/history.png'),
+    'tourism.png': require('@/assets/images/badges/tourism.png'),
+    'business-studies.png': require('@/assets/images/badges/business-studies.png')
+};
 
 async function getLearnerPerformance(uid: string): Promise<{ data: SubjectPerformance[] }> {
     try {
@@ -195,7 +215,7 @@ const SubjectReportModal = ({
                         {isLoading ? (
                             <View style={styles.modalLoadingContainer}>
                                 <ActivityIndicator size="large" color={colors.primary} />
-                                <ThemedText style={styles.modalLoadingText}>Loading subject data...</ThemedText>
+                                <ThemedText style={styles.modalLoadingText}>Loading data...</ThemedText>
                             </View>
                         ) : (
                             <>
@@ -352,6 +372,8 @@ export default function LearnerPerformanceScreen() {
     const [error, setError] = useState<string | null>(null);
     const [selectedSubject, setSelectedSubject] = useState<SubjectPerformance | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [badges, setBadges] = useState<LearnerBadge[]>([]);
+    const [isBadgesLoading, setIsBadgesLoading] = useState(true);
 
     const handleClose = () => {
         if (uid === user?.uid) {
@@ -391,19 +413,22 @@ export default function LearnerPerformanceScreen() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const [performanceResponse, activityResponse, weeklyResponse] = await Promise.all([
+                const [performanceResponse, activityResponse, weeklyResponse, badgesResponse] = await Promise.all([
                     getLearnerPerformance(uid as string),
                     getLearnerDailyActivity(uid as string),
-                    getLearnerWeeklyProgress(uid as string)
+                    getLearnerWeeklyProgress(uid as string),
+                    getLearnerBadges(uid as string)
                 ]);
                 setPerformance(performanceResponse.data);
                 setDailyActivity(activityResponse.data);
                 setWeeklyProgress(weeklyResponse.data);
+                setBadges(badgesResponse);
             } catch (err) {
                 setError('Failed to load learner data');
                 console.error(err);
             } finally {
                 setIsLoading(false);
+                setIsBadgesLoading(false);
             }
         }
 
@@ -478,6 +503,34 @@ export default function LearnerPerformanceScreen() {
                     </View>
                 ) : (
                     <>
+                        {!isBadgesLoading && badges.length > 0 && (
+                            <ThemedView style={[styles.badgesContainer, {
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                            }]}>
+                                <ThemedText style={styles.badgesTitle}>🏆 Achievements</ThemedText>
+                                <ScrollView 
+                                    horizontal 
+                                    showsHorizontalScrollIndicator={false}
+                                    contentContainerStyle={styles.badgesScrollContent}
+                                >
+                                    {badges.map((badge, index) => (
+                                        <View key={index} style={styles.badgeItem}>
+                                            <Image
+                                                source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
+                                                style={[
+                                                    styles.badgeImage,
+                                                    !badge.earned && styles.lockedBadgeImage
+                                                ]}
+                                                resizeMode="contain"
+                                            />
+                                            <ThemedText style={styles.badgeName}>{badge.name}</ThemedText>
+                                        </View>
+                                    ))}
+                                </ScrollView>
+                            </ThemedView>
+                        )}
+
                         {dailyActivity.length > 1 ? (
                             <ThemedView style={[styles.chartContainer, {
                                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
@@ -1013,5 +1066,43 @@ const styles = StyleSheet.create({
     modalChart: {
         marginVertical: 8,
         borderRadius: 16,
+    },
+    badgesContainer: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
+        borderWidth: 1,
+    },
+    badgesTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 16,
+    },
+    badgesScrollContent: {
+        paddingRight: 16,
+    },
+    badgeItem: {
+        alignItems: 'center',
+        marginRight: 16,
+        width: 80,
+    },
+    badgeImage: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        marginBottom: 8,
+    },
+    badgeName: {
+        fontSize: 12,
+        textAlign: 'center',
+        opacity: 0.9,
     },
 }); 

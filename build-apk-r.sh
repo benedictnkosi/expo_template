@@ -16,20 +16,20 @@ cp build.gradle android/app/build.gradle
 cd android
 
 # Clean the build directory
-./gradlew clean
+ ./gradlew clean
 
 # Build release APK
 ./gradlew assembleRelease
 
+APK_PATH="$(pwd)/app/build/outputs/apk/release/app-release.apk"
+BACKUP_DIR="/Users/mac1/Documents/ExamQuiz/backups/apk"
+
 # Check if build was successful
-if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-    echo "Release APK built successfully!"
-    echo "Location: $(pwd)/app/build/outputs/apk/release/app-release.apk"
-    cp /app/build/outputs/apk/release/app-release.apk /Users/mac1/Documents/apk/app-release.apk
-    cp /app/build/outputs/apk/release/app-release.apk /Users/mac1/Documents/cursor/exam-quiz-appium/AppiumProject/app-release.apk
+if [ -f "$APK_PATH" ]; then
+    cp "$APK_PATH" "$BACKUP_DIR/app-release.apk"
+    echo "Copied to $BACKUP_DIR successfully!"
 else
-    echo "Build failed! Check logs for errors."
-    exit 1
+    echo "❌ APK not found at: $APK_PATH"
 fi
 
 # Optional: Install on connected device (commented out for safety)

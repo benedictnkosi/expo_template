@@ -131,18 +131,26 @@ export default function OnboardingScreen() {
       setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
     } else if (step === 2 && !school) {
       setErrors(prev => ({ ...prev, school: 'Please select your school' }));
-    } else if (step === 3 && !curriculum) {
-      setErrors(prev => ({ ...prev, curriculum: 'Please select your curriculum' }));
-    } else if (step === 4 && !difficultSubject) {
+    } else if (step === 3 && !difficultSubject) {
       setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
-    } else if (step === 5 && !selectedAvatar) {
+    } else if (step === 4 && !selectedAvatar) {
       setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
-    } else if (step === 6) {
+    } else if (step === 5) {
       handleComplete();
     } else {
       setErrors({ grade: '', school: '', curriculum: '' });
       setStep(step + 1);
     }
+  };
+
+  const handleSkipSchool = () => {
+    setSchool('Default School');
+    setSchoolName('Default School');
+    setSchoolAddress('123 Default Street, Default City');
+    setSchoolLatitude(-26.2041); // Default to Johannesburg coordinates
+    setSchoolLongitude(28.0473);
+    setErrors(prev => ({ ...prev, school: '' }));
+    setStep(step + 1);
   };
 
   const getStepName = (step: number): string => {
@@ -154,12 +162,10 @@ export default function OnboardingScreen() {
       case 2:
         return 'school_selection';
       case 3:
-        return 'curriculum_selection';
-      case 4:
         return 'difficult_subject_selection';
-      case 5:
+      case 4:
         return 'avatar_selection';
-      case 6:
+      case 5:
         return 'registration';
       default:
         return 'unknown';
@@ -177,7 +183,7 @@ export default function OnboardingScreen() {
         school_address: schoolAddress,
         school_latitude: schoolLatitude,
         school_longitude: schoolLongitude,
-        curriculum,
+        curriculum: 'CAPS',
         difficultSubject,
         avatar: selectedAvatar,
         onboardingCompleted: true
@@ -190,7 +196,7 @@ export default function OnboardingScreen() {
         school_address: schoolAddress,
         school_latitude: schoolLatitude,
         school_longitude: schoolLongitude,
-        curriculum,
+        curriculum: 'CAPS',
         difficult_subject: difficultSubject,
         avatar: selectedAvatar
       });
@@ -204,7 +210,7 @@ export default function OnboardingScreen() {
           school_address: schoolAddress,
           school_latitude: schoolLatitude.toString(),
           school_longitude: schoolLongitude.toString(),
-          curriculum,
+          curriculum: 'CAPS',
           difficultSubject,
           avatar: selectedAvatar,
         }
@@ -374,58 +380,23 @@ export default function OnboardingScreen() {
               )}
               {errors.school ? <ThemedText style={styles.errorText} testID="school-error">{errors.school}</ThemedText> : null}
             </View>
+            {!school && (
+              <View style={styles.skipButtonContainer}>
+                <TouchableOpacity
+                  style={styles.skipButton}
+                  onPress={handleSkipSchool}
+                  testID="skip-school-button"
+                >
+                  <ThemedText style={styles.skipButtonText}>Skip for now</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         );
 
       case 3:
         return (
-          <View style={styles.step} testID="curriculum-selection-step">
-            <Image
-              source={ILLUSTRATIONS.school}
-              style={styles.illustration}
-              resizeMode="contain"
-              testID="curriculum-illustration"
-            />
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle} testID="curriculum-step-title">📚 Which curriculum are you following?</ThemedText>
-              <View style={styles.curriculumButtons} testID="curriculum-buttons-container">
-                {[
-                  { id: 'CAPS', label: 'CAPS', emoji: '📘' },
-                  { id: 'IEB', label: 'IEB', emoji: '📗' }
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.curriculumButton,
-                      curriculum === item.id && styles.curriculumButtonSelected
-                    ]}
-                    onPress={() => {
-                      setCurriculum(item.id);
-                      setErrors(prev => ({ ...prev, curriculum: '' }));
-                    }}
-                    testID={`curriculum-button-${item.id}`}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.curriculumButtonText,
-                        curriculum === item.id && styles.curriculumButtonTextSelected
-                      ]}
-                      testID={`curriculum-button-text-${item.id}`}
-                    >
-                      {item.emoji} {item.label}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {errors.curriculum ? <ThemedText style={styles.errorText} testID="curriculum-error">{errors.curriculum}</ThemedText> : null}
-            </View>
-          </View>
-        );
-
-      case 4:
-        return (
           <View style={styles.step}>
-
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>
                 🤔 Which subject challenges you the most?
@@ -445,8 +416,7 @@ export default function OnboardingScreen() {
                   { id: 'physics', label: 'Physical Sciences', emoji: '⚡' },
                   { id: 'life_sciences', label: 'Life Sciences', emoji: '🧬' },
                   { id: 'accounting', label: 'Accounting', emoji: '📊' },
-                  { id: 'geography', label: 'Geography', emoji: '🌍' },
-                  { id: 'english', label: 'English', emoji: '📚' }
+                  { id: 'other', label: 'Other', emoji: '📚' }
                 ].map((subject) => (
                   <TouchableOpacity
                     key={subject.id}
@@ -475,7 +445,7 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 5:
+      case 4:
         return (
           <View style={styles.step}>
             <View style={styles.textContainer}>
@@ -519,12 +489,12 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 6:
+      case 5:
         return (
           <View style={styles.step}>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setStep(5)}
+              onPress={() => setStep(4)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -544,7 +514,7 @@ export default function OnboardingScreen() {
                   school_address: schoolAddress,
                   school_latitude: schoolLatitude.toString(),
                   school_longitude: schoolLongitude.toString(),
-                  curriculum,
+                  curriculum: 'CAPS',
                   difficultSubject,
                   avatar: selectedAvatar,
                 }}
@@ -567,12 +537,10 @@ export default function OnboardingScreen() {
       case 2:
         return !!school;
       case 3:
-        return !!curriculum;
-      case 4:
         return !!difficultSubject;
-      case 5:
+      case 4:
         return !!selectedAvatar;
-      case 6:
+      case 5:
         return true;
       default:
         return false;
@@ -589,7 +557,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 6 && (
+        {step < 5 && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
@@ -1279,5 +1247,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+  },
+  skipButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+    position: 'absolute',
+    bottom: 0,
+    zIndex: 1000,
+  },
+  skipButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
 });
