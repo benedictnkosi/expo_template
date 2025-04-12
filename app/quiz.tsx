@@ -820,7 +820,19 @@ export default function QuizScreen() {
 
     }, []);
 
+    // Add a function to safely close all modals
+    const closeAllModals = useCallback(() => {
+        setIsReportModalVisible(false);
+        setIsThankYouModalVisible(false);
+        setIsExplanationModalVisible(false);
+        setIsZoomModalVisible(false);
+        setIsRestartModalVisible(false);
+        setShowBadgeModal(false);
+        setShowStreakModal(false);
+    }, []);
+
     const reportIssue = () => {
+        closeAllModals();
         setIsReportModalVisible(true);
     };
 
@@ -845,9 +857,14 @@ export default function QuizScreen() {
                 comment: reportComment
             });
 
-            // Close the report modal and show thank you modal
+            // First close the report modal
             setIsReportModalVisible(false);
-            setIsThankYouModalVisible(true);
+            
+            // Use a small timeout to ensure the modal is fully dismissed
+            setTimeout(() => {
+                setIsThankYouModalVisible(true);
+            }, 3000);
+
             setReportComment('');
 
             // Log analytics event
@@ -1178,10 +1195,10 @@ export default function QuizScreen() {
                     .replace(/\[/g, '$')
                     .replace(/\]/g, '$')
                     .replace(/\\[\[\]]/g, '$')
-                    // Remove newlines between $ signs to keep LaTeX on one line
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $');
 
                 setAiExplanation(explanation);
+                closeAllModals();
                 setIsExplanationModalVisible(true);
             }
         } catch (error) {
@@ -2555,12 +2572,17 @@ export default function QuizScreen() {
 
             <Modal
                 isVisible={isReportModalVisible}
-                onBackdropPress={() => setIsReportModalVisible(false)}
-                onSwipeComplete={() => setIsReportModalVisible(false)}
+                onBackdropPress={closeAllModals}
+                onSwipeComplete={closeAllModals}
                 swipeDirection={['down']}
                 useNativeDriver={true}
                 style={[styles.modal, { marginTop: insets.top }]}
                 testID="report-modal"
+                onModalHide={() => {
+                    if (isThankYouModalVisible) {
+                        setIsThankYouModalVisible(true);
+                    }
+                }}
             >
                 <View style={[styles.reportModalContent, {
                     backgroundColor: isDark ? colors.card : '#FFFFFF'
@@ -2606,8 +2628,12 @@ export default function QuizScreen() {
 
             <Modal
                 isVisible={isExplanationModalVisible}
-                onBackdropPress={() => setIsExplanationModalVisible(false)}
+                onBackdropPress={closeAllModals}
                 style={styles.modal}
+                useNativeDriver={true}
+                onModalHide={() => {
+                    setAiExplanation('');
+                }}
             >
                 <View style={[styles.explanationModal, {
                     backgroundColor: isDark ? colors.card : '#FFFFFF'
@@ -2767,6 +2793,9 @@ export default function QuizScreen() {
                 useNativeDriver={true}
                 style={[styles.modal, { marginTop: insets.top }]}
                 testID="thank-you-modal"
+                onModalHide={() => {
+                    loadRandomQuestion(selectedPaper || '');
+                }}
             >
                 <View style={[styles.thankYouModalContent, {
                     backgroundColor: isDark ? colors.card : '#FFFFFF'
