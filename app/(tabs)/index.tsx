@@ -292,80 +292,85 @@ export default function HomeScreen() {
     loadHiddenSubjects();
   }, []);
 
+  // Extract learner fetching logic into a separate function
+  const fetchLearnerData = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      setIsLoading(true);
+      const learner = await getLearner(user.uid);
+
+      //save learner name in AsyncStorage
+      await AsyncStorage.setItem('learnerName', learner.name);
+      await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
+      await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
+
+      if (learner.name && learner.grade) {
+        setLearnerInfo({
+          ...learner,
+          score: 0,
+          notification_hour: 0,
+          role: learner.role || 'learner',
+          created: new Date().toISOString(),
+          lastSeen: new Date().toISOString(),
+          private_school: false,
+          rating: 0,
+          points: learner.points || 0,
+          streak: learner.streak || 0
+        });
+
+        // Always fetch subjects on load
+        console.log('Fetching subjects');
+        const enrolledResponse = await fetchMySubjects(user.uid);
+        if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
+          const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
+            if (!curr?.name) return acc;
+
+            const baseName = curr.name.split(' P')[0];
+
+            if (!acc[baseName]) {
+              acc[baseName] = {
+                id: curr.id.toString(),
+                name: baseName,
+                total_questions: curr.totalSubjectQuestions || 0,
+                answered_questions: curr.totalResults || 0,
+                correct_answers: curr.correctAnswers || 0
+              };
+            } else {
+              acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
+              acc[baseName].answered_questions += curr.totalResults || 0;
+              acc[baseName].correct_answers += curr.correctAnswers || 0;
+            }
+
+            return acc;
+          }, {});
+
+          const groupedSubjects = Object.values(subjectGroups);
+          setMySubjects(groupedSubjects);
+        } else {
+          setMySubjects([]);
+        }
+      } else {
+        signOut();
+      }
+    } catch (error) {
+      signOut();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.uid, signOut]);
+
   // Initial data load
   useEffect(() => {
-    async function loadInitialData() {
-      if (!user?.uid) return;
+    fetchLearnerData();
+  }, [fetchLearnerData]);
 
-      try {
-        setIsLoading(true);
-        const learner = await getLearner(user.uid);
-
-        //save learner name in AsyncStorage
-        await AsyncStorage.setItem('learnerName', learner.name);
-        await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
-        await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
-
-        if (learner.name && learner.grade) {
-          setLearnerInfo({
-            ...learner,
-            score: 0,
-            notification_hour: 0,
-            role: learner.role || 'learner',
-            created: new Date().toISOString(),
-            lastSeen: new Date().toISOString(),
-            private_school: false,
-            rating: 0,
-            points: learner.points || 0,
-            streak: learner.streak || 0
-          });
-
-          // Always fetch subjects on initial load
-          console.log('Fetching subjects');
-          const enrolledResponse = await fetchMySubjects(user.uid);
-          if (enrolledResponse?.subjects && Array.isArray(enrolledResponse.subjects)) {
-            const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
-              if (!curr?.name) return acc;
-
-              const baseName = curr.name.split(' P')[0];
-
-              if (!acc[baseName]) {
-                acc[baseName] = {
-                  id: curr.id.toString(),
-                  name: baseName,
-                  total_questions: curr.totalSubjectQuestions || 0,
-                  answered_questions: curr.totalResults || 0,
-                  correct_answers: curr.correctAnswers || 0
-                };
-              } else {
-                acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-                acc[baseName].answered_questions += curr.totalResults || 0;
-                acc[baseName].correct_answers += curr.correctAnswers || 0;
-              }
-
-              return acc;
-            }, {});
-
-            const groupedSubjects = Object.values(subjectGroups);
-            setMySubjects(groupedSubjects);
-          } else {
-            setMySubjects([]);
-          }
-        } else {
-          signOut();
-        }
-
-        // Fetch random lesson
-        await fetchRandomLesson();
-      } catch (error) {
-        signOut();
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadInitialData();
-  }, [user?.uid]);
+  // Fetch learner data when tab is focused
+  useFocusEffect(
+    useCallback(() => {
+      fetchLearnerData();
+    }, [fetchLearnerData])
+  );
 
   // Check for new answers on focus
   useFocusEffect(

@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
 import { Header } from '@/components/Header';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch } from 'react-native';
+import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch, Image } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { analytics } from '@/services/analytics';
@@ -52,6 +52,36 @@ interface Grade {
   active: number;
 }
 
+// Add the updateAvatar function after the existing imports
+async function updateAvatar(uid: string, avatar: string) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/learner/update-avatar`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid,
+        avatar: avatar.replace('.png', '')
+      })
+    });
+
+    const data = await response.json();
+    if (data.status !== 'OK') {
+      throw new Error(data.message || 'Failed to update avatar');
+    }
+    Toast.show({
+      type: 'success',
+      text1: 'Avatar updated successfully',
+      position: 'bottom'
+    });
+
+    return data;
+  } catch (error) {
+    console.error('Error updating avatar:', error);
+    throw error;
+  }
+}
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -82,10 +112,24 @@ export default function ProfileScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const googlePlacesRef = React.useRef<any>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
 
   // Available options
   const TERMS = [1, 2, 3, 4];
   const CURRICULA = ['CAPS', 'IEB'];
+
+  // Add AVATAR_IMAGES constant after the CURRICULA constant
+  const AVATAR_IMAGES: Record<string, any> = {
+    '1': require('@/assets/images/avatars/1.png'),
+    '2': require('@/assets/images/avatars/2.png'),
+    '3': require('@/assets/images/avatars/3.png'),
+    '4': require('@/assets/images/avatars/4.png'),
+    '5': require('@/assets/images/avatars/5.png'),
+    '6': require('@/assets/images/avatars/6.png'),
+    '7': require('@/assets/images/avatars/7.png'),
+    '8': require('@/assets/images/avatars/8.png'),
+    '9': require('@/assets/images/avatars/9.png'),
+  };
 
   useEffect(() => {
     async function fetchLearnerInfo() {
@@ -117,6 +161,9 @@ export default function ProfileScreen() {
         setEditSchoolLongitude(learner.school_longitude || 0);
         setEditCurriculum(learner.curriculum || '');
         setEditTerms(learner.terms || '');
+        setSelectedAvatar(learner.avatar || '1');
+
+        console.log('Learner info:', learner);
       } catch (error) {
         console.log('Failed to fetch learner info:', error);
       }
@@ -216,7 +263,7 @@ export default function ProfileScreen() {
         terms: cleanTerms,
         curriculum: cleanCurriculum,
         email: user.email || '',
-        avatar: learnerInfo?.avatar || ''
+        avatar: selectedAvatar
       });
 
       setLearnerInfo({
@@ -227,11 +274,11 @@ export default function ProfileScreen() {
         school_latitude: editSchoolLatitude,
         school_longitude: editSchoolLongitude,
         curriculum: cleanCurriculum,
-        terms: cleanTerms
+        terms: cleanTerms,
+        avatar: selectedAvatar
       });
 
       handleSuccess();
-
     } catch (error) {
       console.error('Failed to update profile:', error);
       Toast.show({
@@ -737,6 +784,89 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </ThemedView>
+        </ThemedView>
+
+        <ThemedView style={[styles.sectionCard, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>🎨 Your Avatar</ThemedText>
+          <ThemedText style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+            Choose how you want to appear in the app
+          </ThemedText>
+          <ScrollView
+            style={styles.avatarsScrollView}
+            contentContainerStyle={styles.avatarsScrollContent}
+            showsVerticalScrollIndicator={false}
+            horizontal
+          >
+            <View style={styles.avatarsGrid}>
+              {Object.keys(AVATAR_IMAGES).map((num) => (
+                <TouchableOpacity
+                  key={num}
+                  style={[
+                    styles.avatarButton,
+                    selectedAvatar === num && styles.avatarButtonSelected,
+                    learnerInfo?.avatar === num && styles.currentAvatar
+                  ]}
+                  onPress={async () => {
+                    try {
+                      if (!user?.uid) return;
+                      
+                      // Update UI immediately for better UX
+                      setSelectedAvatar(num);
+                      
+                      // Save to backend
+                      await updateAvatar(user.uid, num);
+                      
+                      // Update local state
+                      setLearnerInfo(prev => prev ? { ...prev, avatar: num } : null);
+                      
+                      // Log avatar change event
+                      await logAnalyticsEvent('avatar_changed', {
+                        user_id: user.uid,
+                        old_avatar: learnerInfo?.avatar,
+                        new_avatar: num
+                      });
+                      
+                      Toast.show({
+                        type: 'success',
+                        text1: 'Avatar updated successfully',
+                        position: 'bottom'
+                      });
+                    } catch (error) {
+                      console.error('Failed to update avatar:', error);
+                      // Revert UI if save fails
+                      setSelectedAvatar(learnerInfo?.avatar || '1');
+                      Toast.show({
+                        type: 'error',
+                        text1: 'Error',
+                        text2: 'Failed to update avatar',
+                        position: 'bottom'
+                      });
+                    }
+                  }}
+                  testID={`avatar-button-${num}`}
+                >
+                  <Image
+                    source={AVATAR_IMAGES[num]}
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                  {selectedAvatar === num && (
+                    <View style={styles.avatarCheckmark}>
+                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    </View>
+                  )}
+                  {learnerInfo?.avatar === num && selectedAvatar !== num && (
+                    <View style={styles.currentAvatarIndicator}>
+                      <ThemedText style={styles.currentAvatarText}>Current</ThemedText>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </ThemedView>
 
         <ThemedView style={[styles.sectionCard, {
@@ -1413,5 +1543,77 @@ const styles = StyleSheet.create({
   infoButtonText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  avatarsScrollView: {
+    marginTop: 16,
+  },
+  avatarsScrollContent: {
+    paddingBottom: 16,
+  },
+  avatarsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 4,
+  },
+  avatarButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  avatarButtonSelected: {
+    borderColor: '#4F46E5',
+    borderWidth: 3,
+    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarCheckmark: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#4F46E5',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  currentAvatar: {
+    borderColor: '#4F46E5',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  currentAvatarIndicator: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: '#4F46E5',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  currentAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 }); 

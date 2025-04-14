@@ -589,29 +589,8 @@ const PointsAnimation = ({ points, isVisible }: { points: number; isVisible: boo
     );
 };
 
-// Add QuestionCard component near the top of the file, before the main QuizScreen component
-const QuestionCard = ({
-    question,
-    selectedAnswer,
-    showFeedback,
-    isAnswerLoading,
-    selectedMode,
-    handleAnswer,
-    cleanAnswer,
-    feedbackMessage,
-    correctAnswer,
-    isDark,
-    colors,
-    fetchAIExplanation,
-    isLoadingExplanation,
-    learnerRole,
-    handleApproveQuestion,
-    isApproving,
-    setZoomImageUrl,
-    setIsZoomModalVisible,
-    renderMixedContent,
-    reportIssue
-}: {
+// First, define the QuestionCard props interface
+interface QuestionCardProps {
     question: Question | null;
     selectedAnswer: string | null;
     showFeedback: boolean;
@@ -632,6 +611,36 @@ const QuestionCard = ({
     setIsZoomModalVisible: (visible: boolean) => void;
     renderMixedContent: (text: string, isDark: boolean, colors: any) => React.ReactNode;
     reportIssue: () => void;
+    relatedQuestions: Question[];
+    currentQuestionIndex: number;
+    handleNextRelatedQuestion: () => void;
+}
+
+// Then define the QuestionCard component
+const QuestionCard: React.FC<QuestionCardProps> = ({
+    question,
+    selectedAnswer,
+    showFeedback,
+    isAnswerLoading,
+    selectedMode,
+    handleAnswer,
+    cleanAnswer,
+    feedbackMessage,
+    correctAnswer,
+    isDark,
+    colors,
+    fetchAIExplanation,
+    isLoadingExplanation,
+    learnerRole,
+    handleApproveQuestion,
+    isApproving,
+    setZoomImageUrl,
+    setIsZoomModalVisible,
+    renderMixedContent,
+    reportIssue,
+    relatedQuestions,
+    currentQuestionIndex,
+    handleNextRelatedQuestion
 }) => {
     if (!question) return null;
 
@@ -697,8 +706,9 @@ const QuestionCard = ({
                         question={question.question}
                         renderMixedContent={renderMixedContent}
                     />
-                            </View>
+                </View>
             )}
+
 
             {selectedMode === 'quiz' && (
                 <>
@@ -718,31 +728,31 @@ const QuestionCard = ({
                         cleanAnswer={cleanAnswer}
                     />
 
-                <TouchableOpacity
-                        style={[styles.reportButton, {
-                            marginTop: 16,
-                            marginHorizontal: 16,
-                            backgroundColor: isDark ? colors.surface : '#FEE2E2'
-                        }]}
-                        onPress={reportIssue}
-                        testID="report-issue-button"
-                    >
-                        <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                            🛑 Report an Issue with this {selectedMode === 'quiz' ? 'Question' : 'Lesson'}
-                        </ThemedText>
-                </TouchableOpacity>
-                </>
-            )}
-
-            {selectedMode === 'lessons' && (
-                <>
-                    {(question.ai_explanation && question.ai_explanation !== null && question.ai_explanation !== 'NULL') && (
-                        <AiExplanation
-                            explanation={question.ai_explanation}
-                            isDark={isDark}
-                            colors={colors}
-                            renderMixedContent={renderMixedContent}
-                        />
+                    {relatedQuestions.length > 0 && (
+                        <TouchableOpacity
+                            style={[styles.relatedNavButton, {
+                                backgroundColor: isDark ? colors.primary : '#7C3AED',
+                                opacity: currentQuestionIndex === relatedQuestions.length - 1 ? 0.7 : 1,
+                                marginVertical: 16,
+                                marginHorizontal: 16,
+                            }]}
+                            onPress={handleNextRelatedQuestion}
+                            disabled={currentQuestionIndex === relatedQuestions.length - 1}
+                            testID="next-related-question-button"
+                        >
+                            <View style={styles.relatedNavContent}>
+                                <Ionicons 
+                                    name="arrow-forward" 
+                                    size={20} 
+                                    color={currentQuestionIndex === relatedQuestions.length - 1 ? 'rgba(255, 255, 255, 0.5)' : '#FFFFFF'} 
+                                />
+                                <ThemedText style={[styles.footerButtonText, currentQuestionIndex === relatedQuestions.length - 1 && { opacity: 0.5 }]}>
+                                    {currentQuestionIndex === relatedQuestions.length - 1
+                                        ? '🎯 Last Question' 
+                                        : `🎯 Next Question (${currentQuestionIndex + 1}/${relatedQuestions.length})`}
+                                </ThemedText>
+                            </View>
+                        </TouchableOpacity>
                     )}
 
                     <TouchableOpacity
@@ -755,7 +765,7 @@ const QuestionCard = ({
                         testID="report-issue-button"
                     >
                         <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                            🛑 Report an Issue with this Lesson
+                            🛑 Report an Issue with this Question
                         </ThemedText>
                     </TouchableOpacity>
                 </>
@@ -845,6 +855,10 @@ export default function QuizScreen() {
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(0);
+    const [relatedQuestions, setRelatedQuestions] = useState<Question[]>([]);
+    const [showRelatedQuestions, setShowRelatedQuestions] = useState(false);
+    const [totalRelatedQuestions, setTotalRelatedQuestions] = useState(0);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -1086,6 +1100,31 @@ export default function QuizScreen() {
                     : '';
 
                 setCurrentQuestion(data);
+                
+                // If this question has related questions, load them
+                if (data.related_question_ids && data.related_question_ids.length > 0) {
+                    const relatedQuestionsPromises = data.related_question_ids.map(async (id: number) => {
+                        const response = await fetch(
+                            `${API_BASE_URL}/question/${endpoint}?subject_name=${encodedSubjectName}&paper_name=${paper}&uid=${user.uid}&question_id=${id}`
+                        );
+                        if (!response.ok) return null;
+                        const questionData = await response.json();
+                        return questionData;
+                    });
+
+                    const relatedQuestionsData = await Promise.all(relatedQuestionsPromises);
+                    const validRelatedQuestions = relatedQuestionsData.filter(Boolean);
+                    setRelatedQuestions(validRelatedQuestions);
+                    setCurrentQuestionIndex(0);
+                    setShowRelatedQuestions(true);
+                    setTotalRelatedQuestions(validRelatedQuestions.length);
+                } else {
+                    setRelatedQuestions([]);
+                    setCurrentQuestionIndex(0);
+                    setShowRelatedQuestions(false);
+                    setTotalRelatedQuestions(0);
+                }
+
                 // Check if this question is in favorites and set the star accordingly
                 const isFavorited = favoriteQuestions.some(fav => fav.questionId === data.id);
                 setIsCurrentQuestionFavorited(isFavorited);
@@ -1234,6 +1273,20 @@ export default function QuizScreen() {
         loadRandomQuestion(selectedPaper);
     };
 
+    const handleNextRelatedQuestion = () => {
+        if (relatedQuestions.length === 0) return;
+        
+        const nextIndex = (currentQuestionIndex + 1) % relatedQuestions.length;
+        setCurrentQuestionIndex(nextIndex);
+        setCurrentQuestion(relatedQuestions[nextIndex]);
+        
+        // Reset UI state for new question
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+        setIsCorrect(null);
+        setFeedbackMessage('');
+        startTimer();
+    };
 
     const handleRestart = async () => {
         if (!user?.uid || !subjectName) return;
@@ -1706,6 +1759,12 @@ export default function QuizScreen() {
         fetchFavoriteQuestions();
     }, [user?.uid]);
 
+    const loadFavoriteQuestion = async (questionId: number) => {
+        setIsFromFavorites(true);
+        loadSpecificQuestion(questionId);
+        
+    }
+
     const loadSpecificQuestion = async (questionId: number) => {
         if (!user?.uid || !subjectName) {
             console.log("No user or subject name");
@@ -1714,7 +1773,7 @@ export default function QuizScreen() {
         try {
             setSelectedMode('quiz');
             setIsLoading(true);
-            setIsFromFavorites(true); // Set this flag when loading from favorites
+           
             const response = await fetch(
                 `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
             );
@@ -1918,7 +1977,7 @@ export default function QuizScreen() {
                                 currentQuestion={currentQuestion}
                                 favoriteQuestions={favoriteQuestions}
                                 isFavoritesLoading={isFavoritesLoading}
-                                loadSpecificQuestion={loadSpecificQuestion}
+                                loadSpecificQuestion={loadFavoriteQuestion}
                                 getFavoriteCardColor={getFavoriteCardColor}
                                 defaultTab={defaultTab as TabType || 'favorites'}
                             />
@@ -1954,12 +2013,12 @@ export default function QuizScreen() {
             >
                 <SubjectHeader />
                 {selectedMode === 'quiz' && (
-                                        <View>
+                    <View>
                         <PerformanceSummary
                             stats={stats}
                             onRestart={() => setIsRestartModalVisible(true)}
                         />
-                                                                </View>
+                    </View>
                 )}
                 <ThemedView style={styles.content}>
                     <QuestionCard
@@ -1983,6 +2042,9 @@ export default function QuizScreen() {
                         setIsZoomModalVisible={setIsZoomModalVisible}
                         renderMixedContent={renderMixedContent}
                         reportIssue={reportIssue}
+                        relatedQuestions={relatedQuestions}
+                        currentQuestionIndex={currentQuestionIndex}
+                        handleNextRelatedQuestion={handleNextRelatedQuestion}
                     />
                 </ThemedView>
             </ScrollView>
@@ -3393,5 +3455,31 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#6B7280',
         backgroundColor: 'transparent'
+    },
+    relatedNavButton: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    relatedNavContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+    },
+    relatedNavText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    footerButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        marginHorizontal: 8,
     },
 });
