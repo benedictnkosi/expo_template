@@ -71,7 +71,7 @@ interface Question {
         id: number;
         name: string;
     }
-    is_parent: boolean;
+    related_question_ids: number[];
 }
 
 
@@ -708,17 +708,15 @@ const QuestionCard = ({
                         </ThemedText>
                     </View>
 
-                    {!question.is_parent && (
-                        <QuizOptionsContainer
-                            options={question.options}
-                            selectedAnswer={selectedAnswer}
-                            showFeedback={showFeedback}
-                            isAnswerLoading={isAnswerLoading}
-                            currentQuestion={question}
-                            onAnswer={handleAnswer}
-                            cleanAnswer={cleanAnswer}
-                        />
-                    )}
+                    <QuizOptionsContainer
+                        options={question.options}
+                        selectedAnswer={selectedAnswer}
+                        showFeedback={showFeedback}
+                        isAnswerLoading={isAnswerLoading}
+                        currentQuestion={question}
+                        onAnswer={handleAnswer}
+                        cleanAnswer={cleanAnswer}
+                    />
 
                     <TouchableOpacity
                         style={[styles.reportButton, {
@@ -1033,7 +1031,6 @@ export default function QuizScreen() {
             }
 
             if (selectedMode === 'lessons') {
-                //log event
                 logAnalyticsEvent('lesson_view', {
                     user_id: user.uid,
                     subject_name: subjectName,
@@ -1041,7 +1038,6 @@ export default function QuizScreen() {
                 });
             }
 
-            //if response json body status exists and it is NOK
             const data: QuestionResponse = await response.json();
             if (data.status && data.status === "NOK") {
                 Toast.show({
@@ -1054,54 +1050,20 @@ export default function QuizScreen() {
 
             console.log('question', data);
 
-            // Check if this is a parent question and fetch child question IDs
-            if (data.is_parent) {
-                try {
-                    // Reset progress when loading a parent question
-                    setCurrentQuestion(null);
-                    setSelectedAnswer(null);
-                    setShowFeedback(false);
-                    setIsCorrect(null);
-                    setTabIndex(0);
-
-                    const childResponse = await fetch(
-                        `${API_BASE_URL}/questions/parent?parent_id=${data.id}`
-                    );
-                    if (!childResponse.ok) {
-                        throw new Error(`HTTP error! status: ${childResponse.status}`);
-                    }
-                    const childData = await childResponse.json();
-                    if (childData.status === "OK" && childData.question_ids) {
-                        console.log('Child question IDs:', childData.question_ids);
-                        setChildQuestionIds(childData.question_ids);
-                    }
-                } catch (error) {
-                    console.error('Error fetching child questions:', error);
-                }
-                setParentQuestion(data);
-            } else {
-                setCurrentQuestion(data);
-            }
-
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
                 setCurrentQuestion(null);
-                setParentQuestion(null);
             } else {
-                
-                // Only shuffle options for non-parent questions
-                if (!data.is_parent) {
-                    const options = data.options;
-                    const entries = Object.entries(options);
-                    const shuffledEntries = entries.sort(() => Math.random() - 0.5);
-                    data.options = {
-                        option1: shuffledEntries[0][1],
-                        option2: shuffledEntries[1][1],
-                        option3: shuffledEntries[2][1],
-                        option4: shuffledEntries[3][1]
-                    };
-                }
-
+                // Shuffle options
+                const options = data.options;
+                const entries = Object.entries(options);
+                const shuffledEntries = entries.sort(() => Math.random() - 0.5);
+                data.options = {
+                    option1: shuffledEntries[0][1],
+                    option2: shuffledEntries[1][1],
+                    option3: shuffledEntries[2][1],
+                    option4: shuffledEntries[3][1]
+                };
 
                 data.ai_explanation = data.ai_explanation ? data.ai_explanation
                     .replace(/\\n/g, '\\newline')
@@ -1116,23 +1078,14 @@ export default function QuizScreen() {
                     .replace(/\[/g, '$')
                     .replace(/\]/g, '$')
                     .replace(/\\[[\]]/g, '$')
-                    //replace \newlineq with =
                     .replace(/\\newline/g, '=')
-                    //replace **: with **
                     .replace(/\*\*: /g, '**')
-                    //replace *** with **
-                    //replace $: with $
                     .replace(/\$\: /g, '$')
                     .replace(/\*\*\*/g, '**')
-                    // Remove newlines between $ signs to keep LaTeX on one line
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $')
-                    : ''
+                    : '';
 
-                if (data.is_parent) {
-                    setParentQuestion(data);
-                } else {
-                    setCurrentQuestion(data);
-                }
+                setCurrentQuestion(data);
                 // Check if this question is in favorites and set the star accordingly
                 const isFavorited = favoriteQuestions.some(fav => fav.questionId === data.id);
                 setIsCurrentQuestionFavorited(isFavorited);
@@ -2002,542 +1955,37 @@ export default function QuizScreen() {
                 <SubjectHeader />
                 {selectedMode === 'quiz' && (
                     <View>
-                        {/* Add toggle button for parent questions */}
-
-
-                        {/* Show stats if not parent question or if toggle is on */}
-                        {(!parentQuestion?.is_parent || showStats) && (
-                            <PerformanceSummary
-                                stats={stats}
-                                onRestart={() => setIsRestartModalVisible(true)}
-                            />
-                        )}
+                        <PerformanceSummary
+                            stats={stats}
+                            onRestart={() => setIsRestartModalVisible(true)}
+                        />
                     </View>
                 )}
                 <ThemedView style={styles.content}>
-                    {!parentQuestion && (
-                        <QuestionCard
-                            question={currentQuestion}
-                            selectedAnswer={selectedAnswer}
-                            showFeedback={showFeedback}
-                            isAnswerLoading={isAnswerLoading}
-                            selectedMode={selectedMode}
-                            handleAnswer={handleAnswer}
-                            cleanAnswer={cleanAnswer}
-                            feedbackMessage={feedbackMessage}
-                            correctAnswer={correctAnswer}
-                            isDark={isDark}
-                            colors={colors}
-                            fetchAIExplanation={fetchAIExplanation}
-                            isLoadingExplanation={isLoadingExplanation}
-                            learnerRole={learnerRole}
-                            handleApproveQuestion={handleApproveQuestion}
-                            isApproving={isApproving}
-                            setZoomImageUrl={setZoomImageUrl}
-                            setIsZoomModalVisible={setIsZoomModalVisible}
-                            renderMixedContent={renderMixedContent}
-                            reportIssue={reportIssue}
-                        />
-                    )}
-
-                    {/* Add Custom Tabs for parent question */}
-                    {parentQuestion?.is_parent && (
-                        <View style={[styles.tabContainer, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }]}>
-                            <View style={styles.tabHeaderContainer}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.tabButton,
-                                        tabIndex === 0 && styles.activeTabButton,
-                                        { borderBottomColor: isDark ? colors.primary : '#4F46E5' }
-                                    ]}
-                                    onPress={() => setTabIndex(0)}
-                                >
-                                    <ThemedText style={[
-                                        styles.tabButtonText,
-                                        tabIndex === 0 && styles.activeTabButtonText,
-                                        { color: tabIndex === 0 ? (isDark ? colors.primary : '#4F46E5') : colors.textSecondary }
-                                    ]}>
-                                        Context 🥱
-                                    </ThemedText>
-                                </TouchableOpacity>
-                                <View
-                                    style={[
-                                        styles.tabButton,
-                                        tabIndex === 1 && styles.activeTabButton,
-                                        { borderBottomColor: isDark ? colors.primary : '#4F46E5' }
-                                    ]}
-                                >
-                                    <ThemedText style={[
-                                        styles.tabButtonText,
-                                        tabIndex === 1 && styles.activeTabButtonText,
-                                        { color: tabIndex === 1 ? (isDark ? colors.primary : '#4F46E5') : colors.textSecondary }
-                                    ]}>
-                                        Questions 📝
-                                    </ThemedText>
-                                </View>
-                            </View>
-                            <View style={styles.tabContent}>
-                                {tabIndex === 0 ? (
-                                    <>
-                                        <ScrollView>
-                                            <QuizContextContainer
-                                                context={parentQuestion.context}
-                                                renderMixedContent={renderMixedContent}
-                                            />
-                                            {(parentQuestion.image_path || parentQuestion.question_image_path && parentQuestion.image_path !== null && parentQuestion.image_path !== 'NULL' && parentQuestion.question_image_path !== null && parentQuestion.question_image_path !== 'NULL') && (
-                                                <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
-                                                    {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
-                                                </ThemedText>
-                                            )}
-
-                                {(currentQuestion.image_path && currentQuestion.image_path !== null && currentQuestion.image_path !== 'NULL') && (
-                                    <View style={styles.imageWrapper}>
-                                        <TouchableOpacity
-                                            style={styles.touchableImage}
-                                            onPress={() => {
-                                                setZoomImageUrl(currentQuestion.image_path);
-                                                setIsZoomModalVisible(true);
-                                            }}
-                                            activeOpacity={0.7}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                            testID='question-context-image-container'
-                                        >
-                                            {isImageLoading && <ImageLoadingPlaceholder />}
-                                            <Image
-                                                source={`${IMAGE_BASE_URL}${currentQuestion.image_path}`}
-                                                style={styles.questionImage}
-                                                contentFit="contain"
-                                                onLoadStart={() => setIsImageLoading(true)}
-                                                onLoadEnd={() => setIsImageLoading(false)}
-                                                testID='question-context-image'
-                                            />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-
-                                {(currentQuestion.question || currentQuestion.question_image_path) && (
-                                    <ThemedText style={styles.questionMeta} testID='question-meta'>
-                                        Question
-                                    </ThemedText>
-                                )}
-
-                                {(currentQuestion.question_image_path && currentQuestion.question_image_path !== null && currentQuestion.question_image_path !== 'NULL') && (
-                                    <View style={styles.imageWrapper}>
-                                        <TouchableOpacity
-                                            style={styles.touchableImage}
-                                            onPress={() => {
-                                                setZoomImageUrl(currentQuestion.question_image_path);
-                                                setIsZoomModalVisible(true);
-                                            }}
-                                            activeOpacity={0.7}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                            testID='question-additional-image-container'
-                                        >
-                                            <Image
-                                                source={`${IMAGE_BASE_URL}${currentQuestion.question_image_path}`}
-                                                style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
-                                                contentFit="contain"
-                                                onLoadStart={() => setIsImageLoading(true)}
-                                                onLoadEnd={() => setIsImageLoading(false)}
-                                                testID='question-image'
-                                            />
-                                            {isImageLoading && <ImageLoadingPlaceholder />}
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-
-                                {currentQuestion.question && (
-                                    <View style={styles.questionContainer} testID='question-text'>
-                                        {currentQuestion.question?.split('\n').map((line, index) => {
-                                            const trimmedLine = line.trim();
-                                            //formulas cant have bullet points
-                                            if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
-                                                //console.log('trimmedLine', trimmedLine);
-                                                const content = trimmedLine.substring(1).trim();
-                                                const indentLevel = line.indexOf('-') / 2;
-
-                                                return (
-                                                    <View
-                                                        key={index}
-                                                        style={[
-                                                            styles.bulletPointRow,
-                                                            { marginLeft: indentLevel * 5 }
-                                                        ]}
-                                                    >
-                                                        <ThemedText style={[styles.bulletPoint, {
-                                                            color: colors.text,
-                                                            marginTop: 4
-                                                        }]}>
-                                                            {indentLevel > 0 ? '🎯' : '✅'}
-                                                        </ThemedText>
-                                                        <View style={styles.bulletTextWrapper}>
-                                                            {renderMixedContent(content, isDark, colors)}
-                                                        </View>
-                                                    </View>
-                                                );
-                                            }
-                                            if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
-                                                //remove the - at the beginning of the line
-                                                line = trimmedLine.substring(1).trim();
-                                            }
-                                            return (
-                                                <View key={index}>
-                                                    {renderMixedContent(line, isDark, colors)}
-                                                </View>
-                                            );
-                                        })}
-                                    </View>
-                                )}
-
-                                {selectedMode === 'quiz' && (
-                                    <>
-                                        <View>
-                                            <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>
-                                                Tap to select your answer
-                                            </ThemedText>
-                                        </View>
-
-                                        {currentQuestion.type === 'multiple_choice' && (
-                                            <>
-                                                <ThemedView
-                                                    style={styles.optionsContainer}
-                                                    testID="options-container"
-                                                >
-                                                    {Object.entries(currentQuestion.options)
-                                                        .filter(([_, value]) => value)
-                                                        .map(([key, value], index) => (
-                                                            <TouchableOpacity
-                                                                key={key}
-                                                                style={[
-                                                                    styles.option,
-                                                                    {
-                                                                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                                                        borderColor: colors.border
-                                                                    },
-                                                                    selectedAnswer === value && [
-                                                                        styles.selectedOption,
-                                                                        { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
-                                                                    ],
-                                                                    showFeedback && selectedAnswer === value && (
-                                                                        (() => {
-                                                                            try {
-                                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
-
-                                                                                const parsedAnswer = currentQuestion.answer.startsWith('[')
-                                                                                    ? JSON.parse(currentQuestion.answer)
-                                                                                    : currentQuestion.answer;
-
-                                                                                return (Array.isArray(parsedAnswer)
-                                                                                    ? parsedAnswer.includes(value)
-                                                                                    : parsedAnswer === value)
-                                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
-                                                                            } catch (error) {
-                                                                                console.error('Error parsing answer:', error);
-                                                                                // Default to comparing as strings if parsing fails
-                                                                                if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
-
-                                                                                return currentQuestion.answer === value
-                                                                                    ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                                                    : [styles.wrongOption, { borderColor: '#FF3B30' }];
-                                                                            }
-                                                                        })()
-                                                                    )
-                                                                ]}
-                                                                onPress={() => handleAnswer(value)}
-                                                                disabled={showFeedback || isAnswerLoading}
-                                                                testID={`option-${index}`}
-                                                            >
-                                                                {isAnswerLoading && selectedAnswer === value ? (
-                                                                    <View
-                                                                        style={styles.optionLoadingContainer}
-                                                                        testID="option-loading"
-                                                                    >
-                                                                        <ActivityIndicator size="small" color={colors.primary} />
-                                                                    </View>
-                                                                ) : (
-                                                                    cleanAnswer(value).includes('$') ? (
-                                                                        <KaTeX
-                                                                            latex={cleanAnswer(value).replace(/\$/g, '')}
-                                                                            isOption={true}
-                                                                        />
-                                                                    ) : (
-                                                                        <ThemedText
-                                                                            style={[styles.optionText, { color: colors.text }]}
-                                                                            testID={`option-text-${index}`}
-                                                                        >
-                                                                            {value}
-                                                                        </ThemedText>
-                                                                    )
-                                                                )}
-                                                            </TouchableOpacity>
-                                                        ))}
-                                                </ThemedView>
-
-                                                <TouchableOpacity
-                                                    style={[styles.reportButton, {
-                                                        marginTop: 16,
-                                                        marginHorizontal: 16,
-                                                        backgroundColor: isDark ? colors.surface : '#FEE2E2'
-                                                    }]}
-                                                    onPress={reportIssue}
-                                                    testID="report-issue-button"
-                                                >
-                                                    <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                                                        🛑 Report an Issue with this {selectedMode === 'quiz' ? 'Question' : 'Lesson'}
-                                                    </ThemedText>
-                                                </TouchableOpacity>
-                                            </>
-                                        )}
-                                    </>
-                                )}
-
-                                {selectedMode === 'lessons' && (
-                                    <>
-                                        {(currentQuestion.ai_explanation && currentQuestion.ai_explanation !== null && currentQuestion.ai_explanation !== 'NULL') && (
-                                            <ThemedView
-                                                style={[styles.aiExplanationContainer, {
-                                                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                                    borderColor: '#22C55E'
-                                                }]}
-                                                testID="correct-answer-container"
-                                            >
-                                                {currentQuestion.ai_explanation?.split('\n').map((line, index) => {
-                                                    const trimmedLine = line.trim();
-                                                    //formulas cant have bullet points
-                                                    if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
-                                                        //console.log('trimmedLine', trimmedLine);
-                                                        const content = trimmedLine.substring(1).trim();
-                                                        const indentLevel = line.indexOf('-') / 2;
-
-                                                        return (
-                                                            <View
-                                                                key={index}
-                                                                style={[
-                                                                    styles.bulletPointRow,
-                                                                    { marginLeft: indentLevel * 5 }
-                                                                ]}
-                                                            >
-                                                                <ThemedText style={[styles.bulletPoint, {
-                                                                    color: colors.text,
-                                                                    marginTop: 4
-                                                                }]}>
-                                                                    {indentLevel > 0 ? '🎯' : '✅'}
-                                                                </ThemedText>
-                                                                <View style={styles.bulletTextWrapper}>
-                                                                    {renderMixedContent(content, isDark, colors)}
-                                                                </View>
-                                                            </View>
-                                                        );
-                                                    }
-                                                    if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
-                                                        //remove the - at the beginning of the line
-                                                        line = trimmedLine.substring(1).trim();
-                                                    }
-                                                    return (
-                                                        <View key={index}>
-                                                            {renderMixedContent(line, isDark, colors)}
-                                                        </View>
-                                                    );
-                                                })}
-                                            </ThemedView>
-                                        )}
-
-                                        <TouchableOpacity
-                                            style={[styles.reportButton, {
-                                                marginTop: 16,
-                                                marginHorizontal: 16,
-                                                backgroundColor: isDark ? colors.surface : '#FEE2E2'
-                                            }]}
-                                            onPress={reportIssue}
-                                            testID="report-issue-button"
-                                        >
-                                            <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                                                🛑 Report an Issue with this Lesson
-                                            </ThemedText>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-
-
-
-                                {showFeedback && selectedMode === 'quiz' && (
-                                    <ThemedView
-                                        style={styles.feedbackContainer}
-                                        testID="feedback-container"
-                                    >
-                                        <ThemedText
-                                            style={[styles.feedbackEmoji, { color: colors.text }]}
-                                            testID="feedback-message"
-                                        >
-                                            {feedbackMessage}
-                                        </ThemedText>
-
-                                        <ThemedView
-                                            style={[styles.correctAnswerContainer, {
-                                                backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                                borderColor: '#22C55E'
-                                            }]}
-                                            testID="correct-answer-container"
-                                        >
-                                            <ThemedText
-                                                style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
-                                                testID="correct-answer-label"
-                                            >
-                                                ✅ Right Answer!
-                                            </ThemedText>
-
-                                            {cleanAnswer(correctAnswer).includes('$') ? (
-                                                <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
-                                            ) : (
-                                                <ThemedText
-                                                    style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
-                                                    testID="correct-answer-text"
-                                                >
-                                                    {cleanAnswer(correctAnswer)}
-                                                </ThemedText>
-                                            )}
-
-                                            {(currentQuestion.answer_image && currentQuestion.answer_image !== null && currentQuestion.answer_image !== 'NULL') && (
-                                                <View style={styles.imageWrapper}>
-                                                    <TouchableOpacity
-                                                        style={styles.touchableImage}
-                                                        onPress={() => {
-                                                            setZoomImageUrl(currentQuestion.answer_image);
-                                                            setIsZoomModalVisible(true);
-                                                        }}
-                                                        activeOpacity={0.7}
-                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                        testID='question-additional-image-container'
-                                                    >
-                                                        <Image
-                                                            source={{
-                                                                uri: `${IMAGE_BASE_URL}${currentQuestion.answer_image}`
-                                                            }}
-                                                            style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
-                                                            resizeMode="contain"
-                                                            onLoadStart={() => setIsImageLoading(true)}
-                                                            onLoadEnd={() => setIsImageLoading(false)}
-                                                            testID='question-image'
-                                                        />
-                                                        {isImageLoading && <ImageLoadingPlaceholder />}
-                                                    </TouchableOpacity>
-                                                </View>
-                                            )}
-
-                                            {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
-                                                <>
-                                                    <ThemedText
-                                                        style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
-                                                        testID="correct-answer-label"
-                                                    >
-                                                        ✅ Explanation
-                                                    </ThemedText>
-
-                                                    {cleanAnswer(currentQuestion.explanation).includes('$') ? (
-                                                        <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
-                                                    ) : (
-                                                        <ThemedText
-                                                            style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
-                                                            testID="correct-answer-text"
-                                                        >
-                                                            {currentQuestion.explanation?.split('\n').map((line, index) => {
-                                                                const trimmedLine = line.trim();
-                                                                //formulas cant have bullet points
-                                                                if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
-                                                                    //console.log('trimmedLine', trimmedLine);
-                                                                    const content = trimmedLine.substring(1).trim();
-                                                                    const indentLevel = line.indexOf('-') / 2;
-
-                                                                    return (
-                                                                        <View
-                                                                            key={index}
-                                                                            style={[
-                                                                                styles.bulletPointRow,
-                                                                                { marginLeft: indentLevel * 5 }
-                                                                            ]}
-                                                                        >
-                                                                            <ThemedText style={[styles.bulletPoint, {
-                                                                                color: colors.text,
-                                                                                marginTop: 4
-                                                                            }]}>
-                                                                                {indentLevel > 0 ? '🎯' : '✅'}
-                                                                            </ThemedText>
-                                                                            <View style={styles.bulletTextWrapper}>
-                                                                                {renderMixedContent(content, isDark, colors)}
-                                                                            </View>
-                                                                        </View>
-                                                                    );
-                                                                }
-                                                                if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
-                                                                    //remove the - at the beginning of the line
-                                                                    line = trimmedLine.substring(1).trim();
-                                                                }
-                                                                if (trimmedLine.includes('{')) {
-                                                                    //remove the - at the beginning of the line
-                                                                    <View key={index}>
-                                                                        {renderMixedContent(line, isDark, colors)}
-                                                                    </View>
-                                                                }
-                                                                return (
-                                                                    <View key={index}>
-                                                                        <ThemedText>
-                                                                            {line}
-                                                                        </ThemedText>
-                                                                    </View>
-                                                                );
-                                                            })}
-                                                        </ThemedText>
-                                                    )}
-                                                </>
-                                            )}
-                                        </ThemedView>
-
-                                        <TouchableOpacity
-                                            style={[styles.aiExplanationButton, {
-                                                backgroundColor: isDark ? '#4338CA' : '#4F46E5'
-                                            }]}
-                                            onPress={() => fetchAIExplanation(currentQuestion?.id || 0)}
-                                            disabled={isLoadingExplanation}
-                                            testID="ai-explanation-button"
-                                        >
-                                            <ThemedText style={styles.aiExplanationButtonText}>
-                                                {isLoadingExplanation ? (
-                                                    <View
-                                                        style={styles.loaderContainer}
-                                                        testID="ai-explanation-loading"
-                                                    >
-                                                        <ThemedText style={styles.aiExplanationButtonText}>
-                                                            Pretending to think...
-                                                        </ThemedText>
-                                                        <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : colors.primary} />
-                                                    </View>
-                                                ) : (
-                                                    '🤖 Break it Down for Me!'
-                                                )}
-                                            </ThemedText>
-                                        </TouchableOpacity>
-
-                                        {/* Question approval button - only show for admin users */}
-                                        {(learnerRole === 'admin' || learnerRole === 'reviewer') && showFeedback && currentQuestion && (
-                                            <TouchableOpacity
-                                                style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
-                                                onPress={handleApproveQuestion}
-                                                disabled={isApproving}
-                                            >
-                                                <ThemedText style={styles.approveButtonText}>
-                                                    {isApproving ? 'Approving...' : 'Question looks good'}
-                                                </ThemedText>
-                                            </TouchableOpacity>
-                                        )}
-                                    </ThemedView>
-                                )}
-                            </>
-                        ) : null}
-                    </ThemedView>
+                    <QuestionCard
+                        question={currentQuestion}
+                        selectedAnswer={selectedAnswer}
+                        showFeedback={showFeedback}
+                        isAnswerLoading={isAnswerLoading}
+                        selectedMode={selectedMode}
+                        handleAnswer={handleAnswer}
+                        cleanAnswer={cleanAnswer}
+                        feedbackMessage={feedbackMessage}
+                        correctAnswer={correctAnswer}
+                        isDark={isDark}
+                        colors={colors}
+                        fetchAIExplanation={fetchAIExplanation}
+                        isLoadingExplanation={isLoadingExplanation}
+                        learnerRole={learnerRole}
+                        handleApproveQuestion={handleApproveQuestion}
+                        isApproving={isApproving}
+                        setZoomImageUrl={setZoomImageUrl}
+                        setIsZoomModalVisible={setIsZoomModalVisible}
+                        renderMixedContent={renderMixedContent}
+                        reportIssue={reportIssue}
+                    />
                 </ThemedView>
             </ScrollView>
-
             <QuizFooter
                 isFromFavorites={isFromFavorites}
                 onNext={handleNext}
@@ -2546,279 +1994,22 @@ export default function QuizScreen() {
 
             <ReportModal
                 isVisible={isReportModalVisible}
-                onBackdropPress={closeAllModals}
-                onSwipeComplete={closeAllModals}
-                swipeDirection={['down']}
-                useNativeDriver={true}
-                style={[styles.modal, { marginTop: insets.top }]}
-                testID="report-modal"
-                onModalHide={() => {
-                    if (isThankYouModalVisible) {
-                        setIsThankYouModalVisible(true);
-                    }
-                }}
-            >
-                <View style={[styles.reportModalContent, {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF'
-                }]}>
-                    <ThemedText style={[styles.reportModalTitle, { color: colors.text }]}>Report Issue</ThemedText>
-                    <TextInput
-                        style={[styles.reportInput, {
-                            backgroundColor: isDark ? colors.surface : '#F8FAFC',
-                            borderColor: colors.border,
-                            color: colors.text
-                        }]}
-                        placeholder="Describe the issue..."
-                        placeholderTextColor={isDark ? '#666666' : '#64748B'}
-                        value={reportComment}
-                        onChangeText={setReportComment}
-                        onSubmitEditing={handleSubmitReport}
-                        maxLength={200}
-                        testID="report-input"
-                    />
-                    <View style={styles.reportModalButtons}>
-                        <TouchableOpacity
-                            style={[styles.reportModalButton, styles.cancelButton, {
-                                backgroundColor: isDark ? colors.surface : '#E2E8F0'
-                            }]}
-                            onPress={() => setIsReportModalVisible(false)}
-                        >
-                            <ThemedText style={[styles.buttonText, { color: colors.text }]}>Cancel</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.reportModalButton, styles.submitButton, {
-                                backgroundColor: colors.primary
-                            }]}
-                            onPress={handleSubmitReport}
-                            disabled={isSubmitting}
-                        >
-                            <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>
-                                {isSubmitting ? 'Submitting...' : 'Submit'}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            <Modal
-                isVisible={isExplanationModalVisible}
-                onBackdropPress={closeAllModals}
-                style={styles.modal}
-                useNativeDriver={true}
-                onModalHide={() => {
-                    setAiExplanation('');
-                }}
-            >
-                <View style={[styles.explanationModal, {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF'
-                }]}>
-                    <View style={styles.explanationHeader}>
-                        <ThemedText style={[styles.explanationTitle, { color: colors.text }]}>
-                            🔬 AI Science Scoop! 🤖✨
-                        </ThemedText>
-                        <TouchableOpacity
-                            onPress={() => setIsExplanationModalVisible(false)}
-                            style={styles.closeButton}
-                        >
-                            <Ionicons name="close" size={24} color={colors.text} />
-                        </TouchableOpacity>
-                    </View>
-                    <ScrollView style={styles.explanationContent}>
-                        {aiExplanation?.split('\n').map((line, index) => {
-                            const trimmedLine = line.trim();
-                            //formulas cant have bullet points
-                            if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
-                                //console.log('trimmedLine', trimmedLine);
-                                const content = trimmedLine.substring(1).trim();
-                                const indentLevel = line.indexOf('-') / 2;
-
-                                return (
-                                    <View
-                                        key={index}
-                                        style={[
-                                            styles.bulletPointRow,
-                                            { marginLeft: indentLevel * 20 }
-                                        ]}
-                                    >
-                                        <ThemedText style={[styles.bulletPoint, {
-                                            color: colors.text,
-                                            marginTop: 4
-                                        }]}>
-                                            {indentLevel > 0 ? '🎯' : '✅'}
-                                        </ThemedText>
-                                        <View style={styles.bulletTextWrapper}>
-                                            {renderMixedContent(content, isDark, colors)}
-                                        </View>
-                                    </View>
-                                );
-                            }
-                            if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
-                                //remove the - at the beginning of the line
-                                line = trimmedLine.substring(1).trim();
-                            }
-                            return (
-                                <View key={index}>
-                                    {renderMixedContent(line, isDark, colors)}
-                                </View>
-                            );
-                        })}
-                    </ScrollView>
-                </View>
-            </Modal>
-
-            <Modal
-                isVisible={isZoomModalVisible}
-                onClose={() => {
-                    setIsZoomModalVisible(false);
-                    setImageRotation(0);
-                }}
-                zoomImageUrl={zoomImageUrl}
-                imageRotation={imageRotation}
-                setImageRotation={setImageRotation}
-            />
-
-            <RestartModal
-                isVisible={isRestartModalVisible}
-                onClose={() => setIsRestartModalVisible(false)}
-                onRestart={handleRestart}
+                onClose={() => setIsReportModalVisible(false)}
+                onSubmit={handleSubmitReport}
+                isSubmitting={isSubmitting}
+                reportComment={reportComment}
+                setReportComment={setReportComment}
                 isDark={isDark}
+                insets={insets}
             />
 
-            {/* Add PointsAnimation component */}
-            <PointsAnimation points={earnedPoints} isVisible={showPoints} />
-
-            {/* Add StreakModal */}
-            <StreakModal
-                isVisible={showStreakModal}
-                onClose={() => setShowStreakModal(false)}
-                streak={currentStreak}
-            />
-
-            {/* Thank You Modal */}
             <ThankYouModal
                 isVisible={isThankYouModalVisible}
-                onBackdropPress={() => {
-                    setIsThankYouModalVisible(false);
-                    loadRandomQuestion(selectedPaper || '');
-                }}
-                useNativeDriver={true}
-                style={[styles.modal, { marginTop: insets.top }]}
-                testID="thank-you-modal"
-                onModalHide={() => {
-                    loadRandomQuestion(selectedPaper || '');
-                }}
-            >
-                <View style={[styles.thankYouModalContent, {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF'
-                }]}>
-                    <View style={styles.thankYouIconContainer}>
-                        <Ionicons name="checkmark-circle" size={60} color="#22C55E" />
-                    </View>
-                    <ThemedText style={[styles.thankYouTitle, { color: colors.text }]}>
-                        🎉 You're Awesome! 🙌
-                    </ThemedText>
-                    <ThemedText style={[styles.thankYouMessage, { color: colors.textSecondary }]}>
-                        Your feedback helps us level up our questions! Thanks for making the quiz even better. 🚀💡
-                    </ThemedText>
-                    <TouchableOpacity
-                        style={[styles.thankYouButton, { backgroundColor: colors.primary }]}
-                        onPress={() => {
-                            setIsThankYouModalVisible(false);
-                            loadRandomQuestion(selectedPaper || '');
-                        }}
-                    >
-                        <ThemedText style={styles.thankYouButtonText}>Keep Going 🚀</ThemedText>
-                    </TouchableOpacity>
-                </View>
-            </Modal>
-
-            {/* Badge Celebration Modal */}
-            {newBadge && (
-                <BadgeCelebrationModal
-                    isVisible={showBadgeModal}
-                    onClose={() => setShowBadgeModal(false)}
-                    badge={newBadge}
-                />
-            )}
-
-            <Modal
-                isVisible={isNoteModalVisible}
-                onBackdropPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
-                onBackButtonPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
-                backdropOpacity={0.5}
-                style={{ margin: 0, justifyContent: 'flex-end' }}
-                avoidKeyboard
-            >
-                <ThemedView style={[{
-                    borderTopLeftRadius: 24,
-                    borderTopRightRadius: 24,
-                    padding: 20,
-                    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-                    backgroundColor: isDark ? colors.card : '#FFFFFF',
-                }]}>
-                    <View style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: 16,
-                    }}>
-                        <ThemedText style={{
-                            fontSize: 20,
-                            fontWeight: '600',
-                        }}>Add Note 📝</ThemedText>
-                        {!isSubmittingNote && (
-                            <TouchableOpacity
-                                onPress={() => setIsNoteModalVisible(false)}
-                                style={{ padding: 4 }}
-                            >
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    <TextInput
-                        style={{
-                            borderWidth: 1,
-                            borderRadius: 12,
-                            padding: 16,
-                            minHeight: 120,
-                            fontSize: 16,
-                            textAlignVertical: 'top',
-                            backgroundColor: isDark ? colors.surface : '#F8FAFC',
-                            color: colors.text,
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
-                        }}
-                        placeholder="Enter your note here..."
-                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : '#94A3B8'}
-                        multiline
-                        value={noteText}
-                        onChangeText={setNoteText}
-                        editable={!isSubmittingNote}
-                    />
-                    <TouchableOpacity
-                        style={{
-                            marginTop: 16,
-                            padding: 16,
-                            borderRadius: 12,
-                            alignItems: 'center',
-                            backgroundColor: colors.primary,
-                            opacity: isSubmittingNote ? 0.7 : 1
-                        }}
-                        onPress={handleSubmitNote}
-                        disabled={isSubmittingNote}
-                    >
-                        {isSubmittingNote ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                            <ThemedText style={{
-                                color: '#FFFFFF',
-                                fontSize: 16,
-                                fontWeight: '600',
-                            }}>Save Note</ThemedText>
-                        )}
-                    </TouchableOpacity>
-                </ThemedView>
-            </Modal>
-
+                onClose={() => setIsThankYouModalVisible(false)}
+                onRate={handleRating}
+                onPostpone={handlePostponeRating}
+                isDark={isDark}
+            />
         </LinearGradient>
     );
 }
