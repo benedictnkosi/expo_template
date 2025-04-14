@@ -37,6 +37,7 @@ import { AiExplanation } from './components/quiz/AiExplanation';
 import { QuizEmptyState } from './components/quiz/QuizEmptyState';
 import { QuizFooter } from './components/quiz/QuizFooter';
 import { KaTeX } from './components/quiz/KaTeX';
+import { AccountingQuestion } from './components/quiz/AccountingQuestion';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -72,6 +73,7 @@ interface Question {
         name: string;
     }
     related_question_ids: number[];
+    answer_sheet?: string;
 }
 
 
@@ -644,6 +646,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 }) => {
     if (!question) return null;
 
+    
+
     return (
         <ThemedView
             style={[styles.sectionCard, {
@@ -684,6 +688,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 />
             )}
 
+
             {(question.question || question.question_image_path) && (
                 <ThemedText style={styles.questionMeta} testID='question-meta'>
                     Question
@@ -700,7 +705,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 />
             )}
 
-            {question.question && (
+
+
+            {question.question &&  (
                 <View style={styles.questionContainer} testID='question-text'>
                     <QuizQuestionText
                         question={question.question}
@@ -709,8 +716,15 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </View>
             )}
 
+            {question.question && question.answer_sheet && (
+                <AccountingQuestion
+                    question={question.answer_sheet}
+                    questionId={question.id}
+                />
+            )}
 
-            {selectedMode === 'quiz' && (
+
+            {selectedMode === 'quiz' && !question.answer_sheet && (
                 <>
                     <View>
                         <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>
@@ -1160,7 +1174,7 @@ export default function QuizScreen() {
             setIsAnswerLoading(true);
             setSelectedAnswer(answer);
 
-            const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration);
+            const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration, "Normal", "");
 
             // Always award 1 point for correct answers
             const points = response.correct ? 1 : 0;

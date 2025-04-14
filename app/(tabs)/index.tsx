@@ -304,6 +304,7 @@ export default function HomeScreen() {
       await AsyncStorage.setItem('learnerName', learner.name);
       await AsyncStorage.setItem('learnerGrade', learner.grade.number.toString());
       await AsyncStorage.setItem('learnerAvatar', learner.avatar + ".png");
+      await AsyncStorage.setItem('userUID', user.uid);
 
       if (learner.name && learner.grade) {
         setLearnerInfo({

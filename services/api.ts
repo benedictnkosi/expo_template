@@ -34,7 +34,9 @@ export async function checkAnswer(
   uid: string,
   questionId: number,
   answer: string,
-  duration: number
+  duration: number,
+  requesting_type: string,
+  sheet_cell: string
 ): Promise<CheckAnswerResponse> {
   const response = await fetch(
     `${API_BASE_URL}/learner/check-answer`,
@@ -48,7 +50,8 @@ export async function checkAnswer(
         question_id: questionId,
         answer,
         answers: [],
-        requesting_type: 'real',
+        requesting_type: requesting_type,
+        sheet_cell: sheet_cell,
         duration: duration
       })
     }
