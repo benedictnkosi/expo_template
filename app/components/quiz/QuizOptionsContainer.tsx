@@ -1,0 +1,169 @@
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { ThemedView } from '../../components/ThemedView';
+import { ThemedText } from '../../components/ThemedText';
+import { useTheme } from '@/contexts/ThemeContext';
+import { KaTeX } from './KaTeX';
+
+interface QuizOptionsContainerProps {
+    options: Record<string, string>;
+    selectedAnswer: string | null;
+    showFeedback: boolean;
+    isAnswerLoading: boolean;
+    currentQuestion: {
+        answer: string;
+    } | null;
+    onAnswer: (value: string) => void;
+    cleanAnswer: (answer: string) => string;
+}
+
+export function QuizOptionsContainer({
+    options,
+    selectedAnswer,
+    showFeedback,
+    isAnswerLoading,
+    currentQuestion,
+    onAnswer,
+    cleanAnswer
+}: QuizOptionsContainerProps) {
+    const { colors, isDark } = useTheme();
+
+    return (
+        <ThemedView
+            style={[styles.optionsContainer, {
+                borderColor: colors.border
+            }]}
+        >
+            <View testID="options-container">
+                {Object.entries(options)
+                    .filter(([_, value]) => value)
+                    .map(([key, value], index) => (
+                        <TouchableOpacity
+                            key={key}
+                            style={[
+                                styles.option,
+                                {
+                                    backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                    borderColor: colors.border
+                                },
+                                selectedAnswer === value && [
+                                    styles.selectedOption,
+                                    { backgroundColor: isDark ? colors.primary + '20' : '#00000020' }
+                                ],
+                                showFeedback && selectedAnswer === value && (
+                                    (() => {
+                                        try {
+                                            if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+
+                                            const parsedAnswer = currentQuestion.answer.startsWith('[')
+                                                ? JSON.parse(currentQuestion.answer)
+                                                : currentQuestion.answer;
+
+                                            return (Array.isArray(parsedAnswer)
+                                                ? parsedAnswer.includes(value)
+                                                : parsedAnswer === value)
+                                                ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                        } catch (error) {
+                                            console.error('Error parsing answer:', error);
+                                            if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+
+                                            return currentQuestion.answer === value
+                                                ? [styles.correctOption, { borderColor: '#22C55E' }]
+                                                : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                        }
+                                    })()
+                                )
+                            ]}
+                            onPress={() => onAnswer(value)}
+                            disabled={showFeedback || isAnswerLoading}
+                            testID={`option-${index}`}
+                        >
+                            {isAnswerLoading && selectedAnswer === value ? (
+                                <View
+                                    style={styles.optionLoadingContainer}
+                                    testID="option-loading"
+                                >
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                </View>
+                            ) : (
+                                cleanAnswer(value).includes('$') ? (
+                                    <KaTeX
+                                        latex={cleanAnswer(value).replace(/\$/g, '')}
+                                        isOption={true}
+                                    />
+                                ) : (
+                                    <ThemedText
+                                        style={[styles.optionText, { color: colors.text }]}
+                                        testID={`option-text-${index}`}
+                                    >
+                                        {value}
+                                    </ThemedText>
+                                )
+                            )}
+                        </TouchableOpacity>
+                    ))}
+            </View>
+        </ThemedView>
+    );
+}
+
+const styles = StyleSheet.create({
+    optionsContainer: {
+        gap: 12,
+        marginTop: 20,
+        paddingHorizontal: 2,
+        backgroundColor: 'transparent',
+    },
+    option: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        width: '100%',
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    selectedOption: {
+        backgroundColor: '#00000020',
+        borderColor: '#000000',
+    },
+    correctOption: {
+        backgroundColor: 'rgba(34, 197, 94, 0.2)',
+        borderColor: '#22C55E',
+    },
+    wrongOption: {
+        backgroundColor: 'rgba(255, 59, 48, 0.2)',
+        borderColor: '#FF3B30',
+    },
+    optionText: {
+        fontSize: 12,
+        lineHeight: 20,
+        color: '#1E293B',
+    },
+    optionLoadingContainer: {
+        minHeight: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    optionContent: {
+        width: '100%',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        color: '#000000',
+    },
+    latexOptionContainer: {
+        width: '100%',
+        flexWrap: 'wrap',
+        color: '#000000',
+    },
+    latexContainer: {
+        width: '100%',
+        marginVertical: 4,
+        backgroundColor: '#FFFFFF',
+        color: '#000000',
+    },
+}); 

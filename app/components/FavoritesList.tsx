@@ -95,8 +95,7 @@ const styles = StyleSheet.create({
     },
     favoriteCardText: {
         fontSize: 14,
-        textAlign: 'center',
-        fontWeight: '500',
+        textAlign: 'center'
     },
     emptyFavorites: {
         padding: 20,

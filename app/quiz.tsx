@@ -11,6 +11,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
 import * as StoreReview from 'expo-store-review';
 import ZoomableImageNew from '../components/ZoomableImageNew';
+import { TabView, TabBar } from 'react-native-tab-view';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
@@ -23,6 +24,19 @@ import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
 import { NotesAndTodosAndFavorites, TabType } from '@/app/components/NotesAndTodosAndFavorites';
+import { StreakModal, ReportModal, ExplanationModal, ZoomModal, RestartModal, ThankYouModal } from '@/app/components/quiz/quiz-modals';
+import { FeedbackContainer } from './components/quiz/FeedbackContainer';
+import { PerformanceSummary, SubjectStats as ImportedSubjectStats } from './components/quiz/PerformanceSummary';
+import { QuizModeSelection } from './components/quiz/QuizModeSelection';
+import { QuizPaperButtons } from './components/quiz/QuizPaperButtons';
+import { QuizContextContainer } from './components/quiz/QuizContextContainer';
+import { QuizAdditionalImage } from './components/quiz/QuizAdditionalImage';
+import { QuizQuestionText } from './components/quiz/QuizQuestionText';
+import { QuizOptionsContainer } from './components/quiz/QuizOptionsContainer';
+import { AiExplanation } from './components/quiz/AiExplanation';
+import { QuizEmptyState } from './components/quiz/QuizEmptyState';
+import { QuizFooter } from './components/quiz/QuizFooter';
+import { KaTeX } from './components/quiz/KaTeX';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -57,6 +71,7 @@ interface Question {
         id: number;
         name: string;
     }
+    is_parent: boolean;
 }
 
 
@@ -109,84 +124,6 @@ function cleanAnswer(answer: string): string {
     }
 }
 
-function KaTeX({ latex, isOption }: { latex: string, isOption?: boolean }) {
-    const [webViewHeight, setWebViewHeight] = useState(60);
-    const { isDark, colors } = useTheme();
-
-    const html = `
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-                <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-                <style>
-                    body {
-                        margin: 0;
-                        padding: 8px;
-                        background-color: transparent;
-                        color: ${isDark ? '#FFFFFF' : '#000000'};
-                    }
-                    #formula {
-                        width: 100%;
-                        overflow-x: auto;
-                        overflow-y: visible;
-                        padding: 5px 0;
-                        color: ${isDark ? '#FFFFFF' : '#000000'};
-                    }
-                    .katex {
-                        font-size: ${isOption && latex.length > 70 ? '0.8em' : '1em'};
-                        color: ${isDark ? '#FFFFFF' : '#000000'};
-                        text-align: left;
-                    }
-                    .katex-display {
-                        margin: 0;
-                        padding: 5px 0;
-                        overflow: visible;
-                        text-align: left !important;
-                        color: ${isDark ? '#FFFFFF' : '#000000'};
-                    }
-                    .katex-display > .katex {
-                        text-align: left !important;
-                        color: ${isDark ? '#FFFFFF' : '#000000'};
-                    }
-                    .katex .base {
-                        color: ${isDark ? '#FFFFFF' : '#000000'};
-                    }
-                </style>
-            </head>
-            <body>
-                <div id="formula"></div>
-                <script>
-                    document.addEventListener("DOMContentLoaded", function() {
-                        katex.render(String.raw\`${latex}\`, document.getElementById("formula"), {
-                            throwOnError: false,
-                            displayMode: true,
-                            trust: true,
-                            strict: false,
-                            output: 'html'
-                        });
-                        // Send height to React Native
-                        window.ReactNativeWebView.postMessage(document.documentElement.scrollHeight);
-                    });
-                </script>
-            </body>
-        </html>
-    `;
-
-    return (
-        <WebView
-            source={{ html }}
-            style={{ height: webViewHeight, backgroundColor: 'transparent' }}
-            scrollEnabled={false}
-            onMessage={(event) => {
-                const height = parseInt(event.nativeEvent.data);
-                setWebViewHeight(height);
-            }}
-        />
-    );
-}
 
 // Add helper function
 let isOpeningDollarSign = false
@@ -307,7 +244,7 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
                 if (part.trim()) {
                     // Add extra spacing before lines starting with ***
                     const needsExtraSpacing = part.trim().startsWith('***');
-                    const fontSize = part.length > 500 ? 12 : 18;
+                    const fontSize = part.length > 500 ? 12 : 12;
                     if (part.trim().endsWith(':')) {
                         part = part.trim().slice(0, -1);
                     }
@@ -652,41 +589,199 @@ const PointsAnimation = ({ points, isVisible }: { points: number; isVisible: boo
     );
 };
 
-// Add the StreakModal component after the PointsAnimation component
-const StreakModal = ({ isVisible, onClose, streak }: { isVisible: boolean; onClose: () => void; streak: number }) => {
-    return (
-        <Modal
-            isVisible={isVisible}
-            onBackdropPress={onClose}
-            style={styles.modal}
-            animationIn="fadeIn"
-            animationOut="fadeOut"
-        >
-            <View style={[styles.streakModalContent]}>
-                <View style={styles.streakIconContainer}>
-                    <View style={styles.streakDaysRow}>
-                        {['S', 'S', 'M', 'T', 'W', 'T', 'F'].map((day, index) => (
-                            <View key={index} style={styles.streakDay}>
-                                <ThemedText style={styles.streakDayText}>{day}</ThemedText>
-                            </View>
-                        ))}
-                    </View>
-                    <View style={styles.streakNumberContainer}>
-                        {/* Replace AnimatedFire with a star icon */}
-                        <Ionicons name="star" size={48} color="#FFFFFF" />
-                    </View>
-                </View>
-                <ThemedText style={styles.streakTitle}>🔥 {streak}-Day Streak! 🔥</ThemedText>
-                <ThemedText style={styles.streakSubtitle}>Keep the fire going — get 3 right answers every day to grow your streak!</ThemedText>
+// Add QuestionCard component near the top of the file, before the main QuizScreen component
+const QuestionCard = ({
+    question,
+    selectedAnswer,
+    showFeedback,
+    isAnswerLoading,
+    selectedMode,
+    handleAnswer,
+    cleanAnswer,
+    feedbackMessage,
+    correctAnswer,
+    isDark,
+    colors,
+    fetchAIExplanation,
+    isLoadingExplanation,
+    learnerRole,
+    handleApproveQuestion,
+    isApproving,
+    setZoomImageUrl,
+    setIsZoomModalVisible,
+    renderMixedContent,
+    reportIssue
+}: {
+    question: Question | null;
+    selectedAnswer: string | null;
+    showFeedback: boolean;
+    isAnswerLoading: boolean;
+    selectedMode: 'quiz' | 'lessons';
+    handleAnswer: (answer: string) => Promise<void>;
+    cleanAnswer: (answer: string) => string;
+    feedbackMessage: string;
+    correctAnswer: string;
+    isDark: boolean;
+    colors: any;
+    fetchAIExplanation: (questionId: number) => Promise<void>;
+    isLoadingExplanation: boolean;
+    learnerRole: string | string[];
+    handleApproveQuestion: () => Promise<void>;
+    isApproving: boolean;
+    setZoomImageUrl: (url: string | null) => void;
+    setIsZoomModalVisible: (visible: boolean) => void;
+    renderMixedContent: (text: string, isDark: boolean, colors: any) => React.ReactNode;
+    reportIssue: () => void;
+}) => {
+    if (!question) return null;
 
-                <TouchableOpacity
-                    style={styles.continueButton}
-                    onPress={onClose}
+    return (
+        <ThemedView
+            style={[styles.sectionCard, {
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: colors.border
+            }]}
+            testID="question-card"
+        >
+            {(question.context || question.image_path) && (
+                <ThemedText
+                    style={styles.questionMeta}
+                    testID="context-label"
                 >
-                    <ThemedText style={styles.continueButtonText}>CONTINUE</ThemedText>
-                </TouchableOpacity>
-            </View>
-        </Modal>
+                    Context
+                </ThemedText>
+            )}
+
+            {question.context && (
+                <QuizContextContainer
+                    context={question.context}
+                    renderMixedContent={renderMixedContent}
+                />
+            )}
+
+            {(question.image_path || question.question_image_path && question.image_path !== null && question.image_path !== 'NULL' && question.question_image_path !== null && question.question_image_path !== 'NULL') && (
+                <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
+                    {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
+                </ThemedText>
+            )}
+
+            {(question.image_path && question.image_path !== null && question.image_path !== 'NULL') && (
+                <QuizAdditionalImage
+                    imagePath={question.image_path}
+                    onZoom={(url) => {
+                        setZoomImageUrl(url);
+                        setIsZoomModalVisible(true);
+                    }}
+                />
+            )}
+
+            {(question.question || question.question_image_path) && (
+                <ThemedText style={styles.questionMeta} testID='question-meta'>
+                    Question
+                </ThemedText>
+            )}
+
+            {(question.question_image_path && question.question_image_path !== null && question.question_image_path !== 'NULL') && (
+                <QuizAdditionalImage
+                    imagePath={question.question_image_path}
+                    onZoom={(url) => {
+                        setZoomImageUrl(url);
+                        setIsZoomModalVisible(true);
+                    }}
+                />
+            )}
+
+            {question.question && (
+                <View style={styles.questionContainer} testID='question-text'>
+                    <QuizQuestionText
+                        question={question.question}
+                        renderMixedContent={renderMixedContent}
+                    />
+                </View>
+            )}
+
+            {selectedMode === 'quiz' && (
+                <>
+                    <View>
+                        <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>
+                            Tap to select your answer
+                        </ThemedText>
+                    </View>
+
+                    {!question.is_parent && (
+                        <QuizOptionsContainer
+                            options={question.options}
+                            selectedAnswer={selectedAnswer}
+                            showFeedback={showFeedback}
+                            isAnswerLoading={isAnswerLoading}
+                            currentQuestion={question}
+                            onAnswer={handleAnswer}
+                            cleanAnswer={cleanAnswer}
+                        />
+                    )}
+
+                    <TouchableOpacity
+                        style={[styles.reportButton, {
+                            marginTop: 16,
+                            marginHorizontal: 16,
+                            backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                        }]}
+                        onPress={reportIssue}
+                        testID="report-issue-button"
+                    >
+                        <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                            🛑 Report an Issue with this {selectedMode === 'quiz' ? 'Question' : 'Lesson'}
+                        </ThemedText>
+                    </TouchableOpacity>
+                </>
+            )}
+
+            {selectedMode === 'lessons' && (
+                <>
+                    {(question.ai_explanation && question.ai_explanation !== null && question.ai_explanation !== 'NULL') && (
+                        <AiExplanation
+                            explanation={question.ai_explanation}
+                            isDark={isDark}
+                            colors={colors}
+                            renderMixedContent={renderMixedContent}
+                        />
+                    )}
+
+                    <TouchableOpacity
+                        style={[styles.reportButton, {
+                            marginTop: 16,
+                            marginHorizontal: 16,
+                            backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                        }]}
+                        onPress={reportIssue}
+                        testID="report-issue-button"
+                    >
+                        <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                            🛑 Report an Issue with this Lesson
+                        </ThemedText>
+                    </TouchableOpacity>
+                </>
+            )}
+
+            {showFeedback && selectedMode === 'quiz' && (
+                <FeedbackContainer
+                    feedbackMessage={feedbackMessage}
+                    correctAnswer={correctAnswer}
+                    isDark={isDark}
+                    colors={colors}
+                    cleanAnswer={cleanAnswer}
+                    currentQuestion={question}
+                    fetchAIExplanation={fetchAIExplanation}
+                    isLoadingExplanation={isLoadingExplanation}
+                    learnerRole={learnerRole}
+                    handleApproveQuestion={handleApproveQuestion}
+                    isApproving={isApproving}
+                    setZoomImageUrl={setZoomImageUrl}
+                    setIsZoomModalVisible={setIsZoomModalVisible}
+                    renderMixedContent={renderMixedContent}
+                />
+            )}
+        </ThemedView>
     );
 };
 
@@ -694,7 +789,10 @@ export default function QuizScreen() {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
     const { subjectName, learnerRole, defaultTab } = useLocalSearchParams();
+    const insets = useSafeAreaInsets();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+    const [parentQuestion, setParentQuestion] = useState<Question | null>(null);
+    const [childQuestionIds, setChildQuestionIds] = useState<number[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
@@ -703,12 +801,17 @@ export default function QuizScreen() {
     const [isImageLoading, setIsImageLoading] = useState(true);
     const scrollViewRef = React.useRef<ScrollView>(null);
     const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
-    const [stats, setStats] = useState<SubjectStats['data']['stats'] | null>(null);
+    const [stats, setStats] = useState<{
+        total_answers: number;
+        correct_answers: number;
+        incorrect_answers: number;
+        correct_percentage: number;
+        incorrect_percentage: number;
+    } | null>(null);
     const [isReportModalVisible, setIsReportModalVisible] = useState(false);
     const [isThankYouModalVisible, setIsThankYouModalVisible] = useState(false);
     const [reportComment, setReportComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const insets = useSafeAreaInsets();
     const correctSound = useRef<Audio.Sound>();
     const incorrectSound = useRef<Audio.Sound>();
     const [isExplanationModalVisible, setIsExplanationModalVisible] = useState(false);
@@ -739,6 +842,12 @@ export default function QuizScreen() {
     const [isQuestionLoading, setIsQuestionLoading] = useState(false);
     const [showBadgeModal, setShowBadgeModal] = useState(false);
     const [newBadge, setNewBadge] = useState<Badge | null>(null);
+    const [tabIndex, setTabIndex] = useState(0);
+    const [showStats, setShowStats] = useState(false);
+    const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
+    const [noteText, setNoteText] = useState('');
+    const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+
     const scrollToBottom = () => {
         setTimeout(() => {
             scrollViewRef.current?.scrollToEnd({
@@ -860,10 +969,13 @@ export default function QuizScreen() {
 
             // First close the report modal
             setIsReportModalVisible(false);
-            
+            //wait 3 seconds to show thank you modal 
+            setTimeout(() => {
+                
             // Use a small timeout to ensure the modal is fully dismissed
             setTimeout(() => {
                 setIsThankYouModalVisible(true);
+            }, 3000);
             }, 3000);
 
             setReportComment('');
@@ -873,6 +985,8 @@ export default function QuizScreen() {
                 user_id: user?.uid,
                 question_id: currentQuestion?.id
             });
+
+
         } catch (error) {
             console.error('Error reporting issue:', error);
             Toast.show({
@@ -886,7 +1000,7 @@ export default function QuizScreen() {
         }
     };
 
-    const loadRandomQuestion = async (paper: string) => {
+    const loadRandomQuestion = async (paper: string, questionId?: number) => {
         if (!user?.uid || !subjectName) {
             console.warn('Missing required parameters: user ID or subject name');
             return;
@@ -901,15 +1015,15 @@ export default function QuizScreen() {
         setSelectedAnswer(null);
         setShowFeedback(false);
         setIsCorrect(null);
-        setIsFromFavorites(false); // Reset this flag when loading random questions
-        stopTimer(); // Stop any existing timer
+        setIsFromFavorites(false);
+        stopTimer();
 
         try {
             setIsQuestionLoading(true);
             const endpoint = selectedMode === 'lessons' ? 'random' : 'byname';
             const encodedSubjectName = encodeURIComponent(`${subjectName}`);
             const response = await fetch(
-                `${API_BASE_URL}/question/${endpoint}?subject_name=${encodedSubjectName}&paper_name=${paper}&uid=${user.uid}&question_id=0`
+                `${API_BASE_URL}/question/${endpoint}?subject_name=${encodedSubjectName}&paper_name=${paper}&uid=${user.uid}&question_id=${questionId || 0}`
             );
 
             if (!response.ok) {
@@ -938,23 +1052,56 @@ export default function QuizScreen() {
                 return;
             }
 
+            console.log('question', data);
 
-            // console.log("context ", data);
+            // Check if this is a parent question and fetch child question IDs
+            if (data.is_parent) {
+                try {
+                    // Reset progress when loading a parent question
+                    setCurrentQuestion(null);
+                    setSelectedAnswer(null);
+                    setShowFeedback(false);
+                    setIsCorrect(null);
+                    setTabIndex(0);
+
+                    const childResponse = await fetch(
+                        `${API_BASE_URL}/questions/parent?parent_id=${data.id}`
+                    );
+                    if (!childResponse.ok) {
+                        throw new Error(`HTTP error! status: ${childResponse.status}`);
+                    }
+                    const childData = await childResponse.json();
+                    if (childData.status === "OK" && childData.question_ids) {
+                        console.log('Child question IDs:', childData.question_ids);
+                        setChildQuestionIds(childData.question_ids);
+                    }
+                } catch (error) {
+                    console.error('Error fetching child questions:', error);
+                }
+                setParentQuestion(data);
+            } else {
+                setCurrentQuestion(data);
+            }
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
                 setCurrentQuestion(null);
+                setParentQuestion(null);
             } else {
-                // Shuffle the options
-                const options = data.options;
-                const entries = Object.entries(options);
-                const shuffledEntries = entries.sort(() => Math.random() - 0.5);
-                data.options = {
-                    option1: shuffledEntries[0][1],
-                    option2: shuffledEntries[1][1],
-                    option3: shuffledEntries[2][1],
-                    option4: shuffledEntries[3][1]
-                };
+                
+                // Only shuffle options for non-parent questions
+                if (!data.is_parent) {
+                    const options = data.options;
+                    const entries = Object.entries(options);
+                    const shuffledEntries = entries.sort(() => Math.random() - 0.5);
+                    data.options = {
+                        option1: shuffledEntries[0][1],
+                        option2: shuffledEntries[1][1],
+                        option3: shuffledEntries[2][1],
+                        option4: shuffledEntries[3][1]
+                    };
+                }
+
 
                 data.ai_explanation = data.ai_explanation ? data.ai_explanation
                     .replace(/\\n/g, '\\newline')
@@ -981,8 +1128,11 @@ export default function QuizScreen() {
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $')
                     : ''
 
-                setCurrentQuestion(data);
-
+                if (data.is_parent) {
+                    setParentQuestion(data);
+                } else {
+                    setCurrentQuestion(data);
+                }
                 // Check if this question is in favorites and set the star accordingly
                 const isFavorited = favoriteQuestions.some(fav => fav.questionId === data.id);
                 setIsCurrentQuestionFavorited(isFavorited);
@@ -1010,11 +1160,9 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !currentQuestion) return;
 
-        const isCorrect = cleanAnswer(answer) === cleanAnswer(currentQuestion.answer);
-        
         // Set flag to indicate answers were submitted
         await AsyncStorage.setItem('hasNewAnswers', 'true');
-        
+
         try {
             stopTimer();
             setIsAnswerLoading(true);
@@ -1187,8 +1335,8 @@ export default function QuizScreen() {
                     .replace(/\\n/g, '\\newline')
                     .replace(/\\\(/g, '$')
                     .replace(/\\\),/g, '$')
-                    .replace(/\\\[/g, '$')
-                    .replace(/\\\]/g, '$')
+                    .replace(/\[/g, '$')
+                    .replace(/\]/g, '$')
                     .replace(/\\\)\./g, '$')
                     .replace(/\\\)/g, '$')
                     .replace(/\\\\/g, '\\')
@@ -1407,45 +1555,83 @@ export default function QuizScreen() {
                 <View style={styles.titleContainer}>
                     <ThemedText style={[styles.subjectTitle, { color: '#FFFFFF' }]}>{subjectName}</ThemedText>
                     <View style={styles.badgeContainer}>
-                        {currentQuestion && (
+                        {(currentQuestion || parentQuestion) && (
                             <>
                                 <View style={[styles.badge, {
                                     backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
                                 }]}>
-                                    <ThemedText style={styles.badgeText}>{currentQuestion.year}</ThemedText>
+                                    <ThemedText style={styles.badgeText}>{currentQuestion?.year || parentQuestion?.year}</ThemedText>
                                 </View>
                                 <View style={[styles.badge, {
                                     backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
                                 }]}>
-                                    <ThemedText style={styles.badgeText}>Term {currentQuestion.term}</ThemedText>
+                                    <ThemedText style={styles.badgeText}>Term {currentQuestion?.term || parentQuestion?.term}</ThemedText>
                                 </View>
-                                {currentQuestion.curriculum && (
+                                {(currentQuestion?.curriculum || parentQuestion?.curriculum) && (
                                     <View style={[styles.badge, {
                                         backgroundColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
                                     }]}>
-                                        <ThemedText style={styles.badgeText}>{currentQuestion.curriculum}</ThemedText>
+                                        <ThemedText style={styles.badgeText}>{currentQuestion?.curriculum || parentQuestion?.curriculum}</ThemedText>
                                     </View>
                                 )}
-                                {currentQuestion && (
-                                    <TouchableOpacity
-                                        onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
-                                        disabled={isFavoriting}
-                                        style={[styles.favoriteButton, {
-                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                                            marginLeft: 'auto',
-                                            marginRight: 8
-                                        }]}
-                                    >
-                                        {isFavoriting ? (
-                                            <ActivityIndicator size="small" color={colors.primary} />
-                                        ) : (
-                                            <Ionicons
-                                                name={isCurrentQuestionFavorited ? "star" : "star-outline"}
-                                                size={14}
-                                                color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
-                                            />
-                                        )}
-                                    </TouchableOpacity>
+                                {(currentQuestion || parentQuestion)     && (
+                                    <>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            {parentQuestion && (
+                                                <TouchableOpacity
+                                                    onPress={() => setShowStats(!showStats)}
+                                                    style={[styles.favoriteButton, {
+                                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                                        marginLeft: 'auto',
+                                                        marginRight: 8
+                                                    }]}
+                                                >
+                                                    <Ionicons
+                                                        name="stats-chart"
+                                                        size={14}
+                                                        color={showStats ? (isDark ? '#4F46E5' : '#4338CA') : (isDark ? '#FFFFFF' : '#000000')}
+                                                    />
+                                                    <ThemedText style={[styles.buttonLabel, { opacity: showStats ? 0 : 1 }]}>
+                                                        Stats
+                                                    </ThemedText>
+                                                </TouchableOpacity>
+                                            )}
+                                            <TouchableOpacity
+                                                onPress={() => setIsNoteModalVisible(true)}
+                                                style={[styles.favoriteButton, {
+                                                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                                    marginRight: 8
+                                                }]}
+                                            >
+                                                <Ionicons
+                                                    name="create-outline"
+                                                    size={14}
+                                                    color={isDark ? '#FFFFFF' : '#000000'}
+                                                />
+                                                <ThemedText style={styles.buttonLabel}>
+                                                    Note
+                                                </ThemedText>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
+                                            disabled={isFavoriting}
+                                            style={[styles.favoriteButton, {
+                                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                                marginRight: 8
+                                            }]}
+                                        >
+                                            {isFavoriting ? (
+                                                <ActivityIndicator size="small" color={colors.primary} />
+                                            ) : (
+                                                <Ionicons
+                                                    name={isCurrentQuestionFavorited ? "star" : "star-outline"}
+                                                    size={14}
+                                                    color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
+                                                />
+                                            )}
+                                        </TouchableOpacity>
+                                    </>
                                 )}
                             </>
                         )}
@@ -1457,92 +1643,7 @@ export default function QuizScreen() {
         </LinearGradient>
     );
 
-    const PerformanceSummary = () => {
-        if (!stats) return null;
 
-        const progress = stats.total_answers === 0 ? 0 :
-            Math.round((stats.correct_answers / stats.total_answers) * 100);
-
-        return (
-            <View style={[styles.performanceContainer, {
-                backgroundColor: isDark ? colors.card : '#FFFFFF',
-                borderColor: colors.border,
-                borderWidth: 1,
-                shadowColor: isDark ? '#000000' : '#000000',
-                shadowOpacity: isDark ? 0.3 : 0.1,
-            }]}>
-                <View style={styles.performanceHeader}>
-                    <ThemedText style={[styles.performanceTitle, { color: colors.text }]}>Your Scoreboard! 🏆</ThemedText>
-                    <TouchableOpacity
-                        style={styles.restartIconButton}
-                        onPress={() => {
-                            setIsRestartModalVisible(true);
-                        }}
-                    >
-                        <Ionicons name="refresh-circle" size={28} color={isDark ? '#FF3B30' : '#EF4444'} />
-                    </TouchableOpacity>
-
-                </View>
-                <View style={styles.statsContainer}>
-                    <View style={[styles.statItem, {
-                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                        borderColor: colors.border,
-                        borderWidth: 1,
-                        shadowColor: isDark ? '#000000' : '#000000',
-                        shadowOpacity: isDark ? 0.3 : 0.1,
-                    }]}>
-                        <View style={styles.statContent}>
-                            <ThemedText style={styles.statIcon}>🎯</ThemedText>
-                            <View style={styles.statTextContainer}>
-                                <ThemedText style={[styles.statCount, { color: colors.text }]}>{stats?.correct_answers || 0}</ThemedText>
-                                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Bullseyes</ThemedText>
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={[styles.statItem, {
-                        backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                        borderColor: colors.border,
-                        borderWidth: 1,
-                        shadowColor: isDark ? '#000000' : '#000000',
-                        shadowOpacity: isDark ? 0.3 : 0.1,
-                    }]}>
-                        <View style={styles.statContent}>
-                            <ThemedText style={styles.statIcon}>💥</ThemedText>
-                            <View style={styles.statTextContainer}>
-                                <ThemedText style={[styles.statCount, { color: colors.text }]}>{stats?.incorrect_answers || 0}</ThemedText>
-                                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>Oopsies</ThemedText>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                <View style={[styles.progressBarContainer, {
-                    backgroundColor: isDark ? colors.border : '#E2E8F0',
-                    marginHorizontal: 16,
-                    marginTop: 16,
-                    marginBottom: 8
-                }]}>
-                    <View
-                        style={[
-                            styles.progressBar,
-                            {
-                                width: `${progress}%`,
-                                backgroundColor: getProgressBarColor(progress)
-                            }
-                        ]}
-                    />
-                </View>
-                <ThemedText style={[styles.masteryText, {
-                    color: colors.textSecondary,
-                    marginHorizontal: 16,
-                    marginBottom: 8
-                }]}>
-                    {progress}% GOAT 🐐
-                </ThemedText>
-            </View>
-        );
-    };
 
     // Add this function to handle rating
     const handleRating = async () => {
@@ -1560,7 +1661,7 @@ export default function QuizScreen() {
 
             // First check if the StoreReview API is available
             const isAvailable = await StoreReview.isAvailableAsync();
-            
+
             if (isAvailable) {
                 // Try to use the native StoreReview API first
                 await StoreReview.requestReview();
@@ -1581,7 +1682,7 @@ export default function QuizScreen() {
                     }
                 }
             }
-            
+
             // Set next prompt date to tomorrow
             const nextPromptDate = new Date();
             nextPromptDate.setDate(nextPromptDate.getDate() + 1);
@@ -1725,6 +1826,67 @@ export default function QuizScreen() {
         }
     };
 
+    const handleSubmitNote = async () => {
+        if (!user?.uid || !currentQuestion || !noteText.trim()) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Please enter a note',
+                position: 'bottom'
+            });
+            return;
+        }
+
+        setIsSubmittingNote(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/notes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    uid: user.uid,
+                    subject_name: subjectName,
+                    text: noteText.trim()
+                })
+            });
+
+            if (!response.ok) {
+                console.log(user.uid);
+                console.log('Failed to save note:', response);
+                throw new Error('Failed to save note');
+            }
+
+            const data = await response.json();
+            if (data.status === "OK") {
+                console.log('Note saved successfully');
+                Toast.show({
+                    type: 'success',
+                    text1: '📝 Note Saved!',
+                    text2: 'Your note has been saved successfully',
+                    position: 'bottom',
+                    visibilityTime: 2000
+                });
+                // Wait a brief moment before closing the modal
+                await new Promise(resolve => setTimeout(resolve, 500));
+                setNoteText('');
+                setIsNoteModalVisible(false);
+            } else {
+                throw new Error('Failed to save note');
+            }
+        } catch (error) {
+            console.error('Error saving note:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to save note',
+                position: 'bottom'
+            });
+        } finally {
+            setIsSubmittingNote(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <ImageLoadingPlaceholder />
@@ -1744,10 +1906,10 @@ export default function QuizScreen() {
                 style={[styles.gradient, { paddingTop: insets.top }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0, y: 1 }}
+                testID="quiz-mode-selection"
             >
                 <ScrollView style={styles.container}>
                     <View style={styles.paperSelectionContainer}>
-
                         <TouchableOpacity
                             onPress={() => router.back()}
                             style={styles.closeButton}
@@ -1763,136 +1925,31 @@ export default function QuizScreen() {
                             Choose a paper or explore your favorites
                         </ThemedText>
 
-                        {/* Add Mode Selection */}
-                        <View style={styles.modeSelectionContainer}>
-                        
-                            <ThemedText style={[styles.modeSelectionTitle, { color: colors.text }]}>
-                                Choose Your Learning Mode
-                            </ThemedText>
-                            <View style={styles.modeButtons}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modeButton,
-                                        {
-                                            backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                            borderColor: selectedMode === 'quiz' ? '#4F46E5' : colors.border
-                                        },
-                                        selectedMode === 'quiz' && styles.modeButtonSelected
-                                    ]}
-                                    onPress={() => setSelectedMode('quiz')}
-                                >
-                                    <Ionicons
-                                        name="school-outline"
-                                        size={24}
-                                        color={selectedMode === 'quiz' ? '#FFFFFF' : colors.text}
-                                    />
-                                    <ThemedText style={[
-                                        styles.modeButtonText,
-                                        { color: selectedMode === 'quiz' ? '#FFFFFF' : colors.text }
-                                    ]}>
-                                        Quiz Mode
-                                    </ThemedText>
-                                </TouchableOpacity>
+                        <QuizModeSelection
+                            modes={[
+                                {
+                                    id: 'quiz',
+                                    title: 'Quiz Mode',
+                                    description: 'Test your knowledge with interactive questions',
+                                    icon: '🎯'
+                                },
+                                {
+                                    id: 'lessons',
+                                    title: 'Lessons Mode',
+                                    description: 'Learn with detailed explanations and examples',
+                                    icon: '📚'
+                                }
+                            ]}
+                            onSelectMode={(mode) => setSelectedMode(mode.id as 'quiz' | 'lessons')}
+                            selectedModeId={selectedMode}
+                        />
 
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modeButton,
-                                        {
-                                            backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                                            borderColor: selectedMode === 'lessons' ? '#4F46E5' : colors.border
-                                        },
-                                        selectedMode === 'lessons' && styles.modeButtonSelected
-                                    ]}
-                                    onPress={() => setSelectedMode('lessons')}
-                                >
-                                    <Ionicons
-                                        name="book-outline"
-                                        size={24}
-                                        color={selectedMode === 'lessons' ? '#FFFFFF' : colors.text}
-                                    />
-                                    <ThemedText style={[
-                                        styles.modeButtonText,
-                                        { color: selectedMode === 'lessons' ? '#FFFFFF' : colors.text }
-                                    ]}>
-                                        Lessons Mode
-                                    </ThemedText>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <View style={styles.paperButtons}>
-                            <LinearGradient
-                                colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={[
-                                    styles.paperButton,
-                                    !selectedMode && { opacity: 0.5 }
-                                ]}
-                            >
-                                <TouchableOpacity
-                                    style={styles.buttonContent}
-                                    onPress={() => {
-                                        if (!selectedMode) {
-                                            Toast.show({
-                                                type: 'error',
-                                                text1: 'Select a Mode',
-                                                text2: 'Please choose a learning mode first',
-                                                position: 'bottom'
-                                            });
-                                            return;
-                                        }
-                                        setSelectedPaper('P1');
-                                        loadRandomQuestion('P1');
-                                        setCurrentQuestion(null);
-                                    }}
-                                    disabled={!selectedMode}
-                                >
-                                    <ThemedText style={styles.paperButtonText}>Paper 1</ThemedText>
-                                </TouchableOpacity>
-                            </LinearGradient>
-
-                            <LinearGradient
-                                colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={[
-                                    styles.paperButton,
-                                    (!selectedMode || (subjectName as string).toLowerCase().includes('life orientation') || (subjectName as string).toLowerCase().includes('tourism')) && { opacity: 0.5 }
-                                ]}
-                            >
-                                <TouchableOpacity
-                                    style={styles.buttonContent}
-                                    onPress={() => {
-                                        if (!selectedMode) {
-                                            Toast.show({
-                                                type: 'error',
-                                                text1: 'Select a Mode',
-                                                text2: 'Please choose a learning mode first',
-                                                position: 'bottom'
-                                            });
-                                            return;
-                                        }
-                                        if ((subjectName as string).toLowerCase().includes('life orientation') || (subjectName as string).toLowerCase().includes('tourism')) {
-                                            Toast.show({
-                                                type: 'error',
-                                                text1: 'Not Available',
-                                                text2: 'Paper 2 is not available for this subject',
-                                                position: 'bottom'
-                                            });
-                                            return;
-                                        }
-                                        setSelectedPaper('P2');
-                                        loadRandomQuestion('P2');
-                                        setCurrentQuestion(null);
-                                    }}
-                                    disabled={!selectedMode || (subjectName as string).toLowerCase().includes('life orientation') || (subjectName as string).toLowerCase().includes('tourism')}
-                                >
-                                    <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
-                                </TouchableOpacity>
-                            </LinearGradient>
-                        </View>
-
+                        <QuizPaperButtons
+                            subjectName={subjectName as string}
+                            selectedMode={selectedMode}
+                            onSelectPaper={setSelectedPaper}
+                            onLoadQuestion={loadRandomQuestion}
+                        />
 
                         {/* Divider */}
                         <View style={[styles.divider, {
@@ -1913,81 +1970,20 @@ export default function QuizScreen() {
                                 defaultTab={defaultTab as TabType || 'favorites'}
                             />
                         </View>
-                        
+
                     </View>
                 </ScrollView>
             </LinearGradient>
         );
     }
 
-    if (!currentQuestion && selectedMode === 'quiz') {
+    if (!currentQuestion && selectedMode === 'quiz' && !parentQuestion) {
         return (
-            <LinearGradient
-                colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-                style={[styles.gradient, { paddingTop: insets.top }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-            >
-                <ScrollView style={styles.container}>
-                    <ThemedView style={[styles.noQuestionsContainer, {
-                        backgroundColor: isDark ? colors.card : '#FFFFFF'
-                    }]}>
-                        <Image
-                            source={NO_QUESTIONS_ILLUSTRATION}
-                            style={styles.noQuestionsIllustration}
-                            resizeMode="contain"
-                        />
-                        <ThemedText style={[styles.noQuestionsTitle, { color: colors.text }]}>
-                            🚨 Alert! The quiz bank is empty! Someone call the question police! 🚔
-                        </ThemedText>
-                        <ThemedText style={[styles.noQuestionsSubtitle, { color: colors.textSecondary }]}>
-                            Check your profile for selected school terms and curriculum
-                        </ThemedText>
-
-                        <TouchableOpacity
-                            style={[styles.profileSettingsButton, {
-                                backgroundColor: isDark ? colors.primary : '#4F46E5'
-                            }]}
-                            onPress={() => router.push('/profile')}
-                        >
-                            <View style={styles.buttonContent}>
-                                <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
-                                <ThemedText style={styles.buttonText}>Go to Profile Settings</ThemedText>
-                            </View>
-                        </TouchableOpacity>
-
-                        <View style={styles.buttonGroup}>
-                            <TouchableOpacity
-                                style={[styles.restartButton, {
-                                    backgroundColor: isDark ? '#DC2626' : '#EF4444'
-                                }]}
-                                onPress={() => {
-                                    setIsRestartModalVisible(true);
-                                }}
-                            >
-                                <View style={styles.buttonContent}>
-                                    <Ionicons name="refresh-outline" size={20} color="#FFFFFF" />
-                                    <ThemedText style={styles.buttonText}>Restart Subject</ThemedText>
-                                </View>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.goHomeButton, {
-                                    backgroundColor: isDark ? colors.surface : '#64748B'
-                                }]}
-                                onPress={() => setSelectedPaper(null)}
-                            >
-                                <View style={styles.buttonContent}>
-                                    <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-                                    <ThemedText style={styles.buttonText}>Go Back</ThemedText>
-                                </View>
-                            </TouchableOpacity>
-
-                            
-                        </View>
-                    </ThemedView>
-                </ScrollView>
-            </LinearGradient>
+            <QuizEmptyState
+                onGoToProfile={() => router.push('/profile')}
+                onRestart={() => setIsRestartModalVisible(true)}
+                onGoBack={() => setSelectedPaper(null)}
+            />
         );
     }
 
@@ -2005,78 +2001,94 @@ export default function QuizScreen() {
             >
                 <SubjectHeader />
                 {selectedMode === 'quiz' && (
-                    <PerformanceSummary />
+                    <View>
+                        {/* Add toggle button for parent questions */}
+
+
+                        {/* Show stats if not parent question or if toggle is on */}
+                        {(!parentQuestion?.is_parent || showStats) && (
+                            <PerformanceSummary
+                                stats={stats}
+                                onRestart={() => setIsRestartModalVisible(true)}
+                            />
+                        )}
+                    </View>
                 )}
                 <ThemedView style={styles.content}>
-                    <ThemedView
-                        style={[styles.sectionCard, {
-                            backgroundColor: isDark ? colors.card : '#FFFFFF',
-                            borderColor: colors.border
-                        }]}
-                        testID="question-card"
-                    >
-                        {currentQuestion ? (
-                            <>
-                                {(currentQuestion.context || currentQuestion.image_path) && (
-                                    <ThemedText
-                                        style={styles.questionMeta}
-                                        testID="context-label"
-                                    >
-                                        Context
+                    {!parentQuestion && (
+                        <QuestionCard
+                            question={currentQuestion}
+                            selectedAnswer={selectedAnswer}
+                            showFeedback={showFeedback}
+                            isAnswerLoading={isAnswerLoading}
+                            selectedMode={selectedMode}
+                            handleAnswer={handleAnswer}
+                            cleanAnswer={cleanAnswer}
+                            feedbackMessage={feedbackMessage}
+                            correctAnswer={correctAnswer}
+                            isDark={isDark}
+                            colors={colors}
+                            fetchAIExplanation={fetchAIExplanation}
+                            isLoadingExplanation={isLoadingExplanation}
+                            learnerRole={learnerRole}
+                            handleApproveQuestion={handleApproveQuestion}
+                            isApproving={isApproving}
+                            setZoomImageUrl={setZoomImageUrl}
+                            setIsZoomModalVisible={setIsZoomModalVisible}
+                            renderMixedContent={renderMixedContent}
+                            reportIssue={reportIssue}
+                        />
+                    )}
+
+                    {/* Add Custom Tabs for parent question */}
+                    {parentQuestion?.is_parent && (
+                        <View style={[styles.tabContainer, { backgroundColor: isDark ? colors.surface : '#FFFFFF' }]}>
+                            <View style={styles.tabHeaderContainer}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.tabButton,
+                                        tabIndex === 0 && styles.activeTabButton,
+                                        { borderBottomColor: isDark ? colors.primary : '#4F46E5' }
+                                    ]}
+                                    onPress={() => setTabIndex(0)}
+                                >
+                                    <ThemedText style={[
+                                        styles.tabButtonText,
+                                        tabIndex === 0 && styles.activeTabButtonText,
+                                        { color: tabIndex === 0 ? (isDark ? colors.primary : '#4F46E5') : colors.textSecondary }
+                                    ]}>
+                                        Context 🥱
                                     </ThemedText>
-                                )}
-
-                                {currentQuestion.context && (
-                                    <View
-                                        style={styles.questionContainer}
-                                        testID="context-container"
-                                    >
-                                        {currentQuestion.context?.split('\n').map((line, index) => {
-                                            const trimmedLine = line.trim();
-                                            //formulas cant have bullet points
-                                            if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
-                                                //console.log('trimmedLine', trimmedLine);
-                                                const content = trimmedLine.substring(1).trim();
-                                                const indentLevel = line.indexOf('-') / 2;
-
-                                                return (
-                                                    <View
-                                                        key={index}
-                                                        style={[
-                                                            styles.bulletPointRow,
-                                                            { marginLeft: indentLevel * 5 }
-                                                        ]}
-                                                    >
-                                                        <ThemedText style={[styles.bulletPoint, {
-                                                            color: colors.text,
-                                                            marginTop: 4
-                                                        }]}>
-                                                            {indentLevel > 0 ? '🎯' : '✅'}
-                                                        </ThemedText>
-                                                        <View style={styles.bulletTextWrapper}>
-                                                            {renderMixedContent(content, isDark, colors)}
-                                                        </View>
-                                                    </View>
-                                                );
-                                            }
-                                            if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
-                                                //remove the - at the beginning of the line
-                                                line = trimmedLine.substring(1).trim();
-                                            }
-                                            return (
-                                                <View key={index}>
-                                                    {renderMixedContent(line, isDark, colors)}
-                                                </View>
-                                            );
-                                        })}
-                                    </View>
-                                )}
-
-                                {(currentQuestion.image_path || currentQuestion.question_image_path) && (
-                                    <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
-                                        {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
+                                </TouchableOpacity>
+                                <View
+                                    style={[
+                                        styles.tabButton,
+                                        tabIndex === 1 && styles.activeTabButton,
+                                        { borderBottomColor: isDark ? colors.primary : '#4F46E5' }
+                                    ]}
+                                >
+                                    <ThemedText style={[
+                                        styles.tabButtonText,
+                                        tabIndex === 1 && styles.activeTabButtonText,
+                                        { color: tabIndex === 1 ? (isDark ? colors.primary : '#4F46E5') : colors.textSecondary }
+                                    ]}>
+                                        Questions 📝
                                     </ThemedText>
-                                )}
+                                </View>
+                            </View>
+                            <View style={styles.tabContent}>
+                                {tabIndex === 0 ? (
+                                    <>
+                                        <ScrollView>
+                                            <QuizContextContainer
+                                                context={parentQuestion.context}
+                                                renderMixedContent={renderMixedContent}
+                                            />
+                                            {(parentQuestion.image_path || parentQuestion.question_image_path && parentQuestion.image_path !== null && parentQuestion.image_path !== 'NULL' && parentQuestion.question_image_path !== null && parentQuestion.question_image_path !== 'NULL') && (
+                                                <ThemedText style={[styles.imageCaption, { color: colors.textSecondary }]}>
+                                                    {Platform.OS === 'ios' ? 'Click image to enlarge / fix loading' : 'Click image to enlarge'}
+                                                </ThemedText>
+                                            )}
 
                                 {(currentQuestion.image_path && currentQuestion.image_path !== null && currentQuestion.image_path !== 'NULL') && (
                                     <View style={styles.imageWrapper}>
@@ -2526,48 +2538,13 @@ export default function QuizScreen() {
                 </ThemedView>
             </ScrollView>
 
-            <ThemedView
-                style={[styles.footer, {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF'
-                }]}
-                testID="quiz-footer"
-            >
-                {!isFromFavorites && (
-                    <LinearGradient
-                        colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.footerButton}
-                    >
-                        <TouchableOpacity
-                            style={styles.buttonContent}
-                            onPress={handleNext}
-                            testID="next-question-button"
-                        >
-                            <Ionicons name="play" size={20} color="#FFFFFF" />
-                            <ThemedText style={styles.footerButtonText}>🎯 Keep Going!</ThemedText>
-                        </TouchableOpacity>
-                    </LinearGradient>
-                )}
+            <QuizFooter
+                isFromFavorites={isFromFavorites}
+                onNext={handleNext}
+                onGoBack={() => setSelectedPaper(null)}
+            />
 
-                <LinearGradient
-                    colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.footerButton}
-                >
-                    <TouchableOpacity
-                        style={styles.buttonContent}
-                        onPress={() => setSelectedPaper(null)}
-                        testID="home-button"
-                    >
-                        <Ionicons name="menu-outline" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>Menu</ThemedText>
-                    </TouchableOpacity>
-                </LinearGradient>
-            </ThemedView>
-
-            <Modal
+            <ReportModal
                 isVisible={isReportModalVisible}
                 onBackdropPress={closeAllModals}
                 onSwipeComplete={closeAllModals}
@@ -2691,84 +2668,21 @@ export default function QuizScreen() {
 
             <Modal
                 isVisible={isZoomModalVisible}
-                onBackdropPress={() => {
+                onClose={() => {
                     setIsZoomModalVisible(false);
                     setImageRotation(0);
                 }}
-                onSwipeComplete={() => {
-                    setIsZoomModalVisible(false);
-                    setImageRotation(0);
-                }}
-                swipeDirection={['down']}
-                useNativeDriver={true}
-                style={styles.zoomModal}
-                animationIn="fadeIn"
-                animationOut="fadeOut"
-                backdropOpacity={1}
-                statusBarTranslucent
-            >
-                <View style={styles.zoomModalContent}>
-                    <TouchableOpacity
-                        style={styles.zoomCloseButton}
-                        onPress={() => {
-                            setIsZoomModalVisible(false);
-                            setImageRotation(0);
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        testID="zoom-close-button"
-                    >
-                        <Ionicons name="close" size={28} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.zoomRotateButton}
-                        onPress={() => setImageRotation((prev) => (prev + 90) % 360)}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        testID="zoom-rotate-button"
-                    >
-                        <Ionicons name="refresh" size={28} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    {zoomImageUrl && (
-                        <ZoomableImageNew imageUrl={zoomImageUrl} rotation={imageRotation} />
-                    )}
-                </View>
-            </Modal>
+                zoomImageUrl={zoomImageUrl}
+                imageRotation={imageRotation}
+                setImageRotation={setImageRotation}
+            />
 
-            <Modal
+            <RestartModal
                 isVisible={isRestartModalVisible}
-                onBackdropPress={() => setIsRestartModalVisible(false)}
-                onSwipeComplete={() => setIsRestartModalVisible(false)}
-                swipeDirection={['down']}
-                useNativeDriver={true}
-                style={styles.modal}
-                animationIn="fadeIn"
-                animationOut="fadeOut"
-                backdropOpacity={0.5}
-            >
-                <View style={[styles.restartModalContent, {
-                    backgroundColor: isDark ? colors.card : '#FFFFFF'
-                }]}>
-                    <ThemedText style={[styles.restartModalTitle, { color: colors.text }]}>Reset Progress</ThemedText>
-                    <ThemedText style={[styles.restartModalText, { color: colors.textSecondary }]}>
-                        Are you sure you want to reset your progress for this paper? This action cannot be undone.
-                    </ThemedText>
-                    <View style={styles.restartModalButtons}>
-                        <TouchableOpacity
-                            style={[styles.restartModalButton, styles.cancelButton, {
-                                backgroundColor: isDark ? colors.surface : '#E2E8F0'
-                            }]}
-                            onPress={() => setIsRestartModalVisible(false)}
-                        >
-                            <ThemedText style={[styles.buttonText, { color: colors.text }]}>Cancel</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.restartModalButton, styles.resetButton]}
-                            onPress={handleRestart}
-                        >
-                            <ThemedText style={[styles.buttonText, { color: '#FFFFFF' }]}>Reset</ThemedText>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setIsRestartModalVisible(false)}
+                onRestart={handleRestart}
+                isDark={isDark}
+            />
 
             {/* Add PointsAnimation component */}
             <PointsAnimation points={earnedPoints} isVisible={showPoints} />
@@ -2781,7 +2695,7 @@ export default function QuizScreen() {
             />
 
             {/* Thank You Modal */}
-            <Modal
+            <ThankYouModal
                 isVisible={isThankYouModalVisible}
                 onBackdropPress={() => {
                     setIsThankYouModalVisible(false);
@@ -2827,11 +2741,87 @@ export default function QuizScreen() {
                 />
             )}
 
-            
+            <Modal
+                isVisible={isNoteModalVisible}
+                onBackdropPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
+                onBackButtonPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
+                backdropOpacity={0.5}
+                style={{ margin: 0, justifyContent: 'flex-end' }}
+                avoidKeyboard
+            >
+                <ThemedView style={[{
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    padding: 20,
+                    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                }]}>
+                    <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 16,
+                    }}>
+                        <ThemedText style={{
+                            fontSize: 20,
+                            fontWeight: '600',
+                        }}>Add Note 📝</ThemedText>
+                        {!isSubmittingNote && (
+                            <TouchableOpacity
+                                onPress={() => setIsNoteModalVisible(false)}
+                                style={{ padding: 4 }}
+                            >
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    <TextInput
+                        style={{
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            padding: 16,
+                            minHeight: 120,
+                            fontSize: 16,
+                            textAlignVertical: 'top',
+                            backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                            color: colors.text,
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                        }}
+                        placeholder="Enter your note here..."
+                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : '#94A3B8'}
+                        multiline
+                        value={noteText}
+                        onChangeText={setNoteText}
+                        editable={!isSubmittingNote}
+                    />
+                    <TouchableOpacity
+                        style={{
+                            marginTop: 16,
+                            padding: 16,
+                            borderRadius: 12,
+                            alignItems: 'center',
+                            backgroundColor: colors.primary,
+                            opacity: isSubmittingNote ? 0.7 : 1
+                        }}
+                        onPress={handleSubmitNote}
+                        disabled={isSubmittingNote}
+                    >
+                        {isSubmittingNote ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <ThemedText style={{
+                                color: '#FFFFFF',
+                                fontSize: 16,
+                                fontWeight: '600',
+                            }}>Save Note</ThemedText>
+                        )}
+                    </TouchableOpacity>
+                </ThemedView>
+            </Modal>
+
         </LinearGradient>
     );
 }
-
 // Add helper function to get subject icons
 function getSubjectIcon(subjectName: string) {
     const icons = {
@@ -2856,52 +2846,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 16,
-    },
-    scoreSection: {
-        flexDirection: 'row',
-        gap: 24,
-    },
-    scoreItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    scoreEmoji: {
-        fontSize: 20,
-    },
-    scoreValue: {
-        color: '#000000',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    avatarContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#FF9F43',
-        overflow: 'hidden',
-    },
-    avatar: {
-        width: '100%',
-        height: '100%',
-    },
-    toggleContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        paddingHorizontal: 16,
-    },
-    toggleLabel: {
-        color: '#000000',
-        marginRight: 8,
-        fontSize: 14,
-
-    },
     subjectHeader: {
         paddingVertical: 16,
         paddingHorizontal: 16,
@@ -2914,27 +2858,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         position: 'relative',
-    },
-    headerButtonsContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        zIndex: 10,
-    },
-    headerButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    iconContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        padding: 12,
-        borderRadius: 9999,
     },
     titleContainer: {
         gap: 4,
@@ -2970,53 +2893,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#444',
     },
-    footer: {
-        flexDirection: 'row',
-        gap: 16,
-        padding: 16,
-        paddingBottom: 24,
-        backgroundColor: '#FFFFFF',
-    },
-    footerButton: {
-        flex: 1,
-        borderRadius: 12,
-        overflow: 'hidden',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-    },
-    buttonContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        padding: 16,
-    },
-    footerButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    progressBarContainer: {
-        height: 4,
-        borderRadius: 2,
-        overflow: 'hidden',
-    },
-    progressBar: {
-        height: '100%',
-        borderRadius: 2,
-    },
     questionContainer: {
         borderRadius: 12,
-        // padding: 16,
         margin: 16,
-        // shadowColor: '#FFFFFF',
-        // shadowOffset: {width: 0, height: 2 },
-        // shadowOpacity: 0.1,
-        // shadowRadius: 4,
-        //elevation: 3,
         color: '#000000',
     },
     questionText: {
@@ -3050,21 +2929,12 @@ const styles = StyleSheet.create({
         borderColor: '#FF3B30',
     },
     optionText: {
-        fontSize: 16,
+        fontSize: 12,
+        lineHeight: 20,
         color: '#1E293B',
     },
-    nextButton: {
-        backgroundColor: 'rgba(130, 122, 122, 0.2)'
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        color: '#000000',
-    },
     contextText: {
-        fontSize: 14,
+        fontSize: 12,
         marginBottom: 16,
         color: '#000000',
         lineHeight: 20,
@@ -3079,128 +2949,6 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         zIndex: 3,
-    },
-    singleAnswerContainer: {
-        gap: 16,
-        marginBottom: 20,
-    },
-    answerInput: {
-        backgroundColor: '#333',
-        borderWidth: 1,
-        borderColor: '#444',
-        borderRadius: 8,
-        padding: 12,
-        fontSize: 16,
-        height: 48,
-        color: '#000000',
-    },
-    submitButton: {
-        backgroundColor: '#000000',
-        marginTop: 8,
-    },
-    feedbackEmoji: {
-        fontSize: 22,
-        textAlign: 'center',
-        marginVertical: 16,
-        includeFontPadding: false,
-        lineHeight: 60,
-    },
-    noQuestionsContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 24,
-        backgroundColor: '#FFFFFF',
-    },
-    noQuestionsIllustration: {
-        width: 280,
-        height: 280,
-        marginBottom: 32,
-    },
-    noQuestionsTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        textAlign: 'center',
-        marginBottom: 16,
-        color: '#1E293B',
-        lineHeight: 32,
-        paddingHorizontal: 20,
-    },
-    noQuestionsSubtitle: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 32,
-        color: '#64748B',
-        lineHeight: 24,
-        paddingHorizontal: 20,
-    },
-    profileSettingsButton: {
-        backgroundColor: '#4F46E5',
-        borderRadius: 16,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        width: '100%',
-        marginBottom: 24,
-    },
-    buttonGroup: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
-    restartButton: {
-        flex: 1,
-        backgroundColor: '#EF4444',
-        borderRadius: 16,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-    },
-    goHomeButton: {
-        flex: 1,
-        backgroundColor: '#64748B',
-        borderRadius: 16,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-    },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    modal: {
-        justifyContent: 'center',
-        margin: 0,
-    },
-    modalContent: {
-        flex: 1,
-        width: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    fullScreenImage: {
-        width: '100%',
-        height: '90%',
-        resizeMode: 'contain',
-    },
-    closeButton: {
-        padding: 8,
-        borderRadius: 25,
-        position: 'absolute',
-        top: 10,
-        right: 30,
-        zIndex: 10,
-        width: 36,
-        height: 36,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(229, 231, 235, 0.9)',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 1,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 2.5,
-        elevation: 3,
     },
     feedbackContainer: {
         borderRadius: 12,
@@ -3217,7 +2965,7 @@ const styles = StyleSheet.create({
         padding: 12,
     },
     correctAnswerLabel: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#999',
         marginBottom: 4,
         marginLeft: 16,
@@ -3245,12 +2993,19 @@ const styles = StyleSheet.create({
     imageWrapper: {
         width: '100%',
         height: 200,
-        marginVertical: 10,
+        marginVertical: 2,
         borderRadius: 8,
         overflow: 'hidden',
         backgroundColor: '#F8FAFC',
         position: 'relative',
         zIndex: 1
+    },
+    imageCaption: {
+        fontSize: 12,
+        color: '#999',
+        textAlign: 'center',
+        fontStyle: 'italic',
+        marginBottom: 2
     },
     touchableImage: {
         width: '100%',
@@ -3283,22 +3038,9 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         paddingHorizontal: 16,
     },
-    completionButtons: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 16,
-        marginTop: 24,
-    },
-    imageCaption: {
-        fontSize: 12,
-        color: '#999',
-        textAlign: 'center',
-        fontStyle: 'italic'
-    },
-
     contentText: {
-        fontSize: 16,
-        lineHeight: 24,
+        fontSize: 12,
+        lineHeight: 20,
         marginVertical: 4,
         color: '#000000',
     },
@@ -3310,7 +3052,7 @@ const styles = StyleSheet.create({
     },
     reportButtonText: {
         color: '#DC2626',
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '500',
     },
     paperSelectionContainer: {
@@ -3325,41 +3067,16 @@ const styles = StyleSheet.create({
         marginTop: 8,
         marginBottom: 32,
     },
-    paperButtons: {
-        flexDirection: 'row',
-        gap: 16,
-    },
-    paperButton: {
-        borderRadius: 12,
-        overflow: 'hidden',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        width: 175,
-    },
-    paperButtonGradient: {
-        padding: 16,
-        alignItems: 'center',
-    },
-    paperButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
     subjectIcon: {
         width: 120,
         height: 120,
         marginBottom: 16,
     },
-
     subjectheaderIcon: {
         width: 48,
         height: 48,
         marginBottom: 16,
     },
-
     zoomControls: {
         position: 'absolute',
         bottom: 40,
@@ -3455,7 +3172,6 @@ const styles = StyleSheet.create({
     cancelButton: {
         backgroundColor: '#E2E8F0',
     },
-
     performanceContainer: {
         borderRadius: 12,
         padding: 16,
@@ -3601,7 +3317,7 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     questionMeta: {
-        fontSize: 14,
+        fontSize: 12,
         color: '#64748B',
         marginBottom: 8,
         fontWeight: '500'
@@ -3820,7 +3536,7 @@ const styles = StyleSheet.create({
     },
     favoritesGrid: {
         flexDirection: 'column',
-        marginTop: 4, // Reduce space between title and first card
+        marginTop: 4,
     },
     favoriteCard: {
         width: '100%',
@@ -3834,7 +3550,7 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     favoriteCardText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '500',
         color: '#000000',
         lineHeight: 20,
@@ -3998,7 +3714,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#E2E8F0',
         marginHorizontal: 16,
     },
-    // Thank You Modal Styles
     thankYouModalContent: {
         backgroundColor: '#FFFFFF',
         borderRadius: 16,
@@ -4105,7 +3820,7 @@ const styles = StyleSheet.create({
         borderColor: '#4F46E5',
     },
     modeButtonText: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
     },
     modeButtonTextSelected: {
@@ -4134,8 +3849,6 @@ const styles = StyleSheet.create({
     tabContent: {
         flex: 1,
         padding: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
     },
     reviewButton: {
         flex: 1,
@@ -4150,14 +3863,220 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
-
+    tabContainer: {
+        flex: 1,
+        marginTop: 16,
+        marginHorizontal: -16,
+    },
+    tabHeaderContainer: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    tabButton: {
+        flex: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
+    },
+    activeTabButton: {
+        borderBottomWidth: 2,
+    },
+    tabButtonText: {
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    activeTabButtonText: {
+        fontWeight: '600',
+    },
+    tabText: {
+        fontSize: 16,
+        lineHeight: 24,
+    },
+    statsToggleButton: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    statsToggleContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    statsToggleText: {
+        fontSize: 15,
+        letterSpacing: 0.2,
+    },
+    statsToggleIcon: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    nextQuestionButton: {
+        marginTop: 16,
+        marginHorizontal: 16,
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    nextQuestionContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    nextQuestionText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: 0.2,
+        textAlign: 'center',
+    },
+    tabLoadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        gap: 16,
+    },
+    tabLoadingText: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    questionCounterContainer: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    questionCounterText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    startQuestionsButton: {
+        marginTop: 24,
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    startQuestionsContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    startQuestionsText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+        letterSpacing: 0.2,
+        textAlign: 'center',
+    },
+    closeButton: {
+        padding: 8,
+        borderRadius: 25,
+        position: 'absolute',
+        top: 10,
+        right: 30,
+        zIndex: 10,
+        width: 36,
+        height: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(229, 231, 235, 0.9)',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 2.5,
+        elevation: 3,
+    },
+    modal: {
+        margin: 0,
+        justifyContent: 'flex-end',
+    },
+    noteModalContent: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 20,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    },
+    noteModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    noteModalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+    },
+    noteModalCloseButton: {
+        padding: 4,
+    },
+    noteInput: {
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 16,
+        minHeight: 120,
+        fontSize: 16,
+        textAlignVertical: 'top',
+    },
+    noteSubmitButton: {
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    noteSubmitButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    buttonLabel: {
+        position: 'absolute',
+        bottom: -20,
+        left: -8,
+        right: -8,
+        textAlign: 'center',
+        fontSize: 10,
+        color: '#6B7280',
+        backgroundColor: 'transparent'
+    },
 });
-
-function getProgressBarColor(progress: number): string {
-    if (progress >= 80) return '#22C55E'; // Green
-    if (progress >= 60) return '#3B82F6'; // Blue
-    if (progress >= 40) return '#F59E0B'; // Yellow
-    return '#EF4444'; // Red
-}
-
-

@@ -79,7 +79,7 @@ function createStyles(isDark: boolean) {
             flex: 1,
         },
         todoText: {
-            fontSize: 16,
+            fontSize: 14,
             marginBottom: 4,
             color: isDark ? '#E5E7EB' : '#1F2937',
         },
@@ -159,7 +159,7 @@ function createStyles(isDark: boolean) {
             marginTop: 8,
         },
         dateText: {
-            fontSize: 16,
+            fontSize: 14,
             color: isDark ? '#E5E7EB' : '#1F2937',
         },
         modalButtons: {

@@ -77,7 +77,7 @@ function createStyles(isDark: boolean) {
             flex: 1,
         },
         noteText: {
-            fontSize: 16,
+            fontSize: 14,
             marginBottom: 8,
             color: isDark ? '#E5E7EB' : '#1F2937',
         },
