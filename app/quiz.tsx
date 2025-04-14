@@ -1991,6 +1991,149 @@ export default function QuizScreen() {
                 onNext={handleNext}
                 onGoBack={() => setSelectedPaper(null)}
             />
+            <ReportModal
+                isVisible={isReportModalVisible}
+                onClose={() => setIsReportModalVisible(false)}
+                onSubmit={handleSubmitReport}
+                reportComment={reportComment}
+                setReportComment={setReportComment}
+                isSubmitting={isSubmitting}
+                isDark={isDark}
+                insets={insets}
+            />
+
+            <ExplanationModal
+                isVisible={isExplanationModalVisible}
+                onClose={() => setIsExplanationModalVisible(false)}
+                aiExplanation={aiExplanation}
+                isDark={isDark}
+                renderMixedContent={renderMixedContent}
+            />
+
+            <ZoomModal
+                isVisible={isZoomModalVisible}
+                onClose={() => {
+                    setIsZoomModalVisible(false);
+                    setImageRotation(0);
+                }}
+                zoomImageUrl={zoomImageUrl}
+                imageRotation={imageRotation}
+                setImageRotation={setImageRotation}
+            />
+
+            <RestartModal
+                isVisible={isRestartModalVisible}
+                onClose={() => setIsRestartModalVisible(false)}
+                onRestart={handleRestart}
+                isDark={isDark}
+            />
+
+            {/* Add PointsAnimation component */}
+            <PointsAnimation points={earnedPoints} isVisible={showPoints} />
+
+            {/* Add StreakModal */}
+            <StreakModal
+                isVisible={showStreakModal}
+                onClose={() => setShowStreakModal(false)}
+                streak={currentStreak}
+            />
+
+            {/* Thank You Modal */}
+            <ThankYouModal
+                isVisible={isThankYouModalVisible}
+                onClose={() => setIsThankYouModalVisible(false)}
+                onRate={handleRating}
+                onPostpone={handlePostponeRating}
+                isDark={isDark}
+            />
+
+            {/* Badge Celebration Modal */}
+            {newBadge && (
+                <BadgeCelebrationModal
+                    isVisible={showBadgeModal}
+                    onClose={() => setShowBadgeModal(false)}
+                    badge={newBadge}
+                />
+            )}
+
+            <Modal
+                isVisible={isNoteModalVisible}
+                onBackdropPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
+                onBackButtonPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
+                backdropOpacity={0.5}
+                style={{ margin: 0, justifyContent: 'flex-end' }}
+                avoidKeyboard
+            >
+                <ThemedView style={[{
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    padding: 20,
+                    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                }]}>
+                    <View style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 16,
+                    }}>
+                        <ThemedText style={{
+                            fontSize: 20,
+                            fontWeight: '600',
+                        }}>Add Note 📝</ThemedText>
+                        {!isSubmittingNote && (
+                            <TouchableOpacity
+                                onPress={() => setIsNoteModalVisible(false)}
+                                style={{ padding: 4 }}
+                            >
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    <TextInput
+                        style={{
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            padding: 16,
+                            minHeight: 120,
+                            fontSize: 16,
+                            textAlignVertical: 'top',
+                            backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                            color: colors.text,
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                        }}
+                        placeholder="Enter your note here..."
+                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : '#94A3B8'}
+                        multiline
+                        value={noteText}
+                        onChangeText={setNoteText}
+                        editable={!isSubmittingNote}
+                    />
+                    <TouchableOpacity
+                        style={{
+                            marginTop: 16,
+                            padding: 16,
+                            borderRadius: 12,
+                            alignItems: 'center',
+                            backgroundColor: colors.primary,
+                            opacity: isSubmittingNote ? 0.7 : 1
+                        }}
+                        onPress={handleSubmitNote}
+                        disabled={isSubmittingNote}
+                    >
+                        {isSubmittingNote ? (
+                            <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                            <ThemedText style={{
+                                color: '#FFFFFF',
+                                fontSize: 16,
+                                fontWeight: '600',
+                            }}>Save Note</ThemedText>
+                        )}
+                    </TouchableOpacity>
+                </ThemedView>
+            </Modal>
+
         </LinearGradient>
     );
 }

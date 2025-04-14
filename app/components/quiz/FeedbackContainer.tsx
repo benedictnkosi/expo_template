@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator, Animated } from 'react-native';
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { KaTeX } from './KaTeX'
@@ -39,6 +39,28 @@ export function FeedbackContainer({
     renderMixedContent
 }: FeedbackContainerProps) {
     const [isImageLoading, setIsImageLoading] = useState(false);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (isLoadingExplanation) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(fadeAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(fadeAnim, {
+                        toValue: 0,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        } else {
+            fadeAnim.setValue(0);
+        }
+    }, [isLoadingExplanation]);
 
     return (
         <ThemedView
@@ -196,7 +218,10 @@ export function FeedbackContainer({
                             testID="ai-explanation-loading"
                         >
                             <ThemedText style={styles.aiExplanationButtonText}>
-                                Pretending to think...
+                                Pretending to think
+                                <Animated.Text style={[styles.loadingDots, { opacity: fadeAnim }]}>
+                                    ...
+                                </Animated.Text>
                             </ThemedText>
                             <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : colors.primary} />
                         </View>
@@ -297,6 +322,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    loadingDots: {
+        color: '#FFFFFF',
     },
     approveButton: {
         marginTop: 10,

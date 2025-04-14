@@ -487,10 +487,15 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    modal: {
+        margin: 0,
+        justifyContent: 'flex-end',
+    },
     modalContent: {
-        width: '85%',
+        width: '100%',
         padding: 24,
-        borderRadius: 20,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: {
@@ -531,12 +536,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
     },
-    modal: {
-        margin: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     reportModalContent: {
+        width: '100%',
         padding: 20,
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
@@ -581,6 +582,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     explanationModal: {
+        width: '100%',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
@@ -614,11 +616,9 @@ const styles = StyleSheet.create({
     },
     zoomModal: {
         margin: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
     },
     zoomModalContent: {
-        flex: 1,
         width: '100%',
         height: '100%',
         backgroundColor: '#000000',
@@ -682,8 +682,10 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary,
     },
     thankYouModalContent: {
+        width: '100%',
         padding: 20,
-        borderRadius: 20,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
         alignItems: 'center',
     },
     thankYouIconContainer: {
