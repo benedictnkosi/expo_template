@@ -697,7 +697,7 @@ const QuestionCard = ({
                         question={question.question}
                         renderMixedContent={renderMixedContent}
                     />
-                </View>
+                            </View>
             )}
 
             {selectedMode === 'quiz' && (
@@ -718,7 +718,7 @@ const QuestionCard = ({
                         cleanAnswer={cleanAnswer}
                     />
 
-                    <TouchableOpacity
+                <TouchableOpacity
                         style={[styles.reportButton, {
                             marginTop: 16,
                             marginHorizontal: 16,
@@ -730,7 +730,7 @@ const QuestionCard = ({
                         <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
                             🛑 Report an Issue with this {selectedMode === 'quiz' ? 'Question' : 'Lesson'}
                         </ThemedText>
-                    </TouchableOpacity>
+                </TouchableOpacity>
                 </>
             )}
 
@@ -969,7 +969,7 @@ export default function QuizScreen() {
             setIsReportModalVisible(false);
             //wait 3 seconds to show thank you modal 
             setTimeout(() => {
-                
+            
             // Use a small timeout to ensure the modal is fully dismissed
             setTimeout(() => {
                 setIsThankYouModalVisible(true);
@@ -1112,10 +1112,10 @@ export default function QuizScreen() {
 
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !currentQuestion) return;
-
+        
         // Set flag to indicate answers were submitted
         await AsyncStorage.setItem('hasNewAnswers', 'true');
-
+        
         try {
             stopTimer();
             setIsAnswerLoading(true);
@@ -1566,24 +1566,24 @@ export default function QuizScreen() {
                                                 </ThemedText>
                                             </TouchableOpacity>
                                         </View>
-                                        <TouchableOpacity
-                                            onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
-                                            disabled={isFavoriting}
-                                            style={[styles.favoriteButton, {
-                                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                                                marginRight: 8
-                                            }]}
-                                        >
-                                            {isFavoriting ? (
-                                                <ActivityIndicator size="small" color={colors.primary} />
-                                            ) : (
-                                                <Ionicons
-                                                    name={isCurrentQuestionFavorited ? "star" : "star-outline"}
-                                                    size={14}
-                                                    color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
-                                                />
-                                            )}
-                                        </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
+                                        disabled={isFavoriting}
+                                        style={[styles.favoriteButton, {
+                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                            marginRight: 8
+                                        }]}
+                                    >
+                                        {isFavoriting ? (
+                                            <ActivityIndicator size="small" color={colors.primary} />
+                                        ) : (
+                                            <Ionicons
+                                                name={isCurrentQuestionFavorited ? "star" : "star-outline"}
+                                                size={14}
+                                                color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
+                                            />
+                                        )}
+                                    </TouchableOpacity>
                                     </>
                                 )}
                             </>
@@ -1614,7 +1614,7 @@ export default function QuizScreen() {
 
             // First check if the StoreReview API is available
             const isAvailable = await StoreReview.isAvailableAsync();
-
+            
             if (isAvailable) {
                 // Try to use the native StoreReview API first
                 await StoreReview.requestReview();
@@ -1635,7 +1635,7 @@ export default function QuizScreen() {
                     }
                 }
             }
-
+            
             // Set next prompt date to tomorrow
             const nextPromptDate = new Date();
             nextPromptDate.setDate(nextPromptDate.getDate() + 1);
@@ -1923,7 +1923,7 @@ export default function QuizScreen() {
                                 defaultTab={defaultTab as TabType || 'favorites'}
                             />
                         </View>
-
+                        
                     </View>
                 </ScrollView>
             </LinearGradient>
@@ -1954,12 +1954,12 @@ export default function QuizScreen() {
             >
                 <SubjectHeader />
                 {selectedMode === 'quiz' && (
-                    <View>
+                                        <View>
                         <PerformanceSummary
                             stats={stats}
                             onRestart={() => setIsRestartModalVisible(true)}
                         />
-                    </View>
+                                                                </View>
                 )}
                 <ThemedView style={styles.content}>
                     <QuestionCard
@@ -1990,25 +1990,6 @@ export default function QuizScreen() {
                 isFromFavorites={isFromFavorites}
                 onNext={handleNext}
                 onGoBack={() => setSelectedPaper(null)}
-            />
-
-            <ReportModal
-                isVisible={isReportModalVisible}
-                onClose={() => setIsReportModalVisible(false)}
-                onSubmit={handleSubmitReport}
-                isSubmitting={isSubmitting}
-                reportComment={reportComment}
-                setReportComment={setReportComment}
-                isDark={isDark}
-                insets={insets}
-            />
-
-            <ThankYouModal
-                isVisible={isThankYouModalVisible}
-                onClose={() => setIsThankYouModalVisible(false)}
-                onRate={handleRating}
-                onPostpone={handlePostponeRating}
-                isDark={isDark}
             />
         </LinearGradient>
     );
