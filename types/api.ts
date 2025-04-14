@@ -96,4 +96,17 @@ export interface Todo {
   created_at: string;
   due_date: string;
   subject_name?: string;
+}
+
+export interface RandomAIQuestion {
+  status: string;
+  question: {
+    id: number;
+    question: string;
+    ai_explanation: string;
+    subject: {
+      id: number;
+      name: string;
+    };
+  };
 } 

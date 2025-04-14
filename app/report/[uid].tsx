@@ -1100,6 +1100,9 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         marginBottom: 8,
     },
+    lockedBadgeImage: {
+        opacity: 0.5,
+    },
     badgeName: {
         fontSize: 12,
         textAlign: 'center',

@@ -261,7 +261,6 @@ function getSubjectIcon(subjectName: string) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 16,
         paddingTop: Platform.OS === 'ios' ? 60 : 16,
     },
     header: {

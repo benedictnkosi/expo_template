@@ -229,6 +229,20 @@ function createStyles(isDark: boolean) {
             fontSize: 16,
             fontWeight: '500',
         },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            margin: 0,
+        },
+        deleteModalContent: {
+            backgroundColor: isDark ? '#2a2a2a' : '#fff',
+            borderRadius: 12,
+            padding: 20,
+            width: '100%',
+            margin: 0,
+        },
     });
 }
 
@@ -253,6 +267,8 @@ export function TodoList({
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [tempDate, setTempDate] = useState(new Date());
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    const [todoToDelete, setTodoToDelete] = useState<number | null>(null);
 
     const cardColors = [
         isDark ? '#4B5563' : '#FFE082', // yellow/gray
@@ -448,6 +464,19 @@ export function TodoList({
         }
     };
 
+    const handleDeleteTodo = (todoId: number) => {
+        setTodoToDelete(todoId);
+        setShowDeleteConfirmModal(true);
+    };
+
+    const confirmDeleteTodo = async () => {
+        if (todoToDelete) {
+            await deleteTodo(todoToDelete);
+            setShowDeleteConfirmModal(false);
+            setTodoToDelete(null);
+        }
+    };
+
     const handleDateChange = (event: any, date?: Date) => {
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
@@ -587,7 +616,7 @@ export function TodoList({
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         style={styles.todoActionButton}
-                                        onPress={() => deleteTodo(todo.id)}
+                                        onPress={() => handleDeleteTodo(todo.id)}
                                     >
                                         <Ionicons name="close" size={16} color={isDark ? '#E5E7EB' : '#666'} />
                                     </TouchableOpacity>
@@ -809,6 +838,43 @@ export function TodoList({
                     themeVariant={isDark ? 'dark' : 'light'}
                 />
             )}
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                isVisible={showDeleteConfirmModal}
+                onBackdropPress={() => {
+                    setShowDeleteConfirmModal(false);
+                    setTodoToDelete(null);
+                }}
+                backdropOpacity={0.5}
+                animationIn="slideInUp"
+                animationOut="slideOutDown"
+                style={{ margin: 0 }}
+            >
+                <View style={[styles.deleteModalContent, { backgroundColor: isDark ? '#2a2a2a' : '#fff' }]}>
+                    <ThemedText style={styles.modalTitle}>Delete Task</ThemedText>
+                    <ThemedText style={[styles.todoText, { marginBottom: 24 }]}>
+                        Are you sure you want to delete this task? This action cannot be undone.
+                    </ThemedText>
+                    <View style={styles.modalButtons}>
+                        <TouchableOpacity
+                            style={[styles.modalButton, styles.cancelButton]}
+                            onPress={() => {
+                                setShowDeleteConfirmModal(false);
+                                setTodoToDelete(null);
+                            }}
+                        >
+                            <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modalButton, styles.saveButton]}
+                            onPress={confirmDeleteTodo}
+                        >
+                            <ThemedText style={styles.modalButtonText}>Delete</ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 } 

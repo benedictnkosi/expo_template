@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, Image, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
@@ -2091,11 +2092,9 @@ export default function QuizScreen() {
                                         >
                                             {isImageLoading && <ImageLoadingPlaceholder />}
                                             <Image
-                                                source={{
-                                                    uri: `${IMAGE_BASE_URL}${currentQuestion.image_path}`
-                                                }}
+                                                source={`${IMAGE_BASE_URL}${currentQuestion.image_path}`}
                                                 style={styles.questionImage}
-                                                resizeMode="contain"
+                                                contentFit="contain"
                                                 onLoadStart={() => setIsImageLoading(true)}
                                                 onLoadEnd={() => setIsImageLoading(false)}
                                                 testID='question-context-image'
@@ -2123,11 +2122,9 @@ export default function QuizScreen() {
                                             testID='question-additional-image-container'
                                         >
                                             <Image
-                                                source={{
-                                                    uri: `${IMAGE_BASE_URL}${currentQuestion.question_image_path}`
-                                                }}
+                                                source={`${IMAGE_BASE_URL}${currentQuestion.question_image_path}`}
                                                 style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
-                                                resizeMode="contain"
+                                                contentFit="contain"
                                                 onLoadStart={() => setIsImageLoading(true)}
                                                 onLoadEnd={() => setIsImageLoading(false)}
                                                 testID='question-image'

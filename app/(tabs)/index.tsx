@@ -8,14 +8,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { analytics } from '../../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { registerForPushNotificationsAsync } from '@/services/notifications';
-import { updatePushToken } from '../../services/api';
+import { updatePushToken, updateVersion } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
+import * as Updates from 'expo-updates';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
 import { ThemedText } from '../../components/ThemedText';
-import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos, RandomAIQuestion } from '../../services/api';
-import { Subject } from '../../types/api';
+import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos } from '../../services/api';
+import { Subject, RandomAIQuestion } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
 import { getMessages, Message } from '@/services/api';
@@ -209,6 +212,70 @@ export default function HomeScreen() {
   const [currentMessage, setCurrentMessage] = useState<Message | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  // Add version check function
+  const checkVersion = useCallback(async () => {
+    try {
+      if (!user?.uid) return;
+
+      // Get last check time from storage
+      const lastCheck = await AsyncStorage.getItem('lastVersionCheck');
+      const now = new Date().getTime();
+      
+      // Check if we need to check version (once per day)
+      if (lastCheck) {
+        const lastCheckTime = parseInt(lastCheck);
+        const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        if (now - lastCheckTime < oneDay) {
+          return; // Skip if less than 24 hours since last check
+        }
+      }
+
+      // Get current version and OS info
+      const currentVersion = Constants.expoConfig?.version || '1.0.0';
+      console.log('Current version:', currentVersion);
+      const currentOS = Platform.OS === 'ios' ? 'iOS' : 'Android';
+      console.log('Current OS:', currentOS);
+      // Get stored version and OS
+      const storedVersion = await AsyncStorage.getItem('appVersion');
+      console.log('Stored version:', storedVersion);
+      const storedOS = await AsyncStorage.getItem('appOS');
+      console.log('Stored OS:', storedOS);
+
+      // Check if version or OS has changed
+      if (storedVersion !== currentVersion || storedOS !== currentOS) {
+        try {
+          // Call update API
+          const response = await updateVersion(user.uid, currentVersion, currentOS);
+          
+          if (response.success) {
+            // Update stored version and OS
+            await AsyncStorage.setItem('appVersion', currentVersion);
+            await AsyncStorage.setItem('appOS', currentOS);
+            
+            // Track the event
+            await analytics.track('app_version_updated', {
+              user_id: user.uid,
+              version: currentVersion,
+              os: currentOS
+            });
+          }
+        } catch (error) {
+          console.error('Error updating version:', error);
+        }
+      }
+
+      // Update last check time
+      await AsyncStorage.setItem('lastVersionCheck', now.toString());
+    } catch (error) {
+      console.error('Error in version check:', error);
+    }
+  }, [user?.uid]);
+
+  // Add version check on mount
+  useEffect(() => {
+    checkVersion();
+  }, [checkVersion]);
 
   // Load hidden subjects from storage
   useEffect(() => {

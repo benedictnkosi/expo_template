@@ -1,7 +1,7 @@
 export default {
   name: 'exam-quiz',
   slug: 'exam-quiz',
-  version: '1.0.0',
+  version: '2.7.17',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'examquiz',
@@ -10,7 +10,7 @@ export default {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'za.co.examquizafrica',
-    buildNumber: '1.0.0',
+    buildNumber: '1.0.2',
     googleServicesFile: './GoogleService-Info.plist',
     infoPlist: {
       "ITSAppUsesNonExemptEncryption": false,

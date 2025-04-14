@@ -112,6 +112,28 @@ function createStyles(isDark: boolean) {
             padding: 20,
             borderRadius: 12,
         },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+        },
+        deleteModalContent: {
+            backgroundColor: isDark ? '#1F2937' : '#fff',
+            padding: 20,
+            borderRadius: 12,
+            width: '90%',
+            maxWidth: 400,
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+        },
         modalTitle: {
             fontSize: 20,
             fontWeight: 'bold',
@@ -167,6 +189,8 @@ export function NoteList({
     const styles = createStyles(isDark);
     const [showAddNoteModal, setShowAddNoteModal] = useState(false);
     const [showEditNoteModal, setShowEditNoteModal] = useState(false);
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    const [noteToDelete, setNoteToDelete] = useState<number | null>(null);
     const [newNoteText, setNewNoteText] = useState('');
     const [editNoteText, setEditNoteText] = useState('');
     const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -333,7 +357,15 @@ export function NoteList({
                 text1: 'Error',
                 text2: 'Failed to delete note',
             });
+        } finally {
+            setNoteToDelete(null);
+            setShowDeleteConfirmModal(false);
         }
+    };
+
+    const handleDeletePress = (noteId: number) => {
+        setNoteToDelete(noteId);
+        setShowDeleteConfirmModal(true);
     };
 
     return (
@@ -387,7 +419,7 @@ export function NoteList({
                                         </TouchableOpacity>
                                         <TouchableOpacity
                                             style={styles.noteActionButton}
-                                            onPress={() => deleteNote(note.id)}
+                                            onPress={() => handleDeletePress(note.id)}
                                         >
                                             <Ionicons name="close" size={16} color={isDark ? '#E5E7EB' : '#666'} />
                                         </TouchableOpacity>
@@ -505,6 +537,40 @@ export function NoteList({
                         >
                             <ThemedText style={styles.modalButtonText}>Save</ThemedText>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                visible={showDeleteConfirmModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowDeleteConfirmModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.deleteModalContent}>
+                        <ThemedText style={styles.modalTitle}>Delete Note</ThemedText>
+                        <ThemedText style={[styles.noteText, { marginBottom: 24 }]}>
+                            Are you sure you want to delete this note? This action cannot be undone.
+                        </ThemedText>
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => {
+                                    setNoteToDelete(null);
+                                    setShowDeleteConfirmModal(false);
+                                }}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.saveButton, { backgroundColor: '#DC2626' }]}
+                                onPress={() => noteToDelete && deleteNote(noteToDelete)}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Delete</ThemedText>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>

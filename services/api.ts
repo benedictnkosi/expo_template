@@ -1,4 +1,4 @@
-import { CheckAnswerResponse, Subject, QuizResult, Learner, RandomAIQuestion, Todo } from '@/types/api';
+import { CheckAnswerResponse,  RandomAIQuestion, Todo } from '@/types/api';
 import { API_BASE_URL, HOST_URL } from '@/config/api';
 
 export interface MySubjectsResponse {
@@ -270,19 +270,6 @@ export async function updatePushToken(uid: string, pushToken: string): Promise<v
   }
 }
 
-export interface RandomAIQuestion {
-  status: string;
-  question: {
-    id: number;
-    question: string;
-    ai_explanation: string;
-    subject: {
-      id: number;
-      name: string;
-    };
-  };
-}
-
 export async function getRandomAIQuestion(uid: string): Promise<RandomAIQuestion> {
   try {
     const response = await fetch(`${API_BASE_URL}/question/random-ai?uid=${uid}`);
@@ -452,5 +439,28 @@ export async function getMessages(): Promise<MessagesResponse> {
   if (!response.ok) {
     throw new Error('Failed to fetch messages');
   }
+  return response.json();
+}
+
+export async function updateVersion(uid: string, version: string, os: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(
+    `${API_BASE_URL}/learner/update-version`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        uid,
+        version,
+        os
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to update version');
+  }
+
   return response.json();
 } 
