@@ -20,7 +20,7 @@ function ensureHttps(url: string): string {
 
 export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/learner/subjects?uid=${uid}`
+    `${API_BASE_URL}/learner/subjects?uid=${uid}&accounting=true`
   );
 
   if (!response.ok) {
@@ -52,7 +52,8 @@ export async function checkAnswer(
         answers: [],
         requesting_type: requesting_type,
         sheet_cell: sheet_cell,
-        duration: duration
+        duration: duration,
+        mode: "recording"
       })
     }
   );

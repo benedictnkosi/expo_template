@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     threadMeta: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.7,
     },
     modalOverlay: {
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     },
     newMessageCount: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: 'bold',
     },
     noTopicsContainer: {

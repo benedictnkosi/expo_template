@@ -56,6 +56,7 @@ interface Question {
     answer: string;
     answer_image: string | null;
     image_path: string | null;
+    other_context_images: string[] | null;
     options: {
         option1: string;
         option2: string;
@@ -688,6 +689,20 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 />
             )}
 
+            {question.other_context_images && question.other_context_images.length > 0 && (
+                <>
+                    {question.other_context_images.map((imagePath, index) => (
+                        <QuizAdditionalImage
+                            key={`context-image-${index}`}
+                            imagePath={imagePath}
+                            onZoom={(url) => {
+                                setZoomImageUrl(url);
+                                setIsZoomModalVisible(true);
+                            }}
+                        />
+                    ))}
+                </>
+            )}
 
             {(question.question || question.question_image_path) && (
                 <ThemedText style={styles.questionMeta} testID='question-meta'>
@@ -723,7 +738,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 />
             )}
 
-
             {selectedMode === 'quiz' && !question.answer_sheet && (
                 <>
                     <View>
@@ -741,49 +755,49 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                         onAnswer={handleAnswer}
                         cleanAnswer={cleanAnswer}
                     />
-
-                    {relatedQuestions.length > 0 && (
-                        <TouchableOpacity
-                            style={[styles.relatedNavButton, {
-                                backgroundColor: isDark ? colors.primary : '#7C3AED',
-                                opacity: currentQuestionIndex === relatedQuestions.length - 1 ? 0.7 : 1,
-                                marginVertical: 16,
-                                marginHorizontal: 16,
-                            }]}
-                            onPress={handleNextRelatedQuestion}
-                            disabled={currentQuestionIndex === relatedQuestions.length - 1}
-                            testID="next-related-question-button"
-                        >
-                            <View style={styles.relatedNavContent}>
-                                <Ionicons 
-                                    name="arrow-forward" 
-                                    size={20} 
-                                    color={currentQuestionIndex === relatedQuestions.length - 1 ? 'rgba(255, 255, 255, 0.5)' : '#FFFFFF'} 
-                                />
-                                <ThemedText style={[styles.footerButtonText, currentQuestionIndex === relatedQuestions.length - 1 && { opacity: 0.5 }]}>
-                                    {currentQuestionIndex === relatedQuestions.length - 1
-                                        ? '🎯 Last Question' 
-                                        : `🎯 Next Question (${currentQuestionIndex + 1}/${relatedQuestions.length})`}
-                                </ThemedText>
-                            </View>
-                        </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity
-                        style={[styles.reportButton, {
-                            marginTop: 16,
-                            marginHorizontal: 16,
-                            backgroundColor: isDark ? colors.surface : '#FEE2E2'
-                        }]}
-                        onPress={reportIssue}
-                        testID="report-issue-button"
-                    >
-                        <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                            🛑 Report an Issue with this Question
-                        </ThemedText>
-                    </TouchableOpacity>
                 </>
             )}
+
+            {relatedQuestions.length > 0 && (
+                <TouchableOpacity
+                    style={[styles.relatedNavButton, {
+                        backgroundColor: isDark ? colors.primary : '#7C3AED',
+                        opacity: currentQuestionIndex === relatedQuestions.length - 1 && relatedQuestions.length > 1 ? 0.7 : 1,
+                        marginVertical: 16,
+                        marginHorizontal: 16,
+                    }]}
+                    onPress={handleNextRelatedQuestion}
+                    disabled={currentQuestionIndex === relatedQuestions.length - 1}
+                    testID="next-related-question-button"
+                >
+                    <View style={styles.relatedNavContent}>
+                        <Ionicons 
+                            name="arrow-forward" 
+                            size={20} 
+                            color={currentQuestionIndex === relatedQuestions.length - 1 ? 'rgba(255, 255, 255, 0.5)' : '#FFFFFF'} 
+                        />
+                        <ThemedText style={[styles.footerButtonText, currentQuestionIndex === relatedQuestions.length - 1 && { opacity: 0.5 }]}>
+                            {currentQuestionIndex === relatedQuestions.length - 1
+                                ? '🎯 Last Question' 
+                                : `🎯 Next Question (${currentQuestionIndex + 1}/${relatedQuestions.length})`}
+                        </ThemedText>
+                    </View>
+                </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+                style={[styles.reportButton, {
+                    marginTop: 16,
+                    marginHorizontal: 16,
+                    backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                }]}
+                onPress={reportIssue}
+                testID="report-issue-button"
+            >
+                <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                    🛑 Report an Issue with this Question
+                </ThemedText>
+            </TouchableOpacity>
 
             {showFeedback && selectedMode === 'quiz' && (
                 <FeedbackContainer
@@ -2286,7 +2300,7 @@ const styles = StyleSheet.create({
     },
     questionContainer: {
         borderRadius: 12,
-        margin: 16,
+        margin: 8,
         color: '#000000',
     },
     questionText: {
@@ -2320,12 +2334,12 @@ const styles = StyleSheet.create({
         borderColor: '#FF3B30',
     },
     optionText: {
-        fontSize: 12,
+        fontSize: 14,
         lineHeight: 20,
         color: '#1E293B',
     },
     contextText: {
-        fontSize: 12,
+        fontSize: 14,
         marginBottom: 16,
         color: '#000000',
         lineHeight: 20,
@@ -2356,7 +2370,7 @@ const styles = StyleSheet.create({
         padding: 12,
     },
     correctAnswerLabel: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#999',
         marginBottom: 4,
         marginLeft: 16,
@@ -2392,7 +2406,7 @@ const styles = StyleSheet.create({
         zIndex: 1
     },
     imageCaption: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#999',
         textAlign: 'center',
         fontStyle: 'italic',
@@ -2430,7 +2444,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     contentText: {
-        fontSize: 12,
+        fontSize: 14,
         lineHeight: 20,
         marginVertical: 4,
         color: '#000000',
@@ -2443,7 +2457,7 @@ const styles = StyleSheet.create({
     },
     reportButtonText: {
         color: '#DC2626',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '500',
     },
     paperSelectionContainer: {
@@ -2614,10 +2628,10 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: 14,
     },
     masteryText: {
-        fontSize: 12,
+        fontSize: 14,
         textAlign: 'right',
     },
     closeHeaderButton: {
@@ -2650,7 +2664,7 @@ const styles = StyleSheet.create({
     },
     aiExplanationBugText: {
         color: '#64748B',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '500',
         marginTop: 8,
     },
@@ -2708,7 +2722,7 @@ const styles = StyleSheet.create({
         flexShrink: 1,
     },
     questionMeta: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#64748B',
         marginBottom: 8,
         fontWeight: '500'
@@ -2719,7 +2733,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     hintText: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#64748B',
         fontStyle: 'italic',
         marginBottom: 8,
@@ -2941,7 +2955,7 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     favoriteCardText: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '500',
         color: '#000000',
         lineHeight: 20,
@@ -3056,7 +3070,7 @@ const styles = StyleSheet.create({
     },
     streakDayText: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
     },
     streakNumberContainer: {
@@ -3211,7 +3225,7 @@ const styles = StyleSheet.create({
         borderColor: '#4F46E5',
     },
     modeButtonText: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
     },
     modeButtonTextSelected: {
@@ -3275,7 +3289,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 2,
     },
     tabButtonText: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '500',
     },
     activeTabButtonText: {

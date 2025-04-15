@@ -1473,7 +1473,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     badgeName: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
         textAlign: 'center',
         marginBottom: 2,
@@ -1495,7 +1495,7 @@ const styles = StyleSheet.create({
     },
     shareButtonText: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
     },
     topThreeContainer: {
@@ -1945,7 +1945,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     scoreboardAnswers: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.7,
     },
     scoreboardScoreContainer: {
@@ -1962,7 +1962,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     topThreeAnswers: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.7,
         marginTop: 4,
     },
@@ -1970,12 +1970,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     schoolName: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.7,
         marginTop: 2,
     },
     topThreeSchool: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.7,
         marginTop: 2,
         textAlign: 'center',

@@ -1360,7 +1360,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   masteryText: {
-    fontSize: 12,
+    fontSize: 14,
     marginTop: 4,
     textAlign: 'right',
   },
@@ -1433,7 +1433,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   userName: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#666',
     fontWeight: '500',
     lineHeight: 14,
@@ -1775,7 +1775,7 @@ const styles = StyleSheet.create({
     height: 32,
   },
   randomLessonTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   randomLessonContent: {
@@ -1868,7 +1868,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   taskDueDate: {
-    fontSize: 12,
+    fontSize: 14,
   },
   sectionCard: {
     borderRadius: 12,

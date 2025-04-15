@@ -1613,7 +1613,7 @@ const styles = StyleSheet.create({
   },
   currentAvatarText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
 }); 

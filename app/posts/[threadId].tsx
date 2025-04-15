@@ -1390,7 +1390,7 @@ const styles = StyleSheet.create<Styles & {
         marginBottom: 4,
     },
     headerSubtitle: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#FFFFFF',
         opacity: 0.8,
     },
@@ -1452,7 +1452,7 @@ const styles = StyleSheet.create<Styles & {
         color: '#FFFFFF',
     },
     messageTime: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#64748B',
         marginTop: 4,
         alignSelf: 'flex-end',
@@ -1571,7 +1571,7 @@ const styles = StyleSheet.create<Styles & {
         marginRight: 8,
     },
     selectedFileText: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#6B7280',
         marginRight: 4,
         flex: 1,
@@ -1655,13 +1655,13 @@ const styles = StyleSheet.create<Styles & {
         marginBottom: 8,
     },
     replyUserName: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
         marginBottom: 2,
         opacity: 0.8,
     },
     replyText: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.7,
     },
     replyingToContainer: {
@@ -1676,7 +1676,7 @@ const styles = StyleSheet.create<Styles & {
         marginRight: 12,
     },
     replyingToLabel: {
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: '600',
         marginBottom: 2,
     },
@@ -1752,7 +1752,7 @@ const styles = StyleSheet.create<Styles & {
         height: 1,
     },
     dateDividerText: {
-        fontSize: 12,
+        fontSize: 14,
         marginHorizontal: 8,
         fontWeight: '500',
     },

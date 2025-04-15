@@ -852,7 +852,7 @@ const styles = StyleSheet.create({
     },
     gradeDescription: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.9,
     },
     headerContainer: {
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     legendText: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.9,
     },
     emptyDataContainer: {
@@ -1029,7 +1029,7 @@ const styles = StyleSheet.create({
     },
     modalGradeDescription: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.9,
     },
     subjectHeader: {
@@ -1060,7 +1060,7 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     modalLegendText: {
-        fontSize: 12,
+        fontSize: 14,
         opacity: 0.9,
     },
     modalChart: {
@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     badgeName: {
-        fontSize: 12,
+        fontSize: 14,
         textAlign: 'center',
         opacity: 0.9,
     },

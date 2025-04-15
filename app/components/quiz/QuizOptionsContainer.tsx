@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
         borderColor: '#FF3B30',
     },
     optionText: {
-        fontSize: 12,
+        fontSize: 14,
         lineHeight: 20,
         color: '#1E293B',
     },

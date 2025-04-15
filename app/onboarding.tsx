@@ -86,7 +86,6 @@ export default function OnboardingScreen() {
   const [schoolLatitude, setSchoolLatitude] = useState(0);
   const [schoolLongitude, setSchoolLongitude] = useState(0);
   const [schoolName, setSchoolName] = useState('');
-  const [curriculum, setCurriculum] = useState('');
   const [difficultSubject, setDifficultSubject] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const insets = useSafeAreaInsets();

@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     questionContainer: {
         marginTop: 16,
         marginBottom: 16,
-        paddingHorizontal: 16,
+        paddingHorizontal: 8,
     },
     bulletPointRow: {
         flexDirection: 'row',

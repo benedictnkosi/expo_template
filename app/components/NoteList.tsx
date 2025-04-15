@@ -82,7 +82,7 @@ function createStyles(isDark: boolean) {
             color: isDark ? '#E5E7EB' : '#1F2937',
         },
         noteDate: {
-            fontSize: 12,
+            fontSize: 14,
             color: isDark ? '#9CA3AF' : '#6B7280',
         },
         noteActions: {

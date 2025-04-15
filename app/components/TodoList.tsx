@@ -88,7 +88,7 @@ function createStyles(isDark: boolean) {
             opacity: 0.6,
         },
         dueDate: {
-            fontSize: 12,
+            fontSize: 14,
             color: isDark ? '#9CA3AF' : '#6B7280',
         },
         overdueDate: {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Modal, TouchableOpacity, Pressable, Animated } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -6,6 +6,7 @@ import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { checkAnswer } from '@/services/api';
+import { createStyles } from './AccountingQuestion.styles';
 
 interface TableCell {
     value?: string;
@@ -13,6 +14,7 @@ interface TableCell {
     correct?: string;
     options?: string[];
     isCorrect?: boolean;
+    explanation?: string;
 }
 
 interface TableRow {
@@ -56,6 +58,8 @@ interface CheckAnswerResponse {
 
 const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, points, colors }) => {
     const scaleAnim = useRef(new Animated.Value(0)).current;
+    const { isDark } = useTheme();
+    const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
     useEffect(() => {
         if (isVisible) {
@@ -81,10 +85,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, points,
                 <Animated.View 
                     style={[
                         styles.successModalContent,
-                        { 
-                            backgroundColor: colors.card,
-                            transform: [{ scale: scaleAnim }]
-                        }
+                        { transform: [{ scale: scaleAnim }] }
                     ]}
                 >
                     <MaterialIcons name="check-circle" size={64} color="#4CAF50" />
@@ -107,10 +108,19 @@ export const AccountingQuestion = ({
     const correctSound = useRef<Audio.Sound>();
     const incorrectSound = useRef<Audio.Sound>();
     
+    const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
+
     // Parse the JSON string into table data
     const tableData: TableRow[] = React.useMemo(() => {
         try {
-            return JSON.parse(question);
+            const parsed = JSON.parse(question);
+            // Log the number of columns in the first row
+            if (parsed.length > 0) {
+                const numColumns = Object.keys(parsed[0]).length;
+                console.log('Number of columns in table:', numColumns);
+                console.log('Column names:', Object.keys(parsed[0]));
+            }
+            return parsed;
         } catch (error) {
             console.error('Failed to parse question JSON:', error);
             return [];
@@ -193,7 +203,7 @@ export const AccountingQuestion = ({
                 const cell = updatedTableData[selectedCell.rowIndex][selectedCell.column as keyof TableRow] as TableCell;
                 cell.value = option;
                 cell.isCorrect = response.correct;
-                cell.isEditable = cell.isCorrect; // Disable if incorrect
+                cell.isEditable = false; // Disable after any selection
                 
                 // Play appropriate sound
                 await playSound(cell.isCorrect);
@@ -215,54 +225,6 @@ export const AccountingQuestion = ({
         }
     };
 
-    const renderCell = (cell: string | TableCell, rowIndex: number, column: string) => {
-        if (typeof cell === 'string') {
-            return (
-                <ThemedText style={[styles.cellText, { color: colors.text }]}>
-                    {cell}
-                </ThemedText>
-            );
-        }
-
-        if (cell.isEditable) {
-            return (
-                <TouchableOpacity 
-                    style={styles.editableCell}
-                    onPress={() => handleCellPress(rowIndex, column, cell)}
-                >
-                    <ThemedText style={[styles.cellText, { color: colors.text }]}>
-                        {cell.value || 'Select'}
-                    </ThemedText>
-                </TouchableOpacity>
-            );
-        }
-
-        // Show incorrect answer with correct value
-        if (cell.value && !cell.isCorrect) {
-            return (
-                <View style={[styles.incorrectCell, { backgroundColor: '#ffebee' }]}>
-                    
-                    <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
-                        {cell.correct}
-                    </ThemedText>
-                </View>
-            );
-        }
-
-        // Show correct answer with green highlight
-        if (cell.value && cell.isCorrect) {
-            return (
-                <View style={[styles.correctCell, { backgroundColor: '#e8f5e9' }]}>
-                    <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
-                        {cell.value}
-                    </ThemedText>
-                </View>
-            );
-        }
-
-        return null;
-    };
-
     if (!tableData.length) {
         return (
             <View style={styles.errorContainer}>
@@ -275,19 +237,130 @@ export const AccountingQuestion = ({
 
     return (
         <>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.tableContainer}>
-                    {tableData.map((row, rowIndex) => (
-                        <View key={rowIndex} style={styles.tableRow}>
-                            {Object.entries(row).map(([column, cell]) => (
-                                <View key={column} style={styles.cell}>
-                                    {renderCell(cell, rowIndex, column)}
-                                </View>
-                            ))}
+            <View style={[styles.tableContainer, { width: '100%' }]}>
+                {tableData.map((row, rowIndex) => (
+                    <View key={rowIndex} style={styles.tableRow}>
+                        {/* First Column */}
+                        <View style={[styles.cell, styles.cellA]}>
+                            {(() => {
+                                const cell = row.A;
+                                const cellB = row.B;
+                                if (typeof cell === 'string') {
+                                    return (
+                                        <View style={{ width: '100%' }}>
+                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
+                                                {cell}
+                                            </ThemedText>
+                                            {typeof cellB === 'object' && !cellB.isEditable && cellB.explanation && (
+                                                <ThemedText style={styles.explanationText}>
+                                                    {cellB.explanation}
+                                                </ThemedText>
+                                            )}
+                                        </View>
+                                    );
+                                }
+
+                                if (cell.isEditable) {
+                                    return (
+                                        <TouchableOpacity 
+                                            style={styles.editableCell}
+                                            onPress={() => handleCellPress(rowIndex, 'A', cell)}
+                                        >
+                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
+                                                {cell.value || '🔽 Select'}
+                                            </ThemedText>
+                                        </TouchableOpacity>
+                                    );
+                                }
+
+                                // Show incorrect answer with correct value
+                                if (cell.value && !cell.isCorrect) {
+                                    return (
+                                        <View style={styles.incorrectCell}>
+                                            <ThemedText style={[styles.cellText, { color: '#d32f2f' }]}>
+                                                {cell.value}
+                                            </ThemedText>
+                                            <ThemedText style={[styles.correctText, { color: '#388e3c', marginTop: 4 }]}>
+                                                {cell.correct}
+                                            </ThemedText>
+                                        </View>
+                                    );
+                                }
+
+                                // Show correct answer with green highlight
+                                if (cell.value && cell.isCorrect) {
+                                    return (
+                                        <View style={styles.correctCell}>
+                                            <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
+                                                {cell.value}
+                                            </ThemedText>
+                                        </View>
+                                    );
+                                }
+
+                                return null;
+                            })()}
                         </View>
-                    ))}
-                </View>
-            </ScrollView>
+                        {/* Second Column */}
+                        <View style={[styles.cell, styles.cellB, { borderRightWidth: 0 }]}>
+                            {(() => {
+                                const cell = row.B;
+                                if (typeof cell === 'string') {
+                                    return (
+                                        <View style={{ width: '100%' }}>
+                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
+                                                {cell}
+                                            </ThemedText>
+                                        </View>
+                                    );
+                                }
+
+                                if (cell.isEditable) {
+                                    return (
+                                        <TouchableOpacity 
+                                            style={styles.editableCell}
+                                            onPress={() => handleCellPress(rowIndex, 'B', cell)}
+                                        >
+                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
+                                                {cell.value || '🔽 Select'}
+                                            </ThemedText>
+                                        </TouchableOpacity>
+                                    );
+                                }
+
+                                // Show incorrect answer with correct value and explanation
+                                if (cell.value && !cell.isCorrect) {
+                                    return (
+                                        <View style={styles.incorrectCell}>
+                                            <ThemedText style={[styles.cellText, { color: '#d32f2f' }]}>
+                                                {cell.value}
+                                            </ThemedText>
+                                            <ThemedText style={[styles.correctText, { color: '#388e3c', marginTop: 4 }]}>
+                                                {cell.correct}
+                                            </ThemedText>
+                                            
+                                        </View>
+                                    );
+                                }
+
+                                // Show correct answer with green highlight and explanation
+                                if (cell.value && cell.isCorrect) {
+                                    return (
+                                        <View style={styles.correctCell}>
+                                            <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
+                                                {cell.value}
+                                            </ThemedText>
+                                            
+                                        </View>
+                                    );
+                                }
+
+                                return null;
+                            })()}
+                        </View>
+                    </View>
+                ))}
+            </View>
 
             <Modal
                 visible={!!selectedCell}
@@ -321,119 +394,9 @@ export const AccountingQuestion = ({
             <SuccessModal 
                 isVisible={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
-                points={points}
+                points={1}
                 colors={colors}
             />
         </>
     );
-};
-
-const styles = StyleSheet.create({
-    tableContainer: {
-        marginTop: 16,
-        marginBottom: 16,
-        paddingHorizontal: 16,
-    },
-    tableRow: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        paddingVertical: 8,
-    },
-    cell: {
-        width: 100,
-        padding: 8,
-        borderRightWidth: 1,
-        borderRightColor: '#eee',
-    },
-    cellText: {
-        fontSize: 14,
-    },
-    editableCell: {
-        minHeight: 40,
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 4,
-        padding: 8,
-        justifyContent: 'center',
-    },
-    errorContainer: {
-        padding: 16,
-        alignItems: 'center',
-    },
-    errorText: {
-        fontSize: 14,
-        color: 'red',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '80%',
-        maxHeight: '80%',
-        borderRadius: 8,
-        padding: 16,
-    },
-    optionButton: {
-        padding: 16,
-        borderWidth: 1,
-        borderRadius: 4,
-        marginBottom: 8,
-    },
-    optionText: {
-        fontSize: 16,
-        textAlign: 'center',
-    },
-    incorrectCell: {
-        minHeight: 40,
-        borderWidth: 1,
-        borderColor: '#d32f2f',
-        borderRadius: 4,
-        padding: 8,
-        justifyContent: 'center',
-    },
-    incorrectText: {
-        fontSize: 14,
-    },
-    correctCell: {
-        minHeight: 40,
-        borderWidth: 1,
-        borderColor: '#388e3c',
-        borderRadius: 4,
-        padding: 8,
-        justifyContent: 'center',
-    },
-    correctText: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    successModalContent: {
-        width: '80%',
-        maxWidth: 300,
-        padding: 20,
-        borderRadius: 12,
-        alignItems: 'center',
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-    },
-    successTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    pointsText: {
-        fontSize: 18,
-        color: '#4CAF50',
-        fontWeight: '600',
-    },
-}); 
+}; 

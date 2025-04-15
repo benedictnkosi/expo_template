@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     },
     newThreadCount: {
         color: '#FFFFFF',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: 'bold',
     },
 }); 

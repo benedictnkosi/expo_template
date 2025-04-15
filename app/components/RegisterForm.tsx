@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     helperText: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#94A3B8',
         marginLeft: 4,
         marginTop: 4,

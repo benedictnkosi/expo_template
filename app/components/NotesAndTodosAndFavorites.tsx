@@ -93,7 +93,7 @@ function createStyles(isDark: boolean) {
             backgroundColor: '#6B46C1',
         },
         tabText: {
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: '500',
         },
         activeTabText: {
