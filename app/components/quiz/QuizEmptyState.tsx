@@ -44,7 +44,7 @@ export function QuizEmptyState({
                         🚨 Alert! The quiz bank is empty! Someone call the question police! 🚔
                     </ThemedText>
                     <ThemedText style={[styles.noQuestionsSubtitle, { color: colors.textSecondary }]}>
-                        Check your profile for selected school terms and curriculum
+                        Check your profile for selected school terms
                     </ThemedText>
 
                     <TouchableOpacity
@@ -79,7 +79,7 @@ export function QuizEmptyState({
                             onPress={onGoBack}
                         >
                             <View style={styles.buttonContent}>
-                                <Ionicons name="home-outline" size={20} color="#FFFFFF" />
+                                <Ionicons name="menu-outline" size={20} color="#FFFFFF" />
                                 <ThemedText style={styles.buttonText}>Go Back</ThemedText>
                             </View>
                         </TouchableOpacity>

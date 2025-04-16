@@ -821,10 +821,24 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     );
 };
 
+// Add new interface for exam date response
+interface ExamDateResponse {
+    status: string;
+    data: {
+        subject_name: string;
+        grade: number;
+        exam_date: string;
+    };
+}
+
 export default function QuizScreen() {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
-    const { subjectName, learnerRole, defaultTab } = useLocalSearchParams();
+    const params = useLocalSearchParams();
+    const subjectName = params.subjectName as string;
+    const learnerRole = params.learnerRole as string;
+    const defaultTab = params.defaultTab as string;
+    const [grade, setGrade] = useState<string | null>(null);
     const insets = useSafeAreaInsets();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [parentQuestion, setParentQuestion] = useState<Question | null>(null);
@@ -887,6 +901,26 @@ export default function QuizScreen() {
     const [relatedQuestions, setRelatedQuestions] = useState<Question[]>([]);
     const [showRelatedQuestions, setShowRelatedQuestions] = useState(false);
     const [totalRelatedQuestions, setTotalRelatedQuestions] = useState(0);
+    // Add new state for exam dates
+    const [examDates, setExamDates] = useState<{
+        p1: string | null;
+        p2: string | null;
+    }>({ p1: null, p2: null });
+    const [isLoadingExamDates, setIsLoadingExamDates] = useState(false);
+
+    // Add useEffect to get grade from AsyncStorage
+    useEffect(() => {
+        const getGrade = async () => {
+            try {
+                const storedGrade = await AsyncStorage.getItem('learnerGrade');
+                console.log('Stored grade:', storedGrade);
+                setGrade(storedGrade);
+            } catch (error) {
+                console.error('Error getting grade from AsyncStorage:', error);
+            }
+        };
+        getGrade();
+    }, []);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -1052,6 +1086,7 @@ export default function QuizScreen() {
         }
 
         // Reset all states before loading new question
+        setCurrentQuestion(null);
         setSelectedAnswer(null);
         setShowFeedback(false);
         setIsCorrect(null);
@@ -1081,7 +1116,7 @@ export default function QuizScreen() {
             }
 
             const data: QuestionResponse = await response.json();
-            if (data.status && data.status === "NOK") {
+            if (data.status && data.status === "NOK" && data.message !== "No more questions available") {
                 Toast.show({
                     type: 'error',
                     text1: 'Error',
@@ -1927,6 +1962,156 @@ export default function QuizScreen() {
         }
     };
 
+    // Add function to fetch exam dates
+    const fetchExamDates = async () => {
+        console.log('Fetching exam dates with params:', {
+            uid: user?.uid,
+            subjectName,
+            grade,
+            isGrade12: grade === '12'
+        });
+
+        if (!user?.uid || !subjectName || grade !== '12') {
+            console.log('Skipping exam date fetch:', {
+                hasUser: !!user?.uid,
+                hasSubject: !!subjectName,
+                isGrade12: grade === '12'
+            });
+            return;
+        }
+
+        try {
+            setIsLoadingExamDates(true);
+            const encodedSubjectName = encodeURIComponent(`${subjectName}`);
+            
+            // Fetch both P1 and P2 dates
+            const [p1Response, p2Response] = await Promise.all([
+                fetch(`${HOST_URL}/api/learner-subjects/exam-date/12/${encodedSubjectName}%20P1`),
+                fetch(`${HOST_URL}/api/learner-subjects/exam-date/12/${encodedSubjectName}%20P2`)
+            ]);
+
+            const p1Data: ExamDateResponse = await p1Response.json();
+            const p2Data: ExamDateResponse = await p2Response.json();
+
+            console.log('Exam date responses:', {
+                p1: p1Data,
+                p2: p2Data
+            });
+
+            setExamDates({
+                p1: p1Data.status === 'OK' ? p1Data.data.exam_date : null,
+                p2: p2Data.status === 'OK' ? p2Data.data.exam_date : null
+            });
+        } catch (error) {
+            console.error('Error fetching exam dates:', error);
+        } finally {
+            setIsLoadingExamDates(false);
+        }
+    };
+
+    // Add useEffect to fetch exam dates when grade changes
+    useEffect(() => {
+        console.log('useEffect triggered with:', {
+            grade,
+            subjectName,
+            shouldFetch: grade === '12'
+        });
+        if (grade === '12') {
+            fetchExamDates();
+        }
+    }, [grade, subjectName]);
+
+    // Add ExamDateDisplay component
+    const ExamDateDisplay = () => {
+        if (grade !== '12' || isLoadingExamDates) return null;
+
+        // If both dates are null or undefined, don't show the component
+        if (!examDates.p1 && !examDates.p2) return null;
+
+        const formatDate = (dateString: string | null) => {
+            if (!dateString) return 'Not available';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return 'Not available';
+                
+                // Format the date to show only month, day and time
+                const month = date.toLocaleDateString('en-US', {
+                    month: 'long',
+                });
+                const dayNum = date.getDate();
+                const time = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+
+                return `${month} ${dayNum} at ${time}`;
+            } catch (error) {
+                return 'Not available';
+            }
+        };
+
+        return (
+            <ThemedView style={[styles.examDateContainer, {
+                backgroundColor: isDark ? colors.card : '#FFFFFF',
+                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+            }]}>
+                <View style={styles.examDateHeader}>
+                    <ThemedText style={[styles.examDateTitle, { 
+                        color: colors.text,
+                        marginBottom: 12
+                    }]}>
+                        📅 Upcoming Exam Dates
+                    </ThemedText>
+                </View>
+                <View style={styles.examDateGrid}>
+                    <View style={[styles.examDateItem, {
+                        backgroundColor: isDark ? 'rgba(56, 189, 248, 0.1)' : '#F0F9FF',
+                        borderColor: isDark ? 'rgba(56, 189, 248, 0.2)' : '#BAE6FD',
+                        opacity: !examDates.p1 ? 0.7 : 1
+                    }]}>
+                        <View style={styles.examDateLabelContainer}>
+                            <ThemedText style={[styles.examDateLabel, { 
+                                color: isDark ? '#7DD3FC' : '#0369A1',
+                                marginBottom: 4
+                            }]}>
+                                📝 Paper 1
+                            </ThemedText>
+                        </View>
+                        <ThemedText style={[styles.examDateValue, { 
+                            color: !examDates.p1 
+                                ? (isDark ? 'rgba(255, 255, 255, 0.5)' : colors.textSecondary)
+                                : (isDark ? '#38BDF8' : '#0369A1')
+                        }]}>
+                            {!examDates.p1 ? '⏳ Not available' : `⏰ ${formatDate(examDates.p1)}`}
+                        </ThemedText>
+                    </View>
+                    <View style={[styles.examDateItem, {
+                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : '#F0FDF4',
+                        borderColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#BBF7D0',
+                        opacity: !examDates.p2 ? 0.7 : 1
+                    }]}>
+                        <View style={styles.examDateLabelContainer}>
+                            <ThemedText style={[styles.examDateLabel, { 
+                                color: isDark ? colors.textSecondary : '#166534',
+                                marginBottom: 4
+                            }]}>
+                                📝 Paper 2
+                            </ThemedText>
+                        </View>
+                        <ThemedText style={[styles.examDateValue, { 
+                            color: !examDates.p2 
+                                ? colors.textSecondary 
+                                : (isDark ? colors.text : '#166534')
+                        }]}>
+                            {!examDates.p2 ? '⏳ Not available' : `⏰ ${formatDate(examDates.p2)}`}
+                        </ThemedText>
+                    </View>
+                </View>
+            </ThemedView>
+        );
+    };
+
     if (isLoading) {
         return (
             <ImageLoadingPlaceholder />
@@ -1961,6 +2146,10 @@ export default function QuizScreen() {
                             style={styles.subjectIcon}
                         />
                         <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
+                        
+                        {/* Add ExamDateDisplay before the paper selection text */}
+                        <ExamDateDisplay />
+                        
                         <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
                             Choose a paper or explore your favorites
                         </ThemedText>
@@ -2017,7 +2206,7 @@ export default function QuizScreen() {
         );
     }
 
-    if (!currentQuestion && selectedMode === 'quiz' && !parentQuestion) {
+    if (!currentQuestion && selectedMode === 'quiz' && !parentQuestion && !isRestartModalVisible) {
         return (
             <QuizEmptyState
                 onGoToProfile={() => router.push('/profile')}
@@ -3509,5 +3698,54 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         marginHorizontal: 8,
+    },
+    examDateContainer: {
+        width: '100%',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    examDateHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    examDateTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'left',
+    },
+    examDateGrid: {
+        width: '100%',
+        flexDirection: 'row',
+        gap: 8,
+    },
+    examDateItem: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    examDateLabelContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    examDateLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    examDateValue: {
+        fontSize: 14,
+        fontWeight: '500',
+        lineHeight: 20,
     },
 });
