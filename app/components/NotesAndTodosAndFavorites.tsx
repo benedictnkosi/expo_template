@@ -33,9 +33,24 @@ interface Todo {
 
 interface FavoriteQuestion {
     id: string;
+    createdAt: {
+        date: string;
+        timezone_type: number;
+        timezone: string;
+    };
+    questionId: number;
+    question: string;
+    aiExplanation: string | null;
+    subjectId: number;
+    context: string;
+    favoriteCount: number;
+}
+
+interface PopularQuestion {
     questionId: number;
     question: string;
     context: string;
+    favoriteCount: number;
 }
 
 interface NotesAndTodosProps {
@@ -47,6 +62,7 @@ interface NotesAndTodosProps {
         };
     } | null;
     favoriteQuestions: FavoriteQuestion[];
+    popularQuestions: FavoriteQuestion[];
     isFavoritesLoading: boolean;
     loadSpecificQuestion: (questionId: number) => Promise<void>;
     getFavoriteCardColor: (index: number) => string;
@@ -107,12 +123,13 @@ function createStyles(isDark: boolean) {
     });
 }
 
-export function NotesAndTodosAndFavorites({ 
-    subjectName, 
-    currentQuestion, 
-    favoriteQuestions, 
-    isFavoritesLoading, 
-    loadSpecificQuestion, 
+export function NotesAndTodosAndFavorites({
+    subjectName,
+    currentQuestion,
+    favoriteQuestions,
+    popularQuestions,
+    isFavoritesLoading,
+    loadSpecificQuestion,
     getFavoriteCardColor,
     defaultTab = 'favorites'
 }: NotesAndTodosProps) {
@@ -145,7 +162,7 @@ export function NotesAndTodosAndFavorites({
             </View>
 
             <View style={styles.tabContainer}>
-            <TouchableOpacity
+                <TouchableOpacity
                     style={[
                         styles.tabButton,
                         activeTab === 'favorites' && styles.activeTab,
@@ -190,7 +207,7 @@ export function NotesAndTodosAndFavorites({
                         📝 Notes
                     </ThemedText>
                 </TouchableOpacity>
-                
+
             </View>
 
             <ScrollView style={styles.content}>
@@ -216,6 +233,7 @@ export function NotesAndTodosAndFavorites({
                 ) : (
                     <FavoritesList
                         favoriteQuestions={favoriteQuestions}
+                        popularQuestions={popularQuestions}
                         isFavoritesLoading={isFavoritesLoading}
                         loadSpecificQuestion={loadSpecificQuestionHandler}
                         getFavoriteCardColor={getFavoriteCardColor}

@@ -111,6 +111,7 @@ export default function ProfileScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [newThreadNotification, setNewThreadNotification] = useState(true);
   const googlePlacesRef = React.useRef<any>(null);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
 
@@ -194,6 +195,12 @@ export default function ProfileScreen() {
     AsyncStorage.getItem('soundEnabled').then(value => {
       // Default to true if not set
       setSoundEnabled(value === null ? true : value === 'true');
+    });
+
+    // Check if new thread notifications are enabled
+    AsyncStorage.getItem('newThreadNotification').then(value => {
+      // Default to true if not set
+      setNewThreadNotification(value === null ? true : value === 'true');
     });
   }, []);
 
@@ -475,6 +482,52 @@ export default function ProfileScreen() {
         type: 'error',
         text1: 'Error',
         text2: 'Failed to update sound settings',
+        position: 'bottom'
+      });
+    }
+  };
+
+  const toggleNewThreadNotification = async () => {
+    try {
+      const newNotificationState = !newThreadNotification;
+
+      // Update the setting on the server
+      if (user?.uid) {
+        const response = await fetch(`${API_BASE_URL}/learner/update-notification-setting?uid=${user.uid}&newThreadNotification=${newNotificationState ? 1 : 0}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.message || 'Failed to update notification setting');
+        }
+
+        // Only update local state if server update was successful
+        await AsyncStorage.setItem('newThreadNotification', data.newThreadNotification.toString());
+        setNewThreadNotification(data.newThreadNotification);
+
+        // Track notification preference change
+        await logAnalyticsEvent('notification_preference_changed', {
+          user_id: user.uid,
+          enabled: data.newThreadNotification
+        });
+
+        Toast.show({
+          type: 'success',
+          text1: data.newThreadNotification ? 'New thread notifications enabled' : 'New thread notifications disabled',
+          position: 'bottom'
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling notification settings:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to update notification settings',
         position: 'bottom'
       });
     }
@@ -812,23 +865,23 @@ export default function ProfileScreen() {
                   onPress={async () => {
                     try {
                       if (!user?.uid) return;
-                      
+
                       // Update UI immediately for better UX
                       setSelectedAvatar(num);
-                      
+
                       // Save to backend
                       await updateAvatar(user.uid, num);
-                      
+
                       // Update local state
                       setLearnerInfo(prev => prev ? { ...prev, avatar: num } : null);
-                      
+
                       // Log avatar change event
                       await logAnalyticsEvent('avatar_changed', {
                         user_id: user.uid,
                         old_avatar: learnerInfo?.avatar,
                         new_avatar: num
                       });
-                      
+
                       Toast.show({
                         type: 'success',
                         text1: 'Avatar updated successfully',
@@ -887,6 +940,21 @@ export default function ProfileScreen() {
               trackColor={{ false: isDark ? colors.border : '#E2E8F0', true: colors.primary }}
               thumbColor={soundEnabled ? '#FFFFFF' : '#FFFFFF'}
               testID="sound-toggle-switch"
+            />
+          </View>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>New Thread Notifications</ThemedText>
+              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Get notified when new chat threads are created
+              </ThemedText>
+            </View>
+            <Switch
+              value={newThreadNotification}
+              onValueChange={toggleNewThreadNotification}
+              trackColor={{ false: isDark ? colors.border : '#E2E8F0', true: colors.primary }}
+              thumbColor={newThreadNotification ? '#FFFFFF' : '#FFFFFF'}
+              testID="notification-toggle-switch"
             />
           </View>
         </ThemedView>

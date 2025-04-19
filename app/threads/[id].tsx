@@ -23,6 +23,7 @@ import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStoredPushToken } from '@/services/notifications';
+import { HOST_URL } from '@/config/api';
 
 interface Thread {
     id: string;
@@ -136,7 +137,7 @@ export default function SubjectChatScreen() {
                     pushToken,
                     threadId: thread.id
                 });
-                setThreads(prev => prev.map(t => 
+                setThreads(prev => prev.map(t =>
                     t.id === thread.id ? { ...t, isSubscribed: true } : t
                 ));
                 Toast.show({
@@ -149,7 +150,7 @@ export default function SubjectChatScreen() {
                 // Disable notifications
                 const docRef = doc(db, 'notifications', querySnapshot.docs[0].id);
                 await deleteDoc(docRef);
-                setThreads(prev => prev.map(t => 
+                setThreads(prev => prev.map(t =>
                     t.id === thread.id ? { ...t, isSubscribed: false } : t
                 ));
                 Toast.show({
@@ -377,6 +378,21 @@ export default function SubjectChatScreen() {
                 createdAt: threadData.createdAt
             };
 
+            // Send push notification for new thread (non-blocking)
+            fetch(`${HOST_URL}/api/push-notifications/new-thread`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subject_name: subjectName,
+                    thread_title: newThreadTitle.trim(),
+                    uid: user.uid
+                })
+            }).catch(error => {
+                console.error('Error sending push notification for new thread:', error);
+            });
+
             setThreads(prev => [newThread, ...prev]);
             setNewThreadTitle('');
             setShowNewThreadModal(false);
@@ -522,11 +538,11 @@ export default function SubjectChatScreen() {
                 animationType="slide"
                 onRequestClose={() => setShowNewThreadModal(false)}
             >
-                <KeyboardAvoidingView 
+                <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.modalOverlay}
                 >
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.modalOverlay}
                         activeOpacity={1}
                         onPress={() => setShowNewThreadModal(false)}

@@ -15,7 +15,7 @@ import { TabView, TabBar } from 'react-native-tab-view';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
-import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus, Badge } from '../services/api';
+import { checkAnswer, removeResults, getSubjectStats, setQuestionStatus, Badge, getRandomAIQuestion } from '../services/api';
 import { API_BASE_URL, HOST_URL, IMAGE_BASE_URL } from '../config/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +38,8 @@ import { QuizEmptyState } from './components/quiz/QuizEmptyState';
 import { QuizFooter } from './components/quiz/QuizFooter';
 import { KaTeX } from './components/quiz/KaTeX';
 import { AccountingQuestion } from './components/quiz/AccountingQuestion';
+import { RandomAIQuestion } from '../types/api';
+import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -132,7 +134,6 @@ function cleanAnswer(answer: string): string {
 let isOpeningDollarSign = false
 let isClosingDollarSignNextLine = false
 function renderMixedContent(text: string, isDark: boolean, colors: any) {
-    //console.log("text ", text);
     if (!text) return null;
 
     if (text.includes('$') && text.trim().length < 3 && !isOpeningDollarSign && !isClosingDollarSignNextLine) {
@@ -526,11 +527,20 @@ interface FavoriteQuestion {
     };
     questionId: number;
     question: string;
-    aiExplanation: string;
+    aiExplanation: string | null;
     subjectId: number;
     context: string;
+    favoriteCount: number; // Add this property
 }
 
+interface PopularQuestion {
+    questionId: number;
+    question: string;
+    aiExplanation: string | null;
+    subjectId: number;
+    context: string;
+    favoriteCount: number;
+}
 
 // Add this component after the AnimatedFire component
 const PointsAnimation = ({ points, isVisible }: { points: number; isVisible: boolean }) => {
@@ -647,7 +657,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 }) => {
     if (!question) return null;
 
-    
+
 
     return (
         <ThemedView
@@ -722,7 +732,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
 
 
-            {question.question &&  (
+            {question.question && (
                 <View style={styles.questionContainer} testID='question-text'>
                     <QuizQuestionText
                         question={question.question}
@@ -758,7 +768,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </>
             )}
 
-            {relatedQuestions.length > 0 && (
+            {relatedQuestions.length > 1 && (
                 <TouchableOpacity
                     style={[styles.relatedNavButton, {
                         backgroundColor: isDark ? colors.primary : '#7C3AED',
@@ -771,14 +781,14 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     testID="next-related-question-button"
                 >
                     <View style={styles.relatedNavContent}>
-                        <Ionicons 
-                            name="arrow-forward" 
-                            size={20} 
-                            color={currentQuestionIndex === relatedQuestions.length - 1 ? 'rgba(255, 255, 255, 0.5)' : '#FFFFFF'} 
+                        <Ionicons
+                            name="arrow-forward"
+                            size={20}
+                            color={currentQuestionIndex === relatedQuestions.length - 1 ? 'rgba(255, 255, 255, 0.5)' : '#FFFFFF'}
                         />
                         <ThemedText style={[styles.footerButtonText, currentQuestionIndex === relatedQuestions.length - 1 && { opacity: 0.5 }]}>
                             {currentQuestionIndex === relatedQuestions.length - 1
-                                ? '🎯 Last Question' 
+                                ? '🎯 Last Question'
                                 : `🎯 Next Question (${currentQuestionIndex + 1}/${relatedQuestions.length})`}
                         </ThemedText>
                     </View>
@@ -878,6 +888,7 @@ export default function QuizScreen() {
     const [duration, setDuration] = useState(0);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const [favoriteQuestions, setFavoriteQuestions] = useState<FavoriteQuestion[]>([]);
+    const [popularQuestions, setPopularQuestions] = useState<PopularQuestion[]>([]);
     const [isFavoritesLoading, setIsFavoritesLoading] = useState(false);
     const [isFavoriting, setIsFavoriting] = useState(false);
     const [isCurrentQuestionFavorited, setIsCurrentQuestionFavorited] = useState(false);
@@ -907,13 +918,35 @@ export default function QuizScreen() {
         p2: string | null;
     }>({ p1: null, p2: null });
     const [isLoadingExamDates, setIsLoadingExamDates] = useState(false);
+    const [randomLesson, setRandomLesson] = useState<RandomAIQuestion | null>(null);
+
+    // Add fetchRandomLesson function
+    const fetchRandomLesson = async () => {
+        if (!user?.uid) return;
+        try {
+            const response = await getRandomAIQuestion(user.uid, subjectName);
+            if (response.status === "OK" && response.question) {
+                setRandomLesson(response);
+            } else {
+                console.log('No random lesson available');
+                setRandomLesson(null);
+            }
+        } catch (error) {
+            console.error('Error fetching random lesson:', error);
+            setRandomLesson(null);
+        }
+    };
+
+    // Add useEffect to fetch random lesson on mount
+    useEffect(() => {
+        fetchRandomLesson();
+    }, []);
 
     // Add useEffect to get grade from AsyncStorage
     useEffect(() => {
         const getGrade = async () => {
             try {
                 const storedGrade = await AsyncStorage.getItem('learnerGrade');
-                console.log('Stored grade:', storedGrade);
                 setGrade(storedGrade);
             } catch (error) {
                 console.error('Error getting grade from AsyncStorage:', error);
@@ -1045,11 +1078,11 @@ export default function QuizScreen() {
             setIsReportModalVisible(false);
             //wait 3 seconds to show thank you modal 
             setTimeout(() => {
-            
-            // Use a small timeout to ensure the modal is fully dismissed
-            setTimeout(() => {
-                setIsThankYouModalVisible(true);
-            }, 3000);
+
+                // Use a small timeout to ensure the modal is fully dismissed
+                setTimeout(() => {
+                    setIsThankYouModalVisible(true);
+                }, 3000);
             }, 3000);
 
             setReportComment('');
@@ -1156,14 +1189,14 @@ export default function QuizScreen() {
                     .replace(/\]/g, '$')
                     .replace(/\\[[\]]/g, '$')
                     .replace(/\\newline/g, '=')
-                    .replace(/\*\*: /g, '**')
+                    .replace(/\*\*: /g, '** ')
                     .replace(/\$\: /g, '$')
                     .replace(/\*\*\*/g, '**')
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $')
                     : '';
 
                 setCurrentQuestion(data);
-                
+
                 // If this question has related questions, load them
                 if (data.related_question_ids && data.related_question_ids.length > 0) {
                     const relatedQuestionsPromises = data.related_question_ids.map(async (id: number) => {
@@ -1214,10 +1247,10 @@ export default function QuizScreen() {
 
     const handleAnswer = async (answer: string) => {
         if (!user?.uid || !currentQuestion) return;
-        
+
         // Set flag to indicate answers were submitted
         await AsyncStorage.setItem('hasNewAnswers', 'true');
-        
+
         try {
             stopTimer();
             setIsAnswerLoading(true);
@@ -1338,11 +1371,11 @@ export default function QuizScreen() {
 
     const handleNextRelatedQuestion = () => {
         if (relatedQuestions.length === 0) return;
-        
+
         const nextIndex = (currentQuestionIndex + 1) % relatedQuestions.length;
         setCurrentQuestionIndex(nextIndex);
         setCurrentQuestion(relatedQuestions[nextIndex]);
-        
+
         // Reset UI state for new question
         setSelectedAnswer(null);
         setShowFeedback(false);
@@ -1412,7 +1445,11 @@ export default function QuizScreen() {
                     .replace(/\\text\{([^}]+)\}/g, '\\text{$1}')
                     .replace(/\[/g, '$')
                     .replace(/\]/g, '$')
-                    .replace(/\\[\[\]]/g, '$')
+                    .replace(/\\[[\]]/g, '$')
+                    .replace(/\\newline/g, '=')
+                    .replace(/\*\*: /g, '** ')
+                    .replace(/\$\: /g, '$')
+                    .replace(/\*\*\*/g, '**')
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $');
 
                 setAiExplanation(explanation);
@@ -1643,7 +1680,7 @@ export default function QuizScreen() {
                                         <ThemedText style={styles.badgeText}>{currentQuestion?.curriculum || parentQuestion?.curriculum}</ThemedText>
                                     </View>
                                 )}
-                                {(currentQuestion || parentQuestion)     && (
+                                {(currentQuestion || parentQuestion) && (
                                     <>
                                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                             {parentQuestion && (
@@ -1677,29 +1714,27 @@ export default function QuizScreen() {
                                                     size={14}
                                                     color={isDark ? '#FFFFFF' : '#000000'}
                                                 />
-                                                <ThemedText style={styles.buttonLabel}>
-                                                    Note
-                                                </ThemedText>
+
                                             </TouchableOpacity>
                                         </View>
-                                    <TouchableOpacity
-                                        onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
-                                        disabled={isFavoriting}
-                                        style={[styles.favoriteButton, {
-                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                                            marginRight: 8
-                                        }]}
-                                    >
-                                        {isFavoriting ? (
-                                            <ActivityIndicator size="small" color={colors.primary} />
-                                        ) : (
-                                            <Ionicons
-                                                name={isCurrentQuestionFavorited ? "star" : "star-outline"}
-                                                size={14}
-                                                color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
-                                            />
-                                        )}
-                                    </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
+                                            disabled={isFavoriting}
+                                            style={[styles.favoriteButton, {
+                                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                                marginRight: 8
+                                            }]}
+                                        >
+                                            {isFavoriting ? (
+                                                <ActivityIndicator size="small" color={colors.primary} />
+                                            ) : (
+                                                <Ionicons
+                                                    name={isCurrentQuestionFavorited ? "star" : "star-outline"}
+                                                    size={14}
+                                                    color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
+                                                />
+                                            )}
+                                        </TouchableOpacity>
                                     </>
                                 )}
                             </>
@@ -1730,7 +1765,7 @@ export default function QuizScreen() {
 
             // First check if the StoreReview API is available
             const isAvailable = await StoreReview.isAvailableAsync();
-            
+
             if (isAvailable) {
                 // Try to use the native StoreReview API first
                 await StoreReview.requestReview();
@@ -1751,7 +1786,7 @@ export default function QuizScreen() {
                     }
                 }
             }
-            
+
             // Set next prompt date to tomorrow
             const nextPromptDate = new Date();
             nextPromptDate.setDate(nextPromptDate.getDate() + 1);
@@ -1802,7 +1837,7 @@ export default function QuizScreen() {
             if (data.status === "OK") {
                 // The response data is in data.data array
                 setFavoriteQuestions(data.data || []);
-                //console.log('Fetched favorites:', data.data); // Debug log
+                setPopularQuestions(data.popular || []);
             }
         } catch (error) {
             console.error('Error fetching favorites:', error);
@@ -1825,7 +1860,7 @@ export default function QuizScreen() {
     const loadFavoriteQuestion = async (questionId: number) => {
         setIsFromFavorites(true);
         loadSpecificQuestion(questionId);
-        
+
     }
 
     const loadSpecificQuestion = async (questionId: number) => {
@@ -1836,7 +1871,7 @@ export default function QuizScreen() {
         try {
             setSelectedMode('quiz');
             setIsLoading(true);
-           
+
             const response = await fetch(
                 `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
             );
@@ -1927,14 +1962,11 @@ export default function QuizScreen() {
             });
 
             if (!response.ok) {
-                console.log(user.uid);
-                console.log('Failed to save note:', response);
                 throw new Error('Failed to save note');
             }
 
             const data = await response.json();
             if (data.status === "OK") {
-                console.log('Note saved successfully');
                 Toast.show({
                     type: 'success',
                     text1: '📝 Note Saved!',
@@ -1964,26 +1996,16 @@ export default function QuizScreen() {
 
     // Add function to fetch exam dates
     const fetchExamDates = async () => {
-        console.log('Fetching exam dates with params:', {
-            uid: user?.uid,
-            subjectName,
-            grade,
-            isGrade12: grade === '12'
-        });
 
         if (!user?.uid || !subjectName || grade !== '12') {
-            console.log('Skipping exam date fetch:', {
-                hasUser: !!user?.uid,
-                hasSubject: !!subjectName,
-                isGrade12: grade === '12'
-            });
+
             return;
         }
 
         try {
             setIsLoadingExamDates(true);
             const encodedSubjectName = encodeURIComponent(`${subjectName}`);
-            
+
             // Fetch both P1 and P2 dates
             const [p1Response, p2Response] = await Promise.all([
                 fetch(`${HOST_URL}/api/learner-subjects/exam-date/12/${encodedSubjectName}%20P1`),
@@ -1992,11 +2014,6 @@ export default function QuizScreen() {
 
             const p1Data: ExamDateResponse = await p1Response.json();
             const p2Data: ExamDateResponse = await p2Response.json();
-
-            console.log('Exam date responses:', {
-                p1: p1Data,
-                p2: p2Data
-            });
 
             setExamDates({
                 p1: p1Data.status === 'OK' ? p1Data.data.exam_date : null,
@@ -2011,11 +2028,6 @@ export default function QuizScreen() {
 
     // Add useEffect to fetch exam dates when grade changes
     useEffect(() => {
-        console.log('useEffect triggered with:', {
-            grade,
-            subjectName,
-            shouldFetch: grade === '12'
-        });
         if (grade === '12') {
             fetchExamDates();
         }
@@ -2033,7 +2045,7 @@ export default function QuizScreen() {
             try {
                 const date = new Date(dateString);
                 if (isNaN(date.getTime())) return 'Not available';
-                
+
                 // Format the date to show only month, day and time
                 const month = date.toLocaleDateString('en-US', {
                     month: 'long',
@@ -2057,7 +2069,7 @@ export default function QuizScreen() {
                 borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
             }]}>
                 <View style={styles.examDateHeader}>
-                    <ThemedText style={[styles.examDateTitle, { 
+                    <ThemedText style={[styles.examDateTitle, {
                         color: colors.text,
                         marginBottom: 12
                     }]}>
@@ -2071,15 +2083,15 @@ export default function QuizScreen() {
                         opacity: !examDates.p1 ? 0.7 : 1
                     }]}>
                         <View style={styles.examDateLabelContainer}>
-                            <ThemedText style={[styles.examDateLabel, { 
+                            <ThemedText style={[styles.examDateLabel, {
                                 color: isDark ? '#7DD3FC' : '#0369A1',
                                 marginBottom: 4
                             }]}>
                                 📝 Paper 1
                             </ThemedText>
                         </View>
-                        <ThemedText style={[styles.examDateValue, { 
-                            color: !examDates.p1 
+                        <ThemedText style={[styles.examDateValue, {
+                            color: !examDates.p1
                                 ? (isDark ? 'rgba(255, 255, 255, 0.5)' : colors.textSecondary)
                                 : (isDark ? '#38BDF8' : '#0369A1')
                         }]}>
@@ -2092,16 +2104,16 @@ export default function QuizScreen() {
                         opacity: !examDates.p2 ? 0.7 : 1
                     }]}>
                         <View style={styles.examDateLabelContainer}>
-                            <ThemedText style={[styles.examDateLabel, { 
+                            <ThemedText style={[styles.examDateLabel, {
                                 color: isDark ? colors.textSecondary : '#166534',
                                 marginBottom: 4
                             }]}>
                                 📝 Paper 2
                             </ThemedText>
                         </View>
-                        <ThemedText style={[styles.examDateValue, { 
-                            color: !examDates.p2 
-                                ? colors.textSecondary 
+                        <ThemedText style={[styles.examDateValue, {
+                            color: !examDates.p2
+                                ? colors.textSecondary
                                 : (isDark ? colors.text : '#166534')
                         }]}>
                             {!examDates.p2 ? '⏳ Not available' : `⏰ ${formatDate(examDates.p2)}`}
@@ -2109,6 +2121,19 @@ export default function QuizScreen() {
                     </View>
                 </View>
             </ThemedView>
+        );
+    };
+
+    // Add QuickBite component
+    const QuickBite = () => {
+        if (!randomLesson?.question) return null;
+
+        return (
+            <RandomLessonPreview
+                randomLesson={randomLesson}
+                onRefresh={fetchRandomLesson}
+                showSubjectIcon={false}
+            />
         );
     };
 
@@ -2146,10 +2171,13 @@ export default function QuizScreen() {
                             style={styles.subjectIcon}
                         />
                         <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
-                        
+
+                        {/* Add QuickBite before ExamDateDisplay */}
+                        <QuickBite />
+
                         {/* Add ExamDateDisplay before the paper selection text */}
                         <ExamDateDisplay />
-                        
+
                         <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
                             Choose a paper or explore your favorites
                         </ThemedText>
@@ -2193,13 +2221,32 @@ export default function QuizScreen() {
                                 subjectName={subjectName as string}
                                 currentQuestion={currentQuestion}
                                 favoriteQuestions={favoriteQuestions}
+                                popularQuestions={popularQuestions.map(q => {
+                                    if ('id' in q) {
+                                        return q as FavoriteQuestion;
+                                    }
+                                    return {
+                                        id: q.questionId.toString(),
+                                        createdAt: {
+                                            date: new Date().toISOString(),
+                                            timezone_type: 3,
+                                            timezone: 'UTC'
+                                        },
+                                        questionId: q.questionId,
+                                        question: q.question,
+                                        aiExplanation: q.aiExplanation,
+                                        subjectId: q.subjectId,
+                                        context: q.context,
+                                        favoriteCount: q.favoriteCount
+                                    };
+                                })}
                                 isFavoritesLoading={isFavoritesLoading}
                                 loadSpecificQuestion={loadFavoriteQuestion}
                                 getFavoriteCardColor={getFavoriteCardColor}
                                 defaultTab={defaultTab as TabType || 'favorites'}
                             />
                         </View>
-                        
+
                     </View>
                 </ScrollView>
             </LinearGradient>
@@ -2415,8 +2462,7 @@ export default function QuizScreen() {
 
         </LinearGradient>
     );
-}
-// Add helper function to get subject icons
+}// Add helper function to get subject icons
 function getSubjectIcon(subjectName: string) {
     const icons = {
         'Agricultural Sciences': require('@/assets/images/subjects/agriculture.png'),
@@ -2431,9 +2477,7 @@ function getSubjectIcon(subjectName: string) {
         'default': require('@/assets/images/subjects/mathematics.png')
     };
     return icons[subjectName as keyof typeof icons] || icons.default;
-}
-
-const styles = StyleSheet.create({
+} const styles = StyleSheet.create({
     gradient: {
         flex: 1,
     },
@@ -3748,4 +3792,35 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         lineHeight: 20,
     },
+    quickBiteContainer: {
+        marginHorizontal: 16,
+        marginBottom: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        padding: 16,
+    },
+    quickBiteHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    quickBiteTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    quickBiteContent: {
+        marginTop: 8,
+    },
+    quickBiteQuestion: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 8,
+    },
+    quickBiteExplanation: {
+        fontSize: 14,
+        lineHeight: 20,
+    },
 });
+
+
+

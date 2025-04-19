@@ -1,4 +1,4 @@
-import { CheckAnswerResponse,  RandomAIQuestion, Todo } from '@/types/api';
+import { CheckAnswerResponse, RandomAIQuestion, Todo } from '@/types/api';
 import { API_BASE_URL, HOST_URL } from '@/config/api';
 
 export interface MySubjectsResponse {
@@ -53,7 +53,7 @@ export async function checkAnswer(
         requesting_type: requesting_type,
         sheet_cell: sheet_cell,
         duration: duration,
-        mode: "recording"
+        mode: "normal"
       })
     }
   );
@@ -274,9 +274,15 @@ export async function updatePushToken(uid: string, pushToken: string): Promise<v
   }
 }
 
-export async function getRandomAIQuestion(uid: string): Promise<RandomAIQuestion> {
+export async function getRandomAIQuestion(uid: string, subjectName?: string): Promise<RandomAIQuestion> {
   try {
-    const response = await fetch(`${API_BASE_URL}/question/random-ai?uid=${uid}`);
+    const url = new URL(`${API_BASE_URL}/question/random-ai`);
+    url.searchParams.append('uid', uid);
+    if (subjectName) {
+      url.searchParams.append('subject_name', subjectName);
+    }
+
+    const response = await fetch(url.toString());
 
     if (!response.ok) {
       throw new Error('Failed to fetch random AI question');
@@ -383,7 +389,7 @@ export async function getAllBadges(): Promise<Badge[]> {
 
   const data = await response.json();
   return data.badges;
-} 
+}
 
 export interface SubjectPerformance {
   subject: string;
@@ -401,15 +407,15 @@ export interface LearnerPerformanceResponse {
 
 export async function getLearnerPerformance(uid: string): Promise<LearnerPerformanceResponse> {
   try {
-      const response = await fetch(`${HOST_URL}/api/learner/${uid}/subject-performance`);
-      if (!response.ok) {
-          throw new Error('Failed to fetch learner performance');
-      }
-      const data = await response.json();
-      return data;
+    const response = await fetch(`${HOST_URL}/api/learner/${uid}/subject-performance`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch learner performance');
+    }
+    const data = await response.json();
+    return data;
   } catch (error) {
-      console.error('Error fetching learner performance:', error);
-      throw error;
+    console.error('Error fetching learner performance:', error);
+    throw error;
   }
 }
 

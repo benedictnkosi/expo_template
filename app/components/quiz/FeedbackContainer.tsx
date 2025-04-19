@@ -3,7 +3,7 @@ import { StyleSheet, View, TouchableOpacity, Image, ActivityIndicator, Animated 
 import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { KaTeX } from './KaTeX'
-import {  IMAGE_BASE_URL } from '../../../config/api';
+import { IMAGE_BASE_URL } from '../../../config/api';
 
 interface FeedbackContainerProps {
     feedbackMessage: string;
@@ -40,6 +40,7 @@ export function FeedbackContainer({
 }: FeedbackContainerProps) {
     const [isImageLoading, setIsImageLoading] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const styles = createStyles(colors, isDark);
 
     useEffect(() => {
         if (isLoadingExplanation) {
@@ -95,7 +96,7 @@ export function FeedbackContainer({
                     </View>
                 ) : (
                     <ThemedText
-                        style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
+                        style={styles.correctAnswerText}
                         testID="correct-answer-text"
                     >
                         {cleanAnswer(correctAnswer)}
@@ -150,7 +151,7 @@ export function FeedbackContainer({
                             </View>
                         ) : (
                             <ThemedText
-                                style={[styles.correctAnswerText, { color: isDark ? '#4ADE80' : '#166534' }]}
+                                style={styles.correctAnswerText}
                                 testID="correct-answer-text"
                             >
                                 {currentQuestion.explanation?.split('\n').map((line: string, index: number) => {
@@ -246,7 +247,7 @@ export function FeedbackContainer({
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     feedbackContainer: {
         marginTop: 20,
         padding: 15,
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
     correctAnswerText: {
         fontSize: 16,
         textAlign: 'center',
-        color: '#000000'
+        color: colors.text
     },
     imageWrapper: {
         width: '100%',

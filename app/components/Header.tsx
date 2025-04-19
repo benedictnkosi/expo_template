@@ -18,22 +18,22 @@ export interface HeaderProps {
 
 export function Header({ learnerInfo, title, showBackButton }: HeaderProps) {
     const { isDark } = useTheme();
-    
+
     return (
         <View style={styles.container}>
             {showBackButton && (
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => router.back()}
                 >
-                    <Ionicons 
-                        name="arrow-back" 
-                        size={24} 
-                        color={isDark ? '#FFFFFF' : '#000000'} 
+                    <Ionicons
+                        name="arrow-back"
+                        size={24}
+                        color={isDark ? '#FFFFFF' : '#000000'}
                     />
                 </TouchableOpacity>
             )}
-            
+
             {title ? (
                 <ThemedText style={styles.title}>{title}</ThemedText>
             ) : learnerInfo ? (

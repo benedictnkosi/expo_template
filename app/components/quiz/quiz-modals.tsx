@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,19 @@ interface StreakModalProps {
 export const StreakModal = ({ isVisible, onClose, streak }: StreakModalProps) => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
+
+    const handleShare = async () => {
+        const streakEmojis = '🔥'.repeat(Math.min(streak, 5));
+        const shareMessage = `${streakEmojis} Day ${streak} Streak! ${streakEmojis}\n\nI'm on fire with my exam prep! 📚✨\nKeeping the momentum going! 🚀💪\n\n#ExamQuiz #StudyStreak`;
+        
+        try {
+            await Share.share({
+                message: shareMessage,
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
 
     return (
         <Modal
@@ -47,13 +60,25 @@ export const StreakModal = ({ isVisible, onClose, streak }: StreakModalProps) =>
                     Keep up the great work! Your dedication is paying off. 🚀
                 </ThemedText>
                 <TouchableOpacity
-                    style={[styles.closeButton, { 
-                        backgroundColor: Colors.primary 
+                    style={[styles.shareButton, { 
+                        backgroundColor: Colors.primary,
                     }]}
-                    onPress={onClose}
+                    onPress={handleShare}
                 >
-                    <ThemedText style={styles.closeButtonText}>Continue</ThemedText>
+                    <ThemedText style={styles.shareButtonText}>
+                        Share Your Progress 🎯
+                    </ThemedText>
                 </TouchableOpacity>
+                <Pressable
+                    onPress={onClose}
+                    style={styles.continueLink}
+                >
+                    <ThemedText style={[styles.continueLinkText, {
+                        color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
+                    }]}>
+                        Continue
+                    </ThemedText>
+                </Pressable>
             </View>
         </Modal>
     );
@@ -153,6 +178,8 @@ export const ExplanationModal = ({
     isDark,
     renderMixedContent 
 }: ExplanationModalProps) => {
+    const colors = isDark ? Colors.dark : Colors.light;
+
     return (
         <Modal
             isVisible={isVisible}
@@ -170,7 +197,7 @@ export const ExplanationModal = ({
             }]}>
                 <View style={styles.explanationHeader}>
                     <ThemedText style={[styles.explanationTitle, { color: isDark ? Colors.dark.text : Colors.light.text }]}>
-                        🔬 AI Science Scoop! 🤖✨
+                        �� AI Explanation 🤖✨
                     </ThemedText>
                     <TouchableOpacity
                         onPress={onClose}
@@ -179,10 +206,7 @@ export const ExplanationModal = ({
                         <Ionicons name="close" size={24} color={isDark ? Colors.dark.text : Colors.light.text} />
                     </TouchableOpacity>
                 </View>
-                <ScrollView 
-                    style={styles.explanationContent}
-                    contentContainerStyle={styles.explanationContentContainer}
-                >
+                <ScrollView style={styles.explanationContent}>
                     {aiExplanation?.split('\n').map((line, index) => {
                         const trimmedLine = line.trim();
                         if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
@@ -204,7 +228,7 @@ export const ExplanationModal = ({
                                         {indentLevel > 0 ? '🎯' : '✅'}
                                     </ThemedText>
                                     <View style={styles.bulletTextWrapper}>
-                                        {renderMixedContent(content, isDark, Colors)}
+                                        {renderMixedContent(content, isDark, colors)}
                                     </View>
                                 </View>
                             );
@@ -214,7 +238,7 @@ export const ExplanationModal = ({
                         }
                         return (
                             <View key={index}>
-                                {renderMixedContent(line, isDark, Colors)}
+                                {renderMixedContent(line, isDark, colors)}
                             </View>
                         );
                     })}
@@ -433,6 +457,18 @@ export const BadgeModal = ({
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
+    const handleShare = async () => {
+        const shareMessage = `🏆 New Achievement Unlocked! 🎉\n\n${badgeName} Badge Earned! ✨\n\n${badgeDescription}\n\n#ExamQuiz #Achievement #Learning`;
+        
+        try {
+            await Share.share({
+                message: shareMessage,
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
+
     return (
         <Modal
             isVisible={isVisible}
@@ -468,13 +504,25 @@ export const BadgeModal = ({
                     {badgeDescription}
                 </ThemedText>
                 <TouchableOpacity
-                    style={[styles.closeButton, { 
-                        backgroundColor: Colors.primary 
+                    style={[styles.shareButton, { 
+                        backgroundColor: Colors.primary,
                     }]}
-                    onPress={onClose}
+                    onPress={handleShare}
                 >
-                    <ThemedText style={styles.closeButtonText}>Continue</ThemedText>
+                    <ThemedText style={styles.shareButtonText}>
+                        Share Your Achievement 🏆
+                    </ThemedText>
                 </TouchableOpacity>
+                <Pressable
+                    onPress={onClose}
+                    style={styles.continueLink}
+                >
+                    <ThemedText style={[styles.continueLinkText, {
+                        color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
+                    }]}>
+                        Continue
+                    </ThemedText>
+                </Pressable>
             </View>
         </Modal>
     );
@@ -488,14 +536,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modal: {
-        margin: 0,
-        justifyContent: 'flex-end',
+        margin: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     modalContent: {
-        width: '100%',
+        width: '90%',
         padding: 24,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderRadius: 20,
         alignItems: 'center',
         shadowColor: '#000',
         shadowOffset: {
@@ -524,6 +572,34 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 22,
     },
+    streakButtons: {
+        flexDirection: 'row',
+        width: '100%',
+        gap: 12,
+        marginTop: 8,
+    },
+    shareButton: {
+        width: '100%',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 24,
+    },
+    shareButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    continueLink: {
+        marginTop: 16,
+        padding: 8,
+    },
+    continueLinkText: {
+        fontSize: 14,
+        textDecorationLine: 'underline',
+    },
     closeButton: {
         paddingVertical: 12,
         paddingHorizontal: 24,
@@ -537,10 +613,9 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     reportModalContent: {
-        width: '100%',
+        width: '90%',
         padding: 20,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderRadius: 20,
     },
     reportModalTitle: {
         fontSize: 20,
@@ -579,12 +654,11 @@ const styles = StyleSheet.create({
     },
     fullScreenModal: {
         margin: 0,
-        justifyContent: 'flex-end',
     },
     explanationModal: {
         width: '100%',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        height: '100%',
+        borderRadius: 0,
         padding: 20,
     },
     explanationHeader: {
@@ -616,7 +690,6 @@ const styles = StyleSheet.create({
     },
     zoomModal: {
         margin: 0,
-        justifyContent: 'flex-end',
     },
     zoomModalContent: {
         width: '100%',
@@ -682,10 +755,9 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.primary,
     },
     thankYouModalContent: {
-        width: '100%',
+        width: '90%',
         padding: 20,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderRadius: 20,
         alignItems: 'center',
     },
     thankYouIconContainer: {
@@ -725,16 +797,17 @@ const styles = StyleSheet.create({
         borderRadius: 50,
     },
     badgeTitle: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'bold',
         marginBottom: 12,
         textAlign: 'center',
     },
     badgeName: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
         marginBottom: 12,
         textAlign: 'center',
+        color: Colors.primary,
     },
     badgeDescription: {
         fontSize: 16,

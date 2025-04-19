@@ -312,15 +312,25 @@ const MessageItem = React.memo(({
                                     <TouchableOpacity
                                         style={[styles.replyContainer, {
                                             backgroundColor: isOwnMessage
-                                                ? 'rgba(255, 255, 255, 0.1)'
-                                                : (isDark ? 'rgba(0, 0, 0, 0.1)' : 'rgba(0, 0, 0, 0.05)')
+                                                ? 'rgba(255, 255, 255, 0.2)'
+                                                : (isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)')
                                         }]}
                                     >
-                                        <ThemedText style={[styles.replyUserName, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151') }]}>
+                                        <ThemedText style={[styles.replyUserName, {
+                                            color: isOwnMessage
+                                                ? '#FFFFFF'
+                                                : (isDark ? '#A5B4FC' : '#9CA3AF'),
+                                            opacity: 1
+                                        }]}>
                                             {item.replyTo.userName}
                                         </ThemedText>
                                         <ThemedText
-                                            style={[styles.replyText, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151') }]}
+                                            style={[styles.replyText, {
+                                                color: isOwnMessage
+                                                    ? '#FFFFFF'
+                                                    : (isDark ? '#D1D5DB' : '#9CA3AF'),
+                                                opacity: 1
+                                            }]}
                                             numberOfLines={1}
                                         >
                                             {item.replyTo.text}
@@ -533,7 +543,7 @@ export default function ThreadDetailScreen() {
                 setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
                 setHasMoreMessages(snapshot.docs.length === MESSAGES_PER_PAGE);
                 setIsLoading(false);
-                
+
                 // Scroll to bottom after messages are set
                 setTimeout(() => {
                     flatListRef.current?.scrollToEnd({ animated: true });
@@ -609,7 +619,7 @@ export default function ThreadDetailScreen() {
 
             if (result.assets && result.assets.length > 0) {
                 const selectedAsset = result.assets[0];
-                
+
                 // Check file size (5MB limit)
                 if (!selectedAsset.size) {
                     Toast.show({
@@ -803,8 +813,8 @@ export default function ThreadDetailScreen() {
                 where('threadId', '==', threadId)
             );
             const subscribersSnapshot = await getDocs(subscribersQuery);
-            
-            
+
+
             // Filter out the sender's token and collect all other tokens
             const pushTokens = subscribersSnapshot.docs
                 .filter(doc => doc.data().authorID !== user.uid)
@@ -1658,11 +1668,9 @@ const styles = StyleSheet.create<Styles & {
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 2,
-        opacity: 0.8,
     },
     replyText: {
         fontSize: 14,
-        opacity: 0.7,
     },
     replyingToContainer: {
         flexDirection: 'row',

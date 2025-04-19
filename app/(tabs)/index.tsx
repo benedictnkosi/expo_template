@@ -23,6 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
 import { getMessages, Message } from '@/services/api';
 import { MessageModal } from '@/components/MessageModal';
+import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 
 // Temporary mock data
 
@@ -153,7 +154,7 @@ interface SettingsModalProps {
 
 const SettingsModal = ({ visible, onClose, onOpenSettings }: SettingsModalProps) => {
   const { colors, isDark } = useTheme();
-  
+
   return (
     <Modal
       visible={visible}
@@ -161,7 +162,7 @@ const SettingsModal = ({ visible, onClose, onOpenSettings }: SettingsModalProps)
       animationType="fade"
     >
       <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
-        <View style={[styles.settingsModalContainer, { 
+        <View style={[styles.settingsModalContainer, {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
         }]}>
@@ -221,7 +222,7 @@ export default function HomeScreen() {
       // Get last check time from storage
       const lastCheck = await AsyncStorage.getItem('lastVersionCheck');
       const now = new Date().getTime();
-      
+
       // Check if we need to check version (once per day)
       if (lastCheck) {
         const lastCheckTime = parseInt(lastCheck);
@@ -247,12 +248,12 @@ export default function HomeScreen() {
         try {
           // Call update API
           const response = await updateVersion(user.uid, currentVersion, currentOS);
-          
+
           if (response.success) {
             // Update stored version and OS
             await AsyncStorage.setItem('appVersion', currentVersion);
             await AsyncStorage.setItem('appOS', currentOS);
-            
+
             // Track the event
             await analytics.track('app_version_updated', {
               user_id: user.uid,
@@ -364,12 +365,14 @@ export default function HomeScreen() {
   // Initial data load
   useEffect(() => {
     fetchLearnerData();
+    fetchRandomLesson();
   }, [fetchLearnerData]);
 
-  // Fetch learner data when tab is focused
+  // Fetch learner data and random lesson when tab is focused
   useFocusEffect(
     useCallback(() => {
       fetchLearnerData();
+      fetchRandomLesson();
     }, [fetchLearnerData])
   );
 
@@ -408,7 +411,7 @@ export default function HomeScreen() {
 
               const groupedSubjects = Object.values(subjectGroups);
               setMySubjects(groupedSubjects);
-              
+
               // Clear the flag after refreshing
               await AsyncStorage.removeItem('hasNewAnswers');
             }
@@ -507,7 +510,6 @@ export default function HomeScreen() {
       const response = await getRandomAIQuestion(user.uid);
       if (response.status === "OK" && response.question) {
         setRandomLesson(response);
-        //console.log('Random lesson:', response.question.ai_explanation);
       } else {
         console.log('No random lesson available');
         setRandomLesson(null);
@@ -620,12 +622,12 @@ export default function HomeScreen() {
         const now = new Date();
         const threeDaysFromNow = new Date(now);
         threeDaysFromNow.setDate(now.getDate() + 3);
-        
+
         const upcomingTodos = fetchedTodos.filter(todo => {
           const dueDate = new Date(todo.due_date);
           return dueDate <= threeDaysFromNow && todo.status === 'pending';
         });
-        
+
         setTodos(upcomingTodos);
       } catch (error) {
         console.error('Error fetching todos:', error);
@@ -640,10 +642,10 @@ export default function HomeScreen() {
   const checkMessages = useCallback(async () => {
     try {
       // Get last check time from storage
-      
+
       const lastCheck = await AsyncStorage.getItem('lastMessageCheck');
       const now = new Date().getTime();
-      
+
       // Check if we need to check messages (once per day)
       if (lastCheck) {
         const lastCheckTime = parseInt(lastCheck);
@@ -664,11 +666,11 @@ export default function HomeScreen() {
       if (response.success && response.data.length > 0) {
         // Find first unshown message
         const unshownMessage = response.data.find(msg => !shownIds.includes(msg.id));
-        
+
         if (unshownMessage) {
           setCurrentMessage(unshownMessage);
           setShowMessageModal(true);
-          
+
           // Update shown message IDs
           const newShownIds = [...shownIds, unshownMessage.id];
           await AsyncStorage.setItem('shownMessageIds', JSON.stringify(newShownIds));
@@ -705,21 +707,21 @@ export default function HomeScreen() {
   const toggleNotifications = async () => {
     try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      
+
       let finalStatus = existingStatus;
       if (existingStatus !== 'granted') {
         if (existingStatus === 'denied') {
           setShowSettingsModal(true);
           return;
         }
-        
+
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
+
       if (finalStatus === 'granted') {
         const token = await registerForPushNotificationsAsync();
-        
+
         if (token && user?.uid) {
           await updatePushToken(user.uid, token);
           setNotificationsEnabled(true);
@@ -746,13 +748,13 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
-          <Header learnerInfo={null} />
-          <View style={[styles.loadingContainer, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <ThemedText style={styles.loadingText}>Loading...</ThemedText>
-          </View>
+        <Header learnerInfo={null} />
+        <View style={[styles.loadingContainer, { backgroundColor: isDark ? colors.background : '#FFFFFF' }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <ThemedText style={styles.loadingText}>Loading...</ThemedText>
+        </View>
       </View>
-  );
+    );
   }
 
   return (
@@ -805,6 +807,22 @@ export default function HomeScreen() {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
         }]} testID="stats-container">
+          <View style={styles.statsHeader}>
+            <TouchableOpacity
+              style={[styles.reportButton, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                if (user?.uid && learnerInfo?.name) {
+                  router.push({
+                    pathname: '/report/[uid]',
+                    params: { uid: user.uid, name: learnerInfo.name }
+                  });
+                }
+              }}
+              testID="view-report-button"
+            >
+              <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
           <View style={styles.statsRow} testID="stats-row">
             <View style={styles.statItem} testID="ranking-stat">
               <View style={styles.statContent}>
@@ -828,22 +846,6 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
-
-          <TouchableOpacity
-            style={[styles.reportButton, { backgroundColor: colors.primary }]}
-            onPress={() => {
-              if (user?.uid && learnerInfo?.name) {
-                router.push({
-                  pathname: '/report/[uid]',
-                  params: { uid: user.uid, name: learnerInfo.name }
-                });
-              }
-            }}
-            testID="view-report-button"
-          >
-            <Ionicons name="analytics" size={20} color="#FFFFFF" />
-            <ThemedText style={styles.reportButtonText}>View My Report</ThemedText>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.shareContainer} testID="share-container">
@@ -859,50 +861,10 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Add Random Lesson Preview */}
-        {randomLesson?.question && randomLesson.question.ai_explanation.includes('***Key Lesson') && (
-          <View style={[styles.randomLessonContainer, {
-            backgroundColor: colors.surface,
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
-            marginHorizontal: 16
-          }]}>
-            <View style={styles.randomLessonHeader}>
-              <View style={styles.subjectIconContainer}>
-                <Image
-                  source={getSubjectIcon(randomLesson.question.subject.name.split(' P')[0])}
-                  style={styles.randomLessonIcon}
-                />
-              </View>
-              <ThemedText style={[styles.randomLessonTitle, { color: colors.text }]}>
-                Quick Bite: {randomLesson.question.subject.name}
-              </ThemedText>
-              <TouchableOpacity
-                onPress={fetchRandomLesson}
-                style={[{
-                  marginLeft: 'auto',
-                  padding: 10,
-                  borderRadius: 20,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  shadowColor: colors.text,
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 2,
-                  elevation: 2,
-                }]}
-                testID="refresh-quick-bite-button"
-              >
-                <Ionicons name="refresh" size={18} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-            <ThemedText style={[styles.randomLessonContent, { color: colors.textSecondary }]}>
-              {randomLesson.question.ai_explanation.split('***Key Lesson:')[1]?.trim().replace('***', '').trim()}
-            </ThemedText>
-          </View>
-        )}
+        <RandomLessonPreview
+          randomLesson={randomLesson}
+          onRefresh={fetchRandomLesson}
+        />
 
         {/* Add Tasks Section */}
         <View style={[styles.tasksContainer, {
@@ -913,7 +875,7 @@ export default function HomeScreen() {
             <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
               📝 Tasks Due Soon
             </ThemedText>
-           
+
           </View>
           {isLoadingTodos ? (
             <View style={styles.loadingContainer}>
@@ -965,7 +927,7 @@ export default function HomeScreen() {
                         const dueDate = new Date(todo.due_date);
                         const tomorrow = new Date(today);
                         tomorrow.setDate(tomorrow.getDate() + 1);
-                        
+
                         if (dueDate.toDateString() === today.toDateString()) {
                           return 'Due today';
                         } else if (dueDate.toDateString() === tomorrow.toDateString()) {
@@ -1251,6 +1213,25 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    position: 'relative',
+  },
+  statsHeader: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 1,
+  },
+  reportButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -1806,23 +1787,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
-  reportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 8,
-  },
-  reportButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   tasksContainer: {
-    marginHorizontal: 16,
     marginBottom: 24,
     borderRadius: 12,
     padding: 16,
