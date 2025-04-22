@@ -795,19 +795,93 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-                style={[styles.reportButton, {
-                    marginTop: 16,
-                    marginHorizontal: 16,
-                    backgroundColor: isDark ? colors.surface : '#FEE2E2'
-                }]}
-                onPress={reportIssue}
-                testID="report-issue-button"
-            >
-                <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
-                    🛑 Report an Issue with this Question
-                </ThemedText>
-            </TouchableOpacity>
+            {selectedMode === 'quiz' && (
+
+                <TouchableOpacity
+                    style={[styles.reportButton, {
+                        marginTop: 16,
+                        marginHorizontal: 16,
+                        backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                    }]}
+                    onPress={reportIssue}
+                    testID="report-issue-button"
+                >
+                    <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                        🛑 Report an Issue with this Question
+                    </ThemedText>
+                </TouchableOpacity>
+            )}
+
+            {selectedMode === 'lessons' && (
+                <>
+                    {(question.ai_explanation && question.ai_explanation !== null && question.ai_explanation !== 'NULL') && (
+                        <ThemedView
+                            style={[styles.aiExplanationContainer, {
+                                backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                                borderColor: isDark ? '#4ADE80' : '#22C55E'
+                            }]}
+                            testID="correct-answer-container"
+                        >
+                            {question.ai_explanation?.split('\n').map((line, index) => {
+                                const trimmedLine = line.trim();
+                                //formulas cant have bullet points
+                                if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                    const content = trimmedLine.substring(1).trim();
+                                    const indentLevel = line.indexOf('-') / 2;
+
+                                    return (
+                                        <View
+                                            key={index}
+                                            style={[
+                                                styles.bulletPointRow,
+                                                { marginLeft: indentLevel * 20 }
+                                            ]}
+                                        >
+                                            <ThemedText style={[styles.bulletPoint, {
+                                                color: isDark ? '#4ADE80' : colors.text,
+                                                marginTop: 4
+                                            }]}>
+                                                {indentLevel > 0 ? '🎯' : '✅'}
+                                            </ThemedText>
+                                            <View style={styles.bulletTextWrapper}>
+                                                <ThemedText key={index} style={[styles.contentText, {
+                                                    color: isDark ? '#E5E7EB' : colors.text
+                                                }]}>
+                                                    {content}
+                                                </ThemedText>
+                                            </View>
+                                        </View>
+                                    );
+                                }
+                                if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                    line = trimmedLine.substring(1).trim();
+                                }
+                                return (
+                                    <View key={index}>
+                                        <ThemedText style={{ color: isDark ? '#E5E7EB' : colors.text }}>
+                                            {renderMixedContent(line, isDark, colors)}
+                                        </ThemedText>
+                                    </View>
+                                );
+                            })}
+                        </ThemedView>
+                    )}
+
+                    <TouchableOpacity
+                        style={[styles.reportButton, {
+                            marginTop: 16,
+                            marginHorizontal: 16,
+                            backgroundColor: isDark ? colors.surface : '#FEE2E2'
+                        }]}
+                        onPress={reportIssue}
+                        testID="report-issue-button"
+                    >
+                        <ThemedText style={[styles.reportButtonText, { color: isDark ? '#FF3B30' : '#DC2626' }]}>
+                            🛑 Report an Issue with this Lesson
+                        </ThemedText>
+                    </TouchableOpacity>
+                </>
+            )}
 
             {showFeedback && selectedMode === 'quiz' && (
                 <FeedbackContainer

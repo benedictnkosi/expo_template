@@ -20,6 +20,7 @@ import {
     GestureResponderEvent,
     Animated,
     ImageSourcePropType,
+    Share,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -41,6 +42,8 @@ import ZoomableImageNew from '@/components/ZoomableImageNew';
 import { GestureHandlerRootView, PanGestureHandler, State } from 'react-native-gesture-handler';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
+import { createURL } from 'expo-linking';
 import defaultAvatar from '@/assets/images/avatars/1.png';
 import avatar2 from '@/assets/images/avatars/2.png';
 import avatar3 from '@/assets/images/avatars/3.png';
@@ -65,6 +68,19 @@ const PROFANITY_WORDS = [
 function containsProfanity(text: string): boolean {
     const lowerText = text.toLowerCase();
     return PROFANITY_WORDS.some(word => lowerText.includes(word));
+}
+
+// Add phone number detection function
+function containsPhoneNumber(text: string): boolean {
+    // Match various phone number formats
+    const phoneRegex = /(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})(?: *x\d+)?/;
+    return phoneRegex.test(text);
+}
+
+// Add WhatsApp detection function
+function containsWhatsApp(text: string): boolean {
+    const whatsappRegex = /whatsapp|whatapp/i;
+    return whatsappRegex.test(text);
 }
 
 interface Message {
@@ -160,6 +176,11 @@ interface Styles {
     replyingToContent: ViewStyle;
     replyingToLabel: TextStyle;
     replyingToText: TextStyle;
+    contextMenuOverlay: ViewStyle;
+    contextMenuContainer: ViewStyle;
+    contextMenuItem: ViewStyle;
+    contextMenuText: TextStyle;
+    contextMenuDivider: ViewStyle;
     inputHint: TextStyle;
     imageModalButtons: ViewStyle;
     imageModalButton: ViewStyle;
@@ -170,6 +191,11 @@ interface Styles {
     messageHeader: ViewStyle;
     messageContent: ViewStyle;
     avatar: ImageStyle;
+    floatingShareButton: ViewStyle;
+    floatingShareText: TextStyle;
+    floatingShareContainer: ViewStyle;
+    closeShareButton: ViewStyle;
+    shareButton: ViewStyle;
 }
 
 interface SelectedFile {
@@ -195,6 +221,8 @@ interface MessageItemProps {
     failedImages: Set<string>;
     setFailedImages: React.Dispatch<React.SetStateAction<Set<string>>>;
     handleAttachmentPress: (attachment: Message['attachment']) => void;
+    messages: Message[];
+    flatListRef: React.RefObject<FlatList<Message>>;
 }
 
 // Add new helper function for date formatting
@@ -237,7 +265,9 @@ const MessageItem = React.memo(({
     isDark,
     failedImages,
     setFailedImages,
-    handleAttachmentPress
+    handleAttachmentPress,
+    messages,
+    flatListRef
 }: MessageItemProps) => {
     const translateX = useRef(new Animated.Value(0)).current;
     const swipeThreshold = 80;
@@ -258,6 +288,22 @@ const MessageItem = React.memo(({
 
             if (translation > swipeThreshold) {
                 onReply(item);
+            }
+        }
+    };
+
+    const handleReplyPress = (replyTo: Message['replyTo']) => {
+        if (replyTo) {
+            // Find the original message in the current messages array
+            const originalMessage = messages.find((msg: Message) => msg.id === replyTo.id);
+            if (originalMessage) {
+                // Scroll to the original message
+                const index = messages.indexOf(originalMessage);
+                flatListRef.current?.scrollToIndex({
+                    index,
+                    animated: true,
+                    viewPosition: 0.5
+                });
             }
         }
     };
@@ -315,6 +361,7 @@ const MessageItem = React.memo(({
                                                 ? 'rgba(255, 255, 255, 0.2)'
                                                 : (isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.05)')
                                         }]}
+                                        onPress={() => handleReplyPress(item.replyTo)}
                                     >
                                         <ThemedText style={[styles.replyUserName, {
                                             color: isOwnMessage
@@ -481,6 +528,7 @@ export default function ThreadDetailScreen() {
     const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
     const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
+    const [isShareAreaVisible, setIsShareAreaVisible] = useState(true);
 
     useEffect(() => {
         if (!threadId || !subjectName) {
@@ -502,6 +550,21 @@ export default function ThreadDetailScreen() {
         return () => {
         };
     }, [threadId, subjectName]);
+
+    useEffect(() => {
+        // Load share area visibility preference
+        const loadSharePreference = async () => {
+            try {
+                const preference = await AsyncStorage.getItem('shareAreaVisible');
+                if (preference !== null) {
+                    setIsShareAreaVisible(preference === 'true');
+                }
+            } catch (error) {
+                console.error('Error loading share preference:', error);
+            }
+        };
+        loadSharePreference();
+    }, []);
 
     const loadThreadAndMessages = async () => {
         try {
@@ -733,6 +796,30 @@ export default function ThreadDetailScreen() {
                 text1: 'Warning',
                 text2: 'Please keep the discussion respectful. Profanity and bullying are not allowed.',
                 position: 'bottom'
+            });
+            return;
+        }
+
+        // Check for WhatsApp in text message
+        if (newMessage.trim() && containsWhatsApp(newMessage.trim())) {
+            Toast.show({
+                type: 'error',
+                text1: 'External Messaging Not Allowed',
+                text2: 'Sharing WhatsApp or other external messaging platforms is not allowed. Please keep all communication within the app.',
+                position: 'bottom',
+                visibilityTime: 4000
+            });
+            return;
+        }
+
+        // Check for phone numbers in text message
+        if (newMessage.trim() && containsPhoneNumber(newMessage.trim())) {
+            Toast.show({
+                type: 'error',
+                text1: 'Phone Number Detected',
+                text2: 'For your safety, sharing phone numbers is not allowed. Please remove any phone numbers from your message.',
+                position: 'bottom',
+                visibilityTime: 4000
             });
             return;
         }
@@ -1032,6 +1119,8 @@ export default function ThreadDetailScreen() {
                     failedImages={failedImages}
                     setFailedImages={setFailedImages}
                     handleAttachmentPress={handleAttachmentPress}
+                    messages={messages}
+                    flatListRef={flatListRef}
                 />
             </>
         );
@@ -1054,6 +1143,34 @@ export default function ThreadDetailScreen() {
                 )}
             </View>
         );
+    };
+
+    const handleShareThread = async () => {
+        try {
+            const deepLink = `examquiz://posts/${threadId}?subjectName=${encodeURIComponent(subjectName as string)}`;
+
+            await Share.share({
+                message: `🔥 Hot Topic in ${subjectName}! Join the discussion: "${thread?.title}" — Tap to see what others are saying 👀 ${deepLink}`,
+                url: deepLink
+            });
+        } catch (error) {
+            console.error('Error sharing thread:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to share thread',
+                position: 'bottom'
+            });
+        }
+    };
+
+    const handleCloseShareArea = async () => {
+        try {
+            await AsyncStorage.setItem('shareAreaVisible', 'false');
+            setIsShareAreaVisible(false);
+        } catch (error) {
+            console.error('Error saving share preference:', error);
+        }
     };
 
     if (isLoading) {
@@ -1104,7 +1221,36 @@ export default function ThreadDetailScreen() {
                             Created by {thread.createdByName} • {thread.createdAt.toLocaleDateString()}
                         </ThemedText>
                     </View>
+                    {!isShareAreaVisible && (
+                        <TouchableOpacity
+                            style={styles.shareButton}
+                            onPress={handleShareThread}
+                        >
+                            <Ionicons name="share-outline" size={24} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    )}
                 </LinearGradient>
+
+                {isShareAreaVisible && (
+                    <View style={[styles.floatingShareContainer, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
+                        <TouchableOpacity
+                            style={[
+                                styles.floatingShareButton,
+                                { backgroundColor: isDark ? colors.primary : '#10B981' }
+                            ]}
+                            onPress={handleShareThread}
+                        >
+                            <ThemedText style={styles.floatingShareText}>Invite Friends to Chat</ThemedText>
+                            <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.closeShareButton}
+                            onPress={handleCloseShareArea}
+                        >
+                            <Ionicons name="close" size={20} color={isDark ? colors.text : '#6B7280'} />
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -1375,6 +1521,11 @@ const styles = StyleSheet.create<Styles & {
     otherMessage: ViewStyle;
     ownUserName: TextStyle;
     otherUserName: TextStyle;
+    floatingShareButton: ViewStyle;
+    floatingShareText: TextStyle;
+    floatingShareContainer: ViewStyle;
+    closeShareButton: ViewStyle;
+    shareButton: ViewStyle;
 }>({
     container: {
         flex: 1,
@@ -1778,5 +1929,38 @@ const styles = StyleSheet.create<Styles & {
     otherUserName: {
         textAlign: 'left',
         color: '#94A3B8', // Slate-400 for other usernames
+    },
+    floatingShareButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 24,
+        flexDirection: 'row',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    floatingShareText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+        marginRight: 8,
+    },
+    floatingShareContainer: {
+        padding: 16,
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
+    closeShareButton: {
+        position: 'absolute',
+        right: 16,
+        padding: 8,
+    },
+    shareButton: {
+        padding: 8,
+        marginLeft: 8,
     },
 }); 

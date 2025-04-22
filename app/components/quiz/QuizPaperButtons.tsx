@@ -14,11 +14,11 @@ export interface QuizPaperButtonsProps {
     onLoadQuestion: (paper: string) => void;
 }
 
-export const QuizPaperButtons = ({ 
-    subjectName, 
-    selectedMode, 
-    onSelectPaper, 
-    onLoadQuestion 
+export const QuizPaperButtons = ({
+    subjectName,
+    selectedMode,
+    onSelectPaper,
+    onLoadQuestion
 }: QuizPaperButtonsProps) => {
     const isDark = useColorScheme() === 'dark';
     const themeColors = isDark ? colorConstants.dark : colorConstants.light;
@@ -36,7 +36,7 @@ export const QuizPaperButtons = ({
         }
 
         if (paper === 'P2' && (
-            subjectName.toLowerCase().includes('life orientation') || 
+            subjectName.toLowerCase().includes('life orientation') ||
             subjectName.toLowerCase().includes('tourism')
         )) {
             Toast.show({
@@ -78,8 +78,8 @@ export const QuizPaperButtons = ({
                 end={{ x: 1, y: 0 }}
                 style={[
                     styles.paperButton,
-                    (!selectedMode || 
-                        subjectName.toLowerCase().includes('life orientation') || 
+                    (!selectedMode ||
+                        subjectName.toLowerCase().includes('life orientation') ||
                         subjectName.toLowerCase().includes('tourism')
                     ) && { opacity: 0.5 }
                 ]}
@@ -87,8 +87,8 @@ export const QuizPaperButtons = ({
                 <TouchableOpacity
                     style={styles.buttonContent}
                     onPress={() => handlePaperSelect('P2')}
-                    disabled={!selectedMode || 
-                        subjectName.toLowerCase().includes('life orientation') || 
+                    disabled={!selectedMode ||
+                        subjectName.toLowerCase().includes('life orientation') ||
                         subjectName.toLowerCase().includes('tourism')
                     }
                 >

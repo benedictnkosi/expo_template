@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     Image,
     Platform,
+    Modal,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +31,44 @@ interface Subject {
     newThreadCount?: number;
 }
 
+interface WarningModalProps {
+    visible: boolean;
+    onAccept: () => void;
+    isDark: boolean;
+    colors: any;
+}
+
+function WarningModal({ visible, onAccept, isDark, colors }: WarningModalProps) {
+    return (
+        <Modal
+            visible={visible}
+            transparent
+            animationType="fade"
+            onRequestClose={onAccept}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, {
+                    backgroundColor: isDark ? colors.card : '#FFFFFF',
+                    borderColor: colors.border
+                }]}>
+                    <ThemedText style={[styles.modalTitle, { color: colors.text }]}>
+                        Community Guidelines
+                    </ThemedText>
+                    <ThemedText style={[styles.modalMessage, { color: colors.textSecondary }]}>
+                        ⚠️ Let's keep it friendly and on topic! No profanity or bullying. Violations will lead to account suspension.{'\n\n'}🔒 For your safety, please do not share personal information like phone numbers in the chat.
+                    </ThemedText>
+                    <TouchableOpacity
+                        style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                        onPress={onAccept}
+                    >
+                        <ThemedText style={styles.modalButtonText}>I Understand</ThemedText>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
 export default function ChatScreen() {
     const { user, signOut } = useAuth();
     const { colors, isDark } = useTheme();
@@ -44,6 +83,7 @@ export default function ChatScreen() {
     const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
     const [learnerGrade, setLearnerGrade] = useState<string>('');
     const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
+    const [showWarningModal, setShowWarningModal] = useState(false);
 
     useEffect(() => {
         async function loadLearnerGrade() {
@@ -61,6 +101,12 @@ export default function ChatScreen() {
 
             try {
                 setIsLoading(true);
+
+                // Check if warning has been accepted
+                const warningAccepted = await AsyncStorage.getItem('chatWarningAccepted');
+                if (!warningAccepted) {
+                    setShowWarningModal(true);
+                }
 
                 // Load hidden subjects
                 const stored = await AsyncStorage.getItem('hiddenSubjects');
@@ -168,6 +214,11 @@ export default function ChatScreen() {
         }
     };
 
+    const handleAcceptWarning = async () => {
+        await AsyncStorage.setItem('chatWarningAccepted', 'true');
+        setShowWarningModal(false);
+    };
+
     if (isLoading) {
         return (
             <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
@@ -190,12 +241,6 @@ export default function ChatScreen() {
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-                <View style={[styles.warningContainer, { backgroundColor: isDark ? '#991B1B' : '#FEE2E2' }]}>
-                    <ThemedText style={[styles.warningText, { color: isDark ? '#FEE2E2' : '#991B1B' }]}>
-                        ⚠️ Let's keep it friendly and on topic! No profanity or bullying. Violations will lead to account suspension.
-                    </ThemedText>
-                </View>
-
                 {visibleSubjects.length === 0 ? (
                     <View style={styles.emptyContainer}>
                         <ThemedText style={styles.emptyText}>No subjects available</ThemedText>
@@ -236,6 +281,13 @@ export default function ChatScreen() {
                     ))
                 )}
             </ScrollView>
+
+            <WarningModal
+                visible={showWarningModal}
+                onAccept={handleAcceptWarning}
+                isDark={isDark}
+                colors={colors}
+            />
         </ThemedView>
     );
 }
@@ -353,5 +405,41 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '80%',
+        maxWidth: 400,
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 1,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    modalMessage: {
+        fontSize: 16,
+        lineHeight: 24,
+        marginBottom: 24,
+        textAlign: 'center',
+    },
+    modalButton: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    modalButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 }); 

@@ -60,10 +60,6 @@ const AVATAR_IMAGES: AvatarImages = {
 
 export interface OnboardingData {
   grade: string;
-  school: string;
-  school_address: string;
-  school_latitude: string;
-  school_longitude: string;
   curriculum: string;
   difficultSubject: string;
   avatar: string;
@@ -81,21 +77,15 @@ async function logAnalyticsEvent(eventName: string, eventParams?: Record<string,
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
-  const [school, setSchool] = useState('');
-  const [schoolAddress, setSchoolAddress] = useState('');
-  const [schoolLatitude, setSchoolLatitude] = useState(0);
-  const [schoolLongitude, setSchoolLongitude] = useState(0);
-  const [schoolName, setSchoolName] = useState('');
   const [difficultSubject, setDifficultSubject] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const insets = useSafeAreaInsets();
-  const [schoolFunfacts, setSchoolFunfacts] = useState('');
 
   const [errors, setErrors] = useState({
     grade: '',
-    school: '',
     curriculum: ''
   });
+
   useEffect(() => {
     async function checkAuthAndOnboarding() {
       try {
@@ -128,28 +118,16 @@ export default function OnboardingScreen() {
     });
     if (step === 1 && !grade) {
       setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-    } else if (step === 2 && !school) {
-      setErrors(prev => ({ ...prev, school: 'Please select your school' }));
-    } else if (step === 3 && !difficultSubject) {
+    } else if (step === 2 && !difficultSubject) {
       setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
-    } else if (step === 4 && !selectedAvatar) {
+    } else if (step === 3 && !selectedAvatar) {
       setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
-    } else if (step === 5) {
+    } else if (step === 4) {
       handleComplete();
     } else {
-      setErrors({ grade: '', school: '', curriculum: '' });
+      setErrors({ grade: '', curriculum: '' });
       setStep(step + 1);
     }
-  };
-
-  const handleSkipSchool = () => {
-    setSchool('Default School');
-    setSchoolName('Default School');
-    setSchoolAddress('123 Default Street, Default City');
-    setSchoolLatitude(-26.2041); // Default to Johannesburg coordinates
-    setSchoolLongitude(28.0473);
-    setErrors(prev => ({ ...prev, school: '' }));
-    setStep(step + 1);
   };
 
   const getStepName = (step: number): string => {
@@ -159,29 +137,21 @@ export default function OnboardingScreen() {
       case 1:
         return 'grade_selection';
       case 2:
-        return 'school_selection';
-      case 3:
         return 'difficult_subject_selection';
-      case 4:
+      case 3:
         return 'avatar_selection';
-      case 5:
+      case 4:
         return 'registration';
       default:
         return 'unknown';
     }
   };
 
-
   const handleComplete = async () => {
     try {
-
       // Store onboarding data
       await AsyncStorage.setItem('onboardingData', JSON.stringify({
         grade,
-        school: schoolName,
-        school_address: schoolAddress,
-        school_latitude: schoolLatitude,
-        school_longitude: schoolLongitude,
         curriculum: 'CAPS',
         difficultSubject,
         avatar: selectedAvatar,
@@ -191,10 +161,6 @@ export default function OnboardingScreen() {
       // Log onboarding completion event
       logAnalyticsEvent('onboarding_complete', {
         grade,
-        school_name: schoolName,
-        school_address: schoolAddress,
-        school_latitude: schoolLatitude,
-        school_longitude: schoolLongitude,
         curriculum: 'CAPS',
         difficult_subject: difficultSubject,
         avatar: selectedAvatar
@@ -205,10 +171,6 @@ export default function OnboardingScreen() {
         pathname: '/register',
         params: {
           grade,
-          school: schoolName,
-          school_address: schoolAddress,
-          school_latitude: schoolLatitude.toString(),
-          school_longitude: schoolLongitude.toString(),
           curriculum: 'CAPS',
           difficultSubject,
           avatar: selectedAvatar,
@@ -297,104 +259,6 @@ export default function OnboardingScreen() {
 
       case 2:
         return (
-          <View style={styles.step} testID="school-selection-step">
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle} testID="school-step-title">🎓 Which school do you rep?</ThemedText>
-              <ThemedText style={styles.stepTitle} testID="school-step-subtitle">Join the learning squad! 🚀📚</ThemedText>
-              <GooglePlacesAutocomplete
-                placeholder="Search for your school..."
-                onPress={async (data, details = null) => {
-                  setSchool(data.description);
-                  setSchoolName(data.structured_formatting.main_text);
-                  setSchoolAddress(data.description);
-                  setErrors(prev => ({ ...prev, school: '' }));
-                  if (details) {
-                    setSchoolLatitude(details.geometry.location.lat);
-                    setSchoolLongitude(details.geometry.location.lng);
-                  }
-                  const funfacts = await getSchoolFunfacts(data.description);
-                  setSchoolFunfacts(funfacts.fact);
-                }}
-                fetchDetails={true}
-                onFail={error => console.error('GooglePlaces error:', error)}
-                styles={{
-                  container: styles.searchContainer,
-                  textInput: styles.searchInput,
-                  listView: {
-                    position: 'absolute',
-                    top: 60,
-                    left: 16,
-                    right: 16,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 16,
-                    elevation: 3,
-                    zIndex: 1000,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 8,
-                  },
-                  row: {
-                    padding: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-                  },
-                  description: {
-                    fontSize: 16,
-                    color: '#1E293B',
-                  },
-                }}
-                textInputProps={{
-                  placeholderTextColor: 'rgba(0, 0, 0, 0.5)',
-                  selectionColor: '#4338CA',
-                  testID: 'school-search-input'
-                }}
-                query={{
-                  key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "",
-                  components: 'country:za',
-                  types: 'school',
-                  language: 'en',
-                }}
-              />
-              {school && (
-                <>
-                  <View style={styles.selectedSchoolContainer}>
-                    <View style={styles.selectedSchoolHeader}>
-                      <Ionicons name="location" size={20} color="#FFFFFF" />
-                      <ThemedText style={styles.selectedSchoolTitle}>Selected School</ThemedText>
-                    </View>
-                    <ThemedText style={styles.selectedSchoolName}>{schoolName}</ThemedText>
-                    <ThemedText style={styles.selectedSchoolAddress}>{schoolAddress}</ThemedText>
-                  </View>
-                  {schoolFunfacts && (
-                    <View style={styles.funFactContainer}>
-                      <View style={styles.funFactHeader}>
-                        <Ionicons name="information-circle" size={24} color="#FFFFFF" />
-                        <ThemedText style={styles.funFactTitle}>Did you know?</ThemedText>
-                      </View>
-                      <ThemedText style={styles.funFactText}>{schoolFunfacts}</ThemedText>
-                    </View>
-                  )}
-                </>
-              )}
-              {errors.school ? <ThemedText style={styles.errorText} testID="school-error">{errors.school}</ThemedText> : null}
-            </View>
-            {!school && (
-              <View style={styles.skipButtonContainer}>
-                <TouchableOpacity
-                  style={styles.skipButton}
-                  onPress={handleSkipSchool}
-                  testID="skip-school-button"
-                >
-                  <ThemedText style={styles.skipButtonText}>Skip for now</ThemedText>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        );
-
-      case 3:
-        return (
           <View style={styles.step}>
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>
@@ -444,7 +308,7 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 4:
+      case 3:
         return (
           <View style={styles.step}>
             <View style={styles.textContainer}>
@@ -488,12 +352,12 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 5:
+      case 4:
         return (
           <View style={styles.step}>
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => setStep(4)}
+              onPress={() => setStep(3)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -509,10 +373,6 @@ export default function OnboardingScreen() {
               <RegisterForm
                 onboardingData={{
                   grade,
-                  school: schoolName,
-                  school_address: schoolAddress,
-                  school_latitude: schoolLatitude.toString(),
-                  school_longitude: schoolLongitude.toString(),
                   curriculum: 'CAPS',
                   difficultSubject,
                   avatar: selectedAvatar,
@@ -534,12 +394,10 @@ export default function OnboardingScreen() {
       case 1:
         return !!grade;
       case 2:
-        return !!school;
-      case 3:
         return !!difficultSubject;
-      case 4:
+      case 3:
         return !!selectedAvatar;
-      case 5:
+      case 4:
         return true;
       default:
         return false;
@@ -556,7 +414,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 5 && (
+        {step < 4 && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>

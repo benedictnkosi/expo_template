@@ -108,16 +108,27 @@ function createStyles(isDark: boolean) {
             textAlign: 'center',
             color: isDark ? '#9CA3AF' : '#6B7280',
         },
-        modalContent: {
-            padding: 20,
-            borderRadius: 12,
-        },
         modalOverlay: {
             flex: 1,
             backgroundColor: 'rgba(0, 0, 0, 0.5)',
             justifyContent: 'center',
             alignItems: 'center',
             padding: 20,
+        },
+        modalContent: {
+            backgroundColor: isDark ? '#1F2937' : '#fff',
+            padding: 20,
+            borderRadius: 12,
+            width: '90%',
+            maxWidth: 400,
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
         },
         deleteModalContent: {
             backgroundColor: isDark ? '#1F2937' : '#fff',
@@ -218,7 +229,7 @@ export function NoteList({
         }
     };
 
-    
+
 
     useEffect(() => {
         fetchNotes();
@@ -397,7 +408,7 @@ export function NoteList({
                                 style={[styles.noteCard, { backgroundColor: color }]}
                             >
                                 <View style={styles.noteContent}>
-                                   
+
                                     <View style={styles.noteTextContainer}>
                                         <ThemedText style={styles.noteText}>
                                             {note.text}
@@ -445,46 +456,45 @@ export function NoteList({
                 animationType="fade"
                 onRequestClose={() => setShowAddNoteModal(false)}
             >
-                <View style={[
-                    styles.modalContent,
-                    { backgroundColor: isDark ? '#1F2937' : '#fff' }
-                ]}>
-                    <ThemedText style={styles.modalTitle}>Add New Note</ThemedText>
-                    <TextInput
-                        style={[
-                            styles.modalInput,
-                            {
-                                backgroundColor: isDark ? '#374151' : '#fff',
-                                color: isDark ? '#E5E7EB' : '#1F2937',
-                            }
-                        ]}
-                        value={newNoteText}
-                        onChangeText={setNewNoteText}
-                        placeholder="Enter your note..."
-                        placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                        multiline
-                    />
-                    <View style={styles.modalButtons}>
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.cancelButton]}
-                            onPress={() => {
-                                setNewNoteText('');
-                                setShowAddNoteModal(false);
-                            }}
-                        >
-                            <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <ThemedText style={styles.modalTitle}>Add New Note</ThemedText>
+                        <TextInput
                             style={[
-                                styles.modalButton,
-                                styles.saveButton,
-                                !newNoteText.trim() && styles.disabledButton
+                                styles.modalInput,
+                                {
+                                    backgroundColor: isDark ? '#374151' : '#fff',
+                                    color: isDark ? '#E5E7EB' : '#1F2937',
+                                }
                             ]}
-                            onPress={addNote}
-                            disabled={!newNoteText.trim()}
-                        >
-                            <ThemedText style={styles.modalButtonText}>Save</ThemedText>
-                        </TouchableOpacity>
+                            value={newNoteText}
+                            onChangeText={setNewNoteText}
+                            placeholder="Enter your note..."
+                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            multiline
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => {
+                                    setNewNoteText('');
+                                    setShowAddNoteModal(false);
+                                }}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.modalButton,
+                                    styles.saveButton,
+                                    !newNoteText.trim() && styles.disabledButton
+                                ]}
+                                onPress={addNote}
+                                disabled={!newNoteText.trim()}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Save</ThemedText>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -496,47 +506,46 @@ export function NoteList({
                 animationType="fade"
                 onRequestClose={() => setShowEditNoteModal(false)}
             >
-                <View style={[
-                    styles.modalContent,
-                    { backgroundColor: isDark ? '#1F2937' : '#fff' }
-                ]}>
-                    <ThemedText style={styles.modalTitle}>Edit Note</ThemedText>
-                    <TextInput
-                        style={[
-                            styles.modalInput,
-                            {
-                                backgroundColor: isDark ? '#374151' : '#fff',
-                                color: isDark ? '#E5E7EB' : '#1F2937',
-                            }
-                        ]}
-                        value={editNoteText}
-                        onChangeText={setEditNoteText}
-                        placeholder="Enter your note..."
-                        placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
-                        multiline
-                    />
-                    <View style={styles.modalButtons}>
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.cancelButton]}
-                            onPress={() => {
-                                setEditingNote(null);
-                                setEditNoteText('');
-                                setShowEditNoteModal(false);
-                            }}
-                        >
-                            <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <ThemedText style={styles.modalTitle}>Edit Note</ThemedText>
+                        <TextInput
                             style={[
-                                styles.modalButton,
-                                styles.saveButton,
-                                !editNoteText.trim() && styles.disabledButton
+                                styles.modalInput,
+                                {
+                                    backgroundColor: isDark ? '#374151' : '#fff',
+                                    color: isDark ? '#E5E7EB' : '#1F2937',
+                                }
                             ]}
-                            onPress={editNote}
-                            disabled={!editNoteText.trim()}
-                        >
-                            <ThemedText style={styles.modalButtonText}>Save</ThemedText>
-                        </TouchableOpacity>
+                            value={editNoteText}
+                            onChangeText={setEditNoteText}
+                            placeholder="Enter your note..."
+                            placeholderTextColor={isDark ? '#9CA3AF' : '#6B7280'}
+                            multiline
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => {
+                                    setEditingNote(null);
+                                    setEditNoteText('');
+                                    setShowEditNoteModal(false);
+                                }}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.modalButton,
+                                    styles.saveButton,
+                                    !editNoteText.trim() && styles.disabledButton
+                                ]}
+                                onPress={editNote}
+                                disabled={!editNoteText.trim()}
+                            >
+                                <ThemedText style={styles.modalButtonText}>Save</ThemedText>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>

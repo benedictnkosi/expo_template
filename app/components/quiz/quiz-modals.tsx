@@ -20,7 +20,7 @@ export const StreakModal = ({ isVisible, onClose, streak }: StreakModalProps) =>
     const handleShare = async () => {
         const streakEmojis = '🔥'.repeat(Math.min(streak, 5));
         const shareMessage = `${streakEmojis} Day ${streak} Streak! ${streakEmojis}\n\nI'm on fire with my exam prep! 📚✨\nKeeping the momentum going! 🚀💪\n\n#ExamQuiz #StudyStreak`;
-        
+
         try {
             await Share.share({
                 message: shareMessage,
@@ -49,18 +49,18 @@ export const StreakModal = ({ isVisible, onClose, streak }: StreakModalProps) =>
                         color={Colors.primary}
                     />
                 </View>
-                <ThemedText style={[styles.streakText, { 
-                    color: isDark ? Colors.dark.text : Colors.light.text 
+                <ThemedText style={[styles.streakText, {
+                    color: isDark ? Colors.dark.text : Colors.light.text
                 }]}>
                     {streak} Day{streak !== 1 ? 's' : ''} Streak! 🔥
                 </ThemedText>
-                <ThemedText style={[styles.streakSubtext, { 
-                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary 
+                <ThemedText style={[styles.streakSubtext, {
+                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
                 }]}>
                     Keep up the great work! Your dedication is paying off. 🚀
                 </ThemedText>
                 <TouchableOpacity
-                    style={[styles.shareButton, { 
+                    style={[styles.shareButton, {
                         backgroundColor: Colors.primary,
                     }]}
                     onPress={handleShare}
@@ -95,12 +95,12 @@ interface ReportModalProps {
     insets: { top: number };
 }
 
-export const ReportModal = ({ 
-    isVisible, 
-    onClose, 
-    onSubmit, 
-    reportComment, 
-    setReportComment, 
+export const ReportModal = ({
+    isVisible,
+    onClose,
+    onSubmit,
+    reportComment,
+    setReportComment,
     isSubmitting,
     isDark,
     insets
@@ -171,12 +171,12 @@ interface ExplanationModalProps {
     renderMixedContent: (text: string, isDark: boolean, colors: any) => React.ReactNode;
 }
 
-export const ExplanationModal = ({ 
-    isVisible, 
-    onClose, 
-    aiExplanation, 
+export const ExplanationModal = ({
+    isVisible,
+    onClose,
+    aiExplanation,
     isDark,
-    renderMixedContent 
+    renderMixedContent
 }: ExplanationModalProps) => {
     const colors = isDark ? Colors.dark : Colors.light;
 
@@ -256,12 +256,12 @@ interface ZoomModalProps {
     setImageRotation: (rotation: number) => void;
 }
 
-export const ZoomModal = ({ 
-    isVisible, 
-    onClose, 
-    zoomImageUrl, 
-    imageRotation, 
-    setImageRotation 
+export const ZoomModal = ({
+    isVisible,
+    onClose,
+    zoomImageUrl,
+    imageRotation,
+    setImageRotation
 }: ZoomModalProps) => {
     const handleRotate = () => {
         const newRotation = (imageRotation + 90) % 360;
@@ -313,11 +313,11 @@ interface RestartModalProps {
     isDark: boolean;
 }
 
-export const RestartModal = ({ 
-    isVisible, 
-    onClose, 
+export const RestartModal = ({
+    isVisible,
+    onClose,
     onRestart,
-    isDark 
+    isDark
 }: RestartModalProps) => {
     return (
         <Modal
@@ -342,13 +342,13 @@ export const RestartModal = ({
                         color={Colors.primary}
                     />
                 </View>
-                <ThemedText style={[styles.restartModalTitle, { 
-                    color: isDark ? Colors.dark.text : Colors.light.text 
+                <ThemedText style={[styles.restartModalTitle, {
+                    color: isDark ? Colors.dark.text : Colors.light.text
                 }]}>
                     Reset Progress
                 </ThemedText>
-                <ThemedText style={[styles.restartModalText, { 
-                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary 
+                <ThemedText style={[styles.restartModalText, {
+                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
                 }]}>
                     Are you sure you want to reset your progress for this paper? This action cannot be undone.
                 </ThemedText>
@@ -359,8 +359,8 @@ export const RestartModal = ({
                         }]}
                         onPress={onClose}
                     >
-                        <ThemedText style={[styles.buttonText, { 
-                            color: isDark ? Colors.dark.text : Colors.light.text 
+                        <ThemedText style={[styles.buttonText, {
+                            color: isDark ? Colors.dark.text : Colors.light.text
                         }]}>
                             Cancel
                         </ThemedText>
@@ -382,17 +382,13 @@ export const RestartModal = ({
 interface ThankYouModalProps {
     isVisible: boolean;
     onClose: () => void;
-    onRate: () => void;
-    onPostpone: () => void;
     isDark: boolean;
 }
 
-export const ThankYouModal = ({ 
-    isVisible, 
-    onClose, 
-    onRate,
-    onPostpone,
-    isDark 
+export const ThankYouModal = ({
+    isVisible,
+    onClose,
+    isDark
 }: ThankYouModalProps) => {
     return (
         <Modal
@@ -414,20 +410,6 @@ export const ThankYouModal = ({
                 <ThemedText style={[styles.thankYouMessage, { color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary }]}>
                     Your feedback helps us level up our questions! Thanks for making the quiz even better. 🚀💡
                 </ThemedText>
-                <View style={styles.thankYouButtons}>
-                    <TouchableOpacity
-                        style={[styles.thankYouButton, { backgroundColor: Colors.primary }]}
-                        onPress={onRate}
-                    >
-                        <ThemedText style={styles.thankYouButtonText}>Rate</ThemedText>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.thankYouButton, { backgroundColor: Colors.primary }]}
-                        onPress={onPostpone}
-                    >
-                        <ThemedText style={styles.thankYouButtonText}>Postpone</ThemedText>
-                    </TouchableOpacity>
-                </View>
                 <TouchableOpacity
                     style={[styles.thankYouButton, { backgroundColor: Colors.primary }]}
                     onPress={onClose}
@@ -447,19 +429,19 @@ interface BadgeModalProps {
     badgeIcon: keyof typeof MaterialCommunityIcons.glyphMap;
 }
 
-export const BadgeModal = ({ 
-    isVisible, 
-    onClose, 
-    badgeName, 
+export const BadgeModal = ({
+    isVisible,
+    onClose,
+    badgeName,
     badgeDescription,
-    badgeIcon 
+    badgeIcon
 }: BadgeModalProps) => {
     const colorScheme = useColorScheme();
     const isDark = colorScheme === 'dark';
 
     const handleShare = async () => {
         const shareMessage = `🏆 New Achievement Unlocked! 🎉\n\n${badgeName} Badge Earned! ✨\n\n${badgeDescription}\n\n#ExamQuiz #Achievement #Learning`;
-        
+
         try {
             await Share.share({
                 message: shareMessage,
@@ -488,23 +470,23 @@ export const BadgeModal = ({
                         color={Colors.primary}
                     />
                 </View>
-                <ThemedText style={[styles.badgeTitle, { 
-                    color: isDark ? Colors.dark.text : Colors.light.text 
+                <ThemedText style={[styles.badgeTitle, {
+                    color: isDark ? Colors.dark.text : Colors.light.text
                 }]}>
                     🎉 New Badge Unlocked! 🎉
                 </ThemedText>
-                <ThemedText style={[styles.badgeName, { 
-                    color: isDark ? Colors.dark.text : Colors.light.text 
+                <ThemedText style={[styles.badgeName, {
+                    color: isDark ? Colors.dark.text : Colors.light.text
                 }]}>
                     {badgeName}
                 </ThemedText>
-                <ThemedText style={[styles.badgeDescription, { 
-                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary 
+                <ThemedText style={[styles.badgeDescription, {
+                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
                 }]}>
                     {badgeDescription}
                 </ThemedText>
                 <TouchableOpacity
-                    style={[styles.shareButton, { 
+                    style={[styles.shareButton, {
                         backgroundColor: Colors.primary,
                     }]}
                     onPress={handleShare}

@@ -17,6 +17,61 @@ const DAYS = [
     { id: 'friday', label: 'Fri' }
 ] as const;
 
+const SUBJECTS = [
+    'Accounting',
+    'Afrikaans',
+    'Agricultural Management Practices',
+    'Agricultural Sciences',
+    'Agricultural Technology',
+    'Automotive',
+    'Business Studies',
+    'Civil Services',
+    'Civil Technology',
+    'Computer Application Technology',
+    'Construction',
+    'Consumer Studies',
+    'Dance Studies',
+    'Design',
+    'Digital Electronics',
+    'Dramatic Arts',
+    'Economics',
+    'Electrical Technology',
+    'Electronics',
+    'Engineering Graphic and Design',
+    'English',
+    'Fitting and Machining',
+    'Geography',
+    'History',
+    'Hospitality Studies',
+    'Information Technology',
+    'IsiNdebele',
+    'IsiXhosa',
+    'IsiZulu',
+    'Life Orientation',
+    'Life Sciences',
+    'Marine Sciences',
+    'Mathematical Literacy',
+    'Mathematics',
+    'Mechanical Technology',
+    'Music',
+    'Physical Sciences',
+    'Power Systems',
+    'Religion Studies',
+    'Sepedi',
+    'Sesotho',
+    'Setswana',
+    'Siswati',
+    'South African Sign Language',
+    'Technical Mathematics',
+    'Technical Sciences',
+    'Tourism',
+    'Tshivenda',
+    'Visual Arts',
+    'Welding and Metalwork',
+    'Woodworking',
+    'Xitsonga'
+] as const;
+
 type DayId = typeof DAYS[number]['id'];
 
 const TIME_SLOTS = (() => {
@@ -151,15 +206,14 @@ export default function AddClassModal() {
     const colorScheme = useColorScheme();
     const router = useRouter();
     const { user } = useAuth();
-    const [subjects, setSubjects] = useState<Subject[]>([]);
-    const [selectedSubject, setSelectedSubject] = useState<string>('');
+    const [selectedSubject, setSelectedSubject] = useState<string>(SUBJECTS[0]);
     const [customSubject, setCustomSubject] = useState<string>('');
     const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
     const [selectedDay, setSelectedDay] = useState<DayId>(DAYS[0].id);
     const [selectedStartTime, setSelectedStartTime] = useState(TIME_SLOTS[0]);
     const [selectedEndTime, setSelectedEndTime] = useState(TIME_SLOTS[4]);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [errorVisible, setErrorVisible] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -183,49 +237,8 @@ export default function AddClassModal() {
         }
     }, []);
 
-    useEffect(() => {
-        async function loadSubjects() {
-            if (!user?.uid) return;
-
-            try {
-                const response = await fetchMySubjects(user.uid);
-                if (response?.subjects && Array.isArray(response.subjects)) {
-                    const subjectGroups = response.subjects.reduce((acc: Record<string, Subject>, curr) => {
-                        if (!curr?.name) return acc;
-
-                        const baseName = curr.name.split(' P')[0];
-
-                        if (!acc[baseName]) {
-                            acc[baseName] = {
-                                id: curr.id.toString(),
-                                name: baseName,
-                                total_questions: curr.totalSubjectQuestions || 0,
-                                answered_questions: curr.totalResults || 0,
-                                correct_answers: curr.correctAnswers || 0
-                            };
-                        }
-                        return acc;
-                    }, {});
-
-                    const groupedSubjects = Object.values(subjectGroups);
-                    setSubjects(groupedSubjects);
-                    if (groupedSubjects.length > 0) {
-                        setSelectedSubject(groupedSubjects[0].name);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading subjects:', error);
-                Alert.alert('Error', 'Failed to load subjects. Please try again.');
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
-        loadSubjects();
-    }, [user?.uid]);
-
     const resetForm = () => {
-        setSelectedSubject('');
+        setSelectedSubject(SUBJECTS[0]);
         setCustomSubject('');
         setIsCustomSubject(false);
         setSelectedDay(DAYS[0].id);
@@ -244,6 +257,12 @@ export default function AddClassModal() {
 
         if (!finalSubject) {
             setErrorMessage('Please select or enter a subject');
+            setErrorVisible(true);
+            return;
+        }
+
+        if (isCustomSubject && !customSubject.trim()) {
+            setErrorMessage('Please enter a custom subject name');
             setErrorVisible(true);
             return;
         }
@@ -415,11 +434,11 @@ export default function AddClassModal() {
                                     color: colorScheme === 'dark' ? '#fff' : '#000'
                                 }}
                             >
-                                {subjects.map((subject) => (
+                                {SUBJECTS.map((subject) => (
                                     <Picker.Item
-                                        key={subject.id}
-                                        label={subject.name}
-                                        value={subject.name}
+                                        key={subject}
+                                        label={subject}
+                                        value={subject}
                                     />
                                 ))}
                                 <Picker.Item label="Custom Subject" value="custom" />

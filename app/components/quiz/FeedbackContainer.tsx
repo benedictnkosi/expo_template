@@ -22,10 +22,10 @@ interface FeedbackContainerProps {
     renderMixedContent: (text: string, isDark: boolean, colors: any) => React.ReactNode;
 }
 
-export function FeedbackContainer({ 
-    feedbackMessage, 
-    correctAnswer, 
-    isDark, 
+export function FeedbackContainer({
+    feedbackMessage,
+    correctAnswer,
+    isDark,
     colors,
     cleanAnswer,
     currentQuestion,
@@ -82,7 +82,7 @@ export function FeedbackContainer({
                 testID="correct-answer-container"
             >
                 <ThemedText
-                    style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
+                    style={[styles.correctAnswerLabel, { color: isDark ? '#22C55E' : colors.textSecondary }]}
                     testID="correct-answer-label"
                 >
                     ✅ Right Answer!
@@ -137,7 +137,7 @@ export function FeedbackContainer({
                 {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
                     <>
                         <ThemedText
-                            style={[styles.correctAnswerLabel, { color: colors.textSecondary }]}
+                            style={[styles.correctAnswerLabel, { color: isDark ? '#22C55E' : colors.textSecondary }]}
                             testID="correct-answer-label"
                         >
                             ✅ Explanation
@@ -169,7 +169,7 @@ export function FeedbackContainer({
                                                 ]}
                                             >
                                                 <ThemedText style={[styles.bulletPoint, {
-                                                    color: colors.text,
+                                                    color: isDark ? '#4ADE80' : colors.text,
                                                     marginTop: 4
                                                 }]}>
                                                     {indentLevel > 0 ? '🎯' : '✅'}
@@ -192,7 +192,7 @@ export function FeedbackContainer({
                                     }
                                     return (
                                         <View key={index}>
-                                            <ThemedText>
+                                            <ThemedText style={{ color: isDark ? '#E5E7EB' : colors.text }}>
                                                 {line}
                                             </ThemedText>
                                         </View>
@@ -267,12 +267,13 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     },
     correctAnswerLabel: {
         fontSize: 16,
-        marginBottom: 8,
+        marginVertical: 8,
     },
     correctAnswerText: {
+        marginVertical: 8,
         fontSize: 16,
         textAlign: 'center',
-        color: colors.text
+        color: isDark ? '#E5E7EB' : colors.text
     },
     imageWrapper: {
         width: '100%',

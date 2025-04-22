@@ -20,7 +20,7 @@ export function RandomLessonPreview({ randomLesson, onRefresh, showSubjectIcon =
         return null;
     }
 
-    return randomLesson.question.ai_explanation.includes('***Key Lesson') ? (
+    return randomLesson.question.ai_explanation.includes('Key Lesson') ? (
         <ThemedView style={[styles.container, {
             backgroundColor: isDark ? colors.card : '#FFFFFF',
             borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
@@ -51,7 +51,7 @@ export function RandomLessonPreview({ randomLesson, onRefresh, showSubjectIcon =
             <View style={styles.content}>
 
                 <ThemedText style={[styles.explanation, { color: colors.textSecondary }]}>
-                    {randomLesson.question.ai_explanation.split('***Key Lesson:')[1]?.trim().replace('***', '').trim()}
+                    {randomLesson.question.ai_explanation.split('Key Lesson:')[1]?.trim().replace('***', '').trim()}
                 </ThemedText>
             </View>
         </ThemedView>

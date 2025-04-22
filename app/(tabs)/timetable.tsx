@@ -68,6 +68,25 @@ const COLORS = [
   '#7209B7', // Deep Purple
 ];
 
+// Color palette for light and dark modes
+const COLORS_LIGHT = {
+  background: '#FFFFFF',
+  surface: '#F1F3F5',
+  text: '#000000',
+  textSecondary: '#666666',
+  border: '#E1E3E5',
+  cardBackground: '#FFFFFF',
+};
+
+const COLORS_DARK = {
+  background: '#121212',
+  surface: '#1E1E1E',
+  text: '#FFFFFF',
+  textSecondary: '#A0A0A0',
+  border: '#2D2D2D',
+  cardBackground: '#1E1E1E',
+};
+
 // Function to get current day name in lowercase
 function getCurrentDay(): string {
   const dayIndex = new Date().getDay(); // 0 is Sunday, 1 is Monday, etc.
@@ -268,10 +287,16 @@ export default function TimetableScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[
+      styles.container,
+      { backgroundColor: colorScheme === 'dark' ? COLORS_DARK.background : COLORS_LIGHT.background }
+    ]}>
       <Header learnerInfo={learnerInfo} />
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>
+        <Text style={[
+          styles.title,
+          { color: colorScheme === 'dark' ? COLORS_DARK.text : COLORS_LIGHT.text }
+        ]}>
           📅 My Classes
         </Text>
         <TouchableOpacity
@@ -292,13 +317,15 @@ export default function TimetableScreen() {
             onPress={() => setSelectedDay(day)}
             style={[
               styles.dayButton,
-              selectedDay === day && styles.selectedDayButton
+              selectedDay === day && styles.selectedDayButton,
+              { backgroundColor: colorScheme === 'dark' ? COLORS_DARK.surface : COLORS_LIGHT.surface }
             ]}
           >
             <Text
               style={[
                 styles.dayText,
-                selectedDay === day && styles.selectedDayText
+                selectedDay === day && styles.selectedDayText,
+                { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
               ]}
             >
               {day === 'monday' ? 'Mon' :
@@ -313,7 +340,10 @@ export default function TimetableScreen() {
       <ScrollView style={styles.scheduleContainer}>
         {TIME_SLOTS.map((time) => (
           <View key={time} style={styles.timeSlot}>
-            <Text style={styles.timeText}>
+            <Text style={[
+              styles.timeText,
+              { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
+            ]}>
               {time}
             </Text>
             <View style={styles.classSlot}>
@@ -352,7 +382,10 @@ export default function TimetableScreen() {
                   </LinearGradient>
                 </View>
               ))}
-              <View style={styles.emptySlot} />
+              <View style={[
+                styles.emptySlot,
+                { backgroundColor: colorScheme === 'dark' ? COLORS_DARK.surface : COLORS_LIGHT.surface }
+              ]} />
             </View>
           </View>
         ))}
@@ -364,7 +397,6 @@ export default function TimetableScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -407,7 +439,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginHorizontal: 4,
     borderRadius: 16,
-    backgroundColor: '#F1F3F5',
     alignItems: 'center',
   },
   selectedDayButton: {
@@ -415,7 +446,6 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 16,
-    color: '#666',
     fontWeight: '500',
   },
   selectedDayText: {
@@ -435,7 +465,6 @@ const styles = StyleSheet.create({
   timeText: {
     width: 48,
     fontSize: 14,
-    color: '#666',
     marginRight: 12,
   },
   classSlot: {
@@ -467,7 +496,6 @@ const styles = StyleSheet.create({
   emptySlot: {
     flex: 1,
     height: '100%',
-    backgroundColor: '#F1F3F5',
     borderRadius: 12,
   },
   classHeader: {

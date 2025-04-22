@@ -15,7 +15,7 @@ export function AiExplanation({ explanation, isDark, colors, renderMixedContent 
         <ThemedView
             style={[styles.aiExplanationContainer, {
                 backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                borderColor: '#22C55E'
+                borderColor: isDark ? '#4ADE80' : '#22C55E'
             }]}
             testID="lesson-ai-explanation-container"
         >
@@ -35,7 +35,7 @@ export function AiExplanation({ explanation, isDark, colors, renderMixedContent 
                             ]}
                         >
                             <ThemedText style={[styles.bulletPoint, {
-                                color: colors.text,
+                                color: isDark ? '#4ADE80' : colors.text,
                                 marginTop: 4
                             }]}>
                                 {indentLevel > 0 ? '🎯' : '✅'}
@@ -52,7 +52,9 @@ export function AiExplanation({ explanation, isDark, colors, renderMixedContent 
                 }
                 return (
                     <View key={index}>
-                        {renderMixedContent(line, isDark, colors)}
+                        <ThemedText style={{ color: isDark ? '#E5E7EB' : colors.text }}>
+                            {renderMixedContent(line, isDark, colors)}
+                        </ThemedText>
                     </View>
                 );
             })}

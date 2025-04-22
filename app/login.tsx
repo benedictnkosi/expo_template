@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../config/firebase';
 import { ThemedText } from '@/components/ThemedText';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { signIn } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -28,7 +28,7 @@ export default function Login() {
 
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signIn(email, password);
     } catch (error: any) {
       console.error('Login error:', error.code, error.message);
 

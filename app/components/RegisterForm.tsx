@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Linking } from 'react-native';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/contexts/AuthContext';
@@ -129,6 +129,10 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
         }
     };
 
+    const handleCreateGmail = () => {
+        Linking.openURL('https://accounts.google.com/signup');
+    };
+
     return (
         <View style={styles.container} testID="register-form-container">
             <TextInput
@@ -153,6 +157,15 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 maxLength={50}
                 accessibilityLabel="Email input"
             />
+            <TouchableOpacity
+                onPress={handleCreateGmail}
+                style={styles.gmailLink}
+                accessibilityLabel="Create a free Gmail account"
+            >
+                <ThemedText style={styles.gmailLinkText}>
+                    Don't have an email? Create a free Gmail account
+                </ThemedText>
+            </TouchableOpacity>
             <View style={styles.inputContainer}>
                 <View style={styles.passwordContainer}>
                     <TextInput
@@ -270,5 +283,14 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    gmailLink: {
+        marginBottom: 16,
+        padding: 8,
+    },
+    gmailLinkText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        textDecorationLine: 'underline',
     },
 });

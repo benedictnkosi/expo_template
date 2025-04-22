@@ -35,10 +35,6 @@ async function logAnalyticsEvent(eventName: string, eventParams?: Record<string,
 interface LearnerInfo {
   name: string;
   grade: string;
-  school?: string;
-  school_address?: string;
-  school_latitude?: number;
-  school_longitude?: number;
   curriculum?: string;
   terms?: string;
   photoURL?: string;
@@ -50,6 +46,11 @@ interface Grade {
   id: number;
   number: number;
   active: number;
+}
+
+interface CreateLearnerResponse {
+  status: string;
+  message?: string;
 }
 
 // Add the updateAvatar function after the existing imports
@@ -90,17 +91,13 @@ export default function ProfileScreen() {
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [editName, setEditName] = useState('');
   const [editGrade, setEditGrade] = useState('');
-  const [editSchool, setEditSchool] = useState('');
-  const [editSchoolAddress, setEditSchoolAddress] = useState('');
-  const [editSchoolLatitude, setEditSchoolLatitude] = useState(0);
-  const [editSchoolLongitude, setEditSchoolLongitude] = useState(0);
   const [editCurriculum, setEditCurriculum] = useState<string>('');
   const [editTerms, setEditTerms] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [showAlert, setShowAlert] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{
+  const [alertConfig] = useState<{
     title: string;
     message: string;
     onConfirm?: () => void;
@@ -112,7 +109,6 @@ export default function ProfileScreen() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newThreadNotification, setNewThreadNotification] = useState(true);
-  const googlePlacesRef = React.useRef<any>(null);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
 
   // Available options
@@ -144,10 +140,6 @@ export default function ProfileScreen() {
         setLearnerInfo({
           name,
           grade: gradeNumber,
-          school: learner.school_name || '',
-          school_address: learner.school_address || '',
-          school_latitude: learner.school_latitude || 0,
-          school_longitude: learner.school_longitude || 0,
           curriculum: learner.curriculum || '',
           terms: learner.terms || '',
           imagePath: user.photoURL || "",
@@ -156,10 +148,6 @@ export default function ProfileScreen() {
 
         setEditName(name);
         setEditGrade(gradeNumber);
-        setEditSchool(learner.school_name || '');
-        setEditSchoolAddress(learner.school_address || '');
-        setEditSchoolLatitude(learner.school_latitude || 0);
-        setEditSchoolLongitude(learner.school_longitude || 0);
         setEditCurriculum(learner.curriculum || '');
         setEditTerms(learner.terms || '');
         setSelectedAvatar(learner.avatar || '1');
@@ -210,7 +198,6 @@ export default function ProfileScreen() {
       user_id: user?.uid,
       has_name: Boolean(editName),
       has_grade: Boolean(editGrade),
-      has_school: Boolean(editSchool),
       has_curriculum: editCurriculum.split(',').filter(Boolean).length > 0,
       has_terms: editTerms.split(',').filter(Boolean).length > 0
     });
@@ -254,45 +241,71 @@ export default function ProfileScreen() {
         updated_fields: {
           name: editName.trim() !== learnerInfo?.name,
           grade: parseInt(editGrade) !== parseInt(learnerInfo?.grade || '0'),
-          school: editSchool !== learnerInfo?.school,
           curriculum: cleanCurriculum !== learnerInfo?.curriculum,
           terms: cleanTerms !== learnerInfo?.terms
         }
       });
 
-      await createLearner(user.uid, {
+      const response = await createLearner(user.uid, {
         name: editName.trim(),
         grade: parseInt(editGrade),
-        school: editSchool,
-        school_address: editSchoolAddress,
-        school_latitude: editSchoolLatitude,
-        school_longitude: editSchoolLongitude,
         terms: cleanTerms,
         curriculum: cleanCurriculum,
         email: user.email || '',
-        avatar: selectedAvatar
-      });
+        avatar: selectedAvatar,
+        school: '',
+        school_address: '',
+        school_latitude: 0,
+        school_longitude: 0
+      }) as CreateLearnerResponse;
 
-      setLearnerInfo({
-        name: editName.trim(),
-        grade: editGrade,
-        school: editSchool,
-        school_address: editSchoolAddress,
-        school_latitude: editSchoolLatitude,
-        school_longitude: editSchoolLongitude,
-        curriculum: cleanCurriculum,
-        terms: cleanTerms,
-        avatar: selectedAvatar
-      });
+      if (response.status === 'OK') {
+        setLearnerInfo({
+          name: editName.trim(),
+          grade: editGrade,
+          curriculum: cleanCurriculum,
+          terms: cleanTerms,
+          avatar: selectedAvatar
+        });
 
-      handleSuccess();
+        // Show success toast
+        Toast.show({
+          type: 'success',
+          text1: 'Profile updated successfully',
+          position: 'top',
+          topOffset: 60,
+          visibilityTime: 3000,
+          autoHide: true,
+          props: {
+            style: {
+              backgroundColor: '#4CAF50',
+              borderRadius: 8,
+              padding: 16,
+              margin: 16,
+            }
+          }
+        });
+      } else {
+        throw new Error(response.message || 'Failed to update profile');
+      }
     } catch (error) {
       console.error('Failed to update profile:', error);
       Toast.show({
         type: 'error',
         text1: 'Error',
         text2: 'Failed to update profile',
-        position: 'bottom'
+        position: 'top',
+        topOffset: 60,
+        visibilityTime: 3000,
+        autoHide: true,
+        props: {
+          style: {
+            backgroundColor: '#DC2626',
+            borderRadius: 8,
+            padding: 16,
+            margin: 16,
+          }
+        }
       });
     } finally {
       setIsSaving(false);
@@ -545,8 +558,6 @@ export default function ProfileScreen() {
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
       >
-
-
         <Header
           learnerInfo={learnerInfo}
         />
@@ -622,102 +633,6 @@ export default function ProfileScreen() {
                       />
                     ))}
                   </Picker>
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText style={[styles.label, { color: colors.text }]}>🏫 School</ThemedText>
-                {editSchool && editSchool !== 'Default School' && (
-                  <View style={[styles.selectedSchoolContainer, {
-                    backgroundColor: isDark ? colors.surface : 'rgba(226, 232, 240, 0.3)'
-                  }]}>
-                    <ThemedText style={[styles.selectedSchoolName, { color: colors.text }]}>{editSchool}</ThemedText>
-                    <ThemedText style={[styles.selectedSchoolAddress, { color: colors.textSecondary }]}>{editSchoolAddress}</ThemedText>
-                  </View>
-                )}
-                <View style={styles.searchWrapper}>
-                  <GooglePlacesAutocomplete
-                    placeholder="🔍 Search for your school..."
-                    onPress={async (data, details = null) => {
-                      // Log school change event
-                      await logAnalyticsEvent('school_change', {
-                        user_id: user?.uid,
-                        old_school: editSchool,
-                        new_school: data.structured_formatting.main_text,
-                        school_address: data.description
-                      });
-
-                      setEditSchool(data.structured_formatting.main_text);
-                      setEditSchoolAddress(data.description);
-                      if (details) {
-                        setEditSchoolLatitude(details.geometry.location.lat);
-                        setEditSchoolLongitude(details.geometry.location.lng);
-                      }
-
-                      // Force a re-render by triggering a state update
-                      setTimeout(() => {
-                        // This empty setState forces a re-render
-                        setEditName(prev => prev);
-
-                        // Clear the search input
-                        if (googlePlacesRef.current) {
-                          googlePlacesRef.current.clear();
-                          googlePlacesRef.current.blur();
-                        }
-                      }, 100);
-                    }}
-                    fetchDetails={true}
-                    query={{
-                      key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "",
-                      components: 'country:za',
-                      types: 'school',
-                      language: 'en',
-                    }}
-                    enablePoweredByContainer={false}
-                    textInputProps={{
-                      clearButtonMode: 'while-editing',
-                      autoCorrect: false,
-                      autoCapitalize: 'none',
-                      placeholderTextColor: isDark ? colors.textSecondary : '#94A3B8',
-                      selectionColor: colors.primary,
-                    }}
-                    styles={{
-                      container: [
-                        styles.searchContainer,
-                        Platform.OS === 'android' && { elevation: 0 }
-                      ],
-                      textInput: [
-                        styles.searchInput,
-                        {
-                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                          color: colors.text,
-                          borderColor: colors.border
-                        }
-                      ],
-                      listView: [
-                        styles.searchListView,
-                        {
-                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                          borderColor: colors.border,
-                          borderWidth: Platform.OS === 'android' ? 1 : 0,
-                        }
-                      ],
-                      row: {
-                        backgroundColor: isDark ? colors.surface : '#FFFFFF'
-                      },
-                      separator: {
-                        backgroundColor: colors.border,
-                        height: StyleSheet.hairlineWidth
-                      },
-                      description: {
-                        color: colors.text
-                      },
-                      powered: {
-                        display: 'none'
-                      }
-                    }}
-                    ref={googlePlacesRef}
-                  />
                 </View>
               </View>
 

@@ -53,7 +53,13 @@ export function QuizOptionsContainer({
                                 showFeedback && selectedAnswer === value && (
                                     (() => {
                                         try {
-                                            if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                            if (!currentQuestion) return [
+                                                styles.wrongOption,
+                                                {
+                                                    backgroundColor: isDark ? 'rgba(255, 59, 48, 0.2)' : '#FFE5E5',
+                                                    borderColor: '#FF3B30'
+                                                }
+                                            ];
 
                                             const parsedAnswer = currentQuestion.answer.startsWith('[')
                                                 ? JSON.parse(currentQuestion.answer)
@@ -62,15 +68,45 @@ export function QuizOptionsContainer({
                                             return (Array.isArray(parsedAnswer)
                                                 ? parsedAnswer.includes(value)
                                                 : parsedAnswer === value)
-                                                ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                                ? [
+                                                    styles.correctOption,
+                                                    {
+                                                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#E6F4EA',
+                                                        borderColor: '#22C55E'
+                                                    }
+                                                ]
+                                                : [
+                                                    styles.wrongOption,
+                                                    {
+                                                        backgroundColor: isDark ? 'rgba(255, 59, 48, 0.2)' : '#FFE5E5',
+                                                        borderColor: '#FF3B30'
+                                                    }
+                                                ];
                                         } catch (error) {
                                             console.error('Error parsing answer:', error);
-                                            if (!currentQuestion) return [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                            if (!currentQuestion) return [
+                                                styles.wrongOption,
+                                                {
+                                                    backgroundColor: isDark ? 'rgba(255, 59, 48, 0.2)' : '#FFE5E5',
+                                                    borderColor: '#FF3B30'
+                                                }
+                                            ];
 
                                             return currentQuestion.answer === value
-                                                ? [styles.correctOption, { borderColor: '#22C55E' }]
-                                                : [styles.wrongOption, { borderColor: '#FF3B30' }];
+                                                ? [
+                                                    styles.correctOption,
+                                                    {
+                                                        backgroundColor: isDark ? 'rgba(34, 197, 94, 0.2)' : '#E6F4EA',
+                                                        borderColor: '#22C55E'
+                                                    }
+                                                ]
+                                                : [
+                                                    styles.wrongOption,
+                                                    {
+                                                        backgroundColor: isDark ? 'rgba(255, 59, 48, 0.2)' : '#FFE5E5',
+                                                        borderColor: '#FF3B30'
+                                                    }
+                                                ];
                                         }
                                     })()
                                 )
@@ -94,7 +130,10 @@ export function QuizOptionsContainer({
                                     />
                                 ) : (
                                     <ThemedText
-                                        style={[styles.optionText, { color: colors.text }]}
+                                        style={[
+                                            styles.optionText,
+                                            { color: colors.text }
+                                        ]}
                                         testID={`option-text-${index}`}
                                     >
                                         {value}
@@ -128,21 +167,17 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     selectedOption: {
-        backgroundColor: '#00000020',
         borderColor: '#000000',
     },
     correctOption: {
-        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-        borderColor: '#22C55E',
+        borderWidth: 2,
     },
     wrongOption: {
-        backgroundColor: 'rgba(255, 59, 48, 0.2)',
-        borderColor: '#FF3B30',
+        borderWidth: 2,
     },
     optionText: {
         fontSize: 14,
         lineHeight: 20,
-        color: '#1E293B',
     },
     optionLoadingContainer: {
         minHeight: 40,
@@ -153,17 +188,13 @@ const styles = StyleSheet.create({
         width: '100%',
         flexDirection: 'row',
         flexWrap: 'wrap',
-        color: '#000000',
     },
     latexOptionContainer: {
         width: '100%',
         flexWrap: 'wrap',
-        color: '#000000',
     },
     latexContainer: {
         width: '100%',
         marginVertical: 4,
-        backgroundColor: '#FFFFFF',
-        color: '#000000',
     },
 }); 

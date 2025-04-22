@@ -60,7 +60,6 @@ interface LeaderboardEntry {
     position: number;
     isCurrentLearner: boolean;
     avatar: string;
-    school?: string;
 }
 
 interface WeeklyScoreboardEntry {
@@ -70,7 +69,6 @@ interface WeeklyScoreboardEntry {
     position: number;
     isCurrentLearner: boolean;
     avatar: string;
-    school?: string;
 }
 
 interface WeeklyScoreboardResponse {
@@ -282,7 +280,6 @@ interface ScoreboardProps {
         isCurrentLearner: boolean;
         avatar: string;
         totalAnswers?: number;
-        school?: string;
     }>;
     showTotalAnswers?: boolean;
 }
@@ -320,11 +317,6 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                     <ThemedText style={styles.topThreeName}>
                         {rankings[1].name}
                     </ThemedText>
-                    {rankings[1].school && (
-                        <ThemedText style={styles.topThreeSchool}>
-                            {rankings[1].school}
-                        </ThemedText>
-                    )}
                     <View style={styles.topThreePoints}>
                         <Image
                             source={require('@/assets/images/points.png')}
@@ -355,11 +347,6 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                     <ThemedText style={[styles.topThreeName, styles.firstPlaceName]}>
                         {rankings[0].name}
                     </ThemedText>
-                    {rankings[0].school && (
-                        <ThemedText style={[styles.topThreeSchool, styles.firstPlaceSchool]}>
-                            {rankings[0].school}
-                        </ThemedText>
-                    )}
                     <View style={styles.topThreePoints}>
                         <Image
                             source={require('@/assets/images/points.png')}
@@ -390,11 +377,6 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                     <ThemedText style={styles.topThreeName}>
                         {rankings[2].name}
                     </ThemedText>
-                    {rankings[2].school && (
-                        <ThemedText style={styles.topThreeSchool}>
-                            {rankings[2].school}
-                        </ThemedText>
-                    )}
                     <View style={styles.topThreePoints}>
                         <Image
                             source={require('@/assets/images/points.png')}
@@ -444,11 +426,6 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                     </View>
                     <View style={styles.nameContainer}>
                         <ThemedText style={styles.name}>{entry.isCurrentLearner ? 'You' : entry.name}</ThemedText>
-                        {entry.school && (
-                            <ThemedText style={styles.schoolName}>
-                                {entry.school}
-                            </ThemedText>
-                        )}
                         {showTotalAnswers && (
                             <ThemedText style={styles.scoreboardAnswers}>
                                 {entry.totalAnswers} answers
@@ -470,7 +447,7 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
     return (
         <View style={styles.leaderboardContainer}>
             {renderTopThree(entries.slice(0, 3))}
-            
+
             <View style={styles.rankingsList}>
                 {entries.slice(3).map((entry, index) => renderEntry(entry, index + 3))}
             </View>
@@ -708,7 +685,7 @@ export default function AchievementsScreen() {
 
     const handleFollowLearner = async (followCode: string) => {
         if (!user?.uid || !followCode.trim()) return;
-        
+
         // Check if user is trying to follow themselves
         if (learnerInfo?.follow_me_code === followCode.trim()) {
             Toast.show({
@@ -719,10 +696,10 @@ export default function AchievementsScreen() {
             });
             return;
         }
-        
+
         setIsFollowingLoading(true);
         setFollowCode('');
-        
+
         try {
             const response = await followLearner(user.uid, followCode.trim());
             Toast.show({
@@ -946,7 +923,7 @@ export default function AchievementsScreen() {
                                         style={[
                                             styles.badgeCard,
                                             {
-                                                backgroundColor: '#F8FAFC',
+                                                backgroundColor: isDark ? 'rgba(30, 30, 30, 0.8)' : '#F8FAFC',
                                                 borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                                                 opacity: badge.earned ? 1 : 0.5
                                             }
@@ -1053,7 +1030,6 @@ export default function AchievementsScreen() {
                                     position: entry.position,
                                     isCurrentLearner: entry.isCurrentLearner,
                                     avatar: entry.avatar,
-                                    school: entry.school?.toLowerCase().includes('default') ? undefined : entry.school?.replace(/school/gi, '').trim()
                                 })) || []}
                             />
                         ) : scoreboardType === 'weekly' ? (
@@ -1065,7 +1041,6 @@ export default function AchievementsScreen() {
                                         position: entry.position,
                                         isCurrentLearner: entry.isCurrentLearner,
                                         avatar: entry.avatar,
-                                        school: entry.school?.toLowerCase().includes('default') ? undefined : entry.school?.replace(/school/gi, '').trim()
                                     })) || []}
                                 />
                             </>
@@ -1078,7 +1053,6 @@ export default function AchievementsScreen() {
                                         position: entry.position,
                                         isCurrentLearner: entry.isCurrentLearner,
                                         avatar: entry.avatar,
-                                        school: entry.school?.toLowerCase().includes('default') ? undefined : entry.school?.replace(/school/gi, '').trim()
                                     })) || []}
                                 />
                             </>
@@ -1089,14 +1063,14 @@ export default function AchievementsScreen() {
                         <View style={styles.followCodeContainer}>
                             <ThemedText style={styles.followCodeTitle}>Follow a Learner</ThemedText>
                             <ThemedText style={styles.followCodeSubtitle}>
-                            Got a friend on here? Type in their 4-letter code and start leveling up together!
+                                Got a friend on here? Type in their 4-letter code and start leveling up together!
                             </ThemedText>
-                            
+
                             <View style={styles.followCodeInputContainer}>
                                 <TextInput
                                     style={[
                                         styles.followCodeInput,
-                                        { 
+                                        {
                                             color: colors.text,
                                             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
                                             borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
@@ -1113,11 +1087,11 @@ export default function AchievementsScreen() {
                                     autoCapitalize="characters"
                                     keyboardType="default"
                                 />
-                                
+
                                 <TouchableOpacity
                                     style={[
                                         styles.followButton,
-                                        { 
+                                        {
                                             backgroundColor: colors.primary,
                                             opacity: followCode.length === 4 ? 1 : 0.5
                                         }
@@ -1132,7 +1106,7 @@ export default function AchievementsScreen() {
                                     )}
                                 </TouchableOpacity>
                             </View>
-                            
+
                             {learnerInfo?.follow_me_code && (
                                 <View style={styles.ownFollowCodeContainer}>
                                     <ThemedText style={styles.ownFollowCodeLabel}>Your Follow Code:</ThemedText>
@@ -1166,13 +1140,13 @@ export default function AchievementsScreen() {
                                     </View>
                                 </View>
                             )}
-                            
-                            
+
+
                         </View>
 
                         <View style={styles.followingListContainer}>
                             <ThemedText style={styles.followingListTitle}>👯‍♂️ Following</ThemedText>
-                            
+
                             {isFollowingListLoading ? (
                                 <ActivityIndicator style={styles.followingListLoader} color={colors.primary} />
                             ) : followingList.length === 0 ? (
@@ -1208,7 +1182,7 @@ export default function AchievementsScreen() {
                                                 <ThemedText style={styles.followingName}>
                                                     {learner.learner_name}
                                                 </ThemedText>
-                                                
+
                                                 <View style={styles.followingMetaInfo}>
                                                     <View style={[styles.statsRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.03)' }]}>
                                                         <View style={styles.statItemContainer}>
@@ -1261,7 +1235,7 @@ export default function AchievementsScreen() {
 
                         <View style={styles.followersListContainer}>
                             <ThemedText style={styles.followersListTitle}>👯‍♂️ Followers</ThemedText>
-                            
+
                             {isFollowersLoading ? (
                                 <ActivityIndicator style={styles.followersListLoader} color={colors.primary} />
                             ) : followers.length === 0 ? (

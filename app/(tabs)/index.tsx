@@ -214,6 +214,25 @@ export default function HomeScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Check for saved notification preferences on mount
+  useEffect(() => {
+    async function checkNotificationPreferences() {
+      try {
+        const notificationsPreference = await AsyncStorage.getItem('notificationsEnabled');
+        if (notificationsPreference === 'true') {
+          setNotificationsEnabled(true);
+        } else {
+          // Check current permission status
+          const { status } = await Notifications.getPermissionsAsync();
+          setNotificationsEnabled(status === 'granted');
+        }
+      } catch (error) {
+        console.error('Error checking notification preferences:', error);
+      }
+    }
+    checkNotificationPreferences();
+  }, []);
+
   // Add version check function
   const checkVersion = useCallback(async () => {
     try {
@@ -725,6 +744,14 @@ export default function HomeScreen() {
         if (token && user?.uid) {
           await updatePushToken(user.uid, token);
           setNotificationsEnabled(true);
+          // Save preference to AsyncStorage
+          await AsyncStorage.setItem('notificationsEnabled', 'true');
+
+          // Track the event
+          await analytics.track('notifications_enabled', {
+            user_id: user.uid
+          });
+
           Toast.show({
             type: 'success',
             text1: 'Notifications enabled',
@@ -882,10 +909,11 @@ export default function HomeScreen() {
               <ActivityIndicator color={colors.primary} />
             </View>
           ) : todos.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <ThemedText style={[styles.emptyStateText, { color: colors.textSecondary }]}>
+            <View style={[styles.emptyStateContainer, { backgroundColor: isDark ? colors.surface : '#F5F5F5' }]}>
+              <ThemedText style={[styles.emptyStateText, { color: isDark ? colors.textSecondary : '#666666' }]}>
                 No tasks due in the next 3 days
               </ThemedText>
+
             </View>
           ) : (
             <View style={styles.tasksList}>
@@ -1622,8 +1650,8 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F5F5',
     borderRadius: 12,
+    backgroundColor: '#F5F5F5',
   },
   emptyStateText: {
     fontSize: 14,

@@ -246,13 +246,13 @@ function createStyles(isDark: boolean) {
     });
 }
 
-export function TodoList({ 
-    todos, 
-    subjectName, 
-    userUid, 
-    isDark, 
-    colors, 
-    onTodosChange 
+export function TodoList({
+    todos,
+    subjectName,
+    userUid,
+    isDark,
+    colors,
+    onTodosChange
 }: TodoListProps) {
     const styles = createStyles(isDark);
     const [newTodo, setNewTodo] = useState('');
@@ -306,10 +306,16 @@ export function TodoList({
         if (!userUid || !newTodo.trim()) return;
         setIsCreatingTodo(true);
         try {
-            // Set time to 23:59 for the due date
+            // Set time to 23:59 for the due date and handle timezone
             const dueDate = selectedDate ? new Date(selectedDate) : null;
             if (dueDate) {
-                dueDate.setHours(23, 59, 0, 0);
+                // Set to local midnight to avoid timezone issues
+                dueDate.setHours(0, 0, 0, 0);
+                // Add one day to make it the end of the selected day
+                dueDate.setDate(dueDate.getDate() + 1);
+                // Set to 23:59:59 of the previous day
+                dueDate.setDate(dueDate.getDate() - 1);
+                dueDate.setHours(23, 59, 59, 999);
             }
 
             const response = await fetch(`${HOST_URL}/api/todos`, {
@@ -392,8 +398,8 @@ export function TodoList({
             });
 
             const updatedTodo = await response.json();
-            
-            const updatedTodos = todos.map(todo => 
+
+            const updatedTodos = todos.map(todo =>
                 todo.id === todoId ? {
                     ...todo,
                     title: updatedTodo.title,
@@ -402,7 +408,7 @@ export function TodoList({
                     created_at: updatedTodo.created_at
                 } : todo
             );
-            
+
             onTodosChange(updatedTodos);
 
             Toast.show({
@@ -481,7 +487,7 @@ export function TodoList({
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
         }
-        
+
         if (date) {
             if (Platform.OS === 'ios') {
                 setTempDate(date);
@@ -540,11 +546,29 @@ export function TodoList({
         return [...todos].sort((a, b) => {
             if (a.status === 'completed' && b.status !== 'completed') return 1;
             if (a.status !== 'completed' && b.status === 'completed') return -1;
-            
+
             const dateA = a.due_date ? new Date(a.due_date).getTime() : Number.MAX_SAFE_INTEGER;
             const dateB = b.due_date ? new Date(b.due_date).getTime() : Number.MAX_SAFE_INTEGER;
-            
+
             return dateA - dateB;
+        });
+    };
+
+    // New function to format due dates correctly
+    const formatDueDate = (dateString: string) => {
+        // Parse the date string manually to extract just the date part
+        const parts = dateString.split('T')[0].split('-');
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1; // JS months are 0-indexed
+        const day = parseInt(parts[2]);
+
+        // Create a date object with just the date part (no time)
+        const date = new Date(year, month, day);
+
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
         });
     };
 
@@ -566,7 +590,7 @@ export function TodoList({
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const isOverdue = dueDate && dueDate < today;
-                        const isDueSoon = dueDate && !isOverdue && 
+                        const isDueSoon = dueDate && !isOverdue &&
                             (dueDate.getTime() - today.getTime()) <= 7 * 24 * 60 * 60 * 1000;
 
                         return (
@@ -603,7 +627,7 @@ export function TodoList({
                                             isOverdue && styles.overdueDate,
                                             isDueSoon && styles.dueSoonDate
                                         ]}>
-                                            Due: {new Date(todo.due_date).toLocaleDateString()}
+                                            Due: {formatDueDate(todo.due_date)}
                                         </ThemedText>
                                     )}
                                 </View>
@@ -649,7 +673,7 @@ export function TodoList({
                     <View style={styles.dateInputContainer}>
                         <ThemedText style={styles.dateLabel}>Due Date *</ThemedText>
                         <TouchableOpacity
-                            style={[styles.dateInput, { 
+                            style={[styles.dateInput, {
                                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                                 borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                             }]}
@@ -661,10 +685,10 @@ export function TodoList({
                             ]}>
                                 {selectedDate ? formatDate(selectedDate) : 'Select due date'}
                             </ThemedText>
-                            <Ionicons 
-                                name="calendar-outline" 
-                                size={20} 
-                                color={isDark ? '#E5E7EB' : '#999'} 
+                            <Ionicons
+                                name="calendar-outline"
+                                size={20}
+                                color={isDark ? '#E5E7EB' : '#999'}
                             />
                         </TouchableOpacity>
                     </View>
@@ -706,7 +730,7 @@ export function TodoList({
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
-                                styles.modalButton, 
+                                styles.modalButton,
                                 styles.saveButton,
                                 (!newTodo.trim() || !selectedDate) && styles.disabledButton
                             ]}
@@ -750,7 +774,7 @@ export function TodoList({
                     <View style={styles.dateInputContainer}>
                         <ThemedText style={styles.dateLabel}>Due Date</ThemedText>
                         <TouchableOpacity
-                            style={[styles.dateInput, { 
+                            style={[styles.dateInput, {
                                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                                 borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                             }]}
@@ -762,10 +786,10 @@ export function TodoList({
                             ]}>
                                 {editTodoDueDate ? formatDate(editTodoDueDate) : 'Select due date'}
                             </ThemedText>
-                            <Ionicons 
-                                name="calendar-outline" 
-                                size={20} 
-                                color={isDark ? '#E5E7EB' : '#999'} 
+                            <Ionicons
+                                name="calendar-outline"
+                                size={20}
+                                color={isDark ? '#E5E7EB' : '#999'}
                             />
                         </TouchableOpacity>
                     </View>
