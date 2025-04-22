@@ -412,8 +412,8 @@ const MessageItem = React.memo(({
                                                 style={styles.pdfContainer}
                                                 onPress={() => handleAttachmentPress(item.attachment)}
                                             >
-                                                <Ionicons name="document-text" size={24} color={isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151')} />
-                                                <ThemedText style={[styles.pdfText, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#374151') }]}>
+                                                <Ionicons name="document-text" size={24} color={isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#FFFFFF')} />
+                                                <ThemedText style={[styles.pdfText, { color: isOwnMessage ? '#FFFFFF' : (isDark ? colors.text : '#FFFFFF') }]}>
                                                     {item.attachment.name}
                                                 </ThemedText>
                                             </TouchableOpacity>
@@ -1610,7 +1610,6 @@ const styles = StyleSheet.create<Styles & {
     messageText: {
         fontSize: 15,
         lineHeight: 20,
-        color: '#FFFFFF',
     },
     messageTime: {
         fontSize: 14,
