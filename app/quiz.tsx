@@ -1080,15 +1080,6 @@ export default function QuizScreen() {
         }
     };
 
-    useEffect(() => {
-        logAnalyticsEvent('quiz_screen_view', {
-            user_id: user?.uid,
-            subject_name: subjectName,
-            learner_role: learnerRole
-        });
-
-    }, []);
-
     // Add a function to safely close all modals
     const closeAllModals = useCallback(() => {
         setIsReportModalVisible(false);
@@ -1441,7 +1432,6 @@ export default function QuizScreen() {
 
         try {
             setIsLoading(true);
-
 
             // Log quiz restart
             logAnalyticsEvent('restart_quiz', {
@@ -2098,9 +2088,20 @@ export default function QuizScreen() {
                 <View style={styles.examDateHeader}>
                     <ThemedText style={[styles.examDateTitle, {
                         color: colors.text,
-                        marginBottom: 12
+                        marginBottom: 4
                     }]}>
                         📅 Upcoming Exam Dates
+                    </ThemedText>
+
+                </View>
+                <View >
+                    <ThemedText style={[styles.examDateSubtext, {
+                        color: colors.text,
+                        opacity: 0.7,
+                        fontSize: 12,
+                        marginBottom: 12
+                    }]}>
+                        Dates are subject to change. Please verify with your school.
                     </ThemedText>
                 </View>
                 <View style={styles.examDateGrid}>
@@ -2147,6 +2148,7 @@ export default function QuizScreen() {
                         </ThemedText>
                     </View>
                 </View>
+
             </ThemedView>
         );
     };
@@ -2580,7 +2582,7 @@ const styles = StyleSheet.create({
         borderColor: '#FF3B30',
     },
     optionText: {
-        fontSize: 14,
+        fontSize: 12,
         lineHeight: 20,
         color: '#1E293B',
     },
@@ -3832,6 +3834,13 @@ const styles = StyleSheet.create({
     quickBiteExplanation: {
         fontSize: 14,
         lineHeight: 20,
+    },
+    examDateSubtext: {
+        fontSize: 12,
+        color: '#64748B',
+        textAlign: 'left',
+        marginBottom: 8,
+
     },
 });
 

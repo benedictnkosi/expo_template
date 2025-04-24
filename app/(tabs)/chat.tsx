@@ -200,11 +200,6 @@ export default function ChatScreen() {
                 )
             );
 
-            analytics.track('open_subject_chat', {
-                user_id: user.uid,
-                subject_name: subject.name,
-                subject_id: subject.id
-            });
             router.push({
                 pathname: '/threads/[id]',
                 params: {

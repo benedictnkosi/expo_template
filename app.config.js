@@ -1,5 +1,5 @@
 export default {
-  name: 'exam-quiz',
+  name: 'Exam Quiz',
   slug: 'exam-quiz',
   version: '2.7.17',
   orientation: 'portrait',

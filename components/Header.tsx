@@ -60,37 +60,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   greeting: {
     flex: 1,
   },
   welcomeText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   appName: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#8B5CF6',
   },
   emoji: {
-    fontSize: 24,
+    fontSize: 18,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748B',
-    marginTop: 4,
+    marginTop: 2,
   },
   profileSection: {
-    marginLeft: 16,
+    marginLeft: 12,
   },
   profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#333',
   },
   profilePlaceholder: {

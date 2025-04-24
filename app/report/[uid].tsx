@@ -70,7 +70,8 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'mathematics-literacy.png': require('@/assets/images/badges/mathematics-literacy.png'),
     'history.png': require('@/assets/images/badges/history.png'),
     'tourism.png': require('@/assets/images/badges/tourism.png'),
-    'business-studies.png': require('@/assets/images/badges/business-studies.png')
+    'business-studies.png': require('@/assets/images/badges/business-studies.png'),
+    'accounting.png': require('@/assets/images/badges/accounting.png')
 };
 
 async function getLearnerPerformance(uid: string): Promise<{ data: SubjectPerformance[] }> {

@@ -6,6 +6,7 @@ import { ThemedView } from './ThemedView';
 import { useTheme } from '@/contexts/ThemeContext';
 import { RandomAIQuestion } from '@/types/api';
 import { getSubjectIcon } from '../utils/subjectIcons';
+import { analytics } from '../services/analytics';
 
 interface RandomLessonPreviewProps {
     randomLesson: RandomAIQuestion | null;
@@ -19,6 +20,15 @@ export function RandomLessonPreview({ randomLesson, onRefresh, showSubjectIcon =
     if (!randomLesson?.question) {
         return null;
     }
+
+    const handleRefresh = async () => {
+        // Track the refresh event
+        await analytics.track('quick_bite_refresh', {
+            subject_name: randomLesson.question.subject.name,
+            subject_id: randomLesson.question.subject.id
+        });
+        onRefresh();
+    };
 
     return randomLesson.question.ai_explanation.includes('Key Lesson') ? (
         <ThemedView style={[styles.container, {
@@ -38,7 +48,7 @@ export function RandomLessonPreview({ randomLesson, onRefresh, showSubjectIcon =
                     </ThemedText>
                 </View>
                 <TouchableOpacity
-                    onPress={onRefresh}
+                    onPress={handleRefresh}
                     style={[styles.refreshButton, {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
@@ -49,7 +59,6 @@ export function RandomLessonPreview({ randomLesson, onRefresh, showSubjectIcon =
                 </TouchableOpacity>
             </View>
             <View style={styles.content}>
-
                 <ThemedText style={[styles.explanation, { color: colors.textSecondary }]}>
                     {randomLesson.question.ai_explanation.split('Key Lesson:')[1]?.trim().replace('***', '').trim()}
                 </ThemedText>
@@ -61,7 +70,7 @@ export function RandomLessonPreview({ randomLesson, onRefresh, showSubjectIcon =
 const styles = StyleSheet.create({
     container: {
         borderRadius: 12,
-        padding: 16,
+        padding: 8,
         marginBottom: 24,
         marginTop: 24,
         borderWidth: 1,

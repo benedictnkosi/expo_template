@@ -34,7 +34,8 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'mathematics-literacy.png': require('@/assets/images/badges/mathematics-literacy.png'),
     'history.png': require('@/assets/images/badges/history.png'),
     'tourism.png': require('@/assets/images/badges/tourism.png'),
-    'business-studies.png': require('@/assets/images/badges/business-studies.png')
+    'business-studies.png': require('@/assets/images/badges/business-studies.png'),
+    'accounting.png': require('@/assets/images/badges/accounting.png')
 };
 
 const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
@@ -846,7 +847,7 @@ export default function AchievementsScreen() {
             <View style={styles.header}>
                 <ThemedText style={styles.title}>🏆 Social Zone</ThemedText>
                 <ThemedText style={styles.subtitle}>
-                    Connect with other learners and share your progress!
+                    Connect and share your progress!
                 </ThemedText>
             </View>
 
@@ -1061,7 +1062,7 @@ export default function AchievementsScreen() {
                 ) : activeTab === 'following' ? (
                     <View style={styles.followingContainer}>
                         <View style={styles.followCodeContainer}>
-                            <ThemedText style={styles.followCodeTitle}>Follow a Learner</ThemedText>
+                            <ThemedText style={styles.followCodeTitle}>Follow a friend</ThemedText>
                             <ThemedText style={styles.followCodeSubtitle}>
                                 Got a friend on here? Type in their 4-letter code and start leveling up together!
                             </ThemedText>
@@ -1224,6 +1225,15 @@ export default function AchievementsScreen() {
                                                                 {learner.questionsAnsweredThisWeek} questions this week
                                                             </ThemedText>
                                                         </View>
+                                                        <TouchableOpacity
+                                                            style={[styles.viewReportButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }]}
+                                                            onPress={() => router.push(`/report/${learner.learner_uid}?name=${encodeURIComponent(learner.learner_name)}`)}
+                                                        >
+                                                            <Ionicons name="analytics-outline" size={16} style={{ marginRight: 8 }} color={colors.primary} />
+                                                            <ThemedText style={[styles.viewReportButtonText, { color: colors.primary }]}>
+                                                                View Report
+                                                            </ThemedText>
+                                                        </TouchableOpacity>
                                                     </View>
                                                 </View>
                                             </View>
@@ -1234,7 +1244,7 @@ export default function AchievementsScreen() {
                         </View>
 
                         <View style={styles.followersListContainer}>
-                            <ThemedText style={styles.followersListTitle}>👯‍♂️ Followers</ThemedText>
+                            <ThemedText style={styles.followersListTitle}>👯‍♂️ Your Groupies</ThemedText>
 
                             {isFollowersLoading ? (
                                 <ActivityIndicator style={styles.followersListLoader} color={colors.primary} />
@@ -1956,5 +1966,18 @@ const styles = StyleSheet.create({
     },
     firstPlaceSchool: {
         fontSize: 14,
+    },
+    viewReportButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    viewReportButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 }); 

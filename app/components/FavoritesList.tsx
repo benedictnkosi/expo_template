@@ -73,11 +73,6 @@ export function FavoritesList({
                         <ThemedText style={styles.favoriteCardText}>{displayText}</ThemedText>
                     )}
                 </ThemedText>
-                {isPopular && (
-                    <View style={styles.popularBadge}>
-                        <ThemedText style={styles.popularBadgeText}>⭐</ThemedText>
-                    </View>
-                )}
             </TouchableOpacity>
         );
     };
@@ -151,19 +146,5 @@ const styles = StyleSheet.create({
         fontSize: 16,
         textAlign: 'center',
         lineHeight: 24,
-    },
-    popularBadge: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        backgroundColor: 'rgba(255, 215, 0, 0.2)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    popularBadgeText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#FFD700',
     },
 }); 

@@ -20,8 +20,7 @@ import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
-import { registerForPushNotificationsAsync } from '@/services/notifications';
+
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -193,15 +192,6 @@ export default function ProfileScreen() {
   }, []);
 
   const handleSave = async () => {
-    // Track profile completion status
-    await logAnalyticsEvent('profile_completion_status', {
-      user_id: user?.uid,
-      has_name: Boolean(editName),
-      has_grade: Boolean(editGrade),
-      has_curriculum: editCurriculum.split(',').filter(Boolean).length > 0,
-      has_terms: editTerms.split(',').filter(Boolean).length > 0
-    });
-
     // Validate curriculum and terms selection
     const selectedCurricula = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
     const selectedTerms = editTerms.split(',').map(t => t.trim()).filter(Boolean);
@@ -216,7 +206,13 @@ export default function ProfileScreen() {
       return;
     }
 
-    setShowGradeChangeModal(true);
+    // Only show grade change warning if grade has actually changed
+    if (editGrade !== learnerInfo?.grade) {
+      setShowGradeChangeModal(true);
+    } else {
+      // If grade hasn't changed, save directly
+      await saveChanges();
+    }
   };
 
   const saveChanges = async () => {
@@ -235,16 +231,6 @@ export default function ProfileScreen() {
         .filter(Boolean)
         .join(', ');
 
-      // Log profile update event
-      await logAnalyticsEvent('profile_update', {
-        user_id: user.uid,
-        updated_fields: {
-          name: editName.trim() !== learnerInfo?.name,
-          grade: parseInt(editGrade) !== parseInt(learnerInfo?.grade || '0'),
-          curriculum: cleanCurriculum !== learnerInfo?.curriculum,
-          terms: cleanTerms !== learnerInfo?.terms
-        }
-      });
 
       const response = await createLearner(user.uid, {
         name: editName.trim(),
@@ -1110,7 +1096,6 @@ const styles = StyleSheet.create({
     height: 40,
   },
   content: {
-    padding: 20,
     backgroundColor: 'transparent',
   },
   profileCard: {

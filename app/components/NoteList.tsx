@@ -239,13 +239,6 @@ export function NoteList({
         if (!newNoteText.trim()) return;
 
         try {
-            // Track note creation attempt
-            await analytics.track('add_note_attempt', {
-                user_id: userUid,
-                subject_name: subjectName,
-                question_id: currentQuestionId,
-                note_length: newNoteText.trim().length
-            });
 
             const response = await fetch(`${API_BASE_URL}/notes`, {
                 method: 'POST',
@@ -281,14 +274,6 @@ export function NoteList({
                 });
             }
         } catch (error) {
-            // Track failed note creation
-            await analytics.track('add_note_failed', {
-                user_id: userUid,
-                subject_name: subjectName,
-                question_id: currentQuestionId,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-
             console.error('Error adding note:', error);
             Toast.show({
                 type: 'error',

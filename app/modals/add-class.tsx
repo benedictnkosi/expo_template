@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Pressable, ActivityIndicator, TextInput, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL, HOST_URL } from '@/config/api';
@@ -154,10 +154,11 @@ export default function AddClassModal() {
     const colorScheme = useColorScheme();
     const router = useRouter();
     const { user } = useAuth();
+    const { day } = useLocalSearchParams<{ day: string }>();
     const [selectedSubject, setSelectedSubject] = useState<string>('Accounting');
     const [customSubject, setCustomSubject] = useState<string>('');
     const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
-    const [selectedDay, setSelectedDay] = useState<DayId>(DAYS[0].id);
+    const [selectedDay, setSelectedDay] = useState<DayId>(day as DayId || DAYS[0].id);
     const [startTime, setStartTime] = useState(() => {
         const now = new Date();
         now.setHours(8, 0, 0, 0);

@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
     },
     optionText: {
-        fontSize: 14,
+        fontSize: 12,
         lineHeight: 20,
     },
     optionLoadingContainer: {

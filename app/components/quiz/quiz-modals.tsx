@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, TouchableOpacity, Share } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, ScrollView, TouchableOpacity, Share, Keyboard } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -117,9 +117,19 @@ export const ReportModal = ({
             <View style={[styles.reportModalContent, {
                 backgroundColor: isDark ? Colors.dark.card : Colors.light.card
             }]}>
-                <ThemedText style={[styles.reportModalTitle, { color: isDark ? Colors.dark.text : Colors.light.text }]}>
-                    Report Issue
-                </ThemedText>
+                <View style={styles.reportModalHeader}>
+                    <ThemedText style={[styles.reportModalTitle, { color: isDark ? Colors.dark.text : Colors.light.text }]}>
+                        Report Issue
+                    </ThemedText>
+                    <TouchableOpacity
+                        onPress={() => Keyboard.dismiss()}
+                        style={styles.doneButton}
+                    >
+                        <ThemedText style={[styles.doneButtonText, { color: Colors.primary }]}>
+                            Done
+                        </ThemedText>
+                    </TouchableOpacity>
+                </View>
                 <TextInput
                     style={[styles.reportInput, {
                         backgroundColor: isDark ? Colors.dark.background : Colors.light.background,
@@ -599,10 +609,15 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 20,
     },
+    reportModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
     reportModalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        marginBottom: 15,
     },
     reportInput: {
         height: 120,
@@ -796,5 +811,12 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         textAlign: 'center',
         lineHeight: 22,
+    },
+    doneButton: {
+        padding: 8,
+    },
+    doneButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
 }); 

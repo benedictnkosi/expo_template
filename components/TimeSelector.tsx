@@ -69,6 +69,7 @@ export function TimeSelector({
                     mode="time"
                     is24Hour={is24Hour}
                     display="spinner"
+                    minuteInterval={5}
                     minimumDate={minimumDate}
                     onChange={handleTimeChange}
                 />

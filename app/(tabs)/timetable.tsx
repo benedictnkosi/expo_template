@@ -257,7 +257,10 @@ export default function TimetableScreen() {
   );
 
   const handleAddClass = () => {
-    router.push('/modals/add-class');
+    router.push({
+      pathname: '/modals/add-class',
+      params: { day: selectedDay }
+    });
   };
 
   const getClassesForDay = (day: string) => {
@@ -297,7 +300,8 @@ export default function TimetableScreen() {
     if (!user?.uid) return;
 
     try {
-      if ('subject' in item) {
+      if ('subject' in item && !('title' in item)) {
+        console.log('deleting class');
         // Handle class deletion
         const getResponse = await fetch(`${API_BASE_URL}/learner?uid=${user.uid}`);
         const currentData = await getResponse.json();
@@ -333,6 +337,7 @@ export default function TimetableScreen() {
           throw new Error(data.message || 'Failed to delete class');
         }
       } else {
+        console.log('deleting event');
         // Handle event deletion using the same PUT endpoint as adding events
         const getResponse = await fetch(`${API_BASE_URL}/learner?uid=${user.uid}`);
         const currentData = await getResponse.json();
@@ -445,6 +450,21 @@ export default function TimetableScreen() {
     }
   };
 
+  const handleEditEvent = (event: Event) => {
+    router.push({
+      pathname: '/modals/add-event',
+      params: {
+        date: format(selectedDate, 'yyyy-MM-dd'),
+        edit: 'true',
+        title: event.title,
+        subject: event.subject,
+        startTime: event.startTime,
+        endTime: event.endTime,
+        reminder: event.reminder ? 'true' : 'false'
+      }
+    });
+  };
+
   const renderEventContent = (event: Event | Class) => {
     const isClass = 'subject' in event && !('title' in event);
     const title = isClass ? event.subject : (event as Event).title;
@@ -476,12 +496,22 @@ export default function TimetableScreen() {
               </Text>
             )}
           </View>
-          <TouchableOpacity
-            onPress={() => handleDeleteClass(isClass ? selectedDay : format(selectedDate, 'yyyy-MM-dd'), event)}
-            style={styles.deleteButton}
-          >
-            <Ionicons name="trash-outline" size={16} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.eventActions}>
+            {!isClass && (
+              <TouchableOpacity
+                onPress={() => handleEditEvent(event as Event)}
+                style={[styles.actionButton, styles.editButton]}
+              >
+                <Ionicons name="create-outline" size={16} color="#fff" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => handleDeleteClass(isClass ? selectedDay : format(selectedDate, 'yyyy-MM-dd'), event)}
+              style={[styles.actionButton, styles.deleteButton]}
+            >
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={styles.classTime}>{`${event.startTime} - ${event.endTime}`}</Text>
       </View>
@@ -574,7 +604,7 @@ export default function TimetableScreen() {
               styles.emptyStateText,
               { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
             ]}>
-              No classes scheduled for this day
+              No Classes Scheduled for this day, Just Vibes ✌️📴
             </Text>
           </View>
         ) : (
@@ -725,7 +755,7 @@ export default function TimetableScreen() {
                 styles.emptyStateText,
                 { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
               ]}>
-                No study plan & exams scheduled for today
+                No Study Plans. No Exams. Just Vibes ✨😌
               </Text>
             </View>
           ) : (
@@ -779,12 +809,6 @@ export default function TimetableScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <Text style={[
-        styles.title,
-        { color: colorScheme === 'dark' ? COLORS_DARK.text : COLORS_LIGHT.text }
-      ]}>
-        {viewMode === 'timetable' ? '📅 My Classes' : '📅 Study Plan & Exams'}
-      </Text>
       <TouchableOpacity
         onPress={handleAddEvent}
         style={styles.addButton}
@@ -834,13 +858,13 @@ export default function TimetableScreen() {
                 styles.tabTitle,
                 { color: colorScheme === 'dark' ? COLORS_DARK.text : COLORS_LIGHT.text }
               ]}>
-                Class Timetable
+                Timetable
               </Text>
               <Text style={[
                 styles.tabDescription,
                 { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
               ]}>
-                View your class schedule
+                Check your schedule, dodge those surprise classes!
               </Text>
             </View>
           </View>
@@ -873,7 +897,7 @@ export default function TimetableScreen() {
                 styles.tabDescription,
                 { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
               ]}>
-                Study Plans, Reminders & Exams
+                Prep plans, exam alerts & study hacks
               </Text>
             </View>
           </View>
@@ -891,46 +915,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    zIndex: 100,
   },
   addButton: {
     marginLeft: 8,
   },
   addButtonInner: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   daysRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 12,
     gap: 8,
   },
   timetableDayButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
     alignItems: 'center',
     overflow: 'hidden',
   },
@@ -938,7 +956,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
   },
   timetableDayText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   timetableSelectedDayText: {
@@ -955,8 +973,8 @@ const styles = StyleSheet.create({
   timeSlot: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    height: 90,
-    marginBottom: 16,
+    height: 100,
+    marginBottom: 8,
   },
   timeText: {
     width: 48,
@@ -966,13 +984,13 @@ const styles = StyleSheet.create({
   },
   classSlot: {
     flex: 1,
-    height: 90,
+    height: 120,
     position: 'relative',
   },
   classCard: {
     borderRadius: 12,
     overflow: 'hidden',
-    minHeight: 60,
+    minHeight: 30,
     marginHorizontal: 4,
     marginVertical: 4,
     shadowColor: '#000',
@@ -986,12 +1004,11 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   classContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     height: '100%',
     justifyContent: 'center',
     borderRadius: 12,
-    marginTop: 8,
   },
   className: {
     fontSize: 16,
@@ -1014,21 +1031,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-  deleteButton: {
+  eventActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
     padding: 4,
     borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  editButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  deleteButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 12,
+    paddingVertical: 4,
+    gap: 8,
   },
   tabButton: {
     flex: 1,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -1038,12 +1065,12 @@ const styles = StyleSheet.create({
   tabContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   tabIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(0, 122, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1052,20 +1079,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   tabDescription: {
-    fontSize: 14,
+    fontSize: 12,
     opacity: 0.7,
   },
   planningContainer: {
     flex: 1,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   calendarSection: {
-    marginBottom: 20,
+    marginBottom: 12,
     paddingHorizontal: 16,
   },
   eventsSection: {
@@ -1079,13 +1106,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   planningDayButton: {
-    width: 64,
-    height: 84,
+    width: 56,
+    height: 72,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.03)',
     padding: 8,
+    overflow: 'hidden',
   },
   planningSelectedDayButton: {
     backgroundColor: '#007AFF',
@@ -1097,22 +1125,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    overflow: 'hidden',
   },
   monthName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     marginBottom: 2,
   },
   dayName: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   dayNumberContainer: {
     alignItems: 'center',
   },
   dayNumber: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
   },
   todayNumber: {
@@ -1137,11 +1166,11 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loadMoreButton: {
-    width: 64,
-    height: 84,
+    width: 56,
+    height: 72,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: 'rgba(0, 0, 0, 0.03)',
     padding: 8,
     marginLeft: 8,
@@ -1151,7 +1180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadMoreText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     marginTop: 4,
     textAlign: 'center',

@@ -5,7 +5,7 @@ import { useColorScheme } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format, parse } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
-import { HOST_URL } from '@/config/api';
+import { API_BASE_URL, HOST_URL } from '@/config/api';
 import Toast from 'react-native-toast-message';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -102,23 +102,45 @@ const ErrorAlert = ({
 
 export default function AddEventModal() {
     const router = useRouter();
-    const { date: initialDate } = useLocalSearchParams<{ date: string }>();
+    const { date: initialDate, edit, title: initialTitle, subject: initialSubject, startTime: initialStartTime, endTime: initialEndTime, reminder: initialReminder } = useLocalSearchParams<{
+        date: string;
+        edit?: string;
+        title?: string;
+        subject?: string;
+        startTime?: string;
+        endTime?: string;
+        reminder?: string;
+    }>();
     const colorScheme = useColorScheme();
     const { user } = useAuth();
 
-    const [title, setTitle] = useState('');
-    const [selectedSubject, setSelectedSubject] = useState<string>('Accounting');
+    const [title, setTitle] = useState(initialTitle || '');
+    const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject || 'Accounting');
     const [customSubject, setCustomSubject] = useState<string>('');
     const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
     const [selectedDate, setSelectedDate] = useState(() => {
         return initialDate ? parse(initialDate, 'yyyy-MM-dd', new Date()) : new Date();
     });
     const [startTime, setStartTime] = useState(() => {
+        if (initialStartTime) {
+            const [hours, minutes] = initialStartTime.split(':');
+            const time = new Date();
+            time.setHours(parseInt(hours));
+            time.setMinutes(parseInt(minutes));
+            return time;
+        }
         const now = new Date();
         now.setMinutes(0);
         return now;
     });
     const [endTime, setEndTime] = useState(() => {
+        if (initialEndTime) {
+            const [hours, minutes] = initialEndTime.split(':');
+            const time = new Date();
+            time.setHours(parseInt(hours));
+            time.setMinutes(parseInt(minutes));
+            return time;
+        }
         const now = new Date();
         now.setMinutes(0);
         now.setHours(now.getHours() + 1);
@@ -130,23 +152,9 @@ export default function AddEventModal() {
     const [errorVisible, setErrorVisible] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [conflictingEvent, setConflictingEvent] = useState<{ title: string; startTime: string; endTime: string; } | null>(null);
-    const [reminderEnabled, setReminderEnabled] = useState(false);
+    const [reminderEnabled, setReminderEnabled] = useState(initialReminder === 'true');
+    const isEditing = edit === 'true';
 
-    const hasTimeConflict = (newEvent: { startTime: string; endTime: string }, existingEvents: { title: string; startTime: string; endTime: string }[]) => {
-        const newStart = new Date(`2000-01-01T${newEvent.startTime}`);
-        const newEnd = new Date(`2000-01-01T${newEvent.endTime}`);
-
-        return existingEvents.find(event => {
-            const existingStart = new Date(`2000-01-01T${event.startTime}`);
-            const existingEnd = new Date(`2000-01-01T${event.endTime}`);
-
-            return (
-                (newStart >= existingStart && newStart < existingEnd) ||
-                (newEnd > existingStart && newEnd <= existingEnd) ||
-                (newStart <= existingStart && newEnd >= existingEnd)
-            );
-        });
-    };
 
     const handleSubjectChange = (value: string) => {
         if (value === 'custom') {
@@ -175,6 +183,15 @@ export default function AddEventModal() {
             return;
         }
 
+        // Validate minimum duration of 30 minutes
+        const durationInMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+        if (durationInMinutes < 29) {
+            console.log(durationInMinutes);
+            setErrorMessage('⏰ Oops! Events need to be at least 30 minutes long. Let\'s give it more time! ✨');
+            setErrorVisible(true);
+            return;
+        }
+
         const formattedDate = format(selectedDate, 'yyyy-MM-dd');
         const newEvent = {
             title,
@@ -186,28 +203,54 @@ export default function AddEventModal() {
 
         try {
             // First get current events
-            const response = await fetch(`${HOST_URL}/public/learn/learner?uid=${user.uid}`);
-            const data = await response.json();
-            const currentEvents = data.events || {};
+            const getResponse = await fetch(`${API_BASE_URL}/learner?uid=${user.uid}`);
+            const currentData = await getResponse.json();
+            const currentEvents = currentData.events || {};
 
-            // Check for time conflicts
-            const existingEvents = currentEvents[formattedDate] || [];
-            const conflict = hasTimeConflict(newEvent, existingEvents);
+            // Check for conflicts
+            const conflicts = currentEvents[formattedDate]?.filter((event: { title: string; startTime: string; endTime: string }) => {
+                if (isEditing && event.title === initialTitle && event.startTime === initialStartTime && event.endTime === initialEndTime) {
+                    return false; // Skip the event being edited
+                }
+                return (
+                    (newEvent.startTime >= event.startTime && newEvent.startTime < event.endTime) ||
+                    (newEvent.endTime > event.startTime && newEvent.endTime <= event.endTime) ||
+                    (newEvent.startTime <= event.startTime && newEvent.endTime >= event.endTime)
+                );
+            });
 
-            if (conflict) {
-                setConflictingEvent(conflict);
-                setErrorMessage('This time slot conflicts with an existing event. Please choose a different time.');
+            if (conflicts?.length > 0) {
+                setConflictingEvent(conflicts[0]);
                 setErrorVisible(true);
+                setErrorMessage('This time slot conflicts with an existing event');
                 return;
             }
 
-            const updatedEvents = {
-                ...currentEvents,
-                [formattedDate]: [...existingEvents, newEvent]
-            };
-
             // Update events
-            const updateResponse = await fetch(`${HOST_URL}/api/learner/${user.uid}/events`, {
+            const updatedEvents = { ...currentEvents };
+
+            // If editing, remove the event from its original date
+            if (isEditing && initialDate) {
+                const originalDate = initialDate;
+                if (updatedEvents[originalDate]) {
+                    updatedEvents[originalDate] = updatedEvents[originalDate].filter(
+                        (event: { title: string; startTime: string; endTime: string }) =>
+                            !(event.title === initialTitle && event.startTime === initialStartTime && event.endTime === initialEndTime)
+                    );
+                    // Remove the date key if no events left
+                    if (updatedEvents[originalDate].length === 0) {
+                        delete updatedEvents[originalDate];
+                    }
+                }
+            }
+
+            // Add the event to the new date
+            if (!updatedEvents[formattedDate]) {
+                updatedEvents[formattedDate] = [];
+            }
+            updatedEvents[formattedDate].push(newEvent);
+
+            const response = await fetch(`${HOST_URL}/api/learner/${user.uid}/events`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -217,23 +260,23 @@ export default function AddEventModal() {
                 }),
             });
 
-            const updateData = await updateResponse.json();
-            if (updateData.status === 'OK') {
+            const data = await response.json();
+            if (data.status === 'OK') {
                 Toast.show({
                     type: 'success',
                     text1: 'Success',
-                    text2: 'Event added successfully',
+                    text2: isEditing ? 'Event updated successfully' : 'Event added successfully',
                 });
                 router.back();
             } else {
-                throw new Error(updateData.message || 'Failed to add event');
+                throw new Error(data.message || 'Failed to save event');
             }
         } catch (error) {
-            console.error('Error adding event:', error);
+            console.error('Error saving event:', error);
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: 'Failed to add event',
+                text2: 'Failed to save event',
             });
         }
     };
@@ -248,12 +291,20 @@ export default function AddEventModal() {
                 contentContainerStyle={styles.contentContainer}
             >
                 <View style={styles.header}>
-                    <Text style={[
-                        styles.title,
-                        { color: colorScheme === 'dark' ? Colors.dark.text : Colors.light.text }
-                    ]}>
-                        📚 Plan Something
-                    </Text>
+                    <View style={styles.titleContainer}>
+                        <Text style={[
+                            styles.title,
+                            { color: colorScheme === 'dark' ? Colors.dark.text : Colors.light.text }
+                        ]}>
+                            📚 Plan For Your Future
+                        </Text>
+                        <Text style={[
+                            styles.subtitle,
+                            { color: colorScheme === 'dark' ? Colors.dark.textSecondary : Colors.light.textSecondary }
+                        ]}>
+                            Schedule your study sessions, exams, assignments, and more
+                        </Text>
+                    </View>
                     <TouchableOpacity
                         style={styles.closeButton}
                         onPress={() => router.back()}
@@ -419,7 +470,9 @@ export default function AddEventModal() {
                         onPress={handleSubmit}
                         disabled={!title}
                     >
-                        <Text style={styles.submitButtonText}>➕ Add</Text>
+                        <Text style={styles.submitButtonText}>
+                            {isEditing ? '🔄 Update' : '➕ Add'}
+                        </Text>
                     </TouchableOpacity>
 
                     {showDatePicker && (
@@ -442,11 +495,14 @@ export default function AddEventModal() {
                             mode="time"
                             is24Hour={true}
                             display="spinner"
+                            minuteInterval={5}
                             onChange={(event, selectedDate) => {
                                 setShowStartPicker(false);
                                 if (selectedDate) {
                                     setStartTime(selectedDate);
-                                    setEndTime(new Date(selectedDate.getTime() + 60 * 60 * 1000));
+                                    // Set end time to 30 minutes after start time
+                                    const newEndTime = new Date(selectedDate.getTime() + 30 * 60 * 1000);
+                                    setEndTime(newEndTime);
                                 }
                             }}
                         />
@@ -458,7 +514,8 @@ export default function AddEventModal() {
                             mode="time"
                             is24Hour={true}
                             display="spinner"
-                            minimumDate={startTime}
+                            minuteInterval={5}
+                            minimumDate={new Date(startTime.getTime() + 30 * 60 * 1000)}
                             onChange={(event, selectedDate) => {
                                 setShowEndPicker(false);
                                 if (selectedDate) {
@@ -494,12 +551,20 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         marginBottom: 24,
+    },
+    titleContainer: {
+        flex: 1,
     },
     title: {
         fontSize: 24,
         fontWeight: 'bold',
+    },
+    subtitle: {
+        fontSize: 14,
+        marginTop: 4,
+        opacity: 0.8,
     },
     closeButton: {
         width: 40,

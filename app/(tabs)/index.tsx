@@ -12,8 +12,6 @@ import { updatePushToken, updateVersion } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
-import * as Updates from 'expo-updates';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { HOST_URL } from '@/config/api';
 
@@ -277,7 +275,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
     }]}>
       <View style={styles.scheduleHeader}>
         <ThemedText style={[styles.currentScheduleTitle, { color: colors.text }]}>
-          📅 Current Schedule
+          Level-Up Schedule 🎮📈
         </ThemedText>
         <ThemedText style={[styles.scheduleSubtext, { color: colors.textSecondary }]}>
           Your ongoing and upcoming classes & Study Plans
@@ -451,13 +449,6 @@ export default function HomeScreen() {
             // Update stored version and OS
             await AsyncStorage.setItem('appVersion', currentVersion);
             await AsyncStorage.setItem('appOS', currentOS);
-
-            // Track the event
-            await analytics.track('app_version_updated', {
-              user_id: user.uid,
-              version: currentVersion,
-              os: currentOS
-            });
           }
         } catch (error) {
           console.error('Error updating version:', error);
@@ -633,14 +624,6 @@ export default function HomeScreen() {
       setHiddenSubjects(newHiddenSubjects);
       await AsyncStorage.setItem('hiddenSubjects', JSON.stringify(newHiddenSubjects));
 
-      // Track the event
-      if (user?.uid) {
-        await analytics.track('toggle_subject_visibility', {
-          user_id: user.uid,
-          subject_id: subjectId,
-          is_hidden: !hiddenSubjects.includes(subjectId)
-        });
-      }
     } catch (error) {
       console.error('Error toggling subject visibility:', error);
     }
@@ -649,13 +632,7 @@ export default function HomeScreen() {
   // Function to toggle showing all subjects
   const toggleShowAllSubjects = useCallback(() => {
     setShowAllSubjects(prev => !prev);
-    if (user?.uid) {
-      analytics.track('toggle_show_all_subjects', {
-        user_id: user.uid,
-        show_all: !showAllSubjects
-      });
-    }
-  }, [showAllSubjects, user?.uid]);
+  }, [showAllSubjects]);
 
   // Single useEffect for all analytics logging
   useEffect(() => {
@@ -672,18 +649,6 @@ export default function HomeScreen() {
           role: learnerInfo?.role
         });
 
-        // Log screen view
-        await analytics.track('screen_view', {
-          screen_name: 'home',
-          user_id: user.uid
-        });
-
-        // Log stats
-        await analytics.track('view_stats', {
-          user_id: user.uid,
-          ranking,
-          streak
-        });
       } catch (error) {
         console.log('Error in analytics useEffect:', error);
       }
@@ -771,15 +736,6 @@ export default function HomeScreen() {
   // Update the router.push call in the subject card
   const handleSubjectPress = useCallback((subject: Subject) => {
     if (user?.uid && learnerInfo) {
-      analytics.track('select_subject', {
-        user_id: user.uid,
-        subject_name: subject.name,
-        subject_id: subject.id,
-        total_questions: subject.total_questions,
-        answered_questions: subject.answered_questions,
-        mastery_percentage: subject.answered_questions === 0 ? 0 :
-          Math.round((subject.correct_answers / subject.answered_questions) * 100)
-      });
 
       router.push({
         pathname: '/quiz',
@@ -930,11 +886,6 @@ export default function HomeScreen() {
           // Save preference to AsyncStorage
           await AsyncStorage.setItem('notificationsEnabled', 'true');
 
-          // Track the event
-          await analytics.track('notifications_enabled', {
-            user_id: user.uid
-          });
-
           Toast.show({
             type: 'success',
             text1: 'Notifications enabled',
@@ -960,12 +911,6 @@ export default function HomeScreen() {
     try {
       await AsyncStorage.setItem('notificationsDismissed', 'true');
       setNotificationsDismissed(true);
-
-      if (user?.uid) {
-        await analytics.track('notifications_dismissed_forever', {
-          user_id: user.uid
-        });
-      }
     } catch (error) {
       console.error('Error dismissing notifications:', error);
     }
@@ -1111,10 +1056,11 @@ export default function HomeScreen() {
           borderColor: colors.border
         }]}>
           <View style={styles.tasksHeader}>
-            <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
-              📝 Tasks Due Soon
-            </ThemedText>
-
+            <View style={styles.tasksTitleContainer}>
+              <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
+                Don't Forget These! 🧠⏰
+              </ThemedText>
+            </View>
           </View>
           {isLoadingTodos ? (
             <View style={styles.loadingContainer}>
@@ -1173,23 +1119,18 @@ export default function HomeScreen() {
 
         <View style={styles.scrollIndicator}>
           <ThemedText style={[styles.scrollIndicatorText, { color: colors.textSecondary }]}>
-            Swipe to see more subjects
+            Scroll to see more subjects
           </ThemedText>
-          <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} />
+          <Ionicons name="arrow-down" size={20} color={colors.textSecondary} />
         </View>
 
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={true}
+          showsVerticalScrollIndicator={true}
           contentContainerStyle={[styles.subjectsScrollContainer, {
-            paddingLeft: 16,
             paddingBottom: 20,
           }]}
           style={styles.subjectsScroll}
           testID="subjects-scroll-view"
-          decelerationRate="fast"
-          snapToAlignment="center"
-          snapToInterval={316} // Card width (300) + gap (16)
         >
           <View style={styles.subjectsGrid} testID="subjects-grid">
             {(() => {
@@ -1482,15 +1423,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subjectsScrollContainer: {
-    paddingLeft: 16,
     paddingBottom: 20,
   },
   subjectsGrid: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 16,
   },
   subjectCard: {
-    width: 300,
+    width: '100%',
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
@@ -1501,7 +1441,6 @@ const styles = StyleSheet.create({
     elevation: 5,
     position: 'relative',
     marginBottom: 16,
-    marginTop: 40,
   },
   iconContainer: {
     position: 'absolute',
@@ -2010,6 +1949,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  tasksTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bellIcon: {
+    marginRight: 4,
+  },
   tasksTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -2183,12 +2130,12 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
   subjectsScroll: {
-    paddingRight: 32,
+    flex: 1,
   },
   scrollIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     marginBottom: 8,
     gap: 8,
