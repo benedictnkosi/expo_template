@@ -12,10 +12,23 @@ import Toast from 'react-native-toast-message';
 import { Header } from '@/components/Header';
 import { format, addDays, startOfWeek } from 'date-fns';
 
-interface Class {
-  subject: string;
+interface BaseEvent {
   startTime: string;
   endTime: string;
+}
+
+interface Class extends BaseEvent {
+  subject: string;
+}
+
+interface Event extends BaseEvent {
+  title: string;
+  subject: string;
+  reminder?: boolean;
+}
+
+interface Events {
+  [date: string]: Event[];
 }
 
 interface Timetable {
@@ -34,28 +47,12 @@ interface LearnerData {
   grade: Grade;
   school_name: string;
   avatar: string;
+  events?: Events;
 }
 
 interface Grade {
   number: number;
   name: string;
-}
-
-interface Event {
-  title: string;
-  startTime: string;
-  endTime: string;
-  chapter?: string;
-  participants?: string[];
-  meetingType?: 'Google Meet' | 'Zoom';
-  reminder?: {
-    enabled: boolean;
-    minutes: number;  // minutes before event
-  };
-}
-
-interface Events {
-  [date: string]: Event[];
 }
 
 interface Plan {
@@ -72,31 +69,33 @@ const CLASS_TIME_SLOTS = [
 ];
 
 const STUDY_TIME_SLOTS = [
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00',
-  '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00'
+  '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00',
+  '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
 ];
 
 const COLORS = [
-  '#4361EE', // Deep Blue
-  '#4CC9F0', // Light Blue
-  '#4CAF50', // Green
-  '#9C27B0', // Purple
-  '#FF9800', // Orange
-  '#E91E63', // Pink
-  '#F72585', // Hot Pink
-  '#2EC4B6', // Teal
   '#FF6B6B', // Coral Red
-  '#845EC2', // Purple Blue
-  '#FF9671', // Peach
-  '#00C9A7', // Mint
-  '#4D8076', // Forest Green
-  '#C75146', // Rust Red
-  '#3D5A80', // Navy Blue
-  '#FFB800', // Golden Yellow
-  '#98CE00', // Lime Green
-  '#FB5607', // Bright Orange
+  '#4ECDC4', // Turquoise
+  '#45B7D1', // Sky Blue
+  '#96CEB4', // Sage Green
+  '#D4A5A5', // Dusty Rose
+  '#9B5DE5', // Purple
+  '#F15BB5', // Pink
+  '#00BBF9', // Bright Blue
+  '#00F5D4', // Mint
+  '#8338EC', // Deep Purple
+  '#3A86FF', // Royal Blue
+  '#FB5607', // Orange
+  '#FF006E', // Hot Pink
+  '#38B000', // Green
   '#7209B7', // Deep Purple
+  '#F72585', // Magenta
+  '#4CC9F0', // Light Blue
+  '#FF4D6D', // Bright Pink
+  '#4361EE', // Electric Blue
 ];
+
+const HEIGHT_PER_HOUR = 110; // Time slot height in pixels
 
 // Color palette for light and dark modes
 const COLORS_LIGHT = {
@@ -166,6 +165,8 @@ export default function TimetableScreen() {
   const [visibleDates, setVisibleDates] = useState<Date[]>([]);
   const [weeksLoaded, setWeeksLoaded] = useState(WEEKS_TO_LOAD);
   const scrollViewRef = useRef<ScrollView>(null);
+  const timeSlotsScrollViewRef = useRef<ScrollView>(null);
+  const timetableScrollViewRef = useRef<ScrollView>(null);
 
   // Function to initialize subject colors
   const initializeSubjectColors = (timetableData: Timetable) => {
@@ -274,20 +275,22 @@ export default function TimetableScreen() {
 
   const calculateTopOffset = (startTime: string) => {
     const [hour, minute] = startTime.split(':').map(Number);
-    // Calculate offset based on minutes (0-60 minutes maps to 0-60 pixels)
-    return (minute / 60) * 60;
+    const baseHour = Math.floor(hour);
+    // Calculate offset within the hour's slot
+    return (minute / 60) * HEIGHT_PER_HOUR;
   };
 
   const calculateHeight = (startTime: string, endTime: string) => {
     const [startHour, startMinute] = startTime.split(':').map(Number);
     const [endHour, endMinute] = endTime.split(':').map(Number);
 
+    // Calculate total minutes from start to end
     const totalStartMinutes = startHour * 60 + startMinute;
     const totalEndMinutes = endHour * 60 + endMinute;
     const durationMinutes = totalEndMinutes - totalStartMinutes;
 
-    // Convert duration to height (1 hour = 60px)
-    return Math.max(45, (durationMinutes / 60) * 60);
+    // Convert minutes to height (90px per hour = 1.5px per minute)
+    return Math.max(60, (durationMinutes * HEIGHT_PER_HOUR) / 60);
   };
 
   const deleteClass = async (day: string, item: Class | Event) => {
@@ -340,9 +343,9 @@ export default function TimetableScreen() {
           ...currentEvents,
           [day]: currentEvents[day]?.filter(
             (e: Event) =>
-              e.title !== item.title ||
-              e.startTime !== item.startTime ||
-              e.endTime !== item.endTime
+              e.title !== (item as Event).title ||
+              e.startTime !== (item as Event).startTime ||
+              e.endTime !== (item as Event).endTime
           ) || []
         };
 
@@ -383,7 +386,7 @@ export default function TimetableScreen() {
   const handleDeleteClass = (day: string, item: Class | Event) => {
     Alert.alert(
       'Delete Event',
-      `Are you sure you want to delete ${('subject' in item) ? item.subject : item.title} event?`,
+      `Are you sure you want to delete ${('subject' in item && !('title' in item)) ? item.subject : (item as Event).title} event?`,
       [
         {
           text: 'Cancel',
@@ -392,7 +395,7 @@ export default function TimetableScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => deleteClass(day, item as Class),
+          onPress: () => deleteClass(day, item),
         },
       ]
     );
@@ -443,48 +446,87 @@ export default function TimetableScreen() {
   };
 
   const renderEventContent = (event: Event | Class) => {
-    const title = 'subject' in event ? event.subject : event.title;
-    const color = 'subject' in event
-      ? (subjectColorMap.get(event.subject) || '#6C757D')
-      : getEventColor(event.title);
+    const isClass = 'subject' in event && !('title' in event);
+    const title = isClass ? event.subject : (event as Event).title;
+    const subject = isClass ? event.subject : (event as Event).subject;
+    const color = isClass
+      ? (subjectColorMap.get(event.subject) || COLORS[Math.floor(Math.random() * COLORS.length)])
+      : COLORS[Math.floor(Math.random() * COLORS.length)];
 
     return (
-      <LinearGradient
-        colors={[
-          color,
-          `${color}80`
+      <View
+        style={[
+          styles.classContent,
+          { backgroundColor: color }
         ]}
-        style={styles.classGradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
       >
         <View style={styles.classHeader}>
           <View>
             <View style={styles.titleContainer}>
               <Text style={styles.className}>{title}</Text>
-              {'reminder' in event && event.reminder?.enabled && (
+              {!isClass && (event as Event).reminder && (
                 <View style={styles.reminderIndicator}>
                   <Ionicons name="notifications" size={14} color="#fff" />
                 </View>
               )}
             </View>
-            {'chapter' in event && event.chapter && (
+            {!isClass && subject && (
               <Text style={[styles.classTime, { marginTop: 4 }]}>
-                Chapter: {event.chapter}
+                {subject}
               </Text>
             )}
           </View>
           <TouchableOpacity
-            onPress={() => handleDeleteClass('subject' in event ? selectedDay : format(selectedDate, 'yyyy-MM-dd'), event)}
+            onPress={() => handleDeleteClass(isClass ? selectedDay : format(selectedDate, 'yyyy-MM-dd'), event)}
             style={styles.deleteButton}
           >
             <Ionicons name="trash-outline" size={16} color="#fff" />
           </TouchableOpacity>
         </View>
         <Text style={styles.classTime}>{`${event.startTime} - ${event.endTime}`}</Text>
-      </LinearGradient>
+      </View>
     );
   };
+
+  // Function to scroll to current hour
+  const scrollToCurrentHour = useCallback(() => {
+    const now = new Date();
+    const currentHour = now.getHours() - 1;
+    const currentTime = `${String(currentHour).padStart(2, '0')}:00`;
+    const isCurrentDate = format(selectedDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+
+    if (!isCurrentDate) return;
+
+    const scrollView = viewMode === 'planning' ? timeSlotsScrollViewRef.current : timetableScrollViewRef.current;
+    const timeSlots = viewMode === 'planning' ? STUDY_TIME_SLOTS : CLASS_TIME_SLOTS;
+
+    if (scrollView) {
+      const contextHours = 1; // Show 1 hour before current time
+      const scrollPosition = Math.max(0, (timeSlots.indexOf(currentTime) - contextHours)) * HEIGHT_PER_HOUR;
+
+      setTimeout(() => {
+        scrollView.scrollTo({ y: scrollPosition, animated: true });
+      }, 300);
+    }
+  }, [selectedDate, viewMode]);
+
+  // Handle tab focus
+  useFocusEffect(
+    useCallback(() => {
+      scrollToCurrentHour();
+    }, [scrollToCurrentHour])
+  );
+
+  // Handle day selection
+  useEffect(() => {
+    scrollToCurrentHour();
+  }, [selectedDay, selectedDate, viewMode, scrollToCurrentHour]);
+
+  // Initial scroll on mount
+  useEffect(() => {
+    const timer = setTimeout(scrollToCurrentHour, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const renderTimetableView = () => {
     const classesForSelectedDay = getClassesForDay(selectedDay);
@@ -536,7 +578,10 @@ export default function TimetableScreen() {
             </Text>
           </View>
         ) : (
-          <ScrollView style={styles.scheduleContainer}>
+          <ScrollView
+            ref={timetableScrollViewRef}
+            style={styles.scheduleContainer}
+          >
             {CLASS_TIME_SLOTS.map((time) => (
               <View key={time} style={styles.timeSlot}>
                 <Text style={[
@@ -684,9 +729,15 @@ export default function TimetableScreen() {
               </Text>
             </View>
           ) : (
-            <ScrollView style={styles.scheduleContainer}>
-              {STUDY_TIME_SLOTS.map((time) => (
-                <View key={time} style={styles.timeSlot}>
+            <ScrollView
+              ref={timeSlotsScrollViewRef}
+              style={styles.scheduleContainer}
+            >
+              {STUDY_TIME_SLOTS.map((time, index) => (
+                <View
+                  key={time}
+                  style={styles.timeSlot}
+                >
                   <Text style={[
                     styles.timeText,
                     { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
@@ -822,7 +873,7 @@ export default function TimetableScreen() {
                 styles.tabDescription,
                 { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
               ]}>
-                Study Plans, Assignements & Exams
+                Study Plans, Reminders & Exams
               </Text>
             </View>
           </View>
@@ -904,8 +955,8 @@ const styles = StyleSheet.create({
   timeSlot: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    height: 60,
-    marginBottom: 8,
+    height: 90,
+    marginBottom: 16,
   },
   timeText: {
     width: 48,
@@ -915,13 +966,13 @@ const styles = StyleSheet.create({
   },
   classSlot: {
     flex: 1,
-    height: 60,
+    height: 90,
     position: 'relative',
   },
   classCard: {
     borderRadius: 12,
     overflow: 'hidden',
-    minHeight: 48,
+    minHeight: 60,
     marginHorizontal: 4,
     marginVertical: 4,
     shadowColor: '#000',
@@ -934,10 +985,13 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 1,
   },
-  classGradient: {
-    padding: 16,
+  classContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     height: '100%',
     justifyContent: 'center',
+    borderRadius: 12,
+    marginTop: 8,
   },
   className: {
     fontSize: 16,
@@ -958,7 +1012,7 @@ const styles = StyleSheet.create({
   classHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   deleteButton: {
     padding: 4,

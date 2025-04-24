@@ -9,6 +9,9 @@ import { HOST_URL } from '@/config/api';
 import Toast from 'react-native-toast-message';
 import { Colors } from '@/constants/Colors';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import { fetchMySubjects } from '@/services/api';
+import { SubjectPicker } from '@/components/SubjectPicker';
 
 const ErrorAlert = ({
     visible,
@@ -50,7 +53,7 @@ const ErrorAlert = ({
                         styles.errorTitle,
                         { color: isDark ? '#FFFFFF' : '#000000' }
                     ]}>
-                        Time Conflict
+                        Error
                     </Text>
                     <Text style={[
                         styles.errorMessage,
@@ -104,6 +107,9 @@ export default function AddEventModal() {
     const { user } = useAuth();
 
     const [title, setTitle] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState<string>('Accounting');
+    const [customSubject, setCustomSubject] = useState<string>('');
+    const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
     const [selectedDate, setSelectedDate] = useState(() => {
         return initialDate ? parse(initialDate, 'yyyy-MM-dd', new Date()) : new Date();
     });
@@ -142,12 +148,37 @@ export default function AddEventModal() {
         });
     };
 
+    const handleSubjectChange = (value: string) => {
+        if (value === 'custom') {
+            setIsCustomSubject(true);
+            setSelectedSubject('');
+        } else {
+            setIsCustomSubject(false);
+            setSelectedSubject(value);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!user?.uid || !title) return;
+
+        const finalSubject = isCustomSubject ? customSubject : selectedSubject;
+
+        if (!finalSubject) {
+            setErrorMessage('Please select or enter a subject');
+            setErrorVisible(true);
+            return;
+        }
+
+        if (isCustomSubject && !customSubject.trim()) {
+            setErrorMessage('Please enter a custom subject name');
+            setErrorVisible(true);
+            return;
+        }
 
         const formattedDate = format(selectedDate, 'yyyy-MM-dd');
         const newEvent = {
             title,
+            subject: finalSubject,
             startTime: format(startTime, 'HH:mm'),
             endTime: format(endTime, 'HH:mm'),
             reminder: reminderEnabled
@@ -221,7 +252,7 @@ export default function AddEventModal() {
                         styles.title,
                         { color: colorScheme === 'dark' ? Colors.dark.text : Colors.light.text }
                     ]}>
-                        📚 Add a new schedule
+                        📚 Plan Something
                     </Text>
                     <TouchableOpacity
                         style={styles.closeButton}
@@ -236,6 +267,29 @@ export default function AddEventModal() {
                 </View>
 
                 <View style={styles.form}>
+                    <SubjectPicker
+                        selectedSubject={selectedSubject}
+                        isCustomSubject={isCustomSubject}
+                        onSubjectChange={handleSubjectChange}
+                    />
+
+                    {isCustomSubject && (
+                        <TextInput
+                            style={[
+                                styles.input,
+                                {
+                                    backgroundColor: colorScheme === 'dark' ? Colors.dark.surface : Colors.light.surface,
+                                    color: colorScheme === 'dark' ? Colors.dark.text : Colors.light.text,
+                                    borderColor: colorScheme === 'dark' ? Colors.dark.border : Colors.light.border,
+                                }
+                            ]}
+                            value={customSubject}
+                            onChangeText={setCustomSubject}
+                            placeholder="Enter custom subject name"
+                            placeholderTextColor={colorScheme === 'dark' ? Colors.dark.textSecondary : Colors.light.textSecondary}
+                        />
+                    )}
+
                     <View style={styles.inputContainer}>
                         <Text style={[
                             styles.label,
@@ -254,8 +308,9 @@ export default function AddEventModal() {
                             ]}
                             value={title}
                             onChangeText={setTitle}
-                            placeholder="Study or exam title"
+                            placeholder="title"
                             placeholderTextColor={colorScheme === 'dark' ? Colors.dark.textSecondary : Colors.light.textSecondary}
+                            maxLength={50}
                         />
                     </View>
 
@@ -568,5 +623,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    pickerContainer: {
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 16,
+        overflow: 'hidden',
+    },
+    picker: {
+        height: 48,
     },
 }); 

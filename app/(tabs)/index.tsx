@@ -15,6 +15,7 @@ import Toast from 'react-native-toast-message';
 import * as Updates from 'expo-updates';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import { HOST_URL } from '@/config/api';
 
 import { ThemedText } from '../../components/ThemedText';
 import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos } from '../../services/api';
@@ -145,7 +146,22 @@ interface Todo {
   title: string;
   due_date: string;
   status: string;
-  subject_name?: string;
+  subject?: string;
+  startTime: string;
+  endTime: string;
+}
+
+interface UpcomingEvent {
+  date: string;
+  title: string;
+  startTime: string;
+  endTime: string;
+  subject?: string;
+}
+
+interface UpcomingEventsResponse {
+  status: string;
+  events: UpcomingEvent[];
 }
 
 // Add SettingsModal component before HomeScreen
@@ -792,32 +808,36 @@ export default function HomeScreen() {
     });
   }, [user?.uid]);
 
-  // Add this useEffect to fetch todos
+  // Update the fetchTodos function to fetch upcoming events
   useEffect(() => {
-    async function fetchTodos() {
+    async function fetchUpcomingEvents() {
       if (!user?.uid) return;
       try {
         setIsLoadingTodos(true);
-        const fetchedTodos = await getTodos(user.uid);
-        console.log('Fetched todos:', fetchedTodos);
-        // Filter todos due in the next 3 days
-        const now = new Date();
-        const threeDaysFromNow = new Date(now);
-        threeDaysFromNow.setDate(now.getDate() + 3);
+        const response = await fetch(`${HOST_URL}/api/learner/${user.uid}/upcoming-events`);
+        const data: UpcomingEventsResponse = await response.json();
 
-        const upcomingTodos = fetchedTodos.filter(todo => {
-          const dueDate = new Date(todo.due_date);
-          return dueDate <= threeDaysFromNow && todo.status === 'pending';
-        });
+        if (data.status === "OK") {
+          // Convert events to todos format for consistent display
+          const eventsAsTodos = data.events.map(event => ({
+            id: Math.random(),
+            title: event.title,
+            due_date: event.date,
+            status: 'pending',
+            subject: event.subject,
+            startTime: event.startTime,
+            endTime: event.endTime
+          }));
 
-        setTodos(upcomingTodos);
+          setTodos(eventsAsTodos);
+        }
       } catch (error) {
-        console.error('Error fetching todos:', error);
+        console.error('Error fetching upcoming events:', error);
       } finally {
         setIsLoadingTodos(false);
       }
     }
-    fetchTodos();
+    fetchUpcomingEvents();
   }, [user?.uid]);
 
   // Function to check and show messages
@@ -1101,44 +1121,29 @@ export default function HomeScreen() {
               <ActivityIndicator color={colors.primary} />
             </View>
           ) : todos.length === 0 ? (
-            <View style={[styles.emptyStateContainer, { backgroundColor: isDark ? colors.surface : '#F5F5F5' }]}>
-              <ThemedText style={[styles.emptyStateText, { color: isDark ? colors.textSecondary : '#666666' }]}>
-                No tasks due in the next 3 days
+            <View style={styles.emptyState}>
+              <Ionicons name="checkbox-outline" size={48} color={colors.textSecondary} />
+              <ThemedText style={styles.emptyStateText}>
+                No tasks yet. Add your first task!
               </ThemedText>
-
             </View>
           ) : (
             <View style={styles.tasksList}>
               {todos.map((todo) => (
-                <TouchableOpacity
+                <View
                   key={todo.id}
                   style={[styles.taskItem, {
                     backgroundColor: isDark ? colors.surface : '#F8FAFC',
                     borderColor: colors.border
                   }]}
-                  onPress={() => {
-                    if (todo.subject_name) {
-                      router.push({
-                        pathname: '/quiz',
-                        params: {
-                          subjectName: todo.subject_name,
-                          learnerName: learnerInfo?.name,
-                          learnerGrade: learnerInfo?.grade.number.toString(),
-                          learnerSchool: learnerInfo?.school_name,
-                          learnerRole: learnerInfo?.role,
-                          defaultTab: 'todo'
-                        }
-                      });
-                    }
-                  }}
                 >
                   <View style={styles.taskContent}>
                     <ThemedText style={[styles.taskTitle, { color: colors.text }]}>
                       {todo.title}
                     </ThemedText>
-                    {todo.subject_name && (
+                    {todo.subject && (
                       <ThemedText style={[styles.taskSubject, { color: colors.textSecondary }]}>
-                        {todo.subject_name}
+                        📚 {todo.subject}
                       </ThemedText>
                     )}
                     <ThemedText style={[styles.taskDueDate, { color: colors.textSecondary }]}>
@@ -1149,19 +1154,16 @@ export default function HomeScreen() {
                         tomorrow.setDate(tomorrow.getDate() + 1);
 
                         if (dueDate.toDateString() === today.toDateString()) {
-                          return 'Due today';
+                          return `Today at ${todo.startTime}`;
                         } else if (dueDate.toDateString() === tomorrow.toDateString()) {
-                          return 'Due tomorrow';
+                          return `Tomorrow at ${todo.startTime}`;
                         } else {
-                          return `Due ${dueDate.toLocaleDateString('en-US', { weekday: 'long' })}`;
+                          return `${dueDate.toLocaleDateString('en-US', { weekday: 'long' })} at ${todo.startTime}`;
                         }
                       })()}
                     </ThemedText>
                   </View>
-                  {todo.subject_name && (
-                    <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                  )}
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           )}
@@ -1169,11 +1171,25 @@ export default function HomeScreen() {
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
 
+        <View style={styles.scrollIndicator}>
+          <ThemedText style={[styles.scrollIndicatorText, { color: colors.textSecondary }]}>
+            Swipe to see more subjects
+          </ThemedText>
+          <Ionicons name="arrow-forward" size={20} color={colors.textSecondary} />
+        </View>
+
         <ScrollView
           horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.subjectsScrollContainer}
+          showsHorizontalScrollIndicator={true}
+          contentContainerStyle={[styles.subjectsScrollContainer, {
+            paddingLeft: 16,
+            paddingBottom: 20,
+          }]}
+          style={styles.subjectsScroll}
           testID="subjects-scroll-view"
+          decelerationRate="fast"
+          snapToAlignment="center"
+          snapToInterval={316} // Card width (300) + gap (16)
         >
           <View style={styles.subjectsGrid} testID="subjects-grid">
             {(() => {
@@ -1466,7 +1482,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   subjectsScrollContainer: {
-    paddingHorizontal: 16,
+    paddingLeft: 16,
     paddingBottom: 20,
   },
   subjectsGrid: {
@@ -1486,7 +1502,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
     marginTop: 40,
-    marginHorizontal: 8,
   },
   iconContainer: {
     position: 'absolute',
@@ -1820,7 +1835,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  emptyStateContainer: {
+  emptyState: {
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2124,7 +2139,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    marginHorizontal: 8,
     borderWidth: 1,
   },
   scheduleHeader: {
@@ -2167,5 +2181,20 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  subjectsScroll: {
+    paddingRight: 32,
+  },
+  scrollIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    gap: 8,
+  },
+  scrollIndicatorText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
 });

@@ -10,7 +10,6 @@ import Toast from 'react-native-toast-message';
 import { useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { TodoList } from './TodoList';
 import { NoteList } from './NoteList';
 import { FavoritesList } from './FavoritesList';
 
@@ -20,15 +19,6 @@ interface Note {
     text: string;
     description?: string;
     subject_name: string;
-}
-
-interface Todo {
-    id: number;
-    title: string;
-    status: 'pending' | 'completed';
-    subject_name: string;
-    created_at: string;
-    due_date?: string;
 }
 
 interface FavoriteQuestion {
@@ -69,7 +59,7 @@ interface NotesAndTodosProps {
     defaultTab?: TabType;
 }
 
-export type TabType = 'todo' | 'notes' | 'favorites';
+export type TabType = 'notes' | 'favorites';
 
 function createStyles(isDark: boolean) {
     return StyleSheet.create({
@@ -137,7 +127,6 @@ export function NotesAndTodosAndFavorites({
     const { colors, isDark } = useTheme();
     const styles = createStyles(isDark);
     const [notes, setNotes] = useState<Note[]>([]);
-    const [todos, setTodos] = useState<Todo[]>([]);
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
     useEffect(() => {
@@ -180,21 +169,6 @@ export function NotesAndTodosAndFavorites({
                 <TouchableOpacity
                     style={[
                         styles.tabButton,
-                        activeTab === 'todo' && styles.activeTab,
-                        { backgroundColor: activeTab === 'todo' ? colors.primary : 'rgba(255, 255, 255, 0.1)' }
-                    ]}
-                    onPress={() => setActiveTab('todo')}
-                >
-                    <ThemedText style={[
-                        styles.tabText,
-                        activeTab === 'todo' && styles.activeTabText
-                    ]}>
-                        ✅ To Do
-                    </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
                         activeTab === 'notes' && styles.activeTab,
                         { backgroundColor: activeTab === 'notes' ? colors.primary : 'rgba(255, 255, 255, 0.1)' }
                     ]}
@@ -207,7 +181,6 @@ export function NotesAndTodosAndFavorites({
                         📝 Notes
                     </ThemedText>
                 </TouchableOpacity>
-
             </View>
 
             <ScrollView style={styles.content}>
@@ -220,15 +193,6 @@ export function NotesAndTodosAndFavorites({
                         colors={colors}
                         currentQuestionId={currentQuestion?.id}
                         onNotesChange={setNotes}
-                    />
-                ) : activeTab === 'todo' ? (
-                    <TodoList
-                        todos={todos}
-                        subjectName={subjectName}
-                        userUid={user?.uid || ''}
-                        isDark={isDark}
-                        colors={colors}
-                        onTodosChange={setTodos}
                     />
                 ) : (
                     <FavoritesList

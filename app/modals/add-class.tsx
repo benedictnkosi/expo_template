@@ -10,6 +10,7 @@ import { fetchMySubjects } from '@/services/api';
 import { Subject } from '@/types/api';
 import { TimeSelector } from '@/components/TimeSelector';
 import { format } from 'date-fns';
+import { SubjectPicker } from '@/components/SubjectPicker';
 
 const DAYS = [
     { id: 'monday', label: 'Mon' },
@@ -17,61 +18,6 @@ const DAYS = [
     { id: 'wednesday', label: 'Wed' },
     { id: 'thursday', label: 'Thu' },
     { id: 'friday', label: 'Fri' }
-] as const;
-
-const SUBJECTS = [
-    'Accounting',
-    'Afrikaans',
-    'Agricultural Management Practices',
-    'Agricultural Sciences',
-    'Agricultural Technology',
-    'Automotive',
-    'Business Studies',
-    'Civil Services',
-    'Civil Technology',
-    'Computer Application Technology',
-    'Construction',
-    'Consumer Studies',
-    'Dance Studies',
-    'Design',
-    'Digital Electronics',
-    'Dramatic Arts',
-    'Economics',
-    'Electrical Technology',
-    'Electronics',
-    'Engineering Graphic and Design',
-    'English',
-    'Fitting and Machining',
-    'Geography',
-    'History',
-    'Hospitality Studies',
-    'Information Technology',
-    'IsiNdebele',
-    'IsiXhosa',
-    'IsiZulu',
-    'Life Orientation',
-    'Life Sciences',
-    'Marine Sciences',
-    'Mathematical Literacy',
-    'Mathematics',
-    'Mechanical Technology',
-    'Music',
-    'Physical Sciences',
-    'Power Systems',
-    'Religion Studies',
-    'Sepedi',
-    'Sesotho',
-    'Setswana',
-    'Siswati',
-    'South African Sign Language',
-    'Technical Mathematics',
-    'Technical Sciences',
-    'Tourism',
-    'Tshivenda',
-    'Visual Arts',
-    'Welding and Metalwork',
-    'Woodworking',
-    'Xitsonga'
 ] as const;
 
 type DayId = typeof DAYS[number]['id'];
@@ -157,7 +103,7 @@ const ErrorAlert = ({
                         styles.errorTitle,
                         { color: isDark ? '#FFFFFF' : '#000000' }
                     ]}>
-                        Time Conflict
+                        Error
                     </Text>
                     <Text style={[
                         styles.errorMessage,
@@ -208,7 +154,7 @@ export default function AddClassModal() {
     const colorScheme = useColorScheme();
     const router = useRouter();
     const { user } = useAuth();
-    const [selectedSubject, setSelectedSubject] = useState<string>(SUBJECTS[0]);
+    const [selectedSubject, setSelectedSubject] = useState<string>('Accounting');
     const [customSubject, setCustomSubject] = useState<string>('');
     const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
     const [selectedDay, setSelectedDay] = useState<DayId>(DAYS[0].id);
@@ -248,7 +194,7 @@ export default function AddClassModal() {
     }, []);
 
     const resetForm = () => {
-        setSelectedSubject(SUBJECTS[0]);
+        setSelectedSubject('');
         setCustomSubject('');
         setIsCustomSubject(false);
         setSelectedDay(DAYS[0].id);
@@ -416,55 +362,30 @@ export default function AddClassModal() {
                 )}
 
                 <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>
-                            📚 Subject
-                        </Text>
+                    <SubjectPicker
+                        selectedSubject={selectedSubject}
+                        isCustomSubject={isCustomSubject}
+                        onSubjectChange={handleSubjectChange}
+                    />
+
+                    {isCustomSubject && (
                         <View style={[
-                            styles.pickerContainer,
-                            { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7' }
+                            styles.inputContainer,
+                            { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F1F3F5' }
                         ]}>
-                            <Picker
-                                selectedValue={isCustomSubject ? 'custom' : selectedSubject}
-                                onValueChange={handleSubjectChange}
+                            <TextInput
                                 style={[
-                                    styles.picker,
+                                    styles.textInput,
                                     { color: colorScheme === 'dark' ? '#fff' : '#000' }
                                 ]}
-                                itemStyle={{
-                                    fontSize: 17,
-                                    fontWeight: '400',
-                                    color: colorScheme === 'dark' ? '#fff' : '#000'
-                                }}
-                            >
-                                {SUBJECTS.map((subject) => (
-                                    <Picker.Item
-                                        key={subject}
-                                        label={subject}
-                                        value={subject}
-                                    />
-                                ))}
-                                <Picker.Item label="Custom Subject" value="custom" />
-                            </Picker>
+                                placeholder="Enter subject name"
+                                placeholderTextColor={colorScheme === 'dark' ? '#8E8E93' : '#8E8E93'}
+                                value={customSubject}
+                                onChangeText={setCustomSubject}
+                                maxLength={50}
+                            />
                         </View>
-                        {isCustomSubject && (
-                            <View style={[
-                                styles.inputContainer,
-                                { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F1F3F5' }
-                            ]}>
-                                <TextInput
-                                    style={[
-                                        styles.textInput,
-                                        { color: colorScheme === 'dark' ? '#fff' : '#000' }
-                                    ]}
-                                    placeholder="Enter subject name"
-                                    placeholderTextColor={colorScheme === 'dark' ? '#8E8E93' : '#8E8E93'}
-                                    value={customSubject}
-                                    onChangeText={setCustomSubject}
-                                />
-                            </View>
-                        )}
-                    </View>
+                    )}
 
                     <View style={styles.inputGroup}>
                         <Text style={[styles.label, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>

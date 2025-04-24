@@ -52,7 +52,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="timetable"
         options={{
-          title: 'Planning',
+          title: 'Calendar',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="calendar-outline" size={size} color={color} />
           ),
