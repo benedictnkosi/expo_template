@@ -8,9 +8,9 @@ export interface QuizContextContainerProps {
     renderMixedContent: (text: string, isDark: boolean, colors: any) => React.ReactNode;
 }
 
-export const QuizContextContainer = ({ 
-    context, 
-    renderMixedContent 
+export const QuizContextContainer = ({
+    context,
+    renderMixedContent
 }: QuizContextContainerProps) => {
     const { isDark, colors } = useTheme();
 
@@ -38,7 +38,7 @@ export const QuizContextContainer = ({
                                 color: colors.text,
                                 marginTop: 4
                             }]}>
-                                {indentLevel > 0 ? '🎯' : '✅'}
+                                {indentLevel > 0 ? '•' : '👉'}
                             </ThemedText>
                             <View style={styles.bulletTextWrapper}>
                                 {renderMixedContent(content, isDark, colors)}

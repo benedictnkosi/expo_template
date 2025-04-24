@@ -109,7 +109,7 @@ export const PerformanceSummary = ({ stats, onRestart }: PerformanceSummaryProps
                         {progress}%
                     </ThemedText>
                 </View>
-                
+
                 <View style={[styles.progressBarContainer, {
                     backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
                 }]}>
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     statIcon: {
-        fontSize: 24,
+        fontSize: 18,
     },
     statTextContainer: {
         flex: 1,

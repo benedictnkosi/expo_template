@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { API_BASE_URL, HOST_URL } from '@/config/api';
 import { fetchMySubjects } from '@/services/api';
 import { Subject } from '@/types/api';
+import { TimeSelector } from '@/components/TimeSelector';
+import { format } from 'date-fns';
 
 const DAYS = [
     { id: 'monday', label: 'Mon' },
@@ -210,8 +212,16 @@ export default function AddClassModal() {
     const [customSubject, setCustomSubject] = useState<string>('');
     const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
     const [selectedDay, setSelectedDay] = useState<DayId>(DAYS[0].id);
-    const [selectedStartTime, setSelectedStartTime] = useState(TIME_SLOTS[0]);
-    const [selectedEndTime, setSelectedEndTime] = useState(TIME_SLOTS[4]);
+    const [startTime, setStartTime] = useState(() => {
+        const now = new Date();
+        now.setHours(8, 0, 0, 0);
+        return now;
+    });
+    const [endTime, setEndTime] = useState(() => {
+        const now = new Date();
+        now.setHours(9, 0, 0, 0);
+        return now;
+    });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -219,12 +229,12 @@ export default function AddClassModal() {
     const [errorMessage, setErrorMessage] = useState('');
     const [conflictingClass, setConflictingClass] = useState<{ subject: string; startTime: string; endTime: string; } | null>(null);
 
-    const handleStartTimeChange = useCallback((time: string) => {
-        const startIndex = TIME_SLOTS.indexOf(time);
-        const endIndex = Math.min(startIndex + 4, TIME_SLOTS.length - 1);
-
-        setSelectedStartTime(time);
-        setSelectedEndTime(TIME_SLOTS[endIndex]);
+    const handleStartTimeChange = useCallback((date: Date) => {
+        setStartTime(date);
+        // Set end time to be 1 hour after start time
+        const newEndTime = new Date(date);
+        newEndTime.setHours(date.getHours() + 1);
+        setEndTime(newEndTime);
     }, []);
 
     const handleSubjectChange = useCallback((value: string) => {
@@ -242,8 +252,8 @@ export default function AddClassModal() {
         setCustomSubject('');
         setIsCustomSubject(false);
         setSelectedDay(DAYS[0].id);
-        setSelectedStartTime(TIME_SLOTS[0]);
-        setSelectedEndTime(TIME_SLOTS[4]);
+        setStartTime(new Date(8, 0, 0));
+        setEndTime(new Date(9, 0, 0));
     };
 
     const handleSave = async () => {
@@ -290,9 +300,13 @@ export default function AddClassModal() {
             const currentTimetable = currentData.timetable || emptyTimetable;
             const existingClasses = currentTimetable[selectedDay] || [];
 
+            // Format times for comparison
+            const formattedStartTime = format(startTime, 'HH:mm');
+            const formattedEndTime = format(endTime, 'HH:mm');
+
             // Check for conflicts and find the conflicting class
             const conflictingClassInfo = existingClasses.find((class_: { subject: string; startTime: string; endTime: string }) =>
-                hasTimeOverlap(selectedStartTime, selectedEndTime, [class_])
+                hasTimeOverlap(formattedStartTime, formattedEndTime, [class_])
             );
 
             if (conflictingClassInfo) {
@@ -306,8 +320,8 @@ export default function AddClassModal() {
             // Create new class entry
             const newClass = {
                 subject: finalSubject,
-                startTime: selectedStartTime,
-                endTime: selectedEndTime
+                startTime: formattedStartTime,
+                endTime: formattedEndTime
             };
 
             // Merge with existing classes for the selected day
@@ -383,18 +397,7 @@ export default function AddClassModal() {
                     <Text style={[styles.title, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>
                         ✏️ Add New Class 📚
                     </Text>
-                    <TouchableOpacity
-                        onPress={handleSave}
-                        style={styles.saveButton}
-                        disabled={isSubmitting || (!selectedSubject && !customSubject)}
-                    >
-                        <Text style={[
-                            styles.saveButtonText,
-                            (isSubmitting || (!selectedSubject && !customSubject)) && styles.saveButtonTextDisabled
-                        ]}>
-                            {isSubmitting ? 'Saving...' : 'Save'}
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={styles.closeButton} />
                 </View>
 
                 {showSuccess && (
@@ -506,70 +509,43 @@ export default function AddClassModal() {
                         </View>
                     </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>
-                            🕐 Start Time
-                        </Text>
-                        <View style={[
-                            styles.pickerContainer,
-                            { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7' }
-                        ]}>
-                            <Picker
-                                selectedValue={selectedStartTime}
-                                onValueChange={handleStartTimeChange}
-                                style={[
-                                    styles.picker,
-                                    { color: colorScheme === 'dark' ? '#fff' : '#000' }
-                                ]}
-                                itemStyle={{
-                                    fontSize: 17,
-                                    fontWeight: '400',
-                                    color: colorScheme === 'dark' ? '#fff' : '#000'
-                                }}
-                            >
-                                {TIME_SLOTS.map((time) => (
-                                    <Picker.Item
-                                        key={time}
-                                        label={time}
-                                        value={time}
-                                    />
-                                ))}
-                            </Picker>
+                    <View style={styles.timeContainer}>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <TimeSelector
+                                value={startTime}
+                                onChange={handleStartTimeChange}
+                                label="⏰ Start Time"
+                            />
                         </View>
-                    </View>
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colorScheme === 'dark' ? '#fff' : '#000' }]}>
-                            🕒 End Time
-                        </Text>
-                        <View style={[
-                            styles.pickerContainer,
-                            { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7' }
-                        ]}>
-                            <Picker
-                                selectedValue={selectedEndTime}
-                                onValueChange={setSelectedEndTime}
-                                style={[
-                                    styles.picker,
-                                    { color: colorScheme === 'dark' ? '#fff' : '#000' }
-                                ]}
-                                itemStyle={{
-                                    fontSize: 17,
-                                    fontWeight: '400',
-                                    color: colorScheme === 'dark' ? '#fff' : '#000'
-                                }}
-                            >
-                                {TIME_SLOTS.slice(TIME_SLOTS.indexOf(selectedStartTime) + 1).map((time) => (
-                                    <Picker.Item
-                                        key={time}
-                                        label={time}
-                                        value={time}
-                                    />
-                                ))}
-                            </Picker>
+                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                            <TimeSelector
+                                value={endTime}
+                                onChange={setEndTime}
+                                label="⏰ End Time"
+                                minimumDate={startTime}
+                            />
                         </View>
                     </View>
                 </ScrollView>
+
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        onPress={handleSave}
+                        style={[
+                            styles.saveButton,
+                            { backgroundColor: colorScheme === 'dark' ? '#2C2C2E' : '#F2F2F7' }
+                        ]}
+                        disabled={isSubmitting || (!selectedSubject && !customSubject)}
+                    >
+                        <Text style={[
+                            styles.saveButtonText,
+                            (isSubmitting || (!selectedSubject && !customSubject)) && styles.saveButtonTextDisabled
+                        ]}>
+                            {isSubmitting ? 'Saving...' : 'Save'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </Pressable>
 
             <ErrorAlert
@@ -627,20 +603,6 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
         marginHorizontal: 16,
-    },
-    saveButton: {
-        width: 44,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    saveButtonText: {
-        color: '#007AFF',
-        fontSize: 17,
-        fontWeight: '600',
-    },
-    saveButtonTextDisabled: {
-        opacity: 0.5,
     },
     formContainer: {
         padding: 20,
@@ -772,4 +734,28 @@ const styles = StyleSheet.create({
     dayButtonTextSelected: {
         color: '#FFFFFF',
     },
-} as const); 
+    footer: {
+        padding: 20,
+        paddingTop: 0,
+    },
+    saveButton: {
+        width: '100%',
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 10,
+    },
+    saveButtonText: {
+        color: '#007AFF',
+        fontSize: 17,
+        fontWeight: '600',
+    },
+    saveButtonTextDisabled: {
+        opacity: 0.5,
+    },
+    timeContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 24,
+    },
+}); 

@@ -59,7 +59,7 @@ export function FavoritesList({
 
         return (
             <TouchableOpacity
-                key={isPopular ? `popular-${question.questionId}` : question.questionId}
+                key={isPopular ? `popular-${question.questionId}-${index}` : `favorite-${question.questionId}-${index}`}
                 style={[
                     styles.favoriteCard,
                     { backgroundColor: getFavoriteCardColor(index) }

@@ -40,6 +40,8 @@ import { KaTeX } from './components/quiz/KaTeX';
 import { AccountingQuestion } from './components/quiz/AccountingQuestion';
 import { RandomAIQuestion } from '../types/api';
 import { RandomLessonPreview } from '@/components/RandomLessonPreview';
+import { Colors } from '@/constants/Colors';
+import { getSubjectIcon } from '@/utils/subjectIcons';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -83,23 +85,6 @@ interface Question {
 interface QuestionResponse extends Question {
     status: string;
     message?: string;
-}
-
-interface SubjectStats {
-    status: string;
-    data: {
-        subject: {
-            id: number;
-            name: string;
-        };
-        stats: {
-            total_answers: number;
-            correct_answers: number;
-            incorrect_answers: number;
-            correct_percentage: number;
-            incorrect_percentage: number;
-        };
-    };
 }
 
 // Helper function to clean the answer string
@@ -824,7 +809,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                         >
                             {question.ai_explanation?.split('\n').map((line, index) => {
                                 const trimmedLine = line.trim();
-                                //formulas cant have bullet points
                                 if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
                                     const content = trimmedLine.substring(1).trim();
                                     const indentLevel = line.indexOf('-') / 2;
@@ -838,17 +822,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                                             ]}
                                         >
                                             <ThemedText style={[styles.bulletPoint, {
-                                                color: isDark ? '#4ADE80' : colors.text,
+                                                color: isDark ? Colors.dark.text : Colors.light.text,
                                                 marginTop: 4
                                             }]}>
-                                                {indentLevel > 0 ? '🎯' : '✅'}
+                                                {indentLevel > 0 ? '•' : '👉'}
                                             </ThemedText>
                                             <View style={styles.bulletTextWrapper}>
-                                                <ThemedText key={index} style={[styles.contentText, {
-                                                    color: isDark ? '#E5E7EB' : colors.text
-                                                }]}>
-                                                    {content}
-                                                </ThemedText>
+                                                {renderMixedContent(content, isDark, colors)}
                                             </View>
                                         </View>
                                     );
@@ -858,9 +838,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                                 }
                                 return (
                                     <View key={index}>
-                                        <ThemedText style={{ color: isDark ? '#E5E7EB' : colors.text }}>
-                                            {renderMixedContent(line, isDark, colors)}
-                                        </ThemedText>
+                                        {renderMixedContent(line, isDark, colors)}
                                     </View>
                                 );
                             })}
@@ -1756,41 +1734,7 @@ export default function QuizScreen() {
                                 )}
                                 {(currentQuestion || parentQuestion) && (
                                     <>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                            {parentQuestion && (
-                                                <TouchableOpacity
-                                                    onPress={() => setShowStats(!showStats)}
-                                                    style={[styles.favoriteButton, {
-                                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                                                        marginLeft: 'auto',
-                                                        marginRight: 8
-                                                    }]}
-                                                >
-                                                    <Ionicons
-                                                        name="stats-chart"
-                                                        size={14}
-                                                        color={showStats ? (isDark ? '#4F46E5' : '#4338CA') : (isDark ? '#FFFFFF' : '#000000')}
-                                                    />
-                                                    <ThemedText style={[styles.buttonLabel, { opacity: showStats ? 0 : 1 }]}>
-                                                        Stats
-                                                    </ThemedText>
-                                                </TouchableOpacity>
-                                            )}
-                                            <TouchableOpacity
-                                                onPress={() => setIsNoteModalVisible(true)}
-                                                style={[styles.favoriteButton, {
-                                                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
-                                                    marginRight: 8
-                                                }]}
-                                            >
-                                                <Ionicons
-                                                    name="create-outline"
-                                                    size={14}
-                                                    color={isDark ? '#FFFFFF' : '#000000'}
-                                                />
 
-                                            </TouchableOpacity>
-                                        </View>
                                         <TouchableOpacity
                                             onPress={isCurrentQuestionFavorited ? handleUnfavoriteQuestion : handleFavoriteQuestion}
                                             disabled={isFavoriting}
@@ -1808,6 +1752,15 @@ export default function QuizScreen() {
                                                     color={isCurrentQuestionFavorited ? '#FFD700' : (isDark ? '#FFFFFF' : '#000000')}
                                                 />
                                             )}
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => setIsNoteModalVisible(true)}
+                                            style={[styles.favoriteButton, {
+                                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+                                                marginRight: 8
+                                            }]}
+                                        >
+                                            <ThemedText style={{ fontSize: 18 }}>📝</ThemedText>
                                         </TouchableOpacity>
                                     </>
                                 )}
@@ -2442,8 +2395,6 @@ export default function QuizScreen() {
             <ThankYouModal
                 isVisible={isThankYouModalVisible}
                 onClose={() => setIsThankYouModalVisible(false)}
-                onRate={handleRating}
-                onPostpone={handlePostponeRating}
                 isDark={isDark}
             />
 
@@ -2537,21 +2488,9 @@ export default function QuizScreen() {
         </LinearGradient>
     );
 }// Add helper function to get subject icons
-function getSubjectIcon(subjectName: string) {
-    const icons = {
-        'Agricultural Sciences': require('@/assets/images/subjects/agriculture.png'),
-        'Economics': require('@/assets/images/subjects/economics.png'),
-        'Business Studies': require('@/assets/images/subjects/business-studies.png'),
-        'Geography': require('@/assets/images/subjects/geography.png'),
-        'Life Sciences': require('@/assets/images/subjects/life-science.png'),
-        'mathematics': require('@/assets/images/subjects/mathematics.png'),
-        'Physical Sciences': require('@/assets/images/subjects/physics.png'),
-        'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
-        'History': require('@/assets/images/subjects/history.png'),
-        'default': require('@/assets/images/subjects/mathematics.png')
-    };
-    return icons[subjectName as keyof typeof icons] || icons.default;
-} const styles = StyleSheet.create({
+
+
+const styles = StyleSheet.create({
     gradient: {
         flex: 1,
     },

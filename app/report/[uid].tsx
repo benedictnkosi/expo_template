@@ -89,10 +89,10 @@ async function getLearnerPerformance(uid: string): Promise<{ data: SubjectPerfor
 
 async function getLearnerDailyActivity(uid: string, subjectId?: number): Promise<{ data: DailyActivity[] }> {
     try {
-        const url = subjectId 
+        const url = subjectId
             ? `${HOST_URL}/api/learner/${uid}/daily-activity?subject_id=${subjectId}`
             : `${HOST_URL}/api/learner/${uid}/daily-activity`;
-            
+
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch daily activity');
@@ -107,10 +107,10 @@ async function getLearnerDailyActivity(uid: string, subjectId?: number): Promise
 
 async function getLearnerWeeklyProgress(uid: string, subjectId?: number): Promise<{ data: WeeklyProgress[] }> {
     try {
-        const url = subjectId 
+        const url = subjectId
             ? `${HOST_URL}/api/learner/${uid}/weekly-progress?subject_id=${subjectId}`
             : `${HOST_URL}/api/learner/${uid}/weekly-progress`;
-            
+
         const response = await fetch(url);
         if (!response.ok) {
             throw new Error('Failed to fetch weekly progress');
@@ -124,17 +124,17 @@ async function getLearnerWeeklyProgress(uid: string, subjectId?: number): Promis
     }
 }
 
-const SubjectReportModal = ({ 
-    isVisible, 
-    onClose, 
-    subject, 
+const SubjectReportModal = ({
+    isVisible,
+    onClose,
+    subject,
     isDark,
     dailyActivity,
     weeklyProgress,
     isLoading
-}: { 
-    isVisible: boolean; 
-    onClose: () => void; 
+}: {
+    isVisible: boolean;
+    onClose: () => void;
     subject: SubjectPerformance;
     isDark: boolean;
     dailyActivity: DailyActivity[];
@@ -208,7 +208,7 @@ const SubjectReportModal = ({
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView 
+                    <ScrollView
                         style={styles.modalScrollView}
                         contentContainerStyle={styles.modalScrollViewContent}
                     >
@@ -474,15 +474,15 @@ export default function LearnerPerformanceScreen() {
             end={{ x: 0, y: 1 }}
         >
             <View style={styles.headerContainer}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.closeButton}
                     onPress={handleClose}
                     activeOpacity={0.7}
                 >
-                    <Ionicons 
-                        name="close" 
-                        size={24} 
-                        color={isDark ? '#FFFFFF' : '#000000'} 
+                    <Ionicons
+                        name="close"
+                        size={24}
+                        color={isDark ? '#FFFFFF' : '#000000'}
                     />
                 </TouchableOpacity>
                 <ThemedText style={styles.headerTitle}>{name}'s Performance</ThemedText>
@@ -509,8 +509,8 @@ export default function LearnerPerformanceScreen() {
                                 borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
                             }]}>
                                 <ThemedText style={styles.badgesTitle}>🏆 Achievements</ThemedText>
-                                <ScrollView 
-                                    horizontal 
+                                <ScrollView
+                                    horizontal
                                     showsHorizontalScrollIndicator={false}
                                     contentContainerStyle={styles.badgesScrollContent}
                                 >
@@ -628,71 +628,71 @@ export default function LearnerPerformanceScreen() {
                                 </View>
                             </ThemedView>
                         )}
-                        
+
                         <View style={styles.performanceContainer}>
                             {performance
                                 .sort((a, b) => a.subject.localeCompare(b.subject))
                                 .map((subject, index) => (
-                                <ThemedView
-                                    key={`${subject.subject}-${index}`}
-                                    style={[
-                                        styles.subjectCard,
-                                        {
-                                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
-                                        }
-                                    ]}
-                                >
-                                    <View style={styles.subjectHeader}>
-                                        <ThemedText style={styles.subjectName}>{subject.subject}</ThemedText>
-                                        <TouchableOpacity
-                                            onPress={() => openSubjectReport(subject)}
-                                            style={styles.graphButton}
-                                        >
-                                            <Ionicons
-                                                name="bar-chart"
-                                                size={24}
-                                                color={isDark ? '#FFFFFF' : '#000000'}
-                                            />
-                                        </TouchableOpacity>
-                                    </View>
-                                    
-                                    <View style={styles.statsGrid}>
-                                        <View style={styles.statItem}>
-                                            <ThemedText style={styles.statLabel}>Total Answers</ThemedText>
-                                            <ThemedText style={styles.statValue}>{subject.totalAnswers}</ThemedText>
+                                    <ThemedView
+                                        key={`${subject.subject}-${index}`}
+                                        style={[
+                                            styles.subjectCard,
+                                            {
+                                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                                            }
+                                        ]}
+                                    >
+                                        <View style={styles.subjectHeader}>
+                                            <ThemedText style={styles.subjectName}>{subject.subject}</ThemedText>
+                                            <TouchableOpacity
+                                                onPress={() => openSubjectReport(subject)}
+                                                style={styles.graphButton}
+                                            >
+                                                <Ionicons
+                                                    name="bar-chart"
+                                                    size={24}
+                                                    color={isDark ? '#FFFFFF' : '#000000'}
+                                                />
+                                            </TouchableOpacity>
                                         </View>
-                                        
-                                        <View style={styles.statItem}>
-                                            <ThemedText style={styles.statLabel}>Correct</ThemedText>
-                                            <ThemedText style={[styles.statValue, { color: '#10B981' }]}>
-                                                {subject.correctAnswers}
-                                            </ThemedText>
-                                        </View>
-                                        
-                                        <View style={styles.statItem}>
-                                            <ThemedText style={styles.statLabel}>Incorrect</ThemedText>
-                                            <ThemedText style={[styles.statValue, { color: '#EF4444' }]}>
-                                                {subject.incorrectAnswers}
-                                            </ThemedText>
-                                        </View>
-                                    </View>
 
-                                    <View style={styles.performanceFooter}>
-                                        <View style={styles.percentageContainer}>
-                                            <ThemedText style={styles.percentageLabel}>Success Rate</ThemedText>
-                                            <ThemedText style={[styles.percentageValue, { color: getGradeColor(subject.grade) }]}>
-                                                {subject.percentage}%
-                                            </ThemedText>
+                                        <View style={styles.statsGrid}>
+                                            <View style={styles.statItem}>
+                                                <ThemedText style={styles.statLabel}>Total Answers</ThemedText>
+                                                <ThemedText style={styles.statValue}>{subject.totalAnswers}</ThemedText>
+                                            </View>
+
+                                            <View style={styles.statItem}>
+                                                <ThemedText style={styles.statLabel}>Correct</ThemedText>
+                                                <ThemedText style={[styles.statValue, { color: '#10B981' }]}>
+                                                    {subject.correctAnswers}
+                                                </ThemedText>
+                                            </View>
+
+                                            <View style={styles.statItem}>
+                                                <ThemedText style={styles.statLabel}>Incorrect</ThemedText>
+                                                <ThemedText style={[styles.statValue, { color: '#EF4444' }]}>
+                                                    {subject.incorrectAnswers}
+                                                </ThemedText>
+                                            </View>
                                         </View>
-                                        
-                                        <View style={[styles.gradeContainer, { backgroundColor: getGradeColor(subject.grade) }]}>
-                                            <ThemedText style={styles.gradeText}>Level {subject.grade}</ThemedText>
-                                            <ThemedText style={styles.gradeDescription}>{subject.gradeDescription}</ThemedText>
+
+                                        <View style={styles.performanceFooter}>
+                                            <View style={styles.percentageContainer}>
+                                                <ThemedText style={styles.percentageLabel}>Success Rate</ThemedText>
+                                                <ThemedText style={[styles.percentageValue, { color: getGradeColor(subject.grade) }]}>
+                                                    {subject.percentage}%
+                                                </ThemedText>
+                                            </View>
+
+                                            <View style={[styles.gradeContainer, { backgroundColor: getGradeColor(subject.grade) }]}>
+                                                <ThemedText style={styles.gradeText}>Level {subject.grade}</ThemedText>
+                                                <ThemedText style={styles.gradeDescription}>{subject.gradeDescription}</ThemedText>
+                                            </View>
                                         </View>
-                                    </View>
-                                </ThemedView>
-                            ))}
+                                    </ThemedView>
+                                ))}
                         </View>
                     </>
                 )}
@@ -1076,7 +1076,6 @@ const styles = StyleSheet.create({
             width: 0,
             height: 1,
         },
-        shadowOpacity: 0.08,
         shadowRadius: 8,
         elevation: 2,
         borderWidth: 1,
@@ -1100,12 +1099,8 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         marginBottom: 8,
     },
-    lockedBadgeImage: {
-        opacity: 0.5,
-    },
     badgeName: {
         fontSize: 14,
-        textAlign: 'center',
-        opacity: 0.9,
+        textAlign: 'center'
     },
 }); 

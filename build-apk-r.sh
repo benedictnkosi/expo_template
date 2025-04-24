@@ -22,12 +22,12 @@ cd android
 ./gradlew assembleRelease
 
 APK_PATH="$(pwd)/app/build/outputs/apk/release/app-release.apk"
-BACKUP_DIR="/Users/mac1/Documents/ExamQuiz/backups/apk"
+DRIVE_DIR="/Users/mac1/Library/CloudStorage/GoogleDrive-nkosi.benedict@gmail.com/My Drive/Exam Quiz/apk"
 
 # Check if build was successful
 if [ -f "$APK_PATH" ]; then
-    cp "$APK_PATH" "$BACKUP_DIR/app-release.apk"
-    echo "Copied to $BACKUP_DIR successfully!"
+    cp "$APK_PATH" "$DRIVE_DIR/app-release.apk"
+    echo "Copied to $DRIVE_DIR successfully!"
 else
     echo "❌ APK not found at: $APK_PATH"
 fi

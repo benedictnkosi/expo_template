@@ -24,6 +24,7 @@ import { Header } from '../../components/Header';
 import { getMessages, Message } from '@/services/api';
 import { MessageModal } from '@/components/MessageModal';
 import { RandomLessonPreview } from '@/components/RandomLessonPreview';
+import { getSubjectIcon } from '@/utils/subjectIcons';
 
 // Temporary mock data
 
@@ -122,6 +123,8 @@ interface LearnerInfo {
   points: number;
   streak: number;
   avatar: string;
+  timetable?: Record<string, { subject: string; startTime: string; endTime: string }[]>;
+  events?: Record<string, { title: string; startTime: string; endTime: string }[]>;
 }
 
 interface RandomAIQuestionResponse {
@@ -192,6 +195,158 @@ const SettingsModal = ({ visible, onClose, onOpenSettings }: SettingsModalProps)
   );
 };
 
+interface CurrentScheduleProps {
+  learnerInfo: LearnerInfo | null;
+  colors: any;
+  isDark: boolean;
+}
+
+const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) => {
+  const [currentClass, setCurrentClass] = useState<{ subject: string; startTime: string; endTime: string } | null>(null);
+  const [currentEvent, setCurrentEvent] = useState<{ title: string; startTime: string; endTime: string } | null>(null);
+  const [upcomingClasses, setUpcomingClasses] = useState<{ subject: string; startTime: string; endTime: string }[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<{ title: string; startTime: string; endTime: string }[]>([]);
+
+  useEffect(() => {
+    if (!learnerInfo?.timetable || !learnerInfo?.events) return;
+
+    const now = new Date();
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const currentDay = days[now.getDay()];
+
+    // Format current time as HH:mm
+    const currentTime = now.getHours().toString().padStart(2, '0') + ':' +
+      now.getMinutes().toString().padStart(2, '0');
+
+    // Format current date as YYYY-MM-DD
+    const currentDate = now.getFullYear() + '-' +
+      (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
+      now.getDate().toString().padStart(2, '0');
+
+    // Find current and upcoming classes
+    const todayClasses = learnerInfo.timetable[currentDay as keyof typeof learnerInfo.timetable] || [];
+    const currentClass = todayClasses.find(cls => {
+      return currentTime >= cls.startTime && currentTime <= cls.endTime;
+    });
+    setCurrentClass(currentClass || null);
+
+    // Find upcoming classes in next 3 hours
+    const upcomingClasses = todayClasses.filter(cls => {
+      return cls.startTime > currentTime &&
+        parseInt(cls.startTime.split(':')[0]) - parseInt(currentTime.split(':')[0]) <= 3;
+    });
+    setUpcomingClasses(upcomingClasses);
+
+    // Find current event
+    const todayEvents = learnerInfo.events[currentDate] || [];
+    const currentEvent = todayEvents.find(event => {
+      return currentTime >= event.startTime && currentTime <= event.endTime;
+    });
+    setCurrentEvent(currentEvent || null);
+
+    // Find upcoming events in next 3 hours
+    const upcomingEvents = todayEvents.filter(event => {
+      return event.startTime > currentTime &&
+        parseInt(event.startTime.split(':')[0]) - parseInt(currentTime.split(':')[0]) <= 3;
+    });
+    setUpcomingEvents(upcomingEvents);
+  }, [learnerInfo]);
+
+  if (!currentClass && !currentEvent && upcomingClasses.length === 0 && upcomingEvents.length === 0) return null;
+
+  return (
+    <View style={[styles.currentScheduleContainer, {
+      backgroundColor: isDark ? colors.card : '#FFFFFF',
+      borderColor: colors.border
+    }]}>
+      <View style={styles.scheduleHeader}>
+        <ThemedText style={[styles.currentScheduleTitle, { color: colors.text }]}>
+          📅 Current Schedule
+        </ThemedText>
+        <ThemedText style={[styles.scheduleSubtext, { color: colors.textSecondary }]}>
+          Your ongoing and upcoming classes & Study Plans
+        </ThemedText>
+      </View>
+
+      {currentClass && (
+        <View style={[styles.scheduleItem, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}>
+          <View style={styles.scheduleItemHeader}>
+            <Ionicons name="school-outline" size={20} color={colors.primary} />
+            <ThemedText style={[styles.scheduleItemTitle, { color: colors.text }]}>
+              Current Class
+            </ThemedText>
+          </View>
+          <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
+            {currentClass.subject}
+          </ThemedText>
+          <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
+            {currentClass.startTime} - {currentClass.endTime}
+          </ThemedText>
+        </View>
+      )}
+
+      {currentEvent && (
+        <View style={[styles.scheduleItem, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}>
+          <View style={styles.scheduleItemHeader}>
+            <Ionicons name="calendar-outline" size={20} color={colors.primary} />
+            <ThemedText style={[styles.scheduleItemTitle, { color: colors.text }]}>
+              Current Event
+            </ThemedText>
+          </View>
+          <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
+            {currentEvent.title}
+          </ThemedText>
+          <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
+            {currentEvent.startTime} - {currentEvent.endTime}
+          </ThemedText>
+        </View>
+      )}
+
+      {upcomingClasses.length > 0 && (
+        <View style={[styles.scheduleItem, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}>
+          <View style={styles.scheduleItemHeader}>
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
+            <ThemedText style={[styles.scheduleItemTitle, { color: colors.text }]}>
+              Upcoming Classes
+            </ThemedText>
+          </View>
+          {upcomingClasses.map((cls, index) => (
+            <View key={index} style={styles.upcomingItem}>
+              <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
+                {cls.subject}
+              </ThemedText>
+              <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
+                {cls.startTime} - {cls.endTime}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {upcomingEvents.length > 0 && (
+        <View style={[styles.scheduleItem, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}>
+          <View style={styles.scheduleItemHeader}>
+            <Ionicons name="time-outline" size={20} color={colors.primary} />
+            <ThemedText style={[styles.scheduleItemTitle, { color: colors.text }]}>
+              Upcoming Study Plans & Exams
+            </ThemedText>
+          </View>
+          {upcomingEvents.map((event, index) => (
+            <View key={index} style={styles.upcomingItem}>
+              <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
+                {event.title}
+              </ThemedText>
+              <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
+                {event.startTime} - {event.endTime}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
   const [mySubjects, setMySubjects] = useState<Subject[]>([]);
@@ -213,12 +368,20 @@ export default function HomeScreen() {
   const [currentMessage, setCurrentMessage] = useState<Message | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [notificationsDismissed, setNotificationsDismissed] = useState(false);
 
   // Check for saved notification preferences on mount
   useEffect(() => {
     async function checkNotificationPreferences() {
       try {
         const notificationsPreference = await AsyncStorage.getItem('notificationsEnabled');
+        const notificationsDismissedPreference = await AsyncStorage.getItem('notificationsDismissed');
+
+        if (notificationsDismissedPreference === 'true') {
+          setNotificationsDismissed(true);
+          return;
+        }
+
         if (notificationsPreference === 'true') {
           setNotificationsEnabled(true);
         } else {
@@ -772,6 +935,22 @@ export default function HomeScreen() {
     }
   };
 
+  // Add function to handle dismissing notifications forever
+  const handleDismissNotificationsForever = async () => {
+    try {
+      await AsyncStorage.setItem('notificationsDismissed', 'true');
+      setNotificationsDismissed(true);
+
+      if (user?.uid) {
+        await analytics.track('notifications_dismissed_forever', {
+          user_id: user.uid
+        });
+      }
+    } catch (error) {
+      console.error('Error dismissing notifications:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
@@ -806,8 +985,8 @@ export default function HomeScreen() {
           } : null}
         />
 
-        {/* Add Notification Settings Card - Only show when notifications are disabled */}
-        {!notificationsEnabled && (
+        {/* Add Notification Settings Card - Only show when notifications are disabled and not dismissed forever */}
+        {!notificationsEnabled && !notificationsDismissed && (
           <View style={[styles.sectionCard, {
             backgroundColor: isDark ? colors.card : '#FFFFFF',
             borderColor: colors.border
@@ -827,6 +1006,13 @@ export default function HomeScreen() {
                 <ThemedText style={styles.enableButtonText}>Enable</ThemedText>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity
+              style={[styles.dismissButton, { backgroundColor: isDark ? colors.surface : '#F3F4F6' }]}
+              onPress={handleDismissNotificationsForever}
+              testID="dismiss-notifications-button"
+            >
+              <ThemedText style={[styles.dismissButtonText, { color: colors.textSecondary }]}>Dismiss</ThemedText>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -834,22 +1020,6 @@ export default function HomeScreen() {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
         }]} testID="stats-container">
-          <View style={styles.statsHeader}>
-            <TouchableOpacity
-              style={[styles.reportButton, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                if (user?.uid && learnerInfo?.name) {
-                  router.push({
-                    pathname: '/report/[uid]',
-                    params: { uid: user.uid, name: learnerInfo.name }
-                  });
-                }
-              }}
-              testID="view-report-button"
-            >
-              <Ionicons name="bar-chart" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
           <View style={styles.statsRow} testID="stats-row">
             <View style={styles.statItem} testID="ranking-stat">
               <View style={styles.statContent}>
@@ -873,6 +1043,22 @@ export default function HomeScreen() {
               </View>
             </View>
           </View>
+
+          <TouchableOpacity
+            style={[styles.reportButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              if (user?.uid && learnerInfo?.name) {
+                router.push({
+                  pathname: '/report/[uid]',
+                  params: { uid: user.uid, name: learnerInfo.name }
+                });
+              }
+            }}
+            testID="view-report-button"
+          >
+            <Ionicons name="bar-chart" size={20} color="#FFFFFF" />
+            <ThemedText style={styles.reportButtonText}>📊 View My Report</ThemedText>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.shareContainer} testID="share-container">
@@ -891,6 +1077,12 @@ export default function HomeScreen() {
         <RandomLessonPreview
           randomLesson={randomLesson}
           onRefresh={fetchRandomLesson}
+        />
+
+        <CurrentSchedule
+          learnerInfo={learnerInfo}
+          colors={colors}
+          isDark={isDark}
         />
 
         {/* Add Tasks Section */}
@@ -977,149 +1169,156 @@ export default function HomeScreen() {
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
 
-        <View style={styles.subjectsGrid} testID="subjects-grid">
-          {(() => {
-            return mySubjects
-              .filter(subject => showAllSubjects || !hiddenSubjects.includes(subject.id))
-              .map((subject) => {
-                const isDisabled = subject.total_questions === 0;
-                const isHidden = hiddenSubjects.includes(subject.id);
-                return (
-                  <TouchableOpacity
-                    key={subject.id}
-                    style={[
-                      styles.subjectCard,
-                      {
-                        backgroundColor: isDark ? colors.card : '#FFFFFF',
-                        borderColor: colors.border
-                      },
-                      isDisabled && [styles.disabledSubjectCard, {
-                        backgroundColor: isDark ? colors.surface : '#F3F4F6',
-                        borderColor: isDark ? colors.border : '#E5E7EB'
-                      }],
-                      isHidden && styles.hiddenSubjectCard
-                    ]}
-                    activeOpacity={0.7}
-                    onPress={() => !isDisabled && handleSubjectPress(subject)}
-                    disabled={isDisabled}
-                    testID={`subject-card-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subjectsScrollContainer}
+          testID="subjects-scroll-view"
+        >
+          <View style={styles.subjectsGrid} testID="subjects-grid">
+            {(() => {
+              return mySubjects
+                .filter(subject => showAllSubjects || !hiddenSubjects.includes(subject.id))
+                .map((subject) => {
+                  const isDisabled = subject.total_questions === 0;
+                  const isHidden = hiddenSubjects.includes(subject.id);
+                  return (
                     <TouchableOpacity
-                      style={styles.visibilityToggle}
-                      onPress={() => toggleSubjectVisibility(subject.id)}
-                      testID={`visibility-toggle-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      key={subject.id}
+                      style={[
+                        styles.subjectCard,
+                        {
+                          backgroundColor: isDark ? colors.card : '#FFFFFF',
+                          borderColor: colors.border
+                        },
+                        isDisabled && [styles.disabledSubjectCard, {
+                          backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                          borderColor: isDark ? colors.border : '#E5E7EB'
+                        }],
+                        isHidden && styles.hiddenSubjectCard
+                      ]}
+                      activeOpacity={0.7}
+                      onPress={() => !isDisabled && handleSubjectPress(subject)}
+                      disabled={isDisabled}
+                      testID={`subject-card-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                     >
-                      <Ionicons
-                        name={isHidden ? "eye-off" : "eye"}
-                        size={20}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                    <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]} testID={`subject-icon-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <Image
-                        source={getSubjectIcon(subject.name)}
-                        style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
-                        testID={`subject-icon-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
-                      />
-                    </View>
-                    <View style={styles.cardContent} testID={`subject-content-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <ThemedText
-                        style={[
-                          styles.subjectName,
-                          { color: isDark ? '#FFFFFF' : colors.text },
-                          isDisabled && { color: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)' }
-                        ]}
-                        testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      <TouchableOpacity
+                        style={styles.visibilityToggle}
+                        onPress={() => toggleSubjectVisibility(subject.id)}
+                        testID={`visibility-toggle-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                       >
-                        {subject.name}
-                      </ThemedText>
-                      <ThemedText
-                        style={[
-                          styles.totalQuestionsText,
-                          { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
-                        ]}
-                      >
-                        {subject.total_questions} questions
-                      </ThemedText>
-
-                      <View style={styles.statsRow}>
-                        <View style={[styles.statItem, {
-                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                          borderColor: colors.border,
-                          borderWidth: 1,
-                          shadowColor: isDark ? '#000000' : '#000000',
-                          shadowOpacity: isDark ? 0.3 : 0.1,
-                          borderRadius: 12,
-                          padding: 12,
-                          flex: 1,
-                        }]}>
-                          <View style={styles.statContent}>
-                            <ThemedText style={styles.statIcon}>🎯</ThemedText>
-                            <View style={styles.statTextContainer}>
-                              <ThemedText style={[styles.statCount, { color: colors.text }]}>
-                                {subject.correct_answers}
-                              </ThemedText>
-                              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                Bullseyes
-                              </ThemedText>
-                            </View>
-                          </View>
-                        </View>
-
-                        <View style={[styles.statItem, {
-                          backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                          borderColor: colors.border,
-                          borderWidth: 1,
-                          shadowColor: isDark ? '#000000' : '#000000',
-                          shadowOpacity: isDark ? 0.3 : 0.1,
-                          borderRadius: 12,
-                          padding: 12,
-                          flex: 1,
-                          marginLeft: 12,
-                        }]}>
-                          <View style={styles.statContent}>
-                            <ThemedText style={styles.statIcon}>💥</ThemedText>
-                            <View style={styles.statTextContainer}>
-                              <ThemedText style={[styles.statCount, { color: colors.text }]}>
-                                {subject.answered_questions - subject.correct_answers}
-                              </ThemedText>
-                              <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>
-                                Oopsies
-                              </ThemedText>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View style={[styles.progressBarContainer, {
-                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                      }]}>
-                        <View
-                          style={[
-                            styles.progressBar,
-                            {
-                              width: `${subject.answered_questions === 0 ? 0 :
-                                Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
-                              backgroundColor: '#22C55E'
-                            }
-                          ]}
+                        <Ionicons
+                          name={isHidden ? "eye-off" : "eye"}
+                          size={20}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                      <View style={[styles.iconContainer, isDisabled && styles.disabledIconContainer]} testID={`subject-icon-container-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <Image
+                          source={getSubjectIcon(subject.name)}
+                          style={[styles.subjectIcon, isDisabled && styles.disabledIcon]}
+                          testID={`subject-icon-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
                         />
                       </View>
-                      <ThemedText
-                        style={[
-                          styles.masteryText,
-                          { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
-                        ]}
-                      >
-                        {subject.answered_questions === 0 ? 0 :
-                          Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
-                      </ThemedText>
-                    </View>
-                  </TouchableOpacity>
-                );
-              });
-          })()}
-        </View>
+                      <View style={styles.cardContent} testID={`subject-content-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}>
+                        <ThemedText
+                          style={[
+                            styles.subjectName,
+                            { color: isDark ? '#FFFFFF' : colors.text },
+                            isDisabled && { color: isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)' }
+                          ]}
+                          testID={`subject-name-${subject.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        >
+                          {subject.name}
+                        </ThemedText>
+                        <ThemedText
+                          style={[
+                            styles.totalQuestionsText,
+                            { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
+                          ]}
+                        >
+                          {subject.total_questions} questions
+                        </ThemedText>
+
+                        <View style={styles.statsRow}>
+                          <View style={[styles.statItem, {
+                            backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            shadowColor: isDark ? '#000000' : '#000000',
+                            shadowOpacity: isDark ? 0.3 : 0.1,
+                            borderRadius: 12,
+                            padding: 12,
+                            flex: 1,
+                          }]}>
+                            <View style={styles.statContent}>
+                              <ThemedText style={styles.statIcon}>🎯</ThemedText>
+                              <View style={styles.statTextContainer}>
+                                <ThemedText style={[styles.statCount, { color: colors.text }]}>
+                                  {subject.correct_answers}
+                                </ThemedText>
+                                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                  Bullseyes
+                                </ThemedText>
+                              </View>
+                            </View>
+                          </View>
+
+                          <View style={[styles.statItem, {
+                            backgroundColor: isDark ? colors.surface : '#FFFFFF',
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                            shadowColor: isDark ? '#000000' : '#000000',
+                            shadowOpacity: isDark ? 0.3 : 0.1,
+                            borderRadius: 12,
+                            padding: 12,
+                            flex: 1,
+                            marginLeft: 12,
+                          }]}>
+                            <View style={styles.statContent}>
+                              <ThemedText style={styles.statIcon}>💥</ThemedText>
+                              <View style={styles.statTextContainer}>
+                                <ThemedText style={[styles.statCount, { color: colors.text }]}>
+                                  {subject.answered_questions - subject.correct_answers}
+                                </ThemedText>
+                                <ThemedText style={[styles.statLabel, { color: colors.textSecondary }]}>
+                                  Oopsies
+                                </ThemedText>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+
+                        <View style={[styles.progressBarContainer, {
+                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                        }]}>
+                          <View
+                            style={[
+                              styles.progressBar,
+                              {
+                                width: `${subject.answered_questions === 0 ? 0 :
+                                  Math.round((subject.correct_answers / subject.answered_questions) * 100)}%`,
+                                backgroundColor: '#22C55E'
+                              }
+                            ]}
+                          />
+                        </View>
+                        <ThemedText
+                          style={[
+                            styles.masteryText,
+                            { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
+                          ]}
+                        >
+                          {subject.answered_questions === 0 ? 0 :
+                            Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
+                        </ThemedText>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                });
+            })()}
+          </View>
+        </ScrollView>
 
         {hiddenSubjects.length > 0 && (
           <TouchableOpacity
@@ -1190,24 +1389,6 @@ export default function HomeScreen() {
   );
 }
 
-// Add helper function to get subject icons
-function getSubjectIcon(subjectName: string) {
-  const icons = {
-    'Agricultural Sciences': require('@/assets/images/subjects/agriculture.png'),
-    'Economics': require('@/assets/images/subjects/economics.png'),
-    'Business Studies': require('@/assets/images/subjects/business-studies.png'),
-    'Geography': require('@/assets/images/subjects/geography.png'),
-    'Life Sciences': require('@/assets/images/subjects/life-science.png'),
-    'mathematics': require('@/assets/images/subjects/mathematics.png'),
-    'Physical Sciences': require('@/assets/images/subjects/physics.png'),
-    'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
-    'History': require('@/assets/images/subjects/history.png'),
-    'Life orientation': require('@/assets/images/subjects/life-orientation.png'),
-    'Tourism': require('@/assets/images/subjects/tourism.png'),
-    'default': require('@/assets/images/subjects/mathematics.png')
-  };
-  return icons[subjectName as keyof typeof icons] || icons.default;
-}
 
 const styles = StyleSheet.create({
   gradient: {
@@ -1246,32 +1427,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    position: 'relative',
-  },
-  statsHeader: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 1,
-  },
-  reportButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-    marginTop: 8,
   },
   statItem: {
     flex: 1,
@@ -1304,13 +1465,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
+  subjectsScrollContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
   subjectsGrid: {
-    flexDirection: 'column',
+    flexDirection: 'row',
     gap: 16,
-    paddingHorizontal: 4,
   },
   subjectCard: {
-    width: '100%',
+    width: 300,
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
@@ -1320,18 +1484,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 5,
     position: 'relative',
-    marginBottom: 24,
-    marginTop: 24,
+    marginBottom: 16,
+    marginTop: 40,
+    marginHorizontal: 8,
   },
   iconContainer: {
     position: 'absolute',
-    top: -52,
+    top: -32,
     left: 16,
-    width: 85,
-    height: 85,
+    width: 64,
+    height: 64,
     zIndex: 1,
     borderRadius: 16,
-    padding: 12,
+    padding: 8,
   },
   subjectIcon: {
     width: '100%',
@@ -1339,23 +1504,37 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   cardContent: {
-    marginTop: 8,
+    flex: 1,
+    width: '100%',
+    marginTop: 36,
   },
   subjectName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   totalQuestionsText: {
     fontSize: 14,
     marginBottom: 16,
+    flexWrap: 'wrap',
   },
-  statColumn: {
-    alignItems: 'flex-start',
+  statContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    flexWrap: 'wrap',
   },
-  statNumber: {
-    fontSize: 32,
+  statCount: {
+    fontSize: 20,
     fontWeight: 'bold',
+    flexWrap: 'wrap',
+  },
+  masteryText: {
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: 'right',
+    flexWrap: 'wrap',
   },
   progressBarContainer: {
     width: 'auto',
@@ -1367,11 +1546,6 @@ const styles = StyleSheet.create({
   progressBar: {
     height: '100%',
     borderRadius: 2,
-  },
-  masteryText: {
-    fontSize: 14,
-    marginTop: 4,
-    textAlign: 'right',
   },
   visibilityToggle: {
     position: 'absolute',
@@ -1705,12 +1879,15 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   dismissButton: {
+    marginTop: 12,
     paddingVertical: 8,
     paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   dismissButtonText: {
-    color: '#666666',
     fontSize: 14,
+    fontWeight: '500',
   },
   errorModalContainer: {
     backgroundColor: '#FFFFFF',
@@ -1805,15 +1982,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
-  },
-  statContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  statCount: {
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   tasksContainer: {
     marginBottom: 24,
@@ -1933,6 +2101,71 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  reportButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  currentScheduleContainer: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    marginHorizontal: 8,
+    borderWidth: 1,
+  },
+  scheduleHeader: {
+    marginBottom: 16,
+  },
+  currentScheduleTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  scheduleSubtext: {
+    fontSize: 14,
+    opacity: 0.8,
+  },
+  scheduleItem: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  scheduleItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  scheduleItemTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  scheduleItemSubject: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  scheduleItemTime: {
+    fontSize: 14,
+  },
+  upcomingItem: {
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
 });
-
-

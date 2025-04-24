@@ -11,6 +11,7 @@ export function getSubjectIcon(subjectName: string) {
         'History': require('@/assets/images/subjects/history.png'),
         'Life orientation': require('@/assets/images/subjects/life-orientation.png'),
         'Tourism': require('@/assets/images/subjects/tourism.png'),
+        'Accounting': require('@/assets/images/subjects/accounting.png'),
         'default': require('@/assets/images/subjects/mathematics.png')
     };
     return icons[subjectName as keyof typeof icons] || icons.default;

@@ -77,7 +77,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 const learnerData = {
                     name: name,
                     grade: parseInt(onboardingData.grade),
-                    school: onboardingData.school,
+                    school: onboardingData.school || 'Not specified',
                     school_address: onboardingData.school_address || '',
                     school_latitude: parseFloat(onboardingData.school_latitude as string) || 0,
                     school_longitude: parseFloat(onboardingData.school_longitude as string) || 0,

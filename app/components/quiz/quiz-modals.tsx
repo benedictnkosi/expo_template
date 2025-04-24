@@ -225,7 +225,7 @@ export const ExplanationModal = ({
                                         color: isDark ? Colors.dark.text : Colors.light.text,
                                         marginTop: 4
                                     }]}>
-                                        {indentLevel > 0 ? '🎯' : '✅'}
+                                        {indentLevel > 0 ? '•' : '👉'}
                                     </ThemedText>
                                     <View style={styles.bulletTextWrapper}>
                                         {renderMixedContent(content, isDark, colors)}

@@ -63,6 +63,10 @@ export interface OnboardingData {
   curriculum: string;
   difficultSubject: string;
   avatar: string;
+  school?: string;
+  school_address?: string;
+  school_latitude?: string | number;
+  school_longitude?: string | number;
 }
 
 // Helper function for safe analytics logging

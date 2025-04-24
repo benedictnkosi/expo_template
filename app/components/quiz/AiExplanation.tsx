@@ -38,7 +38,7 @@ export function AiExplanation({ explanation, isDark, colors, renderMixedContent 
                                 color: isDark ? '#4ADE80' : colors.text,
                                 marginTop: 4
                             }]}>
-                                {indentLevel > 0 ? '🎯' : '✅'}
+                                {indentLevel > 0 ? '•' : '👉'}
                             </ThemedText>
                             <View style={styles.bulletTextWrapper}>
                                 {renderMixedContent(content, isDark, colors)}
