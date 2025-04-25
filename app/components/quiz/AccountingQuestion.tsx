@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, Modal, TouchableOpacity, Pressable, Animated } from 'react-native';
+import { View, StyleSheet, ScrollView, Modal, TouchableOpacity, Pressable, Animated, Platform } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Audio } from 'expo-av';
@@ -82,7 +82,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, points,
             onRequestClose={onClose}
         >
             <Pressable style={styles.modalOverlay} onPress={onClose}>
-                <Animated.View 
+                <Animated.View
                     style={[
                         styles.successModalContent,
                         { transform: [{ scale: scaleAnim }] }
@@ -97,7 +97,52 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, points,
     );
 };
 
-export const AccountingQuestion = ({ 
+const SelectOption = ({ option, onSelect, colors, styles }: { option: string; onSelect: () => void; colors: any; styles: any }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+
+    const handlePressIn = () => {
+        Animated.spring(scaleAnim, {
+            toValue: 0.95,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handlePressOut = () => {
+        Animated.spring(scaleAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    return (
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <TouchableOpacity
+                onPressIn={handlePressIn}
+                onPressOut={handlePressOut}
+                onPress={onSelect}
+                style={[styles.optionButton, {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.card,
+                    shadowColor: colors.primary,
+                    shadowOffset: {
+                        width: 0,
+                        height: 2,
+                    },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 2,
+                }]}
+                activeOpacity={0.7}
+            >
+                <ThemedText style={[styles.optionText, { color: colors.text }]}>
+                    {option}
+                </ThemedText>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
+
+export const AccountingQuestion = ({
     question,
     questionId
 }: QuizQuestionTextProps) => {
@@ -107,7 +152,7 @@ export const AccountingQuestion = ({
     const [points, setPoints] = useState(0);
     const correctSound = useRef<Audio.Sound>();
     const incorrectSound = useRef<Audio.Sound>();
-    
+
     const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
     // Parse the JSON string into table data
@@ -191,11 +236,11 @@ export const AccountingQuestion = ({
                 const cellReference = `${selectedCell.column}${selectedCell.rowIndex + 1}`;
 
                 const response = await checkAnswer(
-                    userUID, 
-                    questionId, 
-                    option, 
-                    0, 
-                    "Normal", 
+                    userUID,
+                    questionId,
+                    option,
+                    0,
+                    "Normal",
                     cellReference
                 ) as CheckAnswerResponse;
 
@@ -204,10 +249,10 @@ export const AccountingQuestion = ({
                 cell.value = option;
                 cell.isCorrect = response.correct;
                 cell.isEditable = false; // Disable after any selection
-                
+
                 // Play appropriate sound
                 await playSound(cell.isCorrect);
-                
+
                 if (cell.isCorrect) {
                     setPoints(response.points);
                     setShowSuccessModal(true);
@@ -216,13 +261,54 @@ export const AccountingQuestion = ({
                         setShowSuccessModal(false);
                     }, 1500);
                 }
-                
+
                 setSelectedCell(null);
             } catch (error) {
                 console.error('Error checking answer:', error);
                 // Handle error appropriately
             }
         }
+    };
+
+    const renderSelectButton = (cell: TableCell, rowIndex: number, column: string) => {
+        if (cell.isEditable) {
+            return (
+                <TouchableOpacity
+                    style={[styles.editableCell, {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        shadowColor: colors.primary,
+                        shadowOffset: {
+                            width: 0,
+                            height: 2,
+                        },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 4,
+                        elevation: 2,
+                    }]}
+                    onPress={() => handleCellPress(rowIndex, column, cell)}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.selectButtonContent}>
+                        <ThemedText style={[styles.cellText, {
+                            color: cell.value ? colors.text : colors.textSecondary,
+                            marginRight: 8
+                        }]}>
+                            {cell.value || 'Select'}
+                        </ThemedText>
+                        <MaterialIcons
+                            name="keyboard-arrow-down"
+                            size={20}
+                            color={colors.textSecondary}
+                            style={[styles.selectIcon, {
+                                opacity: 0.6
+                            }]}
+                        />
+                    </View>
+                </TouchableOpacity>
+            );
+        }
+        return null;
     };
 
     if (!tableData.length) {
@@ -262,7 +348,7 @@ export const AccountingQuestion = ({
 
                                 if (cell.isEditable) {
                                     return (
-                                        <TouchableOpacity 
+                                        <TouchableOpacity
                                             style={styles.editableCell}
                                             onPress={() => handleCellPress(rowIndex, 'A', cell)}
                                         >
@@ -317,7 +403,7 @@ export const AccountingQuestion = ({
 
                                 if (cell.isEditable) {
                                     return (
-                                        <TouchableOpacity 
+                                        <TouchableOpacity
                                             style={styles.editableCell}
                                             onPress={() => handleCellPress(rowIndex, 'B', cell)}
                                         >
@@ -338,7 +424,7 @@ export const AccountingQuestion = ({
                                             <ThemedText style={[styles.correctText, { color: '#388e3c', marginTop: 4 }]}>
                                                 {cell.correct}
                                             </ThemedText>
-                                            
+
                                         </View>
                                     );
                                 }
@@ -350,7 +436,7 @@ export const AccountingQuestion = ({
                                             <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
                                                 {cell.value}
                                             </ThemedText>
-                                            
+
                                         </View>
                                     );
                                 }
@@ -368,33 +454,51 @@ export const AccountingQuestion = ({
                 animationType="fade"
                 onRequestClose={() => setSelectedCell(null)}
             >
-                <Pressable 
+                <Pressable
                     style={styles.modalOverlay}
                     onPress={() => setSelectedCell(null)}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
-                        {selectedCell?.cell.options?.map((option, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[styles.optionButton, { 
+                    <View style={styles.blurContainer}>
+                        <Animated.View
+                            style={[
+                                styles.modalContent,
+                                {
+                                    backgroundColor: colors.background,
                                     borderColor: colors.border,
-                                    backgroundColor: colors.card
-                                }]}
-                                onPress={() => handleOptionSelect(option)}
-                            >
-                                <ThemedText style={[styles.optionText, { color: colors.text }]}>
-                                    {option}
+                                }
+                            ]}
+                        >
+                            <View style={styles.modalHeader}>
+                                <ThemedText style={[styles.modalTitle, { color: colors.text }]}>
+                                    Select an option
                                 </ThemedText>
-                            </TouchableOpacity>
-                        ))}
+                                <TouchableOpacity
+                                    onPress={() => setSelectedCell(null)}
+                                    style={styles.closeButton}
+                                >
+                                    <MaterialIcons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView style={styles.optionsScrollView}>
+                                {selectedCell?.cell.options?.map((option, index) => (
+                                    <SelectOption
+                                        key={index}
+                                        option={option}
+                                        onSelect={() => handleOptionSelect(option)}
+                                        colors={colors}
+                                        styles={styles}
+                                    />
+                                ))}
+                            </ScrollView>
+                        </Animated.View>
                     </View>
                 </Pressable>
             </Modal>
 
-            <SuccessModal 
+            <SuccessModal
                 isVisible={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
-                points={1}
+                points={points}
                 colors={colors}
             />
         </>

@@ -215,6 +215,15 @@ interface CurrentScheduleProps {
   isDark: boolean;
 }
 
+const getRandomEducationEmoji = () => {
+  const educationEmojis = [
+    '📚', '🎓', '✏️', '📝', '📖', '📐', '🔬', '🧪', '🔍', '📊',
+    '📈', '📉', '📋', '📅', '⏰', '🎯', '💡', '🧠', '📱', '💻',
+    '🎨', '🎼', '🏃‍♂️', '🏋️‍♂️', '🧘‍♀️', '🎭', '🎪', '🎨', '🎯', '🎮'
+  ];
+  return educationEmojis[Math.floor(Math.random() * educationEmojis.length)];
+};
+
 const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) => {
   const [currentClass, setCurrentClass] = useState<{ subject: string; startTime: string; endTime: string } | null>(null);
   const [currentEvent, setCurrentEvent] = useState<{ title: string; startTime: string; endTime: string } | null>(null);
@@ -348,7 +357,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
           {upcomingEvents.map((event, index) => (
             <View key={index} style={styles.upcomingItem}>
               <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
-                {event.title}
+                {getRandomEducationEmoji()} {event.title}
               </ThemedText>
               <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
                 {event.startTime} - {event.endTime}
@@ -1117,12 +1126,6 @@ export default function HomeScreen() {
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
 
-        <View style={styles.scrollIndicator}>
-          <ThemedText style={[styles.scrollIndicatorText, { color: colors.textSecondary }]}>
-            Scroll to see more subjects
-          </ThemedText>
-          <Ionicons name="arrow-down" size={20} color={colors.textSecondary} />
-        </View>
 
         <ScrollView
           showsVerticalScrollIndicator={true}

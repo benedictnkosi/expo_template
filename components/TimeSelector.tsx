@@ -28,6 +28,13 @@ export function TimeSelector({
     const handleTimeChange = (event: any, selectedDate?: Date) => {
         setShowPicker(false);
         if (selectedDate) {
+            // Ensure time is within 08:00-16:00 range
+            const hours = selectedDate.getHours();
+            if (hours < 8) {
+                selectedDate.setHours(8, 0, 0, 0);
+            } else if (hours > 16) {
+                selectedDate.setHours(16, 0, 0, 0);
+            }
             onChange(selectedDate);
         }
     };

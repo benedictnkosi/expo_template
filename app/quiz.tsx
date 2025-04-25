@@ -1020,9 +1020,7 @@ export default function QuizScreen() {
         if (timerRef.current) {
             clearInterval(timerRef.current);
         }
-        // Reset duration
-        setDuration(0);
-        // Start new timer
+        // Start new timer without resetting duration
         timerRef.current = setInterval(() => {
             setDuration(prev => prev + 1);
         }, 1000);
