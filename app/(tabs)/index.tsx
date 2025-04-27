@@ -1431,6 +1431,7 @@ const styles = StyleSheet.create({
   subjectsGrid: {
     flexDirection: 'column',
     gap: 16,
+    marginTop: 20,
   },
   subjectCard: {
     width: '100%',

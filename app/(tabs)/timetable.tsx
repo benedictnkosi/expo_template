@@ -547,10 +547,41 @@ export default function TimetableScreen() {
     }, [scrollToCurrentHour])
   );
 
+  const findFirstEventTimeSlot = useCallback(() => {
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const todayEvents = events[selectedDateStr] || [];
+
+    if (todayEvents.length === 0) return null;
+
+    // Sort events by start time
+    const sortedEvents = [...todayEvents].sort((a, b) => {
+      const [aHour, aMinute] = a.startTime.split(':').map(Number);
+      const [bHour, bMinute] = b.startTime.split(':').map(Number);
+      return aHour * 60 + aMinute - (bHour * 60 + bMinute);
+    });
+
+    const firstEvent = sortedEvents[0];
+    const [firstEventHour] = firstEvent.startTime.split(':');
+    const timeSlotIndex = STUDY_TIME_SLOTS.findIndex(slot => slot.startsWith(firstEventHour));
+
+    return timeSlotIndex >= 0 ? timeSlotIndex * HEIGHT_PER_HOUR : null;
+  }, [selectedDate, events]);
+
   // Handle day selection
   useEffect(() => {
+    if (viewMode === 'planning') {
+      const scrollPosition = findFirstEventTimeSlot();
+      if (scrollPosition !== null && timeSlotsScrollViewRef.current) {
+        setTimeout(() => {
+          timeSlotsScrollViewRef.current?.scrollTo({
+            y: Math.max(0, scrollPosition - HEIGHT_PER_HOUR), // Scroll to one hour before the event
+            animated: true
+          });
+        }, 100);
+      }
+    }
     scrollToCurrentHour();
-  }, [selectedDay, selectedDate, viewMode, scrollToCurrentHour]);
+  }, [selectedDay, selectedDate, viewMode, scrollToCurrentHour, findFirstEventTimeSlot]);
 
   // Initial scroll on mount
   useEffect(() => {
@@ -897,7 +928,7 @@ export default function TimetableScreen() {
                 styles.tabDescription,
                 { color: colorScheme === 'dark' ? COLORS_DARK.textSecondary : COLORS_LIGHT.textSecondary }
               ]}>
-                Prep plans, exam alerts & study hacks
+                Study Plans, Exams, Assignments & more
               </Text>
             </View>
           </View>

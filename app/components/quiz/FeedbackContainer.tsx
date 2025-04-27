@@ -20,6 +20,9 @@ interface FeedbackContainerProps {
     setZoomImageUrl: (url: string) => void;
     setIsZoomModalVisible: (visible: boolean) => void;
     renderMixedContent: (text: string, isDark: boolean, colors: any) => React.ReactNode;
+    handleListenToLecture: () => Promise<void>;
+    isLoadingLecture: boolean;
+    isLectureAvailable?: boolean;
 }
 
 export function FeedbackContainer({
@@ -36,11 +39,16 @@ export function FeedbackContainer({
     isApproving,
     setZoomImageUrl,
     setIsZoomModalVisible,
-    renderMixedContent
+    renderMixedContent,
+    handleListenToLecture,
+    isLoadingLecture,
+    isLectureAvailable
 }: FeedbackContainerProps) {
     const [isImageLoading, setIsImageLoading] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const styles = createStyles(colors, isDark);
+
+    console.log('isLectureAvailable', isLectureAvailable);
 
     useEffect(() => {
         if (isLoadingExplanation) {
@@ -232,6 +240,36 @@ export function FeedbackContainer({
                 </ThemedText>
             </TouchableOpacity>
 
+            {isLectureAvailable && (
+                <TouchableOpacity
+                    style={[styles.lectureButton, {
+                        backgroundColor: isDark ? '#059669' : '#10B981'
+                    }]}
+                    onPress={handleListenToLecture}
+                    disabled={isLoadingLecture}
+                    testID="lecture-button"
+                >
+                    <ThemedText style={styles.lectureButtonText}>
+                        {isLoadingLecture ? (
+                            <View
+                                style={styles.loaderContainer}
+                                testID="lecture-loading"
+                            >
+                                <ThemedText style={styles.lectureButtonText}>
+                                    Loading lecture
+                                    <Animated.Text style={[styles.loadingDots, { opacity: fadeAnim }]}>
+                                        ...
+                                    </Animated.Text>
+                                </ThemedText>
+                                <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : colors.primary} />
+                            </View>
+                        ) : (
+                            '🎧 Listen to a Lecture'
+                        )}
+                    </ThemedText>
+                </TouchableOpacity>
+            )}
+
             {(learnerRole === 'admin' || learnerRole === 'reviewer') && currentQuestion && (
                 <TouchableOpacity
                     style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
@@ -349,5 +387,16 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
         borderRadius: 8,
         marginVertical: 5,
         backgroundColor: 'transparent'
+    },
+    lectureButton: {
+        marginTop: 10,
+        padding: 12,
+        borderRadius: 8,
+        width: '100%',
+        alignItems: 'center',
+    },
+    lectureButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
     },
 }); 

@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NoteList } from './NoteList';
 import { FavoritesList } from './FavoritesList';
 import { RecordingsList } from './RecordingsList';
+import { TopicsList } from './TopicsList';
 
 interface Note {
     id: number;
@@ -64,7 +65,7 @@ interface NotesAndTodosProps {
     defaultTab?: TabType;
 }
 
-export type TabType = 'notes' | 'favorites' | 'lectures';
+export type TabType = 'notes' | 'favorites' | 'lectures' | 'topics';
 
 function createStyles(isDark: boolean) {
     return StyleSheet.create({
@@ -136,6 +137,31 @@ function createStyles(isDark: boolean) {
             borderRadius: 12,
             overflow: 'hidden',
         },
+        tabBar: {
+            flexDirection: 'row',
+            borderTopWidth: 1,
+            paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+            paddingTop: 12,
+        },
+        tabItem: {
+            flex: 1,
+            alignItems: 'center',
+        },
+        tabContent: {
+            alignItems: 'center',
+            gap: 4,
+        },
+        iconContainer: {
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        tabLabel: {
+            fontSize: 12,
+            textAlign: 'center',
+        },
     });
 }
 
@@ -198,61 +224,68 @@ export function NotesFavoritesRecordings({
         }
     };
 
+    const tabConfig = [
+        {
+            id: 'favorites',
+            label: 'Favorites',
+            emoji: '⭐️',
+            icon: 'star-outline'
+        },
+        {
+            id: 'notes',
+            label: 'Notes',
+            emoji: '📝',
+            icon: 'document-text-outline'
+        },
+        {
+            id: 'lectures',
+            label: 'Podcasts',
+            emoji: '🎧',
+            icon: 'headset-outline'
+        },
+        {
+            id: 'topics',
+            label: 'Topics',
+            emoji: '📚',
+            icon: 'book-outline'
+        }
+    ];
+
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]} edges={['top']}>
             <View style={styles.header}>
                 <View style={styles.headerContent}>
                     <Ionicons name="star" size={24} color="#FFD700" />
-                    <ThemedText style={styles.headerTitle}>My Collection</ThemedText>
+                    <ThemedText style={styles.headerTitle}>My Study Kit</ThemedText>
                 </View>
             </View>
-
-            <View style={styles.tabContainer}>
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === 'favorites' && styles.activeTab,
-                        { backgroundColor: activeTab === 'favorites' ? colors.primary : 'rgba(255, 255, 255, 0.1)' }
-                    ]}
-                    onPress={() => setActiveTab('favorites')}
-                >
-                    <ThemedText style={[
-                        styles.tabText,
-                        activeTab === 'favorites' && styles.activeTabText
-                    ]}>
-                        ⭐️ Favorites
-                    </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === 'notes' && styles.activeTab,
-                        { backgroundColor: activeTab === 'notes' ? colors.primary : 'rgba(255, 255, 255, 0.1)' }
-                    ]}
-                    onPress={() => setActiveTab('notes')}
-                >
-                    <ThemedText style={[
-                        styles.tabText,
-                        activeTab === 'notes' && styles.activeTabText
-                    ]}>
-                        📝 Notes
-                    </ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === 'lectures' && styles.activeTab,
-                        { backgroundColor: activeTab === 'lectures' ? colors.primary : 'rgba(255, 255, 255, 0.1)' }
-                    ]}
-                    onPress={() => setActiveTab('lectures')}
-                >
-                    <ThemedText style={[
-                        styles.tabText,
-                        activeTab === 'lectures' && styles.activeTabText
-                    ]}>
-                        🎧 Lectures
-                    </ThemedText>
-                </TouchableOpacity>
+            <View style={[styles.tabBar, { backgroundColor: isDark ? '#1a1a1a' : '#fff', borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }]}>
+                {tabConfig.map((tab) => (
+                    <TouchableOpacity
+                        key={tab.id}
+                        style={styles.tabItem}
+                        onPress={() => setActiveTab(tab.id as TabType)}
+                    >
+                        <View style={styles.tabContent}>
+                            <View style={[
+                                styles.iconContainer,
+                                activeTab === tab.id && { backgroundColor: colors.primary }
+                            ]}>
+                                <Ionicons
+                                    name={tab.icon as any}
+                                    size={20}
+                                    color={activeTab === tab.id ? '#fff' : colors.textSecondary}
+                                />
+                            </View>
+                            <ThemedText style={[
+                                styles.tabLabel,
+                                activeTab === tab.id && { color: colors.primary }
+                            ]}>
+                                {tab.label}
+                            </ThemedText>
+                        </View>
+                    </TouchableOpacity>
+                ))}
             </View>
 
             <ScrollView style={styles.content}>
@@ -274,13 +307,21 @@ export function NotesFavoritesRecordings({
                         loadSpecificQuestion={loadSpecificQuestionHandler}
                         getFavoriteCardColor={getFavoriteCardColor}
                     />
-                ) : (
+                ) : activeTab === 'lectures' ? (
                     <RecordingsList
                         recordings={lectureRecordings}
                         isLoading={isLecturesLoading}
                     />
+                ) : (
+                    <TopicsList
+                        subjectName={subjectName}
+                        isDark={isDark}
+                        colors={colors}
+                    />
                 )}
             </ScrollView>
+
+
         </SafeAreaView>
     );
 } 

@@ -87,6 +87,7 @@ export interface CheckAnswerResponse {
   subject: string;
   streakUpdated: boolean;
   streak: number;
+  recordingFileName?: string;
 }
 
 export interface Todo {

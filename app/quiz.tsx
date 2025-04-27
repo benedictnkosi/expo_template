@@ -39,6 +39,7 @@ import { RandomAIQuestion } from '../types/api';
 import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 import { Colors } from '@/constants/Colors';
 import { getSubjectIcon } from '@/utils/subjectIcons';
+import { RecordingPlayerModal } from './components/RecordingPlayerModal';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -76,6 +77,10 @@ interface Question {
     }
     related_question_ids: number[];
     answer_sheet?: string;
+    lecture_recording?: string;
+    lecture_name?: string;
+    lecture_image?: string;
+    topic?: string;
 }
 
 
@@ -609,6 +614,9 @@ interface QuestionCardProps {
     relatedQuestions: Question[];
     currentQuestionIndex: number;
     handleNextRelatedQuestion: () => void;
+    handleListenToLecture: () => Promise<void>;
+    isLoadingLecture: boolean;
+    recordingFileName?: string;
 }
 
 // Then define the QuestionCard component
@@ -635,7 +643,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     reportIssue,
     relatedQuestions,
     currentQuestionIndex,
-    handleNextRelatedQuestion
+    handleNextRelatedQuestion,
+    handleListenToLecture,
+    isLoadingLecture,
+    recordingFileName
 }) => {
     if (!question) return null;
 
@@ -649,6 +660,20 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             }]}
             testID="question-card"
         >
+            {question.topic && question.topic !== "NO MATCH" && (
+                <View style={[styles.topicContainer, {
+                    backgroundColor: isDark ? 'rgba(5, 150, 105, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                    borderColor: isDark ? '#059669' : '#10B981'
+                }]}>
+                    <ThemedText
+                        style={[styles.topicLabel, { color: isDark ? '#059669' : '#10B981' }]}
+                        testID="topic-label"
+                    >
+                        📚 {question.topic}
+                    </ThemedText>
+                </View>
+            )}
+
             {(question.context || question.image_path) && (
                 <ThemedText
                     style={styles.questionMeta}
@@ -874,6 +899,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     setZoomImageUrl={setZoomImageUrl}
                     setIsZoomModalVisible={setIsZoomModalVisible}
                     renderMixedContent={renderMixedContent}
+                    handleListenToLecture={handleListenToLecture}
+                    isLoadingLecture={isLoadingLecture}
+                    isLectureAvailable={recordingFileName !== ''}
                 />
             )}
         </ThemedView>
@@ -948,6 +976,7 @@ export default function QuizScreen() {
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
     const [correctAnswer, setCorrectAnswer] = useState<string>('');
+    const [recordingFileName, setRecordingFileName] = useState<string>('');
     const [selectedMode, setSelectedMode] = useState<'quiz' | 'lessons'>('quiz');
     const [isQuestionLoading, setIsQuestionLoading] = useState(false);
     const [showBadgeModal, setShowBadgeModal] = useState(false);
@@ -968,6 +997,14 @@ export default function QuizScreen() {
     }>({ p1: null, p2: null });
     const [isLoadingExamDates, setIsLoadingExamDates] = useState(false);
     const [randomLesson, setRandomLesson] = useState<RandomAIQuestion | null>(null);
+    const [isLectureModalVisible, setIsLectureModalVisible] = useState(false);
+    const [isLoadingLecture, setIsLoadingLecture] = useState(false);
+    const [lectureData, setLectureData] = useState<{
+        recordingFileName: string;
+        lecture_name: string;
+        image: string | null;
+        main_topic: string;
+    } | null>(null);
 
     // Add fetchRandomLesson function
     const fetchRandomLesson = async () => {
@@ -1163,6 +1200,8 @@ export default function QuizScreen() {
         setIsCorrect(null);
         setIsFromFavorites(false);
         stopTimer();
+        setRecordingFileName('');
+        setLectureData(null);
 
         try {
             setIsQuestionLoading(true);
@@ -1301,7 +1340,7 @@ export default function QuizScreen() {
             setIsCorrect(response.correct);
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
             setCorrectAnswer(response.correctAnswer);
-
+            setRecordingFileName(response.recordingFileName || '');
             // Modify to show points first, then delay the streak display
             if (response.streakUpdated && response.correct) {
                 setEarnedPoints(points);
@@ -2159,6 +2198,30 @@ export default function QuizScreen() {
         );
     };
 
+    const handleListenToLecture = async () => {
+        try {
+            setIsLoadingLecture(true);
+            const response = await fetch(`${HOST_URL}/api/topics/recordings/${subjectName}/${currentQuestion?.topic}`);
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                setLectureData(data.data);
+                setIsLectureModalVisible(true);
+            } else {
+                throw new Error(data.message || 'Failed to fetch lecture');
+            }
+        } catch (error) {
+            console.error('Error handling lecture:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to load lecture',
+            });
+        } finally {
+            setIsLoadingLecture(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <ImageLoadingPlaceholder />
@@ -2331,6 +2394,9 @@ export default function QuizScreen() {
                         relatedQuestions={relatedQuestions}
                         currentQuestionIndex={currentQuestionIndex}
                         handleNextRelatedQuestion={handleNextRelatedQuestion}
+                        handleListenToLecture={handleListenToLecture}
+                        isLoadingLecture={isLoadingLecture}
+                        recordingFileName={recordingFileName}
                     />
                 </ThemedView>
             </ScrollView>
@@ -2479,6 +2545,20 @@ export default function QuizScreen() {
                     </TouchableOpacity>
                 </ThemedView>
             </Modal>
+
+            <RecordingPlayerModal
+                isVisible={isLectureModalVisible}
+                onClose={() => {
+                    setIsLectureModalVisible(false);
+                    setLectureData(null);
+                }}
+                recording={lectureData || {
+                    recordingFileName: '',
+                    lecture_name: 'Lecture',
+                    image: null,
+                    main_topic: ''
+                }}
+            />
 
         </LinearGradient>
     );
@@ -3834,6 +3914,24 @@ const styles = StyleSheet.create({
         textAlign: 'left',
         marginBottom: 8,
 
+    },
+    topicLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 12,
+        paddingHorizontal: 16,
+    },
+    topicContainer: {
+        marginBottom: 16,
+        marginHorizontal: 16,
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    topicLabel: {
+        fontSize: 15,
+        fontWeight: '500',
+        textAlign: 'center',
     },
 });
 

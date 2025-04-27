@@ -15,13 +15,13 @@ import { getLearnerBadges, LearnerBadge } from '@/services/api';
 
 function getGradeColor(grade: number): string {
     switch (grade) {
-        case 7: return '#10B981'; // Outstanding
-        case 6: return '#3B82F6'; // Meritorious
-        case 5: return '#6366F1'; // Substantial
-        case 4: return '#F59E0B'; // Adequate
-        case 3: return '#F97316'; // Moderate
-        case 2: return '#EF4444'; // Elementary
-        default: return '#DC2626'; // Not achieved
+        case 7: return '#10B981'; // Outstanding - Green
+        case 6: return '#3B82F6'; // Meritorious - Blue
+        case 5: return '#6366F1'; // Substantial - Indigo
+        case 4: return '#F59E0B'; // Adequate - Amber
+        case 3: return '#F97316'; // Moderate - Orange
+        case 2: return '#EF4444'; // Elementary - Red
+        default: return '#DC2626'; // Not achieved - Dark Red
     }
 }
 
@@ -52,6 +52,21 @@ interface WeeklyProgress {
     percentage: number;
     grade: number;
     gradeDescription: string;
+}
+
+interface TopicReport {
+    topic: string | null;
+    total_attempts: number;
+    correct_answers: number;
+    incorrect_answers: number;
+    accuracy: number;
+    grade: number;
+}
+
+interface SubjectTopicReport {
+    uid: string;
+    subject: string;
+    report: TopicReport[];
 }
 
 const badgeImages: Record<string, ImageSourcePropType> = {
@@ -125,6 +140,20 @@ async function getLearnerWeeklyProgress(uid: string, subjectId?: number): Promis
     }
 }
 
+async function getLearnerTopicReport(uid: string, subject: string): Promise<SubjectTopicReport> {
+    try {
+        const response = await fetch(`${HOST_URL}/api/learner/${uid}/report?subject=${encodeURIComponent(subject)}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch topic report');
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error fetching topic report:', error);
+        throw error;
+    }
+}
+
 const SubjectReportModal = ({
     isVisible,
     onClose,
@@ -132,7 +161,8 @@ const SubjectReportModal = ({
     isDark,
     dailyActivity,
     weeklyProgress,
-    isLoading
+    isLoading,
+    uid
 }: {
     isVisible: boolean;
     onClose: () => void;
@@ -141,10 +171,30 @@ const SubjectReportModal = ({
     dailyActivity: DailyActivity[];
     weeklyProgress: WeeklyProgress[];
     isLoading: boolean;
+    uid: string;
 }) => {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
     const { width } = Dimensions.get('window');
+    const [topicReport, setTopicReport] = useState<TopicReport[]>([]);
+    const [isTopicLoading, setIsTopicLoading] = useState(false);
+
+    useEffect(() => {
+        async function fetchTopicReport() {
+            if (isVisible && subject) {
+                setIsTopicLoading(true);
+                try {
+                    const report = await getLearnerTopicReport(uid, subject.subject);
+                    setTopicReport(report.report);
+                } catch (error) {
+                    console.error('Error fetching topic report:', error);
+                } finally {
+                    setIsTopicLoading(false);
+                }
+            }
+        }
+        fetchTopicReport();
+    }, [isVisible, subject, uid]);
 
     const subjectDailyChartData = {
         labels: dailyActivity.map(item => {
@@ -183,6 +233,7 @@ const SubjectReportModal = ({
             transparent
             animationType="slide"
             onRequestClose={onClose}
+            testID='subject-report-modal'
         >
             <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
                 <View style={[
@@ -346,9 +397,108 @@ const SubjectReportModal = ({
                                     </View>
                                     <View style={[styles.modalGradeBadge, { backgroundColor: getGradeColor(subject.grade) }]}>
                                         <ThemedText style={styles.modalGradeText}>Level {subject.grade}</ThemedText>
-                                        <ThemedText style={styles.modalGradeDescription}>{subject.gradeDescription}</ThemedText>
+                                        <ThemedText style={styles.modalGradeDescription}>
+                                            {subject.grade === 1 ? 'Not achieved' :
+                                                subject.grade === 7 ? 'Outstanding achievement' :
+                                                    subject.grade === 6 ? 'Meritorious achievement' :
+                                                        subject.grade === 5 ? 'Substantial achievement' :
+                                                            subject.grade === 4 ? 'Adequate achievement' :
+                                                                subject.grade === 3 ? 'Moderate achievement' :
+                                                                    'Elementary achievement'}
+                                        </ThemedText>
                                     </View>
                                 </View>
+
+                                <ThemedView style={[styles.modalChartContainer, {
+                                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                                }]}>
+                                    <ThemedText style={styles.modalChartTitle}>📚 Topic Performance</ThemedText>
+                                    {isTopicLoading ? (
+                                        <View style={styles.modalLoadingContainer}>
+                                            <ActivityIndicator size="small" color={colors.primary} />
+                                            <ThemedText style={styles.modalLoadingText}>Loading topic data...</ThemedText>
+                                        </View>
+                                    ) : topicReport.length > 0 ? (
+                                        topicReport
+                                            .filter(topic => topic.topic !== "NO MATCH")
+                                            .map((topic: TopicReport, index: number) => (
+                                                <View key={index} style={[
+                                                    styles.topicItem,
+                                                    {
+                                                        backgroundColor: isDark
+                                                            ? 'rgba(255, 255, 255, 0.03)'
+                                                            : '#FFFFFF',
+                                                        borderColor: isDark
+                                                            ? 'rgba(255, 255, 255, 0.1)'
+                                                            : 'rgba(0, 0, 0, 0.04)'
+                                                    }
+                                                ]}>
+                                                    <ThemedText style={styles.topicName}>
+                                                        {topic.topic || 'Overall Performance'}
+                                                    </ThemedText>
+
+                                                    <View style={styles.topicStats}>
+                                                        <View style={styles.statGroup}>
+                                                            <ThemedText style={styles.topicStatLabel}>Total Answers</ThemedText>
+                                                            <ThemedText style={styles.topicStatValue}>{topic.total_attempts}</ThemedText>
+                                                        </View>
+                                                        <View style={styles.statGroup}>
+                                                            <ThemedText style={styles.topicStatLabel}>Correct</ThemedText>
+                                                            <ThemedText style={[
+                                                                styles.topicStatValue,
+                                                                { color: '#10B981' }
+                                                            ]}>
+                                                                {topic.correct_answers}
+                                                            </ThemedText>
+                                                        </View>
+                                                        <View style={styles.statGroup}>
+                                                            <ThemedText style={styles.topicStatLabel}>Incorrect</ThemedText>
+                                                            <ThemedText style={[
+                                                                styles.topicStatValue,
+                                                                { color: '#EF4444' }
+                                                            ]}>
+                                                                {topic.incorrect_answers}
+                                                            </ThemedText>
+                                                        </View>
+                                                    </View>
+
+                                                    <View style={styles.gradeContainer}>
+                                                        <View style={styles.successRate}>
+                                                            <ThemedText style={styles.successRateLabel}>Success Rate</ThemedText>
+                                                            <ThemedText style={[
+                                                                styles.successRateValue,
+                                                                { color: topic.grade === 1 ? '#EF4444' : '#3B82F6' }
+                                                            ]}>
+                                                                {topic.accuracy.toFixed(2)}%
+                                                            </ThemedText>
+                                                        </View>
+                                                        <View style={[
+                                                            styles.levelBadge,
+                                                            { backgroundColor: getGradeColor(topic.grade) }
+                                                        ]}>
+                                                            <ThemedText style={styles.levelText}>Level {topic.grade}</ThemedText>
+                                                            <ThemedText style={styles.levelDescription}>
+                                                                {topic.grade === 1 ? 'Not achieved' :
+                                                                    topic.grade === 7 ? 'Outstanding achievement' :
+                                                                        topic.grade === 6 ? 'Meritorious achievement' :
+                                                                            topic.grade === 5 ? 'Substantial achievement' :
+                                                                                topic.grade === 4 ? 'Adequate achievement' :
+                                                                                    topic.grade === 3 ? 'Moderate achievement' :
+                                                                                        'Elementary achievement'}
+                                                            </ThemedText>
+                                                        </View>
+                                                    </View>
+                                                </View>
+                                            ))
+                                    ) : (
+                                        <View style={styles.modalEmptyDataContainer}>
+                                            <ThemedText style={styles.modalEmptyDataText}>
+                                                No topic data available
+                                            </ThemedText>
+                                        </View>
+                                    )}
+                                </ThemedView>
                             </>
                         )}
                     </ScrollView>
@@ -682,14 +832,28 @@ export default function LearnerPerformanceScreen() {
                                         <View style={styles.performanceFooter}>
                                             <View style={styles.percentageContainer}>
                                                 <ThemedText style={styles.percentageLabel}>Success Rate</ThemedText>
-                                                <ThemedText style={[styles.percentageValue, { color: getGradeColor(subject.grade) }]}>
+                                                <ThemedText style={[
+                                                    styles.percentageValue,
+                                                    { color: subject.grade === 1 ? '#EF4444' : '#3B82F6' }
+                                                ]}>
                                                     {subject.percentage}%
                                                 </ThemedText>
                                             </View>
 
-                                            <View style={[styles.gradeContainer, { backgroundColor: getGradeColor(subject.grade) }]}>
-                                                <ThemedText style={styles.gradeText}>Level {subject.grade}</ThemedText>
-                                                <ThemedText style={styles.gradeDescription}>{subject.gradeDescription}</ThemedText>
+                                            <View style={[
+                                                styles.levelBadge,
+                                                { backgroundColor: getGradeColor(subject.grade) }
+                                            ]}>
+                                                <ThemedText style={styles.levelText}>Level {subject.grade}</ThemedText>
+                                                <ThemedText style={styles.levelDescription}>
+                                                    {subject.grade === 1 ? 'Not achieved' :
+                                                        subject.grade === 7 ? 'Outstanding achievement' :
+                                                            subject.grade === 6 ? 'Meritorious achievement' :
+                                                                subject.grade === 5 ? 'Substantial achievement' :
+                                                                    subject.grade === 4 ? 'Adequate achievement' :
+                                                                        subject.grade === 3 ? 'Moderate achievement' :
+                                                                            'Elementary achievement'}
+                                                </ThemedText>
                                             </View>
                                         </View>
                                     </ThemedView>
@@ -708,6 +872,7 @@ export default function LearnerPerformanceScreen() {
                     dailyActivity={subjectDailyActivity}
                     weeklyProgress={subjectWeeklyProgress}
                     isLoading={isSubjectLoading}
+                    uid={uid as string}
                 />
             )}
         </LinearGradient>
@@ -839,19 +1004,18 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '700',
     },
-    gradeContainer: {
+    levelBadge: {
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderRadius: 12,
-        alignItems: 'center',
     },
-    gradeText: {
+    levelText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 2,
     },
-    gradeDescription: {
+    levelDescription: {
         color: '#FFFFFF',
         fontSize: 14,
         opacity: 0.9,
@@ -922,6 +1086,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
+        flex: 1,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -941,7 +1106,7 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     modalScrollViewContent: {
-        paddingBottom: 40,
+        paddingBottom: 0,
     },
     modalLoadingContainer: {
         flex: 1,
@@ -1100,8 +1265,57 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         marginBottom: 8,
     },
+    lockedBadgeImage: {
+        opacity: 0.5,
+    },
     badgeName: {
         fontSize: 14,
         textAlign: 'center'
+    },
+    topicItem: {
+        marginBottom: 16,
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    topicName: {
+        fontSize: 14,
+        marginBottom: 16,
+    },
+    topicStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    statGroup: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    topicStatLabel: {
+        fontSize: 13,
+        opacity: 0.7,
+        marginBottom: 4,
+    },
+    topicStatValue: {
+        fontSize: 20,
+        fontWeight: '600',
+    },
+    gradeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    successRate: {
+        flex: 1,
+    },
+    successRateLabel: {
+        fontSize: 13,
+        opacity: 0.7,
+        marginBottom: 4,
+    },
+    successRateValue: {
+        fontSize: 24,
+        fontWeight: '700',
     },
 }); 

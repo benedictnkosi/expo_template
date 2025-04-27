@@ -5,6 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
 import { Ionicons } from '@expo/vector-icons';
 import { RecordingPlayerModal } from './RecordingPlayerModal';
+import { TOPIC_EMOJIS } from '../constants/topicEmojis';
 
 interface LectureRecording {
     recordingFileName: string;
@@ -22,97 +23,6 @@ interface GroupedRecordings {
     [key: string]: LectureRecording[];
 }
 
-const TOPIC_EMOJIS: { [key: string]: string } = {
-    // Physical Sciences
-    'CHEMICAL CHANGE: Acids and bases': '⚗️',
-    'CHEMICAL CHANGE: Chemical equilibrium': '⚖️',
-    'CHEMICAL CHANGE: Electrochemical reactions': '⚡',
-    'CHEMICAL CHANGE: Rate and extent of reaction': '⏳',
-    'ELECTRICITY & MAGNETISM: Electrodynamics': '⚡',
-    'MATTER & MATERIALS: Optical phenomena and properties of materials': '🔮',
-    'MATTER & MATERIALS: Organic molecules': '🔬',
-    'MECHANICS: Momentum & impulse': '🏃‍♂️',
-    'MECHANICS: Work, energy, and power': '💪',
-    'WAVES, SOUND & LIGHT: Doppler Effect': '📡',
-
-    // Life Sciences
-    'ANIMAL NUTRITION': '🥩',
-    'ANIMAL PRODUCTION': '🐑',
-    'ANIMAL REPRODUCTION': '🐾',
-    'ANIMAL SHELTER AND HOUSING': '🐄',
-    'ANIMAL DISEASES AND PROTECTION': '🦠',
-    'BASIC AGRICULTURAL GENETICS': '🌾',
-    'DNA: THE CODE OF LIFE': '🧬',
-    'GENETICS AND INHERITANCE': '🧬',
-    'GENETICALLY MODIFIED ORGANISMS (GMO)': '🌾🔬',
-    'HUMAN REPRODUCTION': '🧑‍🤝‍🧑',
-    'INTERNAL AND EXTERNAL PARASITES': '🐛',
-    'MEIOSIS': '🔬',
-    'PATTERNS OF INHERITANCE': '🌱',
-    'RESPONDING TO THE ENVIRONMENT (HUMANS)': '🌡️',
-    'SELECTION': '✅',
-
-    // Geography
-    'DRAINAGE SYSTEMS IN SA': '🏞️',
-    'FLUVIAL PROCESSES': '🌊',
-    'MAP SKILLS & GIS': '🗺️',
-    'MID-LATITUDE CYCLONES': '🌪️',
-    'MODELS OF URBAN STRUCTURE': '🏙️🔲',
-    'RIVER GRADING': '🏞️',
-    'SUBTROPICAL ANTICYCLONES AND ASSOCIATED WEATHER CONDITIONS': '☀️',
-    'TROPICAL CYCLONES': '🌀',
-    'URBAN CLIMATES': '🌆',
-    'URBAN HIERARCHIES AND URBAN STRUCTURE & PATTERNS': '🏢',
-    'URBAN SETTLEMENT ISSUES': '🏙️',
-    'VALLEY CLIMATES': '🏞️',
-
-    // Business Studies & Economics
-    'AGRICULTURAL ENTREPRENEURSHIP': '🌱',
-    'AGRICULTURAL MARKETING SYSTEMS': '📦',
-    'AGRICULTURAL MARKETING AND MARKET EQUILIBRIUM': '📦⚖️',
-    'AGRICULTURAL PRODUCTION FACTORS': '🌾',
-    'BUSINESS CYCLES': '🔄📉',
-    'BUSINESS SECTORS & THEIR ENVIRONMENTS': '🏢',
-    'CAPITAL AND MANAGEMENT': '💼',
-    'CIRCULAR FLOW': '🔄',
-    'CREATIVE THINKING & PROBLEM SOLVING': '💡',
-    'DYNAMICS OF MARKETS: PERFECT MARKETS': '📈🔒',
-    'DYNAMICS OF MARKETS: IMPERFECT MARKETS': '📉🔧',
-    'DYNAMICS OF MARKETS: MARKET FAILURES': '💥📉',
-    'ECONOMIC AND SOCIAL INDICATORS': '📊',
-    'ECONOMIC GROWTH AND DEVELOPMENT': '📈',
-    'ECONOMIC ISSUES OF THE DAY: ENVIRONMENTAL SUSTAINABILITY': '🌍💡',
-    'ECONOMIC ISSUES OF THE DAY: INFLATION': '💸📉',
-    'ECONOMIC ISSUES OF THE DAY: TOURISM': '🌍✈️',
-    'FORMS OF OWNERSHIP': '🏢',
-    'GROWTH & DEVELOPMENT: INDUSTRIAL DEVELOPMENT': '🏭📈',
-    'HUMAN RESOURCES FUNCTION': '👥💼',
-    'HUMAN RIGHTS, INCLUSIVITY & ENVIRONMENTAL ISSUES': '🌍🤝',
-    'IMPACTS OF RECENT LEGISLATION': '📜⚖️',
-    'INTERNATIONAL TRADE (FOREIGN EXCHANGE MARKETS)': '💵🌍',
-    'INTERNATIONAL TRADE POLICIES (PROTECTIONISM & FREE TRADE)': '🌐💱',
-    'INVESTMENT: INSURANCE': '💵',
-    'INVESTMENT: SECURITIES': '📈',
-    'MACRO-ENVIRONMENT: BUSINESS STRATEGIES': '🏢📈',
-    'MANAGEMENT & LEADERSHIP': '🧑‍💼',
-    'PRESENTATION AND DATA RESPONSE': '📊',
-    'PROFESSIONALISM & ETHICS': '💼🤝',
-    'PUBLIC SECTOR': '🏛️',
-    'QUALITY OF PERFORMANCE': '🌟',
-    'SOCIAL RESPONSIBILITY': '🤝',
-    'TEAM PERFORMANCE & CONFLICT MANAGEMENT': '💼🤝',
-
-    // History
-    'CIVIL RESISTANCE IN SOUTH AFRICA: 1970s to 1980': '✊🏽',
-    'CIVIL SOCIETY PROTESTS 1950s-1990s': '✊🏽',
-    'EXTENSION OF THE COLD WAR': '❄️',
-    'INDEPENDENT AFRICA': '🌍',
-    'THE COMING OF DEMOCRACY TO SOUTH AFRICA AND COMING TO TERMS WITH THE PAST': '🗳️',
-    'THE END OF THE COLD WAR AND NEW WORLD ORDER TO PRESENT': '🌐',
-    'TOPIC 1: EXTENSION OF THE COLD WAR': '❄️',
-    'TOPIC 2: INDEPENDENT AFRICA': '🌍'
-};
-
 function getTopicEmoji(topic: string): string {
     const lowerTopic = topic.toLowerCase();
     const lowerMainCategory = topic.split(':')[0].trim().toLowerCase();
@@ -120,13 +30,13 @@ function getTopicEmoji(topic: string): string {
     // First try to match the exact topic
     const exactMatch = Object.entries(TOPIC_EMOJIS).find(([key]) => key.toLowerCase() === lowerTopic);
     if (exactMatch) {
-        return exactMatch[1];
+        return exactMatch[1] as string;
     }
 
     // If no exact match, try to match the main category (before the colon)
     const categoryMatch = Object.entries(TOPIC_EMOJIS).find(([key]) => key.toLowerCase() === lowerMainCategory);
     if (categoryMatch) {
-        return categoryMatch[1];
+        return categoryMatch[1] as string;
     }
 
     // Return default emoji if no match found

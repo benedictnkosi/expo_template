@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Image, Dimensions } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, Image, Dimensions, Platform } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
 import { AudioPlayer } from '@/components/AudioPlayer';
@@ -11,6 +11,7 @@ interface LectureRecording {
     recordingFileName: string;
     lecture_name: string;
     image: string | null;
+    main_topic: string;
 }
 
 interface RecordingPlayerModalProps {
@@ -25,18 +26,13 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
     const { colors, isDark } = useTheme();
     const styles = createStyles(isDark);
 
-    useEffect(() => {
-        if (recording) {
-            const audioUrl = `${HOST_URL}/api/lecture-recording/${recording.recordingFileName}`;
-            console.log('[RecordingPlayerModal] Audio URL constructed:', audioUrl);
-            console.log('[RecordingPlayerModal] Recording data:', recording);
-            console.log('[RecordingPlayerModal] HOST_URL:', HOST_URL);
-        }
-    }, [recording]);
-
     if (!recording) return null;
 
-    const audioUrl = `${HOST_URL}/api/lecture-recording/${recording.recordingFileName}`;
+    const audioFileName = Platform.OS === 'ios'
+        ? recording.recordingFileName.replace('.opus', '.m4a')
+        : recording.recordingFileName;
+
+    const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}`;
 
     return (
         <Modal
@@ -48,7 +44,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
         >
             <View style={styles.container}>
                 <View style={styles.header}>
-                    <ThemedText style={styles.title}>{recording.lecture_name}</ThemedText>
+                    <ThemedText style={styles.title}>{recording.main_topic}</ThemedText>
                     <Ionicons
                         name="close"
                         size={24}
