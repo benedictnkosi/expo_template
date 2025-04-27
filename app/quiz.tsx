@@ -23,7 +23,7 @@ import { analytics } from '../services/analytics';
 import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
-import { NotesAndTodosAndFavorites, TabType } from '@/app/components/NotesAndTodosAndFavorites';
+import { NotesFavoritesRecordings, TabType } from '@/app/components/NotesFavoritesRecordings';
 import { StreakModal, ReportModal, ExplanationModal, ZoomModal, RestartModal, ThankYouModal } from '@/app/components/quiz/quiz-modals';
 import { FeedbackContainer } from './components/quiz/FeedbackContainer';
 import { PerformanceSummary, SubjectStats as ImportedSubjectStats } from './components/quiz/PerformanceSummary';
@@ -2244,7 +2244,7 @@ export default function QuizScreen() {
 
                         {/* Favorites Section */}
                         <View style={[styles.favoritesSection]}>
-                            <NotesAndTodosAndFavorites
+                            <NotesFavoritesRecordings
                                 subjectName={subjectName as string}
                                 currentQuestion={currentQuestion}
                                 favoriteQuestions={favoriteQuestions}

@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Platform } from 'react-native';
-import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
-import Modal from 'react-native-modal';
 import { API_BASE_URL, HOST_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 import { useTheme } from '@/contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { NoteList } from './NoteList';
 import { FavoritesList } from './FavoritesList';
+import { RecordingsList } from './RecordingsList';
 
 interface Note {
     id: number;
@@ -43,6 +41,11 @@ interface PopularQuestion {
     favoriteCount: number;
 }
 
+interface LectureRecording {
+    recordingFileName: string;
+    lecture_name: string;
+}
+
 interface NotesAndTodosProps {
     subjectName: string;
     currentQuestion?: {
@@ -59,7 +62,7 @@ interface NotesAndTodosProps {
     defaultTab?: TabType;
 }
 
-export type TabType = 'notes' | 'favorites';
+export type TabType = 'notes' | 'favorites' | 'lectures';
 
 function createStyles(isDark: boolean) {
     return StyleSheet.create({
@@ -110,10 +113,31 @@ function createStyles(isDark: boolean) {
             paddingVertical: 16,
             paddingHorizontal: 0,
         },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+        },
+        emptyContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+        },
+        lecturesContainer: {
+            flex: 1,
+            padding: 16,
+        },
+        lectureCard: {
+            marginBottom: 16,
+            borderRadius: 12,
+            overflow: 'hidden',
+        },
     });
 }
 
-export function NotesAndTodosAndFavorites({
+export function NotesFavoritesRecordings({
     subjectName,
     currentQuestion,
     favoriteQuestions,
@@ -128,10 +152,41 @@ export function NotesAndTodosAndFavorites({
     const styles = createStyles(isDark);
     const [notes, setNotes] = useState<Note[]>([]);
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+    const [lectureRecordings, setLectureRecordings] = useState<LectureRecording[]>([]);
+    const [isLecturesLoading, setIsLecturesLoading] = useState(false);
 
     useEffect(() => {
-        // No need to fetch todos here anymore as it's handled in TodoList
-    }, [subjectName, currentQuestion]);
+        if (activeTab === 'lectures') {
+            fetchLectureRecordings();
+        }
+    }, [activeTab, subjectName]);
+
+    const fetchLectureRecordings = async () => {
+        try {
+            setIsLecturesLoading(true);
+            const response = await fetch(`${HOST_URL}/api/topics/recordings/${encodeURIComponent(subjectName)}`);
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                setLectureRecordings(data.data);
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Failed to load lecture recordings',
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching lecture recordings:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to load lecture recordings',
+            });
+        } finally {
+            setIsLecturesLoading(false);
+        }
+    };
 
     const loadSpecificQuestionHandler = async (questionId: number) => {
         try {
@@ -181,6 +236,21 @@ export function NotesAndTodosAndFavorites({
                         📝 Notes
                     </ThemedText>
                 </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.tabButton,
+                        activeTab === 'lectures' && styles.activeTab,
+                        { backgroundColor: activeTab === 'lectures' ? colors.primary : 'rgba(255, 255, 255, 0.1)' }
+                    ]}
+                    onPress={() => setActiveTab('lectures')}
+                >
+                    <ThemedText style={[
+                        styles.tabText,
+                        activeTab === 'lectures' && styles.activeTabText
+                    ]}>
+                        🎧 Lectures
+                    </ThemedText>
+                </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.content}>
@@ -194,13 +264,18 @@ export function NotesAndTodosAndFavorites({
                         currentQuestionId={currentQuestion?.id}
                         onNotesChange={setNotes}
                     />
-                ) : (
+                ) : activeTab === 'favorites' ? (
                     <FavoritesList
                         favoriteQuestions={favoriteQuestions}
                         popularQuestions={popularQuestions}
                         isFavoritesLoading={isFavoritesLoading}
                         loadSpecificQuestion={loadSpecificQuestionHandler}
                         getFavoriteCardColor={getFavoriteCardColor}
+                    />
+                ) : (
+                    <RecordingsList
+                        recordings={lectureRecordings}
+                        isLoading={isLecturesLoading}
                     />
                 )}
             </ScrollView>
