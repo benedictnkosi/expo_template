@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
@@ -17,17 +17,42 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [position, setPosition] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [hasDuration, setHasDuration] = useState(false);
     const { colors } = useTheme();
 
     const SKIP_DURATION = 5000; // 5 seconds in milliseconds
 
     useEffect(() => {
+        // Configure audio session
+        async function configureAudioSession() {
+            console.log('[AudioPlayer] Configuring audio session...');
+            try {
+                await Audio.setAudioModeAsync({
+                    allowsRecordingIOS: false,
+                    staysActiveInBackground: true,
+                    playsInSilentModeIOS: true,
+                    shouldDuckAndroid: true,
+                    playThroughEarpieceAndroid: false,
+                });
+                console.log('[AudioPlayer] Audio session configured successfully');
+            } catch (error) {
+                console.error('[AudioPlayer] Error configuring audio session:', error);
+            }
+        }
+        configureAudioSession();
+
         return sound
             ? () => {
+                console.log('[AudioPlayer] Cleaning up sound...');
                 sound.unloadAsync();
             }
             : undefined;
     }, [sound]);
+
+    // Log when props change
+    useEffect(() => {
+        console.log('[AudioPlayer] Props updated:', { audioUrl, imageUrl, title });
+    }, [audioUrl, imageUrl, title]);
 
     function formatTime(milliseconds: number): string {
         const totalSeconds = Math.floor(milliseconds / 1000);
@@ -37,57 +62,127 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
     }
 
     async function playSound() {
+        console.log('[AudioPlayer] Attempting to play sound:', audioUrl);
         try {
             setIsLoading(true);
+            setHasDuration(false);
+            console.log('[AudioPlayer] Loading state set to true');
+
+            // Unload existing sound if any
+            if (sound) {
+                console.log('[AudioPlayer] Unloading existing sound');
+                await sound.unloadAsync();
+            }
+
+            console.log('[AudioPlayer] Creating new sound instance...');
+            // Create new sound instance
             const { sound: newSound } = await Audio.Sound.createAsync(
                 { uri: audioUrl },
-                { shouldPlay: true }
+                {
+                    shouldPlay: true,
+                    isLooping: false,
+                    volume: 1.0,
+                    rate: 1.0,
+                    androidImplementation: 'MediaPlayer',
+                    iosImplementation: 'AVPlayer'
+                },
+                (status) => {
+                    console.log('[AudioPlayer] Loading status:', status);
+                    if (status.isLoaded && status.durationMillis) {
+                        console.log('[AudioPlayer] Initial duration:', status.durationMillis);
+                        setDuration(status.durationMillis);
+                        setHasDuration(true);
+                    }
+                }
             );
+
+            console.log('[AudioPlayer] Sound instance created successfully');
             setSound(newSound);
             setIsPlaying(true);
             setIsLoading(false);
 
             newSound.setOnPlaybackStatusUpdate((status) => {
                 if (status.isLoaded) {
+                    console.log('[AudioPlayer] Playback status update:', {
+                        position: status.positionMillis,
+                        duration: status.durationMillis,
+                        isPlaying: status.isPlaying,
+                        didJustFinish: status.didJustFinish
+                    });
                     setPosition(status.positionMillis);
-                    setDuration(status.durationMillis || 0);
+
+                    // Only update duration if we haven't set it yet or if we get a valid duration
+                    if (!hasDuration && status.durationMillis) {
+                        setDuration(status.durationMillis);
+                        setHasDuration(true);
+                    }
+
                     if (status.didJustFinish) {
+                        console.log('[AudioPlayer] Playback finished');
                         setIsPlaying(false);
                     }
+                } else {
+                    console.log('[AudioPlayer] Received unloaded status:', status);
                 }
             });
         } catch (error) {
-            console.error('Error playing sound:', error);
+            console.error('[AudioPlayer] Error playing sound:', error);
+            if (error instanceof Error) {
+                console.error('[AudioPlayer] Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+            }
             setIsLoading(false);
         }
     }
 
     async function stopSound() {
         if (sound) {
-            await sound.stopAsync();
-            setIsPlaying(false);
+            console.log('[AudioPlayer] Attempting to stop sound');
+            try {
+                await sound.stopAsync();
+                setIsPlaying(false);
+                console.log('[AudioPlayer] Sound stopped successfully');
+            } catch (error) {
+                console.error('[AudioPlayer] Error stopping sound:', error);
+            }
         }
     }
 
     async function rewindSound() {
         if (sound) {
-            const status = await sound.getStatusAsync();
-            if (status.isLoaded) {
-                const newPosition = Math.max(0, status.positionMillis - SKIP_DURATION);
-                await sound.setPositionAsync(newPosition);
+            console.log('[AudioPlayer] Attempting to rewind');
+            try {
+                const status = await sound.getStatusAsync();
+                console.log('[AudioPlayer] Current status before rewind:', status);
+                if (status.isLoaded) {
+                    const newPosition = Math.max(0, status.positionMillis - SKIP_DURATION);
+                    await sound.setPositionAsync(newPosition);
+                    console.log('[AudioPlayer] Rewound to position:', newPosition);
+                }
+            } catch (error) {
+                console.error('[AudioPlayer] Error rewinding sound:', error);
             }
         }
     }
 
     async function fastForwardSound() {
         if (sound) {
-            const status = await sound.getStatusAsync();
-            if (status.isLoaded) {
-                const newPosition = Math.min(
-                    status.durationMillis || 0,
-                    status.positionMillis + SKIP_DURATION
-                );
-                await sound.setPositionAsync(newPosition);
+            console.log('[AudioPlayer] Attempting to fast forward');
+            try {
+                const status = await sound.getStatusAsync();
+                console.log('[AudioPlayer] Current status before fast forward:', status);
+                if (status.isLoaded) {
+                    const newPosition = Math.min(
+                        status.durationMillis || 0,
+                        status.positionMillis + SKIP_DURATION
+                    );
+                    await sound.setPositionAsync(newPosition);
+                    console.log('[AudioPlayer] Fast forwarded to position:', newPosition);
+                }
+            } catch (error) {
+                console.error('[AudioPlayer] Error fast forwarding sound:', error);
             }
         }
     }
@@ -101,6 +196,9 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
                     source={{ uri: imageUrl }}
                     style={styles.image}
                     resizeMode="cover"
+                    onLoadStart={() => console.log('[AudioPlayer] Image loading started:', imageUrl)}
+                    onLoad={() => console.log('[AudioPlayer] Image loaded successfully:', imageUrl)}
+                    onError={(error) => console.error('[AudioPlayer] Image loading error:', error.nativeEvent.error)}
                 />
             )}
             <View style={styles.controlsContainer}>
@@ -113,7 +211,7 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
                             style={[
                                 styles.progressFill,
                                 {
-                                    width: `${progress}%`,
+                                    width: `${hasDuration ? (position / duration) * 100 : 0}%`,
                                     backgroundColor: colors.primary
                                 }
                             ]}
@@ -121,7 +219,9 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
                     </View>
                     <View style={styles.timeContainer}>
                         <ThemedText style={styles.timeText}>{formatTime(position)}</ThemedText>
-                        <ThemedText style={styles.timeText}>{formatTime(duration)}</ThemedText>
+                        <ThemedText style={styles.timeText}>
+                            {hasDuration ? formatTime(duration) : '--:--'}
+                        </ThemedText>
                     </View>
                 </View>
                 <View style={styles.controlsRow}>

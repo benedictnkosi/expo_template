@@ -44,6 +44,8 @@ interface PopularQuestion {
 interface LectureRecording {
     recordingFileName: string;
     lecture_name: string;
+    image: string | null;
+    main_topic: string;
 }
 
 interface NotesAndTodosProps {

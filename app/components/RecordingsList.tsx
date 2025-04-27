@@ -199,7 +199,6 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
                         {lecture.lecture_name}
                     </ThemedText>
                 </View>
-                <Ionicons name="play-circle" size={28} color={colors.primary} />
             </View>
         </TouchableOpacity>
     );
@@ -207,6 +206,11 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
     return (
         <>
             <ScrollView style={styles.container}>
+                <View style={styles.disclaimerContainer}>
+                    <ThemedText style={styles.disclaimerText}>
+                        ⚠️ All lectures are AI-generated and have not been quality checked
+                    </ThemedText>
+                </View>
                 {Object.entries(groupedRecordings).map(([topic, topicRecordings]) => (
                     <View key={topic} style={styles.topicSection}>
                         <View style={styles.topicHeader}>
@@ -299,6 +303,19 @@ function createStyles(isDark: boolean) {
         lectureTitle: {
             fontSize: 15,
             lineHeight: 22,
+        },
+        disclaimerText: {
+            fontSize: 12,
+            color: isDark ? '#FFA500' : '#FF8C00',
+            textAlign: 'center',
+            padding: 12,
+            backgroundColor: isDark ? 'rgba(255, 165, 0, 0.1)' : 'rgba(255, 140, 0, 0.1)',
+            borderRadius: 8,
+            marginBottom: 16,
+        },
+        disclaimerContainer: {
+            paddingHorizontal: 16,
+            marginTop: 8,
         },
     });
 } 

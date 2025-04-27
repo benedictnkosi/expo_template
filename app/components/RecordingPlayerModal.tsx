@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Image, Dimensions } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
@@ -25,7 +25,18 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
     const { colors, isDark } = useTheme();
     const styles = createStyles(isDark);
 
+    useEffect(() => {
+        if (recording) {
+            const audioUrl = `${HOST_URL}/api/lecture-recording/${recording.recordingFileName}`;
+            console.log('[RecordingPlayerModal] Audio URL constructed:', audioUrl);
+            console.log('[RecordingPlayerModal] Recording data:', recording);
+            console.log('[RecordingPlayerModal] HOST_URL:', HOST_URL);
+        }
+    }, [recording]);
+
     if (!recording) return null;
+
+    const audioUrl = `${HOST_URL}/api/lecture-recording/${recording.recordingFileName}`;
 
     return (
         <Modal
@@ -53,6 +64,9 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
                             source={{ uri: recording.image }}
                             style={styles.image}
                             resizeMode="cover"
+                            onLoadStart={() => console.log('[RecordingPlayerModal] Image loading started:', recording.image)}
+                            onLoad={() => console.log('[RecordingPlayerModal] Image loaded successfully:', recording.image)}
+                            onError={(error) => console.error('[RecordingPlayerModal] Image loading error:', error.nativeEvent.error)}
                         />
                     ) : (
                         <View style={[styles.image, styles.imagePlaceholder]}>
@@ -62,7 +76,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
 
                     <View style={styles.playerContainer}>
                         <AudioPlayer
-                            audioUrl={`${HOST_URL}/api/lecture-recording/${recording.recordingFileName}`}
+                            audioUrl={audioUrl}
                             title={recording.lecture_name}
                         />
                     </View>

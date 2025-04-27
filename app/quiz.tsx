@@ -5,13 +5,10 @@ import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
-import WebView from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
 import * as StoreReview from 'expo-store-review';
-import ZoomableImageNew from '../components/ZoomableImageNew';
-import { TabView, TabBar } from 'react-native-tab-view';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
@@ -1198,8 +1195,6 @@ export default function QuizScreen() {
                 });
                 return;
             }
-
-            console.log('question', data);
 
             if (data.status === "NOK" && data.message === "No more questions available") {
                 setNoMoreQuestions(true);
