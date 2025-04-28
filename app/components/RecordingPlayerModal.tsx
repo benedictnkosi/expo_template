@@ -28,9 +28,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
 
     if (!recording) return null;
 
-    const audioFileName = Platform.OS === 'ios'
-        ? recording.recordingFileName.replace('.opus', '.m4a')
-        : recording.recordingFileName;
+    const audioFileName = recording.recordingFileName.replace('.opus', '.m4a');
 
     const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}`;
 

@@ -63,6 +63,7 @@ interface NotesAndTodosProps {
     loadSpecificQuestion: (questionId: number) => Promise<void>;
     getFavoriteCardColor: (index: number) => string;
     defaultTab?: TabType;
+    handleTopicSelect: (topic?: string) => void;
 }
 
 export type TabType = 'notes' | 'favorites' | 'lectures' | 'topics';
@@ -173,7 +174,8 @@ export function NotesFavoritesRecordings({
     isFavoritesLoading,
     loadSpecificQuestion,
     getFavoriteCardColor,
-    defaultTab = 'favorites'
+    defaultTab = 'favorites',
+    handleTopicSelect,
 }: NotesAndTodosProps) {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
@@ -306,6 +308,7 @@ export function NotesFavoritesRecordings({
                         isFavoritesLoading={isFavoritesLoading}
                         loadSpecificQuestion={loadSpecificQuestionHandler}
                         getFavoriteCardColor={getFavoriteCardColor}
+
                     />
                 ) : activeTab === 'lectures' ? (
                     <RecordingsList
@@ -317,6 +320,7 @@ export function NotesFavoritesRecordings({
                         subjectName={subjectName}
                         isDark={isDark}
                         colors={colors}
+                        handleTopicSelect={handleTopicSelect}
                     />
                 )}
             </ScrollView>

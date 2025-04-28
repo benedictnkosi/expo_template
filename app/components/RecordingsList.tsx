@@ -179,7 +179,7 @@ function createStyles(isDark: boolean) {
             marginRight: 8,
         },
         topicTitle: {
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: '700',
             flex: 1,
             color: isDark ? '#E0E0E0' : '#333333',
@@ -211,7 +211,7 @@ function createStyles(isDark: boolean) {
             marginRight: 8,
         },
         lectureTitle: {
-            fontSize: 15,
+            fontSize: 14,
             lineHeight: 22,
         },
         disclaimerText: {

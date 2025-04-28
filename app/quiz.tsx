@@ -990,6 +990,7 @@ export default function QuizScreen() {
     const [relatedQuestions, setRelatedQuestions] = useState<Question[]>([]);
     const [showRelatedQuestions, setShowRelatedQuestions] = useState(false);
     const [totalRelatedQuestions, setTotalRelatedQuestions] = useState(0);
+    const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
     // Add new state for exam dates
     const [examDates, setExamDates] = useState<{
         p1: string | null;
@@ -1182,7 +1183,7 @@ export default function QuizScreen() {
         }
     };
 
-    const loadRandomQuestion = async (paper: string, questionId?: number) => {
+    const loadRandomQuestion = async (paper: string, questionId?: number, topic?: string) => {
         if (!user?.uid || !subjectName) {
             console.warn('Missing required parameters: user ID or subject name');
             return;
@@ -1206,10 +1207,20 @@ export default function QuizScreen() {
         try {
             setIsQuestionLoading(true);
             const endpoint = selectedMode === 'lessons' ? 'random' : 'byname';
-            const encodedSubjectName = encodeURIComponent(`${subjectName}`);
-            const response = await fetch(
-                `${API_BASE_URL}/question/${endpoint}?subject_name=${encodedSubjectName}&paper_name=${paper}&uid=${user.uid}&question_id=${questionId || 0}`
-            );
+            const encodedSubjectName = `${subjectName}`;
+            console.log('Loading question with topic:', topic);
+
+            // Build URL with topic if selected
+            const url = new URL(`${API_BASE_URL}/question/${endpoint}`);
+            url.searchParams.append('subject_name', encodedSubjectName);
+            url.searchParams.append('paper_name', paper);
+            url.searchParams.append('uid', user.uid);
+            url.searchParams.append('question_id', (questionId || 0).toString());
+            if (topic) {
+                url.searchParams.append('topic', topic);
+            }
+
+            const response = await fetch(url.toString());
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -1235,7 +1246,10 @@ export default function QuizScreen() {
                 return;
             }
 
+            console.log('data', data);
+
             if (data.status === "NOK" && data.message === "No more questions available") {
+                console.log('No more questions available');
                 setNoMoreQuestions(true);
                 setCurrentQuestion(null);
             } else {
@@ -1275,9 +1289,15 @@ export default function QuizScreen() {
                 // If this question has related questions, load them
                 if (data.related_question_ids && data.related_question_ids.length > 0) {
                     const relatedQuestionsPromises = data.related_question_ids.map(async (id: number) => {
-                        const response = await fetch(
-                            `${API_BASE_URL}/question/${endpoint}?subject_name=${encodedSubjectName}&paper_name=${paper}&uid=${user.uid}&question_id=${id}`
-                        );
+                        const relatedUrl = new URL(`${API_BASE_URL}/question/${endpoint}`);
+                        relatedUrl.searchParams.append('subject_name', encodedSubjectName);
+                        relatedUrl.searchParams.append('paper_name', paper);
+                        relatedUrl.searchParams.append('uid', user.uid);
+                        relatedUrl.searchParams.append('question_id', id.toString());
+                        if (topic) {
+                            relatedUrl.searchParams.append('topic', topic);
+                        }
+                        const response = await fetch(relatedUrl.toString());
                         if (!response.ok) return null;
                         const questionData = await response.json();
                         return questionData;
@@ -1441,7 +1461,20 @@ export default function QuizScreen() {
         if (!selectedPaper) return;
         setSelectedAnswer(null);
         setShowFeedback(false);
-        loadRandomQuestion(selectedPaper);
+        console.log('handleNext - selectedTopic:', selectedTopic);
+        loadRandomQuestion(selectedPaper, undefined, selectedTopic || undefined);
+    };
+
+    const handleTopicSelect = (topic?: string) => {
+        console.log('Topic selected:', topic);
+        // Set the topic first
+        setSelectedTopic(topic || null);
+        setSelectedPaper('P1');
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+
+        // Call loadRandomQuestion with the topic directly
+        loadRandomQuestion('P1', undefined, topic);
     };
 
     const handleNextRelatedQuestion = () => {
@@ -2222,6 +2255,13 @@ export default function QuizScreen() {
         }
     };
 
+    const handlePaperSelect = (paper: string) => {
+        console.log('Paper selected:', paper, 'Clearing topic');
+        setSelectedPaper(paper);
+        setSelectedTopic(null); // Clear topic when paper changes
+        loadRandomQuestion(paper);
+    };
+
     if (isLoading) {
         return (
             <ImageLoadingPlaceholder />
@@ -2289,7 +2329,7 @@ export default function QuizScreen() {
                         <QuizPaperButtons
                             subjectName={subjectName as string}
                             selectedMode={selectedMode}
-                            onSelectPaper={setSelectedPaper}
+                            onSelectPaper={handlePaperSelect}
                             onLoadQuestion={loadRandomQuestion}
                         />
 
@@ -2329,6 +2369,7 @@ export default function QuizScreen() {
                                 loadSpecificQuestion={loadFavoriteQuestion}
                                 getFavoriteCardColor={getFavoriteCardColor}
                                 defaultTab={defaultTab as TabType || 'favorites'}
+                                handleTopicSelect={handleTopicSelect}
                             />
                         </View>
 

@@ -46,7 +46,7 @@ export function FavoritesList({
     popularQuestions,
     isFavoritesLoading,
     loadSpecificQuestion,
-    getFavoriteCardColor
+    getFavoriteCardColor,
 }: FavoritesListProps) {
     const { isDark, colors } = useTheme();
 

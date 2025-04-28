@@ -86,5 +86,39 @@ export const TOPIC_EMOJIS: { [key: string]: string } = {
     'THE COMING OF DEMOCRACY TO SOUTH AFRICA AND COMING TO TERMS WITH THE PAST': '🗳️',
     'THE END OF THE COLD WAR AND NEW WORLD ORDER TO PRESENT': '🌐',
     'TOPIC 1: EXTENSION OF THE COLD WAR': '❄️',
-    'TOPIC 2: INDEPENDENT AFRICA': '🌍'
+    'TOPIC 2: INDEPENDENT AFRICA': '🌍',
+
+    // Tourism and Related Topics
+    "Communication and Customer Care": "💁‍♀️",
+    "Factors Contributing to the Success of a Tourist Attraction": "📸",
+    "Tourism Sectors": "🧳",
+    "Foreign Exchange": "💱",
+    "Map Work and Tour Planning": "🗺️",
+    "Labour Laws": "📜",
+    "Fraud and Corruption": "🚨",
+    "The Media": "📰",
+    "Development of Self in Society": "🧠",
+    "Responsibility of Different Levels of Government": "🏛️",
+    "Equity and Redress": "⚖️",
+    "Unemployment": "📉",
+    "Careers and Career Choices": "🎓",
+    "Tourist Attractions": "🏰",
+    "Culture and Heritage Tourism": "🎭",
+    "Work Ethics": "💼",
+    "Study Skills Careers and Career Choices": "📚",
+    "Marketing": "📢",
+    "Responsible Tourism and Tourists": "🌍",
+    "Sports and Nation Building": "🏟️",
+    "Revision and Preparatory Examination": "📝",
+    "Domestic, Regional, and International Tourism": "✈️",
+    "Sustainable and Responsible Tourism": "🌱",
+    "Democracy and Human Rights": "🗳️",
+    "MECHANICS: Vertical projectile motion": "🎯",
+    "Revision of Skills": "🔁",
+
+    // Additional Topics
+    "ELECTRICITY & MAGNETISM: Electric circuits": "🔌",
+    "CAPS TOPIC MEASUREMENT MAPS, PLANS & OTHER REPRESENTATIONS OF THE PHYSICAL WORLD": "🗺️",
+    "FINANCE": "💰",
+    "DATA HANDLING": "📊"
 }; 

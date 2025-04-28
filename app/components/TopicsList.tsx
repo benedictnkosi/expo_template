@@ -6,6 +6,12 @@ import { HOST_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import Toast from 'react-native-toast-message';
 import { TOPIC_EMOJIS } from '../constants/topicEmojis';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+interface Topic {
+    name: string;
+    questionCount: number;
+}
 
 interface TopicsListProps {
     subjectName: string;
@@ -16,12 +22,13 @@ interface TopicsListProps {
         text: string;
         textSecondary: string;
     };
+    handleTopicSelect: (topic: string) => void;
 }
 
 interface TopicResponse {
     status: string;
     topics: {
-        [category: string]: string[];
+        [category: string]: Topic[];
     };
     subjects: {
         id: number;
@@ -49,7 +56,7 @@ function getTopicEmoji(topic: string): string {
     return '📚';
 }
 
-export function TopicsList({ subjectName, isDark, colors }: TopicsListProps) {
+export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: TopicsListProps) {
     const { user } = useAuth();
     const [topics, setTopics] = useState<TopicResponse['topics']>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -67,10 +74,10 @@ export function TopicsList({ subjectName, isDark, colors }: TopicsListProps) {
             const data = await response.json();
 
             if (data.status === 'OK') {
-                // Filter out "NO MATCH" from Uncategorized
-                if (data.topics['Uncategorized']?.includes('NO MATCH')) {
+                // Filter out "no match" from Uncategorized
+                if (data.topics['Uncategorized']) {
                     data.topics['Uncategorized'] = data.topics['Uncategorized'].filter(
-                        (topic: string) => topic !== 'NO MATCH'
+                        (topic: Topic) => topic.name.toLowerCase() !== 'no match'
                     );
                 }
                 setTopics(data.topics);
@@ -119,7 +126,7 @@ export function TopicsList({ subjectName, isDark, colors }: TopicsListProps) {
                 }
             ]}>
                 <ThemedText style={styles.hintText}>
-                    👆 Tap on a topic to practice questions or start a lesson
+                    👆 Tap start a quiz or lessons for a topic
                 </ThemedText>
             </View>
             {Object.entries(topics).map(([category, subtopics]) => (
@@ -127,10 +134,28 @@ export function TopicsList({ subjectName, isDark, colors }: TopicsListProps) {
                     {category !== 'Uncategorized' && (
                         <View style={styles.categoryTitleContainer}>
                             <ThemedText style={styles.categoryEmoji}>{getTopicEmoji(category)}</ThemedText>
-                            <ThemedText style={styles.categoryTitle}>{category}</ThemedText>
+                            <ThemedText
+                                style={[styles.categoryTitle, styles.clickableCategory]}
+                                onPress={() => handleTopicSelect(category)}
+                            >
+                                {category}
+                            </ThemedText>
+                            <View style={styles.startQuizContainer}>
+                                <MaterialCommunityIcons
+                                    name="play-circle"
+                                    size={16}
+                                    color={colors.primary}
+                                />
+                                <ThemedText
+                                    style={[styles.startQuizText, { color: colors.primary }]}
+                                    onPress={() => handleTopicSelect(category)}
+                                >
+                                    Start
+                                </ThemedText>
+                            </View>
                         </View>
                     )}
-                    {subtopics.map((subtopic, index) => (
+                    {subtopics.map((topic, index) => (
                         <View
                             key={index}
                             style={[
@@ -141,7 +166,16 @@ export function TopicsList({ subjectName, isDark, colors }: TopicsListProps) {
                                 }
                             ]}
                         >
-                            <ThemedText style={styles.topicText}>{subtopic}</ThemedText>
+                            <View style={styles.topicContent}>
+                                <ThemedText style={styles.topicText}>
+                                    {topic.name}
+                                </ThemedText>
+                            </View>
+                            <View style={styles.questionCountContainer}>
+                                <ThemedText style={styles.questionCount}>
+                                    {topic.questionCount} {topic.questionCount === 1 ? 'question' : 'questions'}
+                                </ThemedText>
+                            </View>
                         </View>
                     ))}
                 </View>
@@ -153,7 +187,6 @@ export function TopicsList({ subjectName, isDark, colors }: TopicsListProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
     },
     hintContainer: {
         padding: 12,
@@ -185,15 +218,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 12,
+        flexWrap: 'wrap',
+        width: '100%',
     },
     categoryEmoji: {
         fontSize: 24,
         marginRight: 8,
+        flexShrink: 0,
     },
     categoryTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '600',
         opacity: 0.8,
+        flex: 1,
+        flexWrap: 'wrap',
+    },
+    clickableCategory: {
+        textDecorationLine: 'underline',
+        textDecorationStyle: 'dotted',
+        textDecorationColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    startQuizContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginLeft: 8,
+    },
+    startQuizText: {
+        fontSize: 16,
+        marginLeft: 4,
     },
     topicItem: {
         padding: 16,
@@ -201,8 +253,22 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderWidth: 1,
     },
+    topicContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
     topicText: {
-        fontSize: 16,
+        fontSize: 14,
         lineHeight: 24,
+        flex: 1,
+    },
+    questionCountContainer: {
+        alignSelf: 'flex-end',
+    },
+    questionCount: {
+        fontSize: 12,
+        opacity: 0.7,
     },
 }); 
