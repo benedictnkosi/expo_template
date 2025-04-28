@@ -4,6 +4,7 @@ import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
+import { analytics } from '@/services/analytics';
 
 interface AudioPlayerProps {
     audioUrl: string;
@@ -83,8 +84,7 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
                     isLooping: false,
                     volume: 1.0,
                     rate: 1.0,
-                    androidImplementation: 'MediaPlayer',
-                    iosImplementation: 'AVPlayer'
+                    androidImplementation: 'MediaPlayer'
                 },
                 (status) => {
                     console.log('[AudioPlayer] Loading status:', status);
@@ -100,6 +100,13 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
             setSound(newSound);
             setIsPlaying(true);
             setIsLoading(false);
+
+            // Log analytics event when audio starts playing
+            await analytics.track('audio_started', {
+                audio_url: audioUrl,
+                title: title,
+                platform: Platform.OS
+            });
 
             newSound.setOnPlaybackStatusUpdate((status) => {
                 if (status.isLoaded) {

@@ -126,7 +126,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                 }
             ]}>
                 <ThemedText style={styles.hintText}>
-                    👆 Tap start a quiz or lessons for a topic
+                    👆 Tap the topic to start a quiz or lessons
                 </ThemedText>
             </View>
             {Object.entries(topics).map(([category, subtopics]) => (

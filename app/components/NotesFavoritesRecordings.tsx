@@ -11,6 +11,7 @@ import { NoteList } from './NoteList';
 import { FavoritesList } from './FavoritesList';
 import { RecordingsList } from './RecordingsList';
 import { TopicsList } from './TopicsList';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Note {
     id: number;
@@ -184,6 +185,30 @@ export function NotesFavoritesRecordings({
     const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
     const [lectureRecordings, setLectureRecordings] = useState<LectureRecording[]>([]);
     const [isLecturesLoading, setIsLecturesLoading] = useState(false);
+    const [isNotesLoading, setIsNotesLoading] = useState(true);
+
+    // Load persisted tab on mount
+    useEffect(() => {
+        async function loadPersistedTab() {
+            try {
+                const persistedTab = await AsyncStorage.getItem('studyKitActiveTab');
+                if (persistedTab) {
+                    setActiveTab(persistedTab as TabType);
+                }
+            } catch (error) {
+                console.error('Error loading persisted tab:', error);
+            }
+        }
+        loadPersistedTab();
+    }, []);
+
+    // Save tab selection when it changes
+    const handleTabChange = (tab: TabType) => {
+        setActiveTab(tab);
+        AsyncStorage.setItem('studyKitActiveTab', tab).catch(error => {
+            console.error('Error saving tab selection:', error);
+        });
+    };
 
     useEffect(() => {
         if (activeTab === 'lectures') {
@@ -266,7 +291,7 @@ export function NotesFavoritesRecordings({
                     <TouchableOpacity
                         key={tab.id}
                         style={styles.tabItem}
-                        onPress={() => setActiveTab(tab.id as TabType)}
+                        onPress={() => handleTabChange(tab.id as TabType)}
                     >
                         <View style={styles.tabContent}>
                             <View style={[
