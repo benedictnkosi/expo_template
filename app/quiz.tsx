@@ -40,6 +40,7 @@ import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 import { Colors } from '@/constants/Colors';
 import { getSubjectIcon } from '@/utils/subjectIcons';
 import { RecordingPlayerModal } from './components/RecordingPlayerModal';
+import { TopicProgressBar } from './components/quiz/TopicProgressBar';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -991,6 +992,11 @@ export default function QuizScreen() {
     const [showRelatedQuestions, setShowRelatedQuestions] = useState(false);
     const [totalRelatedQuestions, setTotalRelatedQuestions] = useState(0);
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+    const [topicProgress, setTopicProgress] = useState<{
+        total_questions: number;
+        viewed_questions: number;
+        progress_percentage: number;
+    } | null>(null);
     // Add new state for exam dates
     const [examDates, setExamDates] = useState<{
         p1: string | null;
@@ -1234,6 +1240,9 @@ export default function QuizScreen() {
                     subject_name: subjectName,
                     paper_name: paper
                 });
+            }
+            if (selectedMode === 'lessons' && topic) {
+                fetchTopicProgress(topic);
             }
 
             const data: QuestionResponse = await response.json();
@@ -2262,6 +2271,21 @@ export default function QuizScreen() {
         loadRandomQuestion(paper);
     };
 
+    const fetchTopicProgress = async (topic: string) => {
+        if (!user?.uid) return;
+        try {
+            const response = await fetch(
+                `${HOST_URL}/public/learn/topic/progress?uid=${user.uid}&topic=${encodeURIComponent(topic)}&subject_name=${encodeURIComponent(subjectName)}`
+            );
+            const data = await response.json();
+            if (data.status === "OK") {
+                setTopicProgress(data);
+            }
+        } catch (error) {
+            console.error('Error fetching topic progress:', error);
+        }
+    };
+
     if (isLoading) {
         return (
             <ImageLoadingPlaceholder />
@@ -2600,6 +2624,14 @@ export default function QuizScreen() {
                     main_topic: ''
                 }}
             />
+
+            {selectedMode === 'lessons' && selectedTopic && topicProgress && (
+                <TopicProgressBar
+                    totalQuestions={topicProgress.total_questions}
+                    viewedQuestions={topicProgress.viewed_questions}
+                    progressPercentage={topicProgress.progress_percentage}
+                />
+            )}
 
         </LinearGradient>
     );
