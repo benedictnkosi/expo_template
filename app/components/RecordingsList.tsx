@@ -95,7 +95,7 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
             <View style={styles.recordingHeader}>
                 {lecture.image ? (
                     <Image
-                        source={{ uri: lecture.image }}
+                        source={{ uri: `${HOST_URL}/public/learn/learner/get-lecture-image?image=thumb_` + lecture.image }}
                         style={styles.thumbnail}
                         resizeMode="cover"
                     />

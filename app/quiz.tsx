@@ -1241,7 +1241,7 @@ export default function QuizScreen() {
                     paper_name: paper
                 });
             }
-            if (selectedMode === 'lessons' && topic) {
+            if (topic) {
                 fetchTopicProgress(topic);
             }
 
@@ -2625,11 +2625,13 @@ export default function QuizScreen() {
                 }}
             />
 
-            {selectedMode === 'lessons' && selectedTopic && topicProgress && (
+            {selectedTopic && topicProgress && (
                 <TopicProgressBar
+                    topicName={selectedTopic}
                     totalQuestions={topicProgress.total_questions}
                     viewedQuestions={topicProgress.viewed_questions}
                     progressPercentage={topicProgress.progress_percentage}
+                    lessonsMode={selectedMode === 'lessons'}
                 />
             )}
 

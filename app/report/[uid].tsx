@@ -798,6 +798,7 @@ export default function LearnerPerformanceScreen() {
                                     bezier
                                     style={styles.chart}
                                 />
+
                             </ThemedView>
                         ) : (
                             <ThemedView style={[styles.chartContainer, {
@@ -867,83 +868,82 @@ export default function LearnerPerformanceScreen() {
                             </ThemedView>
                         )}
 
+                        <ThemedText style={styles.hintText}>
+                            💡 Tap on any subject card below to view detailed performance report
+                        </ThemedText>
+
                         <View style={styles.performanceContainer}>
                             {performance
                                 .sort((a, b) => a.subject.localeCompare(b.subject))
                                 .map((subject, index) => (
-                                    <ThemedView
+                                    <TouchableOpacity
                                         key={`${subject.subject}-${index}`}
-                                        style={[
-                                            styles.subjectCard,
-                                            {
-                                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
-                                            }
-                                        ]}
+                                        onPress={() => openSubjectReport(subject)}
+                                        activeOpacity={0.7}
                                     >
-                                        <View style={styles.subjectHeader}>
-                                            <ThemedText style={styles.subjectName}>{subject.subject}</ThemedText>
-                                            <TouchableOpacity
-                                                onPress={() => openSubjectReport(subject)}
-                                                style={styles.graphButton}
-                                            >
-                                                <Ionicons
-                                                    name="bar-chart"
-                                                    size={24}
-                                                    color={isDark ? '#FFFFFF' : '#000000'}
-                                                />
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        <View style={styles.statsGrid}>
-                                            <View style={styles.statItem}>
-                                                <ThemedText style={styles.statLabel}>Total Answers</ThemedText>
-                                                <ThemedText style={styles.statValue}>{subject.totalAnswers}</ThemedText>
+                                        <ThemedView
+                                            style={[
+                                                styles.subjectCard,
+                                                {
+                                                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                                                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                                                }
+                                            ]}
+                                        >
+                                            <View style={styles.subjectHeader}>
+                                                <ThemedText style={styles.subjectName}>{subject.subject}</ThemedText>
                                             </View>
 
-                                            <View style={styles.statItem}>
-                                                <ThemedText style={styles.statLabel}>Correct</ThemedText>
-                                                <ThemedText style={[styles.statValue, { color: '#10B981' }]}>
-                                                    {subject.correctAnswers}
-                                                </ThemedText>
+                                            <View style={styles.statsGrid}>
+                                                <View style={styles.statItem}>
+                                                    <ThemedText style={styles.statLabel}>Total Answers</ThemedText>
+                                                    <ThemedText style={styles.statValue}>{subject.totalAnswers}</ThemedText>
+                                                </View>
+
+                                                <View style={styles.statItem}>
+                                                    <ThemedText style={styles.statLabel}>Correct</ThemedText>
+                                                    <ThemedText style={[styles.statValue, { color: '#10B981' }]}>
+                                                        {subject.correctAnswers}
+                                                    </ThemedText>
+                                                </View>
+
+                                                <View style={styles.statItem}>
+                                                    <ThemedText style={styles.statLabel}>Incorrect</ThemedText>
+                                                    <ThemedText style={[styles.statValue, { color: '#EF4444' }]}>
+                                                        {subject.incorrectAnswers}
+                                                    </ThemedText>
+                                                </View>
                                             </View>
 
-                                            <View style={styles.statItem}>
-                                                <ThemedText style={styles.statLabel}>Incorrect</ThemedText>
-                                                <ThemedText style={[styles.statValue, { color: '#EF4444' }]}>
-                                                    {subject.incorrectAnswers}
-                                                </ThemedText>
-                                            </View>
-                                        </View>
+                                            <View style={styles.performanceFooter}>
+                                                <View style={styles.percentageContainer}>
+                                                    <ThemedText style={styles.percentageLabel}>Success Rate</ThemedText>
+                                                    <ThemedText style={[
+                                                        styles.percentageValue,
+                                                        { color: subject.grade === 1 ? '#EF4444' : '#3B82F6' }
+                                                    ]}>
+                                                        {subject.percentage}%
+                                                    </ThemedText>
+                                                </View>
 
-                                        <View style={styles.performanceFooter}>
-                                            <View style={styles.percentageContainer}>
-                                                <ThemedText style={styles.percentageLabel}>Success Rate</ThemedText>
-                                                <ThemedText style={[
-                                                    styles.percentageValue,
-                                                    { color: subject.grade === 1 ? '#EF4444' : '#3B82F6' }
+                                                <View style={[
+                                                    styles.levelBadge,
+                                                    { backgroundColor: getGradeColor(subject.grade) }
                                                 ]}>
-                                                    {subject.percentage}%
-                                                </ThemedText>
+                                                    <ThemedText style={styles.levelText}>Level {subject.grade}</ThemedText>
+                                                    <ThemedText style={styles.levelDescription}>
+                                                        {subject.grade === 1 ? 'Not achieved' :
+                                                            subject.grade === 7 ? 'Outstanding achievement' :
+                                                                subject.grade === 6 ? 'Meritorious achievement' :
+                                                                    subject.grade === 5 ? 'Substantial achievement' :
+                                                                        subject.grade === 4 ? 'Adequate achievement' :
+                                                                            subject.grade === 3 ? 'Moderate achievement' :
+                                                                                'Elementary achievement'}
+                                                    </ThemedText>
+                                                </View>
                                             </View>
-
-                                            <View style={[
-                                                styles.levelBadge,
-                                                { backgroundColor: getGradeColor(subject.grade) }
-                                            ]}>
-                                                <ThemedText style={styles.levelText}>Level {subject.grade}</ThemedText>
-                                                <ThemedText style={styles.levelDescription}>
-                                                    {subject.grade === 1 ? 'Not achieved' :
-                                                        subject.grade === 7 ? 'Outstanding achievement' :
-                                                            subject.grade === 6 ? 'Meritorious achievement' :
-                                                                subject.grade === 5 ? 'Substantial achievement' :
-                                                                    subject.grade === 4 ? 'Adequate achievement' :
-                                                                        subject.grade === 3 ? 'Moderate achievement' :
-                                                                            'Elementary achievement'}
-                                                </ThemedText>
-                                            </View>
-                                        </View>
-                                    </ThemedView>
+                                        </ThemedView>
+                                    </TouchableOpacity>
                                 ))}
                         </View>
                     </>
@@ -1478,5 +1478,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 12,
         opacity: 0.9,
+    },
+    hintText: {
+        fontSize: 14,
+        textAlign: 'center',
+        marginTop: 16,
+        opacity: 0.8,
+        fontStyle: 'italic',
     },
 }); 

@@ -55,7 +55,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
                 <View style={styles.content}>
                     {recording.image ? (
                         <Image
-                            source={{ uri: recording.image }}
+                            source={{ uri: `${HOST_URL}/public/learn/learner/get-lecture-image?image=` + recording.image }}
                             style={styles.image}
                             resizeMode="cover"
                             onLoadStart={() => console.log('[RecordingPlayerModal] Image loading started:', recording.image)}

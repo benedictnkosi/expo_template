@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Modal, TextInput, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Modal, TextInput, StyleSheet, Keyboard } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL } from '@/config/api';
@@ -149,6 +149,21 @@ function createStyles(isDark: boolean) {
             fontSize: 20,
             fontWeight: 'bold',
             marginBottom: 16,
+            color: isDark ? '#E5E7EB' : '#1F2937',
+        },
+        modalHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 16,
+        },
+        doneButton: {
+            padding: 8,
+            borderRadius: 6,
+            backgroundColor: 'rgba(128, 128, 128, 0.2)',
+        },
+        doneButtonText: {
+            fontSize: 16,
             color: isDark ? '#E5E7EB' : '#1F2937',
         },
         modalInput: {
@@ -443,7 +458,15 @@ export function NoteList({
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <ThemedText style={styles.modalTitle}>Add New Note</ThemedText>
+                        <View style={styles.modalHeader}>
+                            <ThemedText style={styles.modalTitle}>Add New Note</ThemedText>
+                            <TouchableOpacity
+                                style={styles.doneButton}
+                                onPress={() => Keyboard.dismiss()}
+                            >
+                                <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                            </TouchableOpacity>
+                        </View>
                         <TextInput
                             style={[
                                 styles.modalInput,
@@ -493,7 +516,15 @@ export function NoteList({
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <ThemedText style={styles.modalTitle}>Edit Note</ThemedText>
+                        <View style={styles.modalHeader}>
+                            <ThemedText style={styles.modalTitle}>Edit Note</ThemedText>
+                            <TouchableOpacity
+                                style={styles.doneButton}
+                                onPress={() => Keyboard.dismiss()}
+                            >
+                                <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                            </TouchableOpacity>
+                        </View>
                         <TextInput
                             style={[
                                 styles.modalInput,
