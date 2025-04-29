@@ -41,6 +41,8 @@ import { Colors } from '@/constants/Colors';
 import { getSubjectIcon } from '@/utils/subjectIcons';
 import { RecordingPlayerModal } from './components/RecordingPlayerModal';
 import { TopicProgressBar } from './components/quiz/TopicProgressBar';
+import { FirstAnswerPointsModal } from './components/quiz/FirstAnswerPointsModal';
+import { FirstTimeModal } from './components/quiz/quiz-modals';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -973,6 +975,9 @@ export default function QuizScreen() {
     const [showPoints, setShowPoints] = useState(false);
     const [earnedPoints, setEarnedPoints] = useState(0);
     const [isFromFavorites, setIsFromFavorites] = useState(false);
+    const [isFirstAnswer, setIsFirstAnswer] = useState(false);
+    const [showFirstAnswerModal, setShowFirstAnswerModal] = useState(false);
+    const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
     // Add new state for streak modal
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
@@ -1012,6 +1017,23 @@ export default function QuizScreen() {
         image: string | null;
         main_topic: string;
     } | null>(null);
+
+    // Add useEffect to check first time loading
+    useEffect(() => {
+        async function checkFirstTimeLoading() {
+            try {
+                const hasSeenFirstTimeModal = await AsyncStorage.getItem('hasSeenQuizFirstTimeModal');
+                if (!hasSeenFirstTimeModal) {
+                    setShowFirstTimeModal(true);
+                    setIsFirstAnswer(true);
+                    await AsyncStorage.setItem('hasSeenQuizFirstTimeModal', 'true');
+                }
+            } catch (error) {
+                console.error('Error checking first time loading:', error);
+            }
+        }
+        checkFirstTimeLoading();
+    }, []);
 
     // Add fetchRandomLesson function
     const fetchRandomLesson = async () => {
@@ -1370,7 +1392,13 @@ export default function QuizScreen() {
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
             setCorrectAnswer(response.correctAnswer);
             setRecordingFileName(response.recordingFileName || '');
-            // Modify to show points first, then delay the streak display
+
+            // Show first answer bonus modal for first-time correct answers
+            if (isFirstAnswer) {
+                setShowFirstAnswerModal(true);
+                setIsFirstAnswer(false);
+            }
+
             if (response.streakUpdated && response.correct) {
                 setEarnedPoints(points);
                 setShowPoints(true);
@@ -1378,7 +1406,7 @@ export default function QuizScreen() {
                     setShowPoints(false);
                     setCurrentStreak(response.streak);
                     setShowStreakModal(true);
-                }, 5000); // Delay streak display by 5 seconds
+                }, 5000);
             } else if (response.streakUpdated) {
                 setCurrentStreak(response.streak);
                 setShowStreakModal(true);
@@ -2245,6 +2273,7 @@ export default function QuizScreen() {
         );
     };
 
+
     const handleListenToLecture = async () => {
         try {
             setIsLoadingLecture(true);
@@ -2270,9 +2299,7 @@ export default function QuizScreen() {
     };
 
     const handlePaperSelect = (paper: string) => {
-        console.log('Paper selected:', paper, 'Clearing topic');
         setSelectedPaper(paper);
-        setSelectedTopic(null); // Clear topic when paper changes
         loadRandomQuestion(paper);
     };
 
@@ -2312,6 +2339,12 @@ export default function QuizScreen() {
                 end={{ x: 0, y: 1 }}
                 testID="quiz-mode-selection"
             >
+                <FirstTimeModal
+                    isVisible={showFirstTimeModal}
+                    onClose={() => setShowFirstTimeModal(false)}
+                    isDark={isDark}
+                />
+
                 <ScrollView style={styles.container}>
                     <View style={styles.paperSelectionContainer}>
                         <TouchableOpacity
@@ -2639,6 +2672,15 @@ export default function QuizScreen() {
                     lessonsMode={selectedMode === 'lessons'}
                 />
             )}
+
+            {/* Add FirstAnswerPointsModal */}
+            <FirstAnswerPointsModal
+                isVisible={showFirstAnswerModal}
+                onClose={() => setShowFirstAnswerModal(false)}
+                colors={colors}
+            />
+
+
 
         </LinearGradient>
     );

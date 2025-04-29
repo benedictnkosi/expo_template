@@ -24,6 +24,7 @@ import { getMessages, Message } from '@/services/api';
 import { MessageModal } from '@/components/MessageModal';
 import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 import { getSubjectIcon } from '@/utils/subjectIcons';
+import { WelcomeModal } from '../components/WelcomeModal';
 
 // Temporary mock data
 
@@ -392,6 +393,7 @@ export default function HomeScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
   // Check for saved notification preferences on mount
   useEffect(() => {
@@ -417,6 +419,25 @@ export default function HomeScreen() {
       }
     }
     checkNotificationPreferences();
+  }, []);
+
+  // Check if it's the user's first visit
+  useEffect(() => {
+    async function checkFirstVisit() {
+      try {
+
+        const hasSeenWelcome = await AsyncStorage.getItem('hasSeenWelcome');
+        console.log('hasSeenWelcome', hasSeenWelcome);
+        if (!hasSeenWelcome) {
+          setShowWelcomeModal(true);
+          await AsyncStorage.setItem('hasSeenWelcome', 'true');
+        }
+
+      } catch (error) {
+        console.error('Error checking first visit:', error);
+      }
+    }
+    checkFirstVisit();
   }, []);
 
   // Add version check function
@@ -1339,6 +1360,11 @@ export default function HomeScreen() {
           }
           setShowSettingsModal(false);
         }}
+      />
+
+      <WelcomeModal
+        isVisible={showWelcomeModal}
+        onClose={() => setShowWelcomeModal(false)}
       />
     </LinearGradient>
   );

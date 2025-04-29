@@ -520,6 +520,61 @@ export const BadgeModal = ({
     );
 };
 
+interface FirstTimeModalProps {
+    isVisible: boolean;
+    onClose: () => void;
+    isDark: boolean;
+}
+
+export const FirstTimeModal = ({
+    isVisible,
+    onClose,
+    isDark
+}: FirstTimeModalProps) => {
+    return (
+        <Modal
+            isVisible={isVisible}
+            onBackdropPress={onClose}
+            animationIn="fadeIn"
+            animationOut="fadeOut"
+            backdropOpacity={0.5}
+            style={styles.modal}
+        >
+            <View style={[styles.modalContent, {
+                backgroundColor: isDark ? Colors.dark.card : Colors.light.card
+            }]}>
+                <View style={styles.welcomeIconContainer}>
+                    <MaterialCommunityIcons
+                        name="school"
+                        size={60}
+                        color={Colors.primary}
+                    />
+                </View>
+                <ThemedText style={[styles.welcomeTitle, {
+                    color: isDark ? Colors.dark.text : Colors.light.text
+                }]}>
+                    Look who made it here! 🎓
+                </ThemedText>
+                <ThemedText style={[styles.welcomeMessage, {
+                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
+                }]}>
+                    To get started, select a paper. Choose Paper 1 or Paper 2. The learning mode is already selected for you.  🚀
+                </ThemedText>
+                <TouchableOpacity
+                    style={[styles.paperButton, {
+                        backgroundColor: Colors.primary
+                    }]}
+                    onPress={onClose}
+                >
+                    <ThemedText style={styles.paperButtonText}>
+                        Let's Begin! 🚀
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
+        </Modal>
+    );
+};
+
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
@@ -818,5 +873,34 @@ const styles = StyleSheet.create({
     doneButtonText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    welcomeIconContainer: {
+        marginBottom: 20,
+        padding: 15,
+        backgroundColor: 'rgba(255, 107, 0, 0.1)',
+        borderRadius: 50,
+    },
+    welcomeTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    welcomeMessage: {
+        fontSize: 16,
+        marginBottom: 24,
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+    paperButton: {
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    paperButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 }); 
