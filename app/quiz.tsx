@@ -1484,6 +1484,11 @@ export default function QuizScreen() {
 
         // Call loadRandomQuestion with the topic directly
         loadRandomQuestion('P1', undefined, topic);
+
+        logAnalyticsEvent('start_topic_quiz', {
+            subject_name: subjectName,
+            topic: topic
+        });
     };
 
     const handleNextRelatedQuestion = () => {
@@ -2328,7 +2333,7 @@ export default function QuizScreen() {
                         <ExamDateDisplay />
 
                         <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
-                            Choose a paper or explore your favorites
+                            Choose Paper 1 or Paper 2 to start learning
                         </ThemedText>
 
                         <QuizModeSelection

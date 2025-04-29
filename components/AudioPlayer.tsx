@@ -110,12 +110,6 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
 
             newSound.setOnPlaybackStatusUpdate((status) => {
                 if (status.isLoaded) {
-                    console.log('[AudioPlayer] Playback status update:', {
-                        position: status.positionMillis,
-                        duration: status.durationMillis,
-                        isPlaying: status.isPlaying,
-                        didJustFinish: status.didJustFinish
-                    });
                     setPosition(status.positionMillis);
 
                     // Only update duration if we haven't set it yet or if we get a valid duration

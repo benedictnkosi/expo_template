@@ -1059,73 +1059,68 @@ export default function HomeScreen() {
           isDark={isDark}
         />
 
-        {/* Add Tasks Section */}
-        <View style={[styles.tasksContainer, {
-          backgroundColor: isDark ? colors.card : '#FFFFFF',
-          borderColor: colors.border
-        }]}>
-          <View style={styles.tasksHeader}>
-            <View style={styles.tasksTitleContainer}>
-              <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
-                Don't Forget These! 🧠⏰
-              </ThemedText>
+        {/* Add Tasks Section - Only show when there are todos */}
+        {todos.length > 0 && (
+          <View style={[styles.tasksContainer, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border
+          }]}>
+            <View style={styles.tasksHeader}>
+              <View style={styles.tasksTitleContainer}>
+                <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
+                  Don't Forget These! 🧠⏰
+                </ThemedText>
+              </View>
             </View>
-          </View>
-          {isLoadingTodos ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color={colors.primary} />
-            </View>
-          ) : todos.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="checkbox-outline" size={48} color={colors.textSecondary} />
-              <ThemedText style={styles.emptyStateText}>
-                No tasks yet. Add your first task!
-              </ThemedText>
-            </View>
-          ) : (
-            <View style={styles.tasksList}>
-              {todos.map((todo) => (
-                <View
-                  key={todo.id}
-                  style={[styles.taskItem, {
-                    backgroundColor: isDark ? colors.surface : '#F8FAFC',
-                    borderColor: colors.border
-                  }]}
-                >
-                  <View style={styles.taskContent}>
-                    <ThemedText style={[styles.taskTitle, { color: colors.text }]}>
-                      {todo.title}
-                    </ThemedText>
-                    {todo.subject && (
-                      <ThemedText style={[styles.taskSubject, { color: colors.textSecondary }]}>
-                        📚 {todo.subject}
+            {isLoadingTodos ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : (
+              <View style={styles.tasksList}>
+                {todos.map((todo) => (
+                  <View
+                    key={todo.id}
+                    style={[styles.taskItem, {
+                      backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                      borderColor: colors.border
+                    }]}
+                  >
+                    <View style={styles.taskContent}>
+                      <ThemedText style={[styles.taskTitle, { color: colors.text }]}>
+                        {todo.title}
                       </ThemedText>
-                    )}
-                    <ThemedText style={[styles.taskDueDate, { color: colors.textSecondary }]}>
-                      {(() => {
-                        const today = new Date();
-                        const dueDate = new Date(todo.due_date);
-                        const tomorrow = new Date(today);
-                        tomorrow.setDate(tomorrow.getDate() + 1);
+                      {todo.subject && (
+                        <ThemedText style={[styles.taskSubject, { color: colors.textSecondary }]}>
+                          📚 {todo.subject}
+                        </ThemedText>
+                      )}
+                      <ThemedText style={[styles.taskDueDate, { color: colors.textSecondary }]}>
+                        {(() => {
+                          const today = new Date();
+                          const dueDate = new Date(todo.due_date);
+                          const tomorrow = new Date(today);
+                          tomorrow.setDate(tomorrow.getDate() + 1);
 
-                        if (dueDate.toDateString() === today.toDateString()) {
-                          return `Today at ${todo.startTime}`;
-                        } else if (dueDate.toDateString() === tomorrow.toDateString()) {
-                          return `Tomorrow at ${todo.startTime}`;
-                        } else {
-                          return `${dueDate.toLocaleDateString('en-US', { weekday: 'long' })} at ${todo.startTime}`;
-                        }
-                      })()}
-                    </ThemedText>
+                          if (dueDate.toDateString() === today.toDateString()) {
+                            return `Today at ${todo.startTime}`;
+                          } else if (dueDate.toDateString() === tomorrow.toDateString()) {
+                            return `Tomorrow at ${todo.startTime}`;
+                          } else {
+                            return `${dueDate.toLocaleDateString('en-US', { weekday: 'long' })} at ${todo.startTime}`;
+                          }
+                        })()}
+                      </ThemedText>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
-
+        <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>Click on a subject to start learning</ThemedText>
 
         <ScrollView
           showsVerticalScrollIndicator={true}
@@ -2147,5 +2142,12 @@ const styles = StyleSheet.create({
   scrollIndicatorText: {
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  hintText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 16,
+    opacity: 0.7,
   },
 });

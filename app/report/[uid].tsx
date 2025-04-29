@@ -12,6 +12,7 @@ import { LineChart, BarChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLearnerBadges, LearnerBadge } from '@/services/api';
+import { analytics } from '@/services/analytics';
 
 function getGradeColor(grade: number): string {
     switch (grade) {
@@ -635,6 +636,16 @@ export default function LearnerPerformanceScreen() {
             setSubjectDailyActivity(dailyResponse.data);
             setSubjectWeeklyProgress(weeklyResponse.data);
             setIsModalVisible(true);
+
+            // Log analytics event
+            await analytics.track('view_subject_report', {
+                user_id: uid,
+                subject_name: subject.subject,
+                subject_id: subject.subjectId,
+                total_answers: subject.totalAnswers,
+                correct_answers: subject.correctAnswers,
+                grade: subject.grade
+            });
         } catch (err) {
             console.error('Error fetching subject data:', err);
             setError('Failed to load subject data');
@@ -661,6 +672,17 @@ export default function LearnerPerformanceScreen() {
                 setDailyActivity(activityResponse.data);
                 setWeeklyProgress(weeklyResponse.data);
                 setBadges(badgesResponse);
+
+                // Log analytics event for page load
+                await analytics.track('view_performance_report', {
+                    user_id: uid,
+                    viewer_id: user?.uid,
+                    is_own_report: uid === user?.uid,
+                    total_subjects: performanceResponse.data.length,
+                    has_badges: badgesResponse.length > 0,
+                    has_daily_activity: activityResponse.data.length > 0,
+                    has_weekly_progress: weeklyResponse.data.length > 0
+                });
             } catch (err) {
                 setError('Failed to load learner data');
                 console.error(err);
@@ -757,8 +779,7 @@ export default function LearnerPerformanceScreen() {
                                             <Image
                                                 source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
                                                 style={[
-                                                    styles.badgeImage,
-                                                    !badge.earned && styles.lockedBadgeImage
+                                                    styles.badgeImage
                                                 ]}
                                                 resizeMode="contain"
                                             />
@@ -892,6 +913,11 @@ export default function LearnerPerformanceScreen() {
                                         >
                                             <View style={styles.subjectHeader}>
                                                 <ThemedText style={styles.subjectName}>{subject.subject}</ThemedText>
+                                                <Ionicons
+                                                    name="stats-chart"
+                                                    size={24}
+                                                    color={isDark ? '#FFFFFF' : '#000000'}
+                                                />
                                             </View>
 
                                             <View style={styles.statsGrid}>
@@ -1353,9 +1379,7 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         marginBottom: 8,
     },
-    lockedBadgeImage: {
-        opacity: 0.5,
-    },
+
     badgeName: {
         fontSize: 14,
         textAlign: 'center'

@@ -9,18 +9,45 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuth();
 
+  const validateInput = (input: string): { isValid: boolean; email: string } => {
+    // Check if input is a valid email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(input)) {
+      return { isValid: true, email: input };
+    }
+
+    // Check if input is a valid phone number (10 digits)
+    const phoneRegex = /^\d{10}$/;
+    if (phoneRegex.test(input)) {
+      return { isValid: true, email: `${input}@examquiz.co.za` };
+    }
+
+    return { isValid: false, email: '' };
+  };
+
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!emailOrPhone || !password) {
       Toast.show({
         type: 'error',
         text1: 'Error',
         text2: 'Please fill in all fields',
+        position: 'bottom'
+      });
+      return;
+    }
+
+    const { isValid, email } = validateInput(emailOrPhone);
+    if (!isValid) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please enter a valid email or 10-digit phone number',
         position: 'bottom'
       });
       return;
@@ -66,10 +93,10 @@ export default function Login() {
           <View style={styles.form}>
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Email or Phone Number"
               placeholderTextColor="#94A3B8"
-              value={email}
-              onChangeText={setEmail}
+              value={emailOrPhone}
+              onChangeText={setEmailOrPhone}
               autoCapitalize="none"
               keyboardType="email-address"
               testID="email-input"
@@ -247,7 +274,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   passwordInput: {
-    paddingRight: 50, // Make room for the eye icon
+    paddingRight: 50,
     marginBottom: 0,
   },
   eyeIcon: {
