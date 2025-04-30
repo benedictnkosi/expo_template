@@ -24,7 +24,7 @@ export const QuizModeSelection = ({ modes, onSelectMode, selectedModeId }: QuizM
     return (
         <View style={styles.container}>
             <ThemedText style={[styles.title, { color: themeColors.text }]}>
-                Choose Your Quiz Mode 🎯
+                Choose Your Learning Mode 🎯
             </ThemedText>
             <View style={styles.modesContainer}>
                 {modes.map((mode) => (
@@ -35,8 +35,8 @@ export const QuizModeSelection = ({ modes, onSelectMode, selectedModeId }: QuizM
                             styles.modeCard,
                             {
                                 backgroundColor: themeColors.card,
-                                borderColor: selectedModeId === mode.id 
-                                    ? themeColors.text 
+                                borderColor: selectedModeId === mode.id
+                                    ? themeColors.text
                                     : themeColors.textSecondary,
                                 borderWidth: selectedModeId === mode.id ? 2 : 1,
                                 shadowColor: isDark ? '#000000' : '#000000',

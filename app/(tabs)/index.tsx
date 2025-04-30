@@ -425,20 +425,31 @@ export default function HomeScreen() {
   useEffect(() => {
     async function checkFirstVisit() {
       try {
-
         const hasSeenWelcome = await AsyncStorage.getItem('hasSeenWelcome');
         console.log('hasSeenWelcome', hasSeenWelcome);
         if (!hasSeenWelcome) {
-          setShowWelcomeModal(true);
-          await AsyncStorage.setItem('hasSeenWelcome', 'true');
+          console.log('setting showWelcomeModal to true');
+          setTimeout(() => {
+            setShowWelcomeModal(true);
+          }, 3000);
+        } else {
+          console.log('hasSeenWelcome is true');
         }
-
       } catch (error) {
         console.error('Error checking first visit:', error);
       }
     }
     checkFirstVisit();
   }, []);
+
+  const handleCloseWelcomeModal = async () => {
+    try {
+      await AsyncStorage.setItem('hasSeenWelcome', 'true');
+      setShowWelcomeModal(false);
+    } catch (error) {
+      console.error('Error setting hasSeenWelcome:', error);
+    }
+  };
 
   // Add version check function
   const checkVersion = useCallback(async () => {
@@ -1364,7 +1375,7 @@ export default function HomeScreen() {
 
       <WelcomeModal
         isVisible={showWelcomeModal}
-        onClose={() => setShowWelcomeModal(false)}
+        onClose={handleCloseWelcomeModal}
       />
     </LinearGradient>
   );

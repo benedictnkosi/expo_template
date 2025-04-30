@@ -219,7 +219,7 @@ export function NotesFavoritesRecordings({
     const fetchLectureRecordings = async () => {
         try {
             setIsLecturesLoading(true);
-            const response = await fetch(`${HOST_URL}/api/topics/recordings/${encodeURIComponent(subjectName)}`);
+            const response = await fetch(`${HOST_URL}/api/topics/recordings/${encodeURIComponent(subjectName)}?uid=${user?.uid}`);
             const data = await response.json();
 
             if (data.status === 'success') {

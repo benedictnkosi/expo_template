@@ -1024,9 +1024,11 @@ export default function QuizScreen() {
             try {
                 const hasSeenFirstTimeModal = await AsyncStorage.getItem('hasSeenQuizFirstTimeModal');
                 if (!hasSeenFirstTimeModal) {
-                    setShowFirstTimeModal(true);
-                    setIsFirstAnswer(true);
-                    await AsyncStorage.setItem('hasSeenQuizFirstTimeModal', 'true');
+                    setTimeout(() => {
+                        setShowFirstTimeModal(true);
+                        setIsFirstAnswer(true);
+                        AsyncStorage.setItem('hasSeenQuizFirstTimeModal', 'true');
+                    }, 3000);
                 }
             } catch (error) {
                 console.error('Error checking first time loading:', error);
@@ -1083,7 +1085,8 @@ export default function QuizScreen() {
         if (timerRef.current) {
             clearInterval(timerRef.current);
         }
-        // Start new timer without resetting duration
+        // Reset duration and start new timer
+        setDuration(0);
         timerRef.current = setInterval(() => {
             setDuration(prev => prev + 1);
         }, 1000);
@@ -1395,8 +1398,10 @@ export default function QuizScreen() {
 
             // Show first answer bonus modal for first-time correct answers
             if (isFirstAnswer) {
-                setShowFirstAnswerModal(true);
-                setIsFirstAnswer(false);
+                setTimeout(() => {
+                    setShowFirstAnswerModal(true);
+                    setIsFirstAnswer(false);
+                }, 3000);
             }
 
             if (response.streakUpdated && response.correct) {
@@ -2677,7 +2682,6 @@ export default function QuizScreen() {
             <FirstAnswerPointsModal
                 isVisible={showFirstAnswerModal}
                 onClose={() => setShowFirstAnswerModal(false)}
-                colors={colors}
             />
 
 
@@ -4049,12 +4053,7 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 8,
         borderWidth: 1,
-    },
-    topicLabel: {
-        fontSize: 15,
-        fontWeight: '500',
-        textAlign: 'center',
-    },
+    }
 });
 
 

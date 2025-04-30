@@ -10,19 +10,18 @@ import { Ionicons } from '@expo/vector-icons';
 interface FirstAnswerPointsModalProps {
     isVisible: boolean;
     onClose: () => void;
-    colors: any;
 }
 
 export const FirstAnswerPointsModal: React.FC<FirstAnswerPointsModalProps> = ({
     isVisible,
-    onClose,
-    colors,
+    onClose
 }) => {
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
     const scaleAnim = React.useRef(new Animated.Value(0.8)).current;
     const titleAnim = React.useRef(new Animated.Value(0)).current;
     const pointsAnim = React.useRef(new Animated.Value(0)).current;
     const subtitleAnim = React.useRef(new Animated.Value(0)).current;
+    const { colors, isDark } = useTheme();
 
     const handleShare = async () => {
         try {
@@ -119,7 +118,7 @@ export const FirstAnswerPointsModal: React.FC<FirstAnswerPointsModalProps> = ({
                             ],
                         }}
                     >
-                        <ThemedText style={styles.title}>🎯 First Answer Bonus!</ThemedText>
+                        <ThemedText style={[styles.title, { color: colors.text }]}>🎯 First Answer Bonus!</ThemedText>
                     </Animated.View>
 
                     <Animated.View
@@ -151,7 +150,8 @@ export const FirstAnswerPointsModal: React.FC<FirstAnswerPointsModalProps> = ({
                             ],
                         }}
                     >
-                        <ThemedText style={styles.subtitle}>🚀 Keep going! Do another one! 🚀</ThemedText>
+                        <ThemedText style={[styles.subtitle, { color: colors.text }]}>Do at least 3 questions per day to keep those brain muscles strong!</ThemedText>
+                        <ThemedText style={[styles.subtitle, { color: colors.text }]}>🚀 Keep going! Do another one! 🚀</ThemedText>
                     </Animated.View>
 
                     <View style={styles.buttonContainer}>
