@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { fetchMySubjects } from '@/services/api';
 import { SubjectPicker } from '@/components/SubjectPicker';
+import { analytics } from '@/services/analytics';
 
 const ErrorAlert = ({
     visible,
@@ -152,7 +153,7 @@ export default function AddEventModal() {
     const [errorVisible, setErrorVisible] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [conflictingEvent, setConflictingEvent] = useState<{ title: string; startTime: string; endTime: string; } | null>(null);
-    const [reminderEnabled, setReminderEnabled] = useState(initialReminder === 'true');
+    const [reminderEnabled, setReminderEnabled] = useState<boolean>(true);
     const isEditing = edit === 'true';
 
 
@@ -262,6 +263,16 @@ export default function AddEventModal() {
 
             const data = await response.json();
             if (data.status === 'OK') {
+                // Log the new plan creation
+                await analytics.track('create_plan', {
+                    title,
+                    subject: finalSubject,
+                    date: formattedDate,
+                    startTime: format(startTime, 'HH:mm'),
+                    endTime: format(endTime, 'HH:mm'),
+                    reminder: reminderEnabled
+                });
+
                 Toast.show({
                     type: 'success',
                     text1: 'Success',
@@ -500,8 +511,8 @@ export default function AddEventModal() {
                                 setShowStartPicker(false);
                                 if (selectedDate) {
                                     setStartTime(selectedDate);
-                                    // Set end time to 30 minutes after start time
-                                    const newEndTime = new Date(selectedDate.getTime() + 30 * 60 * 1000);
+                                    // Set end time to 1 hour after start time
+                                    const newEndTime = new Date(selectedDate.getTime() + 60 * 60 * 1000);
                                     setEndTime(newEndTime);
                                 }
                             }}

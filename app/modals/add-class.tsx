@@ -159,10 +159,16 @@ export default function AddClassModal() {
     const [customSubject, setCustomSubject] = useState<string>('');
     const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
     const [selectedDay, setSelectedDay] = useState<DayId>(day as DayId || DAYS[0].id);
-    const [startTime, setStartTime] = useState(() => new Date());
+    const [startTime, setStartTime] = useState(() => {
+        const date = new Date();
+        date.setHours(8);
+        date.setMinutes(0);
+        return date;
+    });
     const [endTime, setEndTime] = useState(() => {
         const date = new Date();
-        date.setMinutes(date.getMinutes() + 60); // Set end time to 1 hour after current time
+        date.setHours(9);
+        date.setMinutes(0);
         return date;
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -195,8 +201,12 @@ export default function AddClassModal() {
         setCustomSubject('');
         setIsCustomSubject(false);
         setSelectedDay(DAYS[0].id);
-        setStartTime(new Date());
-        setEndTime(new Date(new Date().getTime() + 60 * 60 * 1000));
+        const start = new Date();
+        start.setHours(8, 0, 0, 0);
+        setStartTime(start);
+        const end = new Date();
+        end.setHours(9, 0, 0, 0);
+        setEndTime(end);
     };
 
     const handleSave = async () => {

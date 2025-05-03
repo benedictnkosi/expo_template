@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,6 +26,67 @@ import { MessageModal } from '@/components/MessageModal';
 import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 import { getSubjectIcon } from '@/utils/subjectIcons';
 import { WelcomeModal } from '../components/WelcomeModal';
+import subjectEmojis from '@/assets/subject-emojis.json';
+import { SubjectPicker } from '@/components/SubjectPicker';
+
+const SUBJECTS = [
+  'Accounting',
+  'Afrikaans',
+  'Agricultural Management Practices',
+  'Agricultural Technology',
+  'Automotive',
+  'Civil Services',
+  'Civil Technology',
+  'Computer Application Technology',
+  'Construction',
+  'Consumer Studies',
+  'Dance Studies',
+  'Design',
+  'Digital Electronics',
+  'Dramatic Arts',
+  'Electrical Technology',
+  'Electronics',
+  'Engineering Graphic and Design',
+  'English',
+  'Fitting and Machining',
+  'Hospitality Studies',
+  'Information Technology',
+  'IsiNdebele',
+  'IsiXhosa',
+  'IsiZulu',
+  'Marine Sciences',
+  'Mechanical Technology',
+  'Music',
+  'Power Systems',
+  'Religion Studies',
+  'Sepedi',
+  'Sesotho',
+  'Setswana',
+  'Siswati',
+  'South African Sign Language',
+  'Technical Mathematics',
+  'Technical Sciences',
+  'Tshivenda',
+  'Visual Arts',
+  'Welding and Metalwork',
+  'Woodworking',
+  'Xitsonga'
+] as const;
+
+const LANGUAGE_SUBJECTS = [
+  'Afrikaans',
+  'English',
+  'IsiNdebele',
+  'IsiXhosa',
+  'IsiZulu',
+  'Sepedi',
+  'Sesotho',
+  'Setswana',
+  'Siswati',
+  'Tshivenda',
+  'Xitsonga',
+  'South African Sign Language',
+];
 
 // Temporary mock data
 
@@ -34,6 +96,11 @@ function getProgressBarColor(progress: number): string {
   if (progress >= 70) return '#22C55E'; // Green for high scores
   if (progress >= 40) return '#F59E0B'; // Amber for medium scores
   return '#FF3B30'; // Red for low scores
+}
+
+// Add helper function to get subject emoji
+function getSubjectEmoji(subject: string): string {
+  return subjectEmojis[subject as keyof typeof subjectEmojis] || '📚';
 }
 
 // Move RatingModal outside of HomeScreen
@@ -227,7 +294,7 @@ const getRandomEducationEmoji = () => {
 
 const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) => {
   const [currentClass, setCurrentClass] = useState<{ subject: string; startTime: string; endTime: string } | null>(null);
-  const [currentEvent, setCurrentEvent] = useState<{ title: string; startTime: string; endTime: string } | null>(null);
+  const [currentEvent, setCurrentEvent] = useState<{ title: string; startTime: string; endTime: string; subject?: string } | null>(null);
   const [upcomingClasses, setUpcomingClasses] = useState<{ subject: string; startTime: string; endTime: string }[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<{ title: string; startTime: string; endTime: string }[]>([]);
 
@@ -247,6 +314,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
       (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
       now.getDate().toString().padStart(2, '0');
 
+
     // Find current and upcoming classes
     const todayClasses = learnerInfo.timetable[currentDay as keyof typeof learnerInfo.timetable] || [];
     const currentClass = todayClasses.find(cls => {
@@ -256,8 +324,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
 
     // Find upcoming classes in next 3 hours
     const upcomingClasses = todayClasses.filter(cls => {
-      return cls.startTime > currentTime &&
-        parseInt(cls.startTime.split(':')[0]) - parseInt(currentTime.split(':')[0]) <= 3;
+      return cls.startTime > currentTime;
     });
     setUpcomingClasses(upcomingClasses);
 
@@ -270,9 +337,10 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
 
     // Find upcoming events in next 3 hours
     const upcomingEvents = todayEvents.filter(event => {
-      return event.startTime > currentTime &&
-        parseInt(event.startTime.split(':')[0]) - parseInt(currentTime.split(':')[0]) <= 3;
+      return event.startTime > currentTime;
     });
+
+    console.log('upcomingEvents', upcomingEvents);
     setUpcomingEvents(upcomingEvents);
   }, [learnerInfo]);
 
@@ -285,7 +353,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
     }]}>
       <View style={styles.scheduleHeader}>
         <ThemedText style={[styles.currentScheduleTitle, { color: colors.text }]}>
-          Level-Up Schedule 🎮📈
+          Classes & Study Plans 📚📝
         </ThemedText>
         <ThemedText style={[styles.scheduleSubtext, { color: colors.textSecondary }]}>
           Your ongoing and upcoming classes & Study Plans
@@ -301,7 +369,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
             </ThemedText>
           </View>
           <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
-            {currentClass.subject}
+            {getSubjectEmoji(currentClass.subject)} {currentClass.subject}
           </ThemedText>
           <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
             {currentClass.startTime} - {currentClass.endTime}
@@ -314,11 +382,11 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
           <View style={styles.scheduleItemHeader}>
             <Ionicons name="calendar-outline" size={20} color={colors.primary} />
             <ThemedText style={[styles.scheduleItemTitle, { color: colors.text }]}>
-              Current Event
+              Current Study Item
             </ThemedText>
           </View>
           <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
-            {currentEvent.title}
+            {currentEvent.subject ? `${getSubjectEmoji(currentEvent.subject)}  ` : ''}{currentEvent.title}
           </ThemedText>
           <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
             {currentEvent.startTime} - {currentEvent.endTime}
@@ -337,7 +405,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
           {upcomingClasses.map((cls, index) => (
             <View key={index} style={styles.upcomingItem}>
               <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
-                {cls.subject}
+                {getSubjectEmoji(cls.subject)} {cls.subject}
               </ThemedText>
               <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
                 {cls.startTime} - {cls.endTime}
@@ -394,6 +462,9 @@ export default function HomeScreen() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showSubjectRequestModal, setShowSubjectRequestModal] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [isRequestingSubject, setIsRequestingSubject] = useState(false);
 
   // Check for saved notification preferences on mount
   useEffect(() => {
@@ -530,6 +601,7 @@ export default function HomeScreen() {
     try {
       setIsLoading(true);
       const learner = await getLearner(user.uid);
+
 
       //save learner name in AsyncStorage
       await AsyncStorage.setItem('learnerName', learner.name);
@@ -957,6 +1029,50 @@ export default function HomeScreen() {
     }
   };
 
+  // Add function to handle subject request
+  const handleSubjectRequest = useCallback(async () => {
+    if (!user?.uid || !selectedSubject) return;
+
+    try {
+      setIsRequestingSubject(true);
+      const response = await fetch(`${HOST_URL}/api/request-subject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          learnerUid: user.uid,
+          subjectName: selectedSubject,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'OK') {
+        Toast.show({
+          type: 'success',
+          text1: 'Request Submitted',
+          text2: 'Your subject request has been submitted successfully!',
+          position: 'bottom',
+        });
+        setShowSubjectRequestModal(false);
+        setSelectedSubject('');
+      } else {
+        throw new Error(data.message || 'Failed to submit request');
+      }
+    } catch (error) {
+      console.error('Error requesting subject:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to submit subject request. Please try again.',
+        position: 'bottom',
+      });
+    } finally {
+      setIsRequestingSubject(false);
+    }
+  }, [user?.uid, selectedSubject]);
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
@@ -1100,7 +1216,7 @@ export default function HomeScreen() {
             <View style={styles.tasksHeader}>
               <View style={styles.tasksTitleContainer}>
                 <ThemedText style={[styles.tasksTitle, { color: colors.text }]}>
-                  Don't Forget These! 🧠⏰
+                  Don't forget to do these Reminders! ⏰
                 </ThemedText>
               </View>
             </View>
@@ -1110,7 +1226,7 @@ export default function HomeScreen() {
               </View>
             ) : (
               <View style={styles.tasksList}>
-                {todos.map((todo) => (
+                {todos.slice(0, 5).map((todo) => (
                   <View
                     key={todo.id}
                     style={[styles.taskItem, {
@@ -1124,7 +1240,7 @@ export default function HomeScreen() {
                       </ThemedText>
                       {todo.subject && (
                         <ThemedText style={[styles.taskSubject, { color: colors.textSecondary }]}>
-                          📚 {todo.subject}
+                          {getSubjectEmoji(todo.subject)} {todo.subject}
                         </ThemedText>
                       )}
                       <ThemedText style={[styles.taskDueDate, { color: colors.textSecondary }]}>
@@ -1323,7 +1439,85 @@ export default function HomeScreen() {
             </ThemedText>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.requestSubjectButton, { backgroundColor: colors.primary }]}
+          onPress={() => setShowSubjectRequestModal(true)}
+          testID="request-subject-button"
+        >
+          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.requestSubjectButtonText}>
+            Request a New Subject
+          </ThemedText>
+        </TouchableOpacity>
       </ScrollView>
+
+      <Modal
+        visible={showSubjectRequestModal}
+        transparent
+        animationType="fade"
+        testID="subject-request-modal"
+      >
+        <View style={styles.modalOverlay} testID="subject-request-modal-overlay">
+          <View style={[styles.subjectRequestModalContainer, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF'
+          }]} testID="subject-request-modal-content">
+            <ThemedText style={[styles.subjectRequestModalTitle, { color: colors.text }]}>
+              📚 Request a New Subject
+            </ThemedText>
+            <ThemedText style={[styles.subjectRequestModalText, { color: colors.textSecondary }]}>
+              Select a subject you'd like to request
+            </ThemedText>
+
+            <View style={{ width: '100%' }}>
+              <Picker
+                selectedValue={selectedSubject}
+                onValueChange={setSelectedSubject}
+                style={{ width: '100%', color: isDark ? '#fff' : '#000', backgroundColor: isDark ? '#23272f' : '#F2F2F7', borderRadius: 12 }}
+                itemStyle={{
+                  fontSize: 17,
+                  fontWeight: '400',
+                  color: isDark ? '#fff' : '#000'
+                }}
+              >
+                <Picker.Item label="Select a subject" value="" />
+                {SUBJECTS.filter(subject => !LANGUAGE_SUBJECTS.includes(subject)).map(subject => (
+                  <Picker.Item key={subject} label={subject} value={subject} />
+                ))}
+              </Picker>
+            </View>
+
+            <View style={styles.subjectRequestModalButtons}>
+              <TouchableOpacity
+                style={[styles.subjectRequestModalButton, { backgroundColor: colors.primary }]}
+                onPress={handleSubjectRequest}
+                disabled={!selectedSubject || isRequestingSubject}
+                testID="submit-subject-request-button"
+              >
+                {isRequestingSubject ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <ThemedText style={styles.subjectRequestModalButtonText}>
+                    Submit Request
+                  </ThemedText>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.subjectRequestModalButton, { backgroundColor: isDark ? colors.surface : '#F3F4F6' }]}
+                onPress={() => {
+                  setShowSubjectRequestModal(false);
+                  setSelectedSubject('');
+                }}
+                testID="cancel-subject-request-button"
+              >
+                <ThemedText style={[styles.subjectRequestModalButtonText, { color: colors.text }]}>
+                  Cancel
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <RatingModal
         visible={showRatingModal}
@@ -2186,5 +2380,63 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
     opacity: 0.7,
+  },
+  requestSubjectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+    gap: 8,
+  },
+  requestSubjectButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  subjectRequestModalContainer: {
+    margin: 20,
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    width: '100%',
+    maxWidth: 400,
+  },
+  subjectRequestModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  subjectRequestModalText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 24,
+  },
+  pickerContainer: {
+    width: '100%',
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  picker: {
+    width: '100%',
+    height: 50,
+  },
+  subjectRequestModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  subjectRequestModalButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  subjectRequestModalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

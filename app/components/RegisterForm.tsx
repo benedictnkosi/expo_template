@@ -12,11 +12,12 @@ import { analytics } from '@/services/analytics';
 
 interface RegisterFormProps {
     onboardingData: OnboardingData;
+    defaultMethod?: RegistrationMethod;
 }
 
 type RegistrationMethod = 'email' | 'phone';
 
-export default function RegisterForm({ onboardingData }: RegisterFormProps) {
+export default function RegisterForm({ onboardingData, defaultMethod = 'email' }: RegisterFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -25,7 +26,7 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [registrationMethod, setRegistrationMethod] = useState<RegistrationMethod>('email');
+    const [registrationMethod, setRegistrationMethod] = useState<RegistrationMethod>(defaultMethod);
     const { signUp } = useAuth();
 
     const logAnalyticsEvent = async (eventName: string, params: {

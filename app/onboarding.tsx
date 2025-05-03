@@ -13,6 +13,46 @@ import { Ionicons } from '@expo/vector-icons';
 import RegisterForm from './components/RegisterForm';
 import { analytics } from '../services/analytics';
 import { API_BASE_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { createLearner } from '@/services/api';
+
+const SUPERHERO_NAMES = [
+  'Spider-Man',
+  'Iron Man',
+  'Captain America',
+  'Black Panther',
+  'Doctor Strange',
+  'Scarlet Witch',
+  'Hawkeye',
+  'Wolverine',
+  'Storm',
+  'Ms. Marvel',
+  'Moon Knight',
+  'Silver Surfer',
+  'She-Hulk',
+  'Daredevil',
+  'Shang-Chi',
+  'Superman',
+  'Batman',
+  'Wonder Woman',
+  'The Flash',
+  'Aquaman',
+  'Green Lantern',
+  'Cyborg',
+  'Martian Manhunter',
+  'Zatanna',
+  'Nightwing',
+  'Shazam',
+  'Hawkman',
+  'Green Arrow',
+  'Blue Beetle',
+  'Batgirl'
+];
+
+function getRandomSuperheroName(): string {
+  const randomIndex = Math.floor(Math.random() * SUPERHERO_NAMES.length);
+  return SUPERHERO_NAMES[randomIndex];
+}
 
 // Add function before WebBrowser.maybeCompleteAuthSession()
 async function getSchoolFunfacts(schoolName: string) {
@@ -83,7 +123,9 @@ export default function OnboardingScreen() {
   const [grade, setGrade] = useState('');
   const [difficultSubject, setDifficultSubject] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
+  const [registrationMethod, setRegistrationMethod] = useState<'email' | 'phone'>('email');
   const insets = useSafeAreaInsets();
+  const { signUp } = useAuth();
 
   const [errors, setErrors] = useState({
     grade: '',
@@ -126,7 +168,7 @@ export default function OnboardingScreen() {
       setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
     } else if (step === 3 && !selectedAvatar) {
       setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
-    } else if (step === 4) {
+    } else if (step === 5) {
       handleComplete();
     } else {
       setErrors({ grade: '', curriculum: '' });
@@ -145,6 +187,8 @@ export default function OnboardingScreen() {
       case 3:
         return 'avatar_selection';
       case 4:
+        return 'auth_options';
+      case 5:
         return 'registration';
       default:
         return 'unknown';
@@ -358,10 +402,149 @@ export default function OnboardingScreen() {
 
       case 4:
         return (
-          <View style={styles.step}>
+          <View style={styles.step} testID="auth-options-step">
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setStep(3)}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle} testID="auth-options-title">
+                How would you like to continue?
+              </ThemedText>
+              <ThemedText style={styles.stepSubtitle} testID="auth-options-subtitle">
+                Choose your preferred way to sign up
+              </ThemedText>
+            </View>
+            <View style={styles.authOptionsContainer}>
+              <TouchableOpacity
+                style={[styles.authButton, styles.emailButton]}
+                onPress={() => {
+                  logAnalyticsEvent('auth_option_selected', { option: 'email' });
+                  setRegistrationMethod('email');
+                  setStep(5);
+                }}
+                testID="email-auth-button"
+              >
+                <Ionicons name="mail-outline" size={24} color="#FFFFFF" />
+                <ThemedText style={styles.authButtonText}>Register with Email</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.authButton, styles.phoneButton]}
+                onPress={() => {
+                  logAnalyticsEvent('auth_option_selected', { option: 'phone' });
+                  setRegistrationMethod('phone');
+                  setStep(5);
+                }}
+                testID="phone-auth-button"
+              >
+                <Ionicons name="call-outline" size={24} color="#FFFFFF" />
+                <ThemedText style={styles.authButtonText}>Register with Phone</ThemedText>
+              </TouchableOpacity>
+
+              <ThemedText style={styles.guestPromptText}>
+                Not ready to register? Try our quiz as a guest!
+              </ThemedText>
+
+              <TouchableOpacity
+                style={[styles.authButton, styles.guestButton]}
+                onPress={async () => {
+                  logAnalyticsEvent('auth_option_selected', { option: 'guest' });
+
+                  // Generate a 16-character UID
+                  const guestUid = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('')
+                    .slice(0, 16);
+
+                  const guestEmail = `${guestUid}@guest.com`;
+                  const defaultPassword = 'password';
+
+                  try {
+                    // Register the guest user
+                    const user = await signUp(guestEmail, defaultPassword);
+
+                    // Create learner profile for guest
+                    const learnerData = {
+                      name: getRandomSuperheroName(),
+                      grade: parseInt(grade),
+                      school: 'Not specified',
+                      school_address: '',
+                      school_latitude: 0,
+                      school_longitude: 0,
+                      curriculum: 'CAPS',
+                      terms: "1,2,3,4",
+                      email: guestEmail,
+                      avatar: selectedAvatar,
+                    };
+
+                    const learner = await createLearner(user.uid, learnerData);
+                    if (learner.status !== 'OK') {
+                      Toast.show({
+                        type: 'error',
+                        text1: 'Warning',
+                        text2: 'Account created but failed to save preferences',
+                        position: 'bottom'
+                      });
+
+                      await logAnalyticsEvent('register_failed', {
+                        user_id: user.uid,
+                        email: guestEmail,
+                        error: learner.status
+                      });
+                    }
+
+                    // Store onboarding data
+                    await AsyncStorage.setItem('onboardingData', JSON.stringify({
+                      grade,
+                      curriculum: 'CAPS',
+                      difficultSubject,
+                      avatar: selectedAvatar,
+                      onboardingCompleted: true,
+                      isGuest: true
+                    }));
+
+                    // Log onboarding completion event
+                    logAnalyticsEvent('onboarding_complete', {
+                      grade,
+                      curriculum: 'CAPS',
+                      difficult_subject: difficultSubject,
+                      avatar: selectedAvatar,
+                      is_guest: true
+                    });
+
+                    // Store auth token
+                    await SecureStore.setItemAsync('auth', JSON.stringify({ user }));
+
+                    // Navigate to tabs
+                    router.replace('/(tabs)');
+                  } catch (error) {
+                    console.error('Failed to create guest account:', error);
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'Failed to create guest account',
+                      position: 'bottom'
+                    });
+                  }
+                }}
+                testID="guest-auth-button"
+              >
+                <Ionicons name="person-outline" size={24} color="#FFFFFF" />
+                <ThemedText style={styles.authButtonText}>Try Quiz as Guest</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
+      case 5:
+        return (
+          <View style={styles.step}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setStep(4)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -381,6 +564,7 @@ export default function OnboardingScreen() {
                   difficultSubject,
                   avatar: selectedAvatar,
                 }}
+                defaultMethod={registrationMethod}
               />
             </ScrollView>
           </View>
@@ -402,6 +586,8 @@ export default function OnboardingScreen() {
       case 3:
         return !!selectedAvatar;
       case 4:
+        return true;
+      case 5:
         return true;
       default:
         return false;
@@ -493,6 +679,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textContainer: {
+    marginTop: 64,
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -572,6 +759,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 12,
     marginTop: 'auto',
+    marginBottom: 20,
   },
   button: {
     flex: 1,
@@ -1130,5 +1318,43 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.9)',
+  },
+  authOptionsContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
+    gap: 16,
+    marginTop: 32,
+  },
+  authButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 12,
+  },
+  emailButton: {
+    backgroundColor: '#4F46E5',
+  },
+  phoneButton: {
+    backgroundColor: '#3B82F6',
+  },
+  guestButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  authButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  guestPromptText: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
   },
 });

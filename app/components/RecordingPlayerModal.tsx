@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Image, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Image, Dimensions, Platform, Share, TouchableOpacity } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
 import { AudioPlayer } from '@/components/AudioPlayer';
@@ -29,8 +29,19 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
     if (!recording) return null;
 
     const audioFileName = recording.recordingFileName.replace('.opus', '.m4a');
-
     const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}`;
+
+    const handleShare = async () => {
+        try {
+            const shareUrl = `https://examquiz.co.za/lecture/${recording.recordingFileName}`;
+            await Share.share({
+                message: `Check out this podcast on ExamQuiz: ${recording.lecture_name}\n${shareUrl}`,
+                title: recording.lecture_name,
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
 
     return (
         <Modal
@@ -67,6 +78,25 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
                             <Ionicons name="headset" size={48} color={colors.text} />
                         </View>
                     )}
+
+                    <TouchableOpacity
+                        style={[styles.shareButton, {
+                            backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                            borderColor: isDark ? colors.border : '#E5E7EB',
+                            marginTop: 16,
+                            marginBottom: 16,
+                        }]}
+                        onPress={handleShare}
+                    >
+                        <Ionicons
+                            name="share-outline"
+                            size={20}
+                            color={isDark ? colors.text : '#4B5563'}
+                        />
+                        <ThemedText style={[styles.shareButtonText, { color: isDark ? colors.text : '#4B5563' }]}>
+                            Share this lecture
+                        </ThemedText>
+                    </TouchableOpacity>
 
                     <View style={styles.playerContainer}>
                         <AudioPlayer
@@ -129,5 +159,19 @@ function createStyles(isDark: boolean) {
         playerContainer: {
             marginTop: 24,
         },
+        shareButton: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 8,
+            gap: 4,
+            borderWidth: 1,
+            alignSelf: 'center',
+        },
+        shareButtonText: {
+            fontSize: 14,
+            fontWeight: '500',
+        },
     });
-} 
+}

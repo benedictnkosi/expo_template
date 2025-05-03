@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator, Dimensions, TouchableOpacity, Modal, Image, ImageSourcePropType } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLearnerBadges, LearnerBadge } from '@/services/api';
 import { analytics } from '@/services/analytics';
+import subjectEmojisJson from '../../assets/subject-emojis.json';
+const subjectEmojis = subjectEmojisJson as Record<string, string>;
 
 function getGradeColor(grade: number): string {
     switch (grade) {
@@ -82,6 +84,40 @@ interface SubjectTopicReport {
     report: MainTopic[];
 }
 
+interface TodayEvent {
+    title: string;
+    startTime: string;
+    endTime: string;
+    subject: string;
+    reminder: boolean;
+}
+
+interface CareerAdvice {
+    advice: string;
+    last_updated: string;
+}
+
+interface FollowingLearner {
+    learner_uid: string;
+    learner_name: string;
+    points: number;
+    streak: number;
+    lastResult: {
+        id: number;
+        outcome: string;
+        created: string;
+        duration: number;
+    };
+    firstResult: {
+        id: number;
+        outcome: string;
+        created: string;
+        duration: number;
+    };
+    questionsAnsweredToday: number;
+    questionsAnsweredThisWeek: number;
+}
+
 const badgeImages: Record<string, ImageSourcePropType> = {
     '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
     '7-day-streak.png': require('@/assets/images/badges/7-day-streak.png'),
@@ -101,6 +137,11 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'business-studies.png': require('@/assets/images/badges/business-studies.png'),
     'accounting.png': require('@/assets/images/badges/accounting.png')
 };
+
+// Helper to clean subject name for display and emoji lookup
+function getCleanSubjectName(subject: string): string {
+    return subject.replace(/\bP[12]\b/gi, '').trim();
+}
 
 async function getLearnerPerformance(uid: string): Promise<{ data: SubjectPerformance[] }> {
     try {
@@ -175,7 +216,9 @@ const SubjectReportModal = ({
     dailyActivity,
     weeklyProgress,
     isLoading,
-    uid
+    uid,
+    name,
+    user
 }: {
     isVisible: boolean;
     onClose: () => void;
@@ -185,6 +228,8 @@ const SubjectReportModal = ({
     weeklyProgress: WeeklyProgress[];
     isLoading: boolean;
     uid: string;
+    name: string;
+    user: any;
 }) => {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
@@ -251,24 +296,27 @@ const SubjectReportModal = ({
     return (
         <Modal
             visible={isVisible}
-            transparent
+            transparent={false}
             animationType="slide"
             onRequestClose={onClose}
             testID='subject-report-modal'
+            presentationStyle="fullScreen"
         >
-            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0, 0, 0, 0.5)' }]}>
+            <View style={[styles.modalOverlay, { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF', flex: 1 }]}>
                 <View style={[
                     styles.modalContent,
                     {
                         backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
                         borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                        marginTop: insets.top,
-                        width: width,
-                        height: '100%'
+                        width: '100%',
+                        height: '100%',
+                        flex: 1,
                     }
                 ]}>
                     <View style={styles.modalHeader}>
-                        <ThemedText style={styles.modalTitle}>{subject.subject} Report</ThemedText>
+                        <ThemedText style={styles.modalTitle}>
+                            {(subjectEmojis as Record<string, string>)[getCleanSubjectName(subject.subject)] || '📚'} {subject.subject}
+                        </ThemedText>
                         <TouchableOpacity
                             onPress={onClose}
                             style={styles.closeModalButton}
@@ -322,19 +370,7 @@ const SubjectReportModal = ({
                                             style={styles.modalChart}
                                         />
                                     </ThemedView>
-                                ) : (
-                                    <ThemedView style={[styles.modalChartContainer, {
-                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                                        borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
-                                    }]}>
-                                        <ThemedText style={styles.modalChartTitle}>📊 Daily Activity</ThemedText>
-                                        <View style={styles.modalEmptyDataContainer}>
-                                            <ThemedText style={styles.modalEmptyDataText}>
-                                                Not enough data to show daily activity graph
-                                            </ThemedText>
-                                        </View>
-                                    </ThemedView>
-                                )}
+                                ) : null}
 
                                 {weeklyProgress.length > 1 ? (
                                     <ThemedView style={[styles.modalChartContainer, {
@@ -376,19 +412,7 @@ const SubjectReportModal = ({
                                             </View>
                                         </View>
                                     </ThemedView>
-                                ) : (
-                                    <ThemedView style={[styles.modalChartContainer, {
-                                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                                        borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
-                                    }]}>
-                                        <ThemedText style={styles.modalChartTitle}>📈 Weekly Progress</ThemedText>
-                                        <View style={styles.modalEmptyDataContainer}>
-                                            <ThemedText style={styles.modalEmptyDataText}>
-                                                Not enough data to show weekly progress graph
-                                            </ThemedText>
-                                        </View>
-                                    </ThemedView>
-                                )}
+                                ) : null}
 
                                 <View style={styles.modalStatsContainer}>
                                     <View style={styles.modalStatItem}>
@@ -437,8 +461,13 @@ const SubjectReportModal = ({
                                     <ThemedText style={styles.modalChartTitle}>📚 Topic Performance</ThemedText>
                                     {isTopicLoading ? (
                                         <View style={styles.modalLoadingContainer}>
-                                            <ActivityIndicator size="small" color={colors.primary} />
-                                            <ThemedText style={styles.modalLoadingText}>Loading topic data...</ThemedText>
+                                            <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 16 }} />
+                                            <ThemedText style={{ fontSize: 20, fontWeight: '600', marginBottom: 8, textAlign: 'center' }}>
+                                                Analyzing your performance...
+                                            </ThemedText>
+                                            <ThemedText style={{ fontSize: 16, opacity: 0.7, textAlign: 'center', marginBottom: 24, paddingHorizontal: 24 }}>
+                                                Our AI is carefully reviewing your strengths and interests to provide personalized career guidance
+                                            </ThemedText>
                                         </View>
                                     ) : topicReport.length > 0 ? (
                                         topicReport
@@ -464,11 +493,13 @@ const SubjectReportModal = ({
                                                             <ThemedText style={styles.mainTopicName}>
                                                                 {mainTopic.mainTopic}
                                                             </ThemedText>
-                                                            <Ionicons
-                                                                name={expandedTopics[mainTopic.mainTopic] ? "chevron-up" : "chevron-down"}
-                                                                size={24}
-                                                                color={isDark ? '#FFFFFF' : '#000000'}
-                                                            />
+                                                            <View style={styles.topicActions}>
+                                                                <Ionicons
+                                                                    name={expandedTopics[mainTopic.mainTopic] ? "chevron-up" : "chevron-down"}
+                                                                    size={24}
+                                                                    color={isDark ? '#FFFFFF' : '#000000'}
+                                                                />
+                                                            </View>
                                                         </View>
                                                     </TouchableOpacity>
 
@@ -517,6 +548,36 @@ const SubjectReportModal = ({
                                                             </ThemedText>
                                                         </View>
                                                     </View>
+
+                                                    {user?.uid === uid && (
+                                                        <TouchableOpacity
+                                                            style={[
+                                                                styles.quizButton,
+                                                                {
+                                                                    backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#6366F1',
+                                                                    borderColor: isDark ? 'rgba(99,102,241,0.4)' : '#6366F1',
+                                                                }
+                                                            ]}
+                                                            onPress={() => {
+                                                                router.push({
+                                                                    pathname: '/quiz',
+                                                                    params: {
+                                                                        subjectName: getCleanSubjectName(subject.subject),
+                                                                        topic: mainTopic.mainTopic
+                                                                    }
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Ionicons
+                                                                name="play-circle"
+                                                                size={20}
+                                                                color={isDark ? '#FFFFFF' : '#FFFFFF'}
+                                                            />
+                                                            <ThemedText style={[styles.quizButtonText, { color: '#FFFFFF' }]}>
+                                                                Start Quiz for this topic
+                                                            </ThemedText>
+                                                        </TouchableOpacity>
+                                                    )}
 
                                                     {expandedTopics[mainTopic.mainTopic] && (
                                                         <View style={styles.subTopicsContainer}>
@@ -613,16 +674,22 @@ export default function LearnerPerformanceScreen() {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [badges, setBadges] = useState<LearnerBadge[]>([]);
     const [isBadgesLoading, setIsBadgesLoading] = useState(true);
+    const [todayEvents, setTodayEvents] = useState<TodayEvent[]>([]);
+    const [isTodayEventsLoading, setIsTodayEventsLoading] = useState(true);
+    const [careerAdvice, setCareerAdvice] = useState<CareerAdvice | null>(null);
+    const [isCareerAdviceLoading, setIsCareerAdviceLoading] = useState(false);
+    const [isCareerAdviceModalVisible, setIsCareerAdviceModalVisible] = useState(false);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [isFollowingLoading, setIsFollowingLoading] = useState(true);
+
+    // Reset modal state when component mounts or uid changes
+    useEffect(() => {
+        setIsModalVisible(false);
+        setSelectedSubject(null);
+    }, [uid]);
 
     const handleClose = () => {
-        if (uid === user?.uid) {
-            router.push('/(tabs)');
-        } else {
-            router.push({
-                pathname: '/(tabs)/social',
-                params: { activeTab: 'following' }
-            });
-        }
+        router.back();
     };
 
     const openSubjectReport = async (subject: SubjectPerformance) => {
@@ -657,21 +724,111 @@ export default function LearnerPerformanceScreen() {
     const closeModal = () => {
         setIsModalVisible(false);
         setSelectedSubject(null);
+        setSubjectDailyActivity([]);
+        setSubjectWeeklyProgress([]);
+    };
+
+    // Handle navigation focus
+    useFocusEffect(
+        React.useCallback(() => {
+            closeModal();
+        }, [])
+    );
+
+    const showCareerAdvice = async () => {
+        setIsCareerAdviceLoading(true);
+        try {
+            const response = await fetch(`${HOST_URL}/api/learner/${uid}/career-advice`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch career advice');
+            }
+            const data = await response.json();
+            if (data.status === 'OK') {
+                setCareerAdvice(data.data);
+                setIsCareerAdviceModalVisible(true);
+            }
+        } catch (error) {
+            console.error('Error fetching career advice:', error);
+        } finally {
+            setIsCareerAdviceLoading(false);
+        }
+    };
+
+    const shouldShowCareerAdvice = () => {
+        if (!performance || performance.length === 0) return false;
+
+        console.log('performance length', performance.length);
+        // Group P1 and P2 subjects together
+        const subjectGroups = new Map<string, number>();
+        performance.forEach(subject => {
+            const cleanSubject = getCleanSubjectName(subject.subject);
+            const currentTotal = subjectGroups.get(cleanSubject) || 0;
+            subjectGroups.set(cleanSubject, currentTotal + subject.totalAnswers);
+        });
+
+        // Check if there are at least 4 subjects with 25+ questions
+        const subjectsWithEnoughQuestions = Array.from(subjectGroups.values())
+            .filter(total => total >= 10).length;
+
+        console.log('subjectGroups', subjectsWithEnoughQuestions);
+
+        return subjectsWithEnoughQuestions >= 4;
+    };
+
+    const checkFollowingStatus = async () => {
+        if (!user?.uid) return;
+
+        try {
+            const response = await fetch(`${HOST_URL}/api/learner-following/following/${user.uid}`);
+            if (!response.ok) throw new Error('Failed to fetch following status');
+
+            const data = await response.json();
+            const isFollowingLearner = data.data.some((learner: FollowingLearner) => learner.learner_uid === uid);
+            setIsFollowing(isFollowingLearner);
+        } catch (error) {
+            console.error('Error checking following status:', error);
+        } finally {
+            setIsFollowingLoading(false);
+        }
+    };
+
+    const handleFollow = async () => {
+        if (!user?.uid) return;
+
+        try {
+            const response = await fetch(`${HOST_URL}/api/learner-following/follow/${user.uid}/${uid}`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) throw new Error('Failed to follow learner');
+
+            setIsFollowing(true);
+
+            // Log analytics event
+            await analytics.track('follow_learner', {
+                follower_id: user.uid,
+                followed_id: uid,
+            });
+        } catch (error) {
+            console.error('Error following learner:', error);
+        }
     };
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const [performanceResponse, activityResponse, weeklyResponse, badgesResponse] = await Promise.all([
+                const [performanceResponse, activityResponse, weeklyResponse, badgesResponse, todayEventsResponse] = await Promise.all([
                     getLearnerPerformance(uid as string),
                     getLearnerDailyActivity(uid as string),
                     getLearnerWeeklyProgress(uid as string),
-                    getLearnerBadges(uid as string)
+                    getLearnerBadges(uid as string),
+                    fetch(`${HOST_URL}/api/learner/${uid}/today-events`).then(res => res.json())
                 ]);
                 setPerformance(performanceResponse.data);
                 setDailyActivity(activityResponse.data);
                 setWeeklyProgress(weeklyResponse.data);
                 setBadges(badgesResponse);
+                setTodayEvents(todayEventsResponse.events || []);
 
                 // Log analytics event for page load
                 await analytics.track('view_performance_report', {
@@ -689,11 +846,16 @@ export default function LearnerPerformanceScreen() {
             } finally {
                 setIsLoading(false);
                 setIsBadgesLoading(false);
+                setIsTodayEventsLoading(false);
             }
         }
 
         fetchData();
     }, [uid]);
+
+    useEffect(() => {
+        checkFollowingStatus();
+    }, [user?.uid, uid]);
 
     const dailyChartData = {
         labels: dailyActivity.map(item => {
@@ -745,13 +907,66 @@ export default function LearnerPerformanceScreen() {
                         color={isDark ? '#FFFFFF' : '#000000'}
                     />
                 </TouchableOpacity>
-                <ThemedText style={styles.headerTitle}>{name}'s Performance</ThemedText>
+                <ThemedText style={styles.headerTitle}>🏆 {name}'s Performance</ThemedText>
+                {user?.uid !== uid && !isFollowingLoading && (
+                    <TouchableOpacity
+                        style={[
+                            styles.followButton,
+                            {
+                                backgroundColor: isFollowing
+                                    ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#10B981')
+                                    : (isDark ? 'rgba(59, 130, 246, 0.2)' : '#3B82F6'),
+                                borderColor: isFollowing
+                                    ? (isDark ? 'rgba(16, 185, 129, 0.4)' : '#10B981')
+                                    : (isDark ? 'rgba(59, 130, 246, 0.4)' : '#3B82F6'),
+                            }
+                        ]}
+                        onPress={handleFollow}
+                        disabled={isFollowing}
+                    >
+                        <Ionicons
+                            name={isFollowing ? "checkmark" : "person-add"}
+                            size={20}
+                            color={isDark ? '#FFFFFF' : '#FFFFFF'}
+                        />
+                        <ThemedText style={styles.followButtonText}>
+                            {isFollowing ? 'Following' : 'Follow'}
+                        </ThemedText>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.contentContainer}
             >
+                {/* Study Plan for Today */}
+                {todayEvents.length > 0 && (
+                    <ThemedView style={[
+                        styles.todayEventsContainer,
+                        {
+                            backgroundColor: isDark ? 'rgba(59,130,246,0.08)' : '#E0E7FF',
+                            borderColor: isDark ? 'rgba(99,102,241,0.2)' : '#6366F1',
+                        }
+                    ]} accessibilityRole="summary" accessibilityLabel="Today's Study Plan">
+                        <ThemedText style={styles.todayEventsTitle}>Study Plan! ⏰</ThemedText>
+                        {isTodayEventsLoading ? (
+                            <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                            todayEvents.map((event, idx) => {
+                                const emoji = (subjectEmojis as Record<string, string>)[event.subject] || '📖';
+                                return (
+                                    <View key={idx} style={styles.todayEventCard}>
+                                        <ThemedText style={styles.todayEventTitle}>{emoji} {event.title}</ThemedText>
+                                        <ThemedText style={styles.todayEventTime}>{event.startTime} - {event.endTime}</ThemedText>
+                                        <ThemedText style={styles.todayEventSubject}>{event.subject}</ThemedText>
+                                    </View>
+                                );
+                            })
+                        )}
+                    </ThemedView>
+                )}
+
                 {isLoading ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={colors.primary} />
@@ -821,19 +1036,7 @@ export default function LearnerPerformanceScreen() {
                                 />
 
                             </ThemedView>
-                        ) : (
-                            <ThemedView style={[styles.chartContainer, {
-                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
-                            }]}>
-                                <ThemedText style={styles.chartTitle}>📊 Daily Answers</ThemedText>
-                                <View style={styles.emptyDataContainer}>
-                                    <ThemedText style={styles.emptyDataText}>
-                                        Not enough data to show daily activity graph
-                                    </ThemedText>
-                                </View>
-                            </ThemedView>
-                        )}
+                        ) : null}
 
                         {weeklyProgress.length > 1 ? (
                             <ThemedView style={[styles.chartContainer, {
@@ -875,18 +1078,35 @@ export default function LearnerPerformanceScreen() {
                                     </View>
                                 </View>
                             </ThemedView>
-                        ) : (
-                            <ThemedView style={[styles.chartContainer, {
-                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
-                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
-                            }]}>
-                                <ThemedText style={styles.chartTitle}>📈 Weekly Progress</ThemedText>
-                                <View style={styles.emptyDataContainer}>
-                                    <ThemedText style={styles.emptyDataText}>
-                                        Not enough data to show weekly progress graph
-                                    </ThemedText>
-                                </View>
-                            </ThemedView>
+                        ) : null}
+
+                        {!isLoading && !error && shouldShowCareerAdvice() && (uid as string).length > 4 && (
+                            <TouchableOpacity
+                                style={[
+                                    styles.careerAdviceButton,
+                                    {
+                                        backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#6366F1',
+                                        borderColor: isDark ? 'rgba(99,102,241,0.4)' : '#6366F1',
+                                    }
+                                ]}
+                                onPress={showCareerAdvice}
+                                disabled={isCareerAdviceLoading}
+                            >
+                                {isCareerAdviceLoading ? (
+                                    <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : '#FFFFFF'} />
+                                ) : (
+                                    <>
+                                        <Ionicons
+                                            name="bulb"
+                                            size={24}
+                                            color={isDark ? '#FFFFFF' : '#FFFFFF'}
+                                        />
+                                        <ThemedText style={styles.careerAdviceButtonText}>
+                                            Get Career Advice
+                                        </ThemedText>
+                                    </>
+                                )}
+                            </TouchableOpacity>
                         )}
 
                         <ThemedText style={styles.hintText}>
@@ -912,7 +1132,9 @@ export default function LearnerPerformanceScreen() {
                                             ]}
                                         >
                                             <View style={styles.subjectHeader}>
-                                                <ThemedText style={styles.subjectName}>{subject.subject}</ThemedText>
+                                                <ThemedText style={styles.subjectName}>
+                                                    {(subjectEmojis as Record<string, string>)[getCleanSubjectName(subject.subject)] || '📚'} {subject.subject}
+                                                </ThemedText>
                                                 <Ionicons
                                                     name="stats-chart"
                                                     size={24}
@@ -986,8 +1208,71 @@ export default function LearnerPerformanceScreen() {
                     weeklyProgress={subjectWeeklyProgress}
                     isLoading={isSubjectLoading}
                     uid={uid as string}
+                    name={name as string}
+                    user={user}
                 />
             )}
+
+            <Modal
+                visible={isCareerAdviceModalVisible}
+                transparent={false}
+                animationType="slide"
+                onRequestClose={() => setIsCareerAdviceModalVisible(false)}
+                presentationStyle="fullScreen"
+            >
+                <View style={[styles.modalOverlay, {
+                    backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                    paddingTop: insets.top
+                }]}>
+                    <View style={[
+                        styles.modalContent,
+                        {
+                            backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                            flex: 1,
+                        }
+                    ]}>
+                        <View style={styles.modalHeader}>
+                            <ThemedText style={[styles.modalTitle, { textAlign: 'center', flex: 1 }]}>
+                                🎓 AI Career Advice 💡
+                            </ThemedText>
+                            <TouchableOpacity
+                                onPress={() => setIsCareerAdviceModalVisible(false)}
+                                style={styles.closeModalButton}
+                            >
+                                <Ionicons
+                                    name="close"
+                                    size={24}
+                                    color={isDark ? '#FFFFFF' : '#000000'}
+                                />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalScrollView}>
+                            {careerAdvice ? (
+                                <>
+                                    <ThemedText style={styles.careerAdviceText}>
+                                        {careerAdvice.advice.replace(/\n-/g, '\n•')}
+                                    </ThemedText>
+                                    <ThemedText style={styles.careerAdviceTimestamp}>
+                                        Last updated: {new Date(careerAdvice.last_updated).toLocaleDateString()}
+                                    </ThemedText>
+                                </>
+                            ) : (
+                                <View style={[styles.modalLoadingContainer, { padding: 20 }]}>
+                                    <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 16 }} />
+                                    <ThemedText style={{ fontSize: 20, fontWeight: '600', marginBottom: 8, textAlign: 'center' }}>
+                                        Analyzing your performance...
+                                    </ThemedText>
+                                    <ThemedText style={{ fontSize: 16, opacity: 0.7, textAlign: 'center', marginBottom: 24, paddingHorizontal: 24 }}>
+                                        Our AI is carefully reviewing your strengths and interests to provide personalized career guidance
+                                    </ThemedText>
+                                </View>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </LinearGradient>
     );
 }
@@ -1147,7 +1432,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     headerTitle: {
-        fontSize: 20,
+        fontSize: 16,
         fontWeight: '600',
         flex: 1,
         textAlign: 'center',
@@ -1187,8 +1472,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'flex-start',
         alignItems: 'center',
+        backgroundColor: 'transparent',
+        paddingTop: 24,
     },
     modalContent: {
+        flex: 1,
         padding: 16,
         borderTopLeftRadius: 16,
         borderTopRightRadius: 16,
@@ -1200,7 +1488,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
-        flex: 1,
+        width: '100%',
+        height: '100%',
+        borderWidth: 0,
+        marginTop: 0,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -1228,9 +1519,26 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 20,
     },
+    loadingImage: {
+        width: 200,
+        height: 200,
+        marginBottom: 24,
+    },
     modalLoadingText: {
-        marginTop: 10,
+        fontSize: 20,
+        fontWeight: '600',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    modalLoadingSubtext: {
         fontSize: 16,
+        opacity: 0.7,
+        textAlign: 'center',
+        marginBottom: 24,
+        paddingHorizontal: 24,
+    },
+    loadingIndicator: {
+        marginTop: 16,
     },
     modalChartContainer: {
         borderRadius: 16,
@@ -1379,7 +1687,6 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         marginBottom: 8,
     },
-
     badgeName: {
         fontSize: 14,
         textAlign: 'center'
@@ -1509,5 +1816,106 @@ const styles = StyleSheet.create({
         marginTop: 16,
         opacity: 0.8,
         fontStyle: 'italic',
+    },
+    todayEventsContainer: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+    },
+    todayEventsTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    todayEventsEmpty: {
+        fontSize: 15,
+        opacity: 0.7,
+        fontStyle: 'italic',
+    },
+    todayEventCard: {
+        marginTop: 8,
+        marginBottom: 8,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: 'rgba(99,102,241,0.08)',
+    },
+    todayEventTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    todayEventTime: {
+        fontSize: 14,
+        marginTop: 2,
+        marginBottom: 2,
+    },
+    todayEventSubject: {
+        fontSize: 14,
+        marginBottom: 2,
+    },
+    todayEventReminder: {
+        fontSize: 13,
+        color: '#6366F1',
+        fontWeight: '500',
+    },
+    careerAdviceButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        gap: 8,
+    },
+    careerAdviceButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    careerAdviceText: {
+        fontSize: 16,
+        lineHeight: 24,
+        marginBottom: 16,
+    },
+    careerAdviceTimestamp: {
+        fontSize: 14,
+        opacity: 0.7,
+        fontStyle: 'italic',
+        marginBottom: 16,
+    },
+    followButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginLeft: 8,
+    },
+    followButtonText: {
+        marginLeft: 4,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    topicActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    quizButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 12,
+        borderRadius: 12,
+        marginTop: 16,
+        borderWidth: 1,
+        gap: 8,
+    },
+    quizButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
 }); 

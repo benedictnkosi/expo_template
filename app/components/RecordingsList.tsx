@@ -105,9 +105,12 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
                     </View>
                 )}
                 <View style={styles.recordingInfo}>
-                    <ThemedText style={styles.lectureTitle}>
+                    <ThemedText style={styles.lectureTitle} numberOfLines={2}>
                         {lecture.lecture_name}
                     </ThemedText>
+                    <View style={styles.playIconContainer}>
+                        <Ionicons name="play-circle" size={28} color={colors.primary} />
+                    </View>
                 </View>
             </View>
         </TouchableOpacity>
@@ -209,10 +212,20 @@ function createStyles(isDark: boolean) {
         recordingInfo: {
             flex: 1,
             marginRight: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
         },
         lectureTitle: {
             fontSize: 14,
             lineHeight: 22,
+            flex: 1,
+            paddingRight: 40,
+        },
+        playIconContainer: {
+            position: 'absolute',
+            right: 0,
+            justifyContent: 'center',
+            height: '100%',
         },
         disclaimerText: {
             fontSize: 12,

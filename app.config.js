@@ -15,10 +15,25 @@ export default {
     infoPlist: {
       "ITSAppUsesNonExemptEncryption": false,
       "UIBackgroundModes": ["remote-notification"]
-    }
+    },
+    "associatedDomains": ["applinks:examquiz.co.za"]
   },
   android: {
     package: 'za.co.examquizafrica',
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "data": [
+          {
+            "scheme": "https",
+            "host": "examquiz.co.za",
+            "pathPrefix": "/"
+          }
+        ],
+        "category": ["BROWSABLE", "DEFAULT"]
+      }
+    ],
     versionCode: 1,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',

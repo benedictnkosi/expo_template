@@ -54,6 +54,7 @@ import avatar7 from '@/assets/images/avatars/7.png';
 import avatar8 from '@/assets/images/avatars/8.png';
 import avatar9 from '@/assets/images/avatars/9.png';
 import { getStoredPushToken } from '@/services/notifications';
+import { analytics } from '@/services/analytics';
 
 // Basic profanity detection
 const PROFANITY_WORDS = [
@@ -503,6 +504,15 @@ async function downloadImage(url: string, fileName: string) {
     }
 }
 
+// Helper function for safe analytics logging
+async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+    try {
+        await analytics.track(eventName, eventParams);
+    } catch (error) {
+        console.error('[Analytics] Error logging event:', error);
+    }
+}
+
 export default function ThreadDetailScreen() {
     const { threadId, subjectName } = useLocalSearchParams();
     const { user } = useAuth();
@@ -872,7 +882,18 @@ export default function ThreadDetailScreen() {
             };
 
             // Send message
-            await addDoc(collection(db, 'messages'), messageData);
+            const docRef = await addDoc(collection(db, 'messages'), messageData);
+
+            // Log analytics event for new message
+            await logAnalyticsEvent('message_sent', {
+                message_id: docRef.id,
+                thread_id: threadId,
+                subject_name: thread?.subjectName,
+                has_attachment: !!attachment,
+                attachment_type: attachment?.type,
+                is_reply: !!replyingTo,
+                user_id: user.uid
+            });
 
             // Enable notifications for this thread if not already enabled
             const pushToken = await getStoredPushToken();
@@ -1023,7 +1044,7 @@ export default function ThreadDetailScreen() {
         setContextMenu({ x, y, message });
     };
 
-    const handleContextMenuOption = (action: 'reply' | 'report' | 'delete') => {
+    const handleContextMenuOption = (action: 'reply' | 'report' | 'delete' | 'viewReport') => {
         if (!contextMenu) return;
 
         switch (action) {
@@ -1035,6 +1056,16 @@ export default function ThreadDetailScreen() {
                 break;
             case 'delete':
                 handleDeleteMessage(contextMenu.message);
+                break;
+            case 'viewReport':
+                // Log analytics event for viewing report
+                logAnalyticsEvent('chat_view_report', {
+                    message_id: contextMenu.message.id,
+                    author_id: contextMenu.message.authorUID,
+                    thread_id: threadId,
+                    subject_name: subjectName
+                });
+                router.push(`/report/${contextMenu.message.authorUID}?name=${encodeURIComponent(contextMenu.message.userName)}`);
                 break;
         }
         setContextMenu(null);
@@ -1147,11 +1178,11 @@ export default function ThreadDetailScreen() {
 
     const handleShareThread = async () => {
         try {
-            const deepLink = `examquiz://posts/${threadId}?subjectName=${encodeURIComponent(subjectName as string)}`;
+            const shareUrl = `https://examquiz.co.za/(tabs)/chat/${threadId}?subjectName=${encodeURIComponent(subjectName as string)}`;
 
             await Share.share({
-                message: `🔥 Hot Topic in ${subjectName}! Join the discussion: "${thread?.title}" — Tap to see what others are saying 👀 ${deepLink}`,
-                url: deepLink
+                message: `🔥 Hot Topic in ${subjectName}! Join the discussion: "${thread?.title}" — Tap to see what others are saying 👀 ${shareUrl}`,
+                url: shareUrl
             });
         } catch (error) {
             console.error('Error sharing thread:', error);
@@ -1482,6 +1513,14 @@ export default function ThreadDetailScreen() {
                                     >
                                         <Ionicons name="return-up-back" size={18} color={colors.text} />
                                         <ThemedText style={styles.contextMenuText}>Reply</ThemedText>
+                                    </TouchableOpacity>
+                                    <View style={[styles.contextMenuDivider, { backgroundColor: isDark ? colors.border : '#E5E7EB' }]} />
+                                    <TouchableOpacity
+                                        style={styles.contextMenuItem}
+                                        onPress={() => handleContextMenuOption('viewReport')}
+                                    >
+                                        <Ionicons name="stats-chart" size={18} color={colors.primary} />
+                                        <ThemedText style={[styles.contextMenuText, { color: colors.primary }]}>View Report</ThemedText>
                                     </TouchableOpacity>
                                     <View style={[styles.contextMenuDivider, { backgroundColor: isDark ? colors.border : '#E5E7EB' }]} />
                                     <TouchableOpacity

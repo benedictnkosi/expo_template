@@ -11,6 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import { Header } from '@/components/Header';
 import { format, addDays, startOfWeek } from 'date-fns';
+import subjectEmojis from '@/assets/subject-emojis.json';
 
 interface BaseEvent {
   startTime: string;
@@ -141,6 +142,11 @@ const getEventColor = (subject: string | undefined) => {
 };
 
 const WEEKS_TO_LOAD = 4; // Number of weeks to load at a time
+
+// Add helper function to get subject emoji
+function getSubjectEmoji(subject: string): string {
+  return subjectEmojis[subject as keyof typeof subjectEmojis] || '📚';
+}
 
 export default function TimetableScreen() {
   const colorScheme = useColorScheme();
@@ -389,21 +395,85 @@ export default function TimetableScreen() {
   };
 
   const handleDeleteClass = (day: string, item: Class | Event) => {
-    Alert.alert(
-      'Delete Event',
-      `Are you sure you want to delete ${('subject' in item && !('title' in item)) ? item.subject : (item as Event).title} event?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteClass(day, item),
-        },
-      ]
-    );
+    if ('subject' in item && !('title' in item)) {
+      const subjectEmoji = getSubjectEmoji(item.subject);
+      Alert.alert(
+        '🗑️ Delete Class',
+        `Are you sure you want to delete ${subjectEmoji} ${item.subject} class?`,
+        [
+          {
+            text: 'Delete This Class',
+            style: 'destructive',
+            onPress: () => deleteClass(day, item),
+          },
+          {
+            text: 'Delete All Classes',
+            style: 'destructive',
+            onPress: async () => {
+              if (!user?.uid) return;
+              try {
+                const response = await fetch(`${HOST_URL}/api/learner/${user.uid}/timetable`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    timetable: {}
+                  }),
+                });
+
+                const data = await response.json();
+                if (data.status === 'OK') {
+                  setTimetable({
+                    monday: [],
+                    tuesday: [],
+                    wednesday: [],
+                    thursday: [],
+                    friday: [],
+                    saturday: [],
+                    sunday: []
+                  });
+                  Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'All classes deleted successfully',
+                  });
+                } else {
+                  throw new Error(data.message || 'Failed to delete all classes');
+                }
+              } catch (error) {
+                console.error('Error deleting all classes:', error);
+                Toast.show({
+                  type: 'error',
+                  text1: 'Error',
+                  text2: 'Failed to delete all classes',
+                });
+              }
+            },
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        '🗑️ Delete Event',
+        `Are you sure you want to delete ${(item as Event).title} event?`,
+        [
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => deleteClass(day, item),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
   };
 
   // Function to load more weeks
@@ -483,7 +553,9 @@ export default function TimetableScreen() {
         <View style={styles.classHeader}>
           <View>
             <View style={styles.titleContainer}>
-              <Text style={styles.className}>{title}</Text>
+              <Text style={styles.className}>
+                {isClass ? `${getSubjectEmoji(subject)} ${title}` : title}
+              </Text>
               {!isClass && (event as Event).reminder && (
                 <View style={styles.reminderIndicator}>
                   <Ionicons name="notifications" size={14} color="#fff" />
@@ -492,7 +564,7 @@ export default function TimetableScreen() {
             </View>
             {!isClass && subject && (
               <Text style={[styles.classTime, { marginTop: 4 }]}>
-                {subject}
+                {getSubjectEmoji(subject)} {subject}
               </Text>
             )}
           </View>

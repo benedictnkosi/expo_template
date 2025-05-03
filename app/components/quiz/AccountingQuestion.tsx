@@ -352,9 +352,7 @@ export const AccountingQuestion = ({
                                             style={styles.editableCell}
                                             onPress={() => handleCellPress(rowIndex, 'A', cell)}
                                         >
-                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
-                                                {cell.value || '🔽 Select'}
-                                            </ThemedText>
+                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>??</ThemedText>
                                         </TouchableOpacity>
                                     );
                                 }
@@ -363,10 +361,7 @@ export const AccountingQuestion = ({
                                 if (cell.value && !cell.isCorrect) {
                                     return (
                                         <View style={styles.incorrectCell}>
-                                            <ThemedText style={[styles.cellText, { color: '#d32f2f' }]}>
-                                                {cell.value}
-                                            </ThemedText>
-                                            <ThemedText style={[styles.correctText, { color: '#388e3c', marginTop: 4 }]}>
+                                            <ThemedText style={[styles.correctText, { color: '#ff4d4f' }]}>
                                                 {cell.correct}
                                             </ThemedText>
                                         </View>
@@ -407,36 +402,29 @@ export const AccountingQuestion = ({
                                             style={styles.editableCell}
                                             onPress={() => handleCellPress(rowIndex, 'B', cell)}
                                         >
-                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
-                                                {cell.value || '🔽 Select'}
-                                            </ThemedText>
+                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>??</ThemedText>
                                         </TouchableOpacity>
                                     );
                                 }
 
-                                // Show incorrect answer with correct value and explanation
+                                // Show incorrect answer with correct value
                                 if (cell.value && !cell.isCorrect) {
                                     return (
                                         <View style={styles.incorrectCell}>
-                                            <ThemedText style={[styles.cellText, { color: '#d32f2f' }]}>
-                                                {cell.value}
-                                            </ThemedText>
-                                            <ThemedText style={[styles.correctText, { color: '#388e3c', marginTop: 4 }]}>
+                                            <ThemedText style={[styles.correctText, { color: '#ff4d4f' }]}>
                                                 {cell.correct}
                                             </ThemedText>
-
                                         </View>
                                     );
                                 }
 
-                                // Show correct answer with green highlight and explanation
+                                // Show correct answer with green highlight
                                 if (cell.value && cell.isCorrect) {
                                     return (
                                         <View style={styles.correctCell}>
                                             <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
                                                 {cell.value}
                                             </ThemedText>
-
                                         </View>
                                     );
                                 }

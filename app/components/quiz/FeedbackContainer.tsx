@@ -48,7 +48,7 @@ export function FeedbackContainer({
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const styles = createStyles(colors, isDark);
 
-    console.log('isLectureAvailable', isLectureAvailable);
+
 
     useEffect(() => {
         if (isLoadingExplanation) {

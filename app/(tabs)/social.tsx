@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const badgeImages: Record<string, ImageSourcePropType> = {
     '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
@@ -35,7 +36,10 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'history.png': require('@/assets/images/badges/history.png'),
     'tourism.png': require('@/assets/images/badges/tourism.png'),
     'business-studies.png': require('@/assets/images/badges/business-studies.png'),
-    'accounting.png': require('@/assets/images/badges/accounting.png')
+    'accounting.png': require('@/assets/images/badges/accounting.png'),
+    'daily-goat.png': require('@/assets/images/badges/daily-goat.png'),
+    'weekly-goat.png': require('@/assets/images/badges/weekly-goat.png'),
+    'all-time-goat.png': require('@/assets/images/badges/all-time-goat.png')
 };
 
 const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
@@ -61,6 +65,8 @@ interface LeaderboardEntry {
     position: number;
     isCurrentLearner: boolean;
     avatar: string;
+    publicProfile: boolean;
+    followMeCode: string;
 }
 
 interface WeeklyScoreboardEntry {
@@ -70,6 +76,8 @@ interface WeeklyScoreboardEntry {
     position: number;
     isCurrentLearner: boolean;
     avatar: string;
+    publicProfile: boolean;
+    followMeCode: string;
 }
 
 interface WeeklyScoreboardResponse {
@@ -281,22 +289,29 @@ interface ScoreboardProps {
         isCurrentLearner: boolean;
         avatar: string;
         totalAnswers?: number;
+        publicProfile: boolean;
+        followMeCode: string;
     }>;
     showTotalAnswers?: boolean;
 }
 
 function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
     const { colors, isDark } = useTheme();
-    const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
-        '1': require('@/assets/images/avatars/1.png'),
-        '2': require('@/assets/images/avatars/2.png'),
-        '3': require('@/assets/images/avatars/3.png'),
-        '4': require('@/assets/images/avatars/4.png'),
-        '5': require('@/assets/images/avatars/5.png'),
-        '6': require('@/assets/images/avatars/6.png'),
-        '7': require('@/assets/images/avatars/7.png'),
-        '8': require('@/assets/images/avatars/8.png'),
-        '9': require('@/assets/images/avatars/9.png'),
+    const { user } = useAuth();
+
+    const handleLearnerPress = async (entry: ScoreboardProps['entries'][0]) => {
+        if (entry.publicProfile && entry.followMeCode) {
+            // Track analytics event for viewing learner report
+            if (user?.uid) {
+                await analytics.track('social_view_report', {
+                    viewer_id: user.uid,
+                    viewed_learner_id: entry.followMeCode,
+                    viewed_learner_name: entry.name,
+                    is_own_report: entry.isCurrentLearner
+                });
+            }
+            router.push(`/report/${entry.followMeCode}?name=${encodeURIComponent(entry.name)}`);
+        }
     };
 
     const renderTopThree = (rankings: ScoreboardProps['entries']) => {
@@ -305,7 +320,11 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
         return (
             <View style={styles.topThreeContainer}>
                 {/* Second Place */}
-                <View style={styles.topThreeItem}>
+                <TouchableOpacity
+                    style={styles.topThreeItem}
+                    onPress={() => handleLearnerPress(rankings[1])}
+                    disabled={!rankings[1].publicProfile}
+                >
                     <View style={styles.topThreeAvatarContainer}>
                         <Image
                             source={rankings[1].avatar ? AVATAR_IMAGES[rankings[1].avatar] : AVATAR_IMAGES['1']}
@@ -332,10 +351,14 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                             {rankings[1].totalAnswers} answers
                         </ThemedText>
                     )}
-                </View>
+                </TouchableOpacity>
 
                 {/* First Place */}
-                <View style={[styles.topThreeItem, styles.firstPlace]}>
+                <TouchableOpacity
+                    style={[styles.topThreeItem, styles.firstPlace]}
+                    onPress={() => handleLearnerPress(rankings[0])}
+                    disabled={!rankings[0].publicProfile}
+                >
                     <View style={styles.crownContainer}>
                         <ThemedText style={styles.crown}>👑</ThemedText>
                     </View>
@@ -362,10 +385,14 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                             {rankings[0].totalAnswers} answers
                         </ThemedText>
                     )}
-                </View>
+                </TouchableOpacity>
 
                 {/* Third Place */}
-                <View style={styles.topThreeItem}>
+                <TouchableOpacity
+                    style={styles.topThreeItem}
+                    onPress={() => handleLearnerPress(rankings[2])}
+                    disabled={!rankings[2].publicProfile}
+                >
                     <View style={styles.topThreeAvatarContainer}>
                         <Image
                             source={rankings[2].avatar ? AVATAR_IMAGES[rankings[2].avatar] : AVATAR_IMAGES['1']}
@@ -392,7 +419,7 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                             {rankings[2].totalAnswers} answers
                         </ThemedText>
                     )}
-                </View>
+                </TouchableOpacity>
             </View>
         );
     };
@@ -403,50 +430,59 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
         const avatarImage = entry.avatar ? AVATAR_IMAGES[entry.avatar] : AVATAR_IMAGES['1'];
 
         return (
-            <ThemedView
+            <TouchableOpacity
                 key={`${entry.name}-${entry.position}`}
-                style={[
-                    styles.leaderboardEntry,
-                    entry.isCurrentLearner && styles.currentLearnerEntry,
-                    isTopThree && styles.topThreeEntry
-                ]}
+                onPress={() => handleLearnerPress(entry)}
+                disabled={!entry.publicProfile}
             >
-                <View style={styles.leaderboardEntryContent}>
-                    <View style={styles.positionContainer}>
-                        {medalEmoji ? (
-                            <ThemedText style={styles.medalEmoji}>{medalEmoji}</ThemedText>
-                        ) : (
-                            <ThemedText style={styles.position}>#{entry.position}</ThemedText>
-                        )}
+                <ThemedView
+                    style={[
+                        styles.leaderboardEntry,
+                        entry.isCurrentLearner && styles.currentLearnerEntry,
+                        isTopThree && styles.topThreeEntry
+                    ]}
+                >
+                    <View style={styles.leaderboardEntryContent}>
+                        <View style={styles.positionContainer}>
+                            {medalEmoji ? (
+                                <ThemedText style={styles.medalEmoji}>{medalEmoji}</ThemedText>
+                            ) : (
+                                <ThemedText style={styles.position}>#{entry.position}</ThemedText>
+                            )}
+                        </View>
+                        <View style={styles.avatarContainer}>
+                            <Image
+                                source={avatarImage}
+                                style={styles.avatar}
+                            />
+                        </View>
+                        <View style={styles.nameContainer}>
+                            <ThemedText style={styles.name}>{entry.isCurrentLearner ? 'You' : entry.name}</ThemedText>
+                            {showTotalAnswers && (
+                                <ThemedText style={styles.scoreboardAnswers}>
+                                    {entry.totalAnswers} answers
+                                </ThemedText>
+                            )}
+                        </View>
+                        <View style={styles.pointsContainer}>
+                            <Image
+                                source={require('@/assets/images/points.png')}
+                                style={styles.pointsIcon}
+                            />
+                            <ThemedText style={styles.points}>{entry.score}</ThemedText>
+                        </View>
                     </View>
-                    <View style={styles.avatarContainer}>
-                        <Image
-                            source={avatarImage}
-                            style={styles.avatar}
-                        />
-                    </View>
-                    <View style={styles.nameContainer}>
-                        <ThemedText style={styles.name}>{entry.isCurrentLearner ? 'You' : entry.name}</ThemedText>
-                        {showTotalAnswers && (
-                            <ThemedText style={styles.scoreboardAnswers}>
-                                {entry.totalAnswers} answers
-                            </ThemedText>
-                        )}
-                    </View>
-                    <View style={styles.pointsContainer}>
-                        <Image
-                            source={require('@/assets/images/points.png')}
-                            style={styles.pointsIcon}
-                        />
-                        <ThemedText style={styles.points}>{entry.score}</ThemedText>
-                    </View>
-                </View>
-            </ThemedView>
+                </ThemedView>
+            </TouchableOpacity>
         );
     };
 
     return (
         <View style={styles.leaderboardContainer}>
+            <ThemedText style={styles.scoreboardHint}>
+                Tap on a learner to view their activity and report
+            </ThemedText>
+
             {renderTopThree(entries.slice(0, 3))}
 
             <View style={styles.rankingsList}>
@@ -536,6 +572,38 @@ export default function AchievementsScreen() {
         activeText: {
             color: '#FFFFFF',
         },
+    };
+
+    // Add function to save active tab
+    const saveActiveTab = async (tab: string) => {
+        try {
+            await AsyncStorage.setItem('socialActiveTab', tab);
+        } catch (error) {
+            console.error('Error saving active tab:', error);
+        }
+    };
+
+    // Add function to load active tab
+    const loadActiveTab = async () => {
+        try {
+            const savedTab = await AsyncStorage.getItem('socialActiveTab');
+            if (savedTab && ['badges', 'scoreboard', 'following'].includes(savedTab)) {
+                setActiveTab(savedTab as 'badges' | 'scoreboard' | 'following');
+            }
+        } catch (error) {
+            console.error('Error loading active tab:', error);
+        }
+    };
+
+    // Load saved tab when component mounts
+    useEffect(() => {
+        loadActiveTab();
+    }, []);
+
+    // Update active tab and save it
+    const handleTabChange = (tab: 'badges' | 'scoreboard' | 'following') => {
+        setActiveTab(tab);
+        saveActiveTab(tab);
     };
 
     const fetchLeaderboard = useCallback(async () => {
@@ -722,32 +790,6 @@ export default function AchievementsScreen() {
         }
     };
 
-    const handleBlockFollower = async (followerUid: string) => {
-        if (!user?.uid) return;
-        setIsBlocking(true);
-        try {
-            const response = await updateFollowerStatus(user.uid, followerUid, 'rejected');
-            if (response.message === 'Status updated successfully') {
-                Toast.show({
-                    type: 'success',
-                    text1: 'Success',
-                    text2: `Successfully blocked ${response.data.follower.name}`,
-                    position: 'bottom',
-                });
-                fetchFollowers();
-            }
-        } catch (error) {
-            Toast.show({
-                type: 'error',
-                text1: 'Failed to block',
-                text2: 'Please try again',
-                position: 'bottom',
-            });
-        } finally {
-            setIsBlocking(false);
-        }
-    };
-
     const handleUnfollowLearner = async (learnerUid: string) => {
         if (!user?.uid) return;
         try {
@@ -857,7 +899,7 @@ export default function AchievementsScreen() {
                         tabStyles.button,
                         activeTab === 'scoreboard' && tabStyles.activeButton
                     ]}
-                    onPress={() => setActiveTab('scoreboard')}
+                    onPress={() => handleTabChange('scoreboard')}
                 >
                     <ThemedText
                         style={[
@@ -873,7 +915,7 @@ export default function AchievementsScreen() {
                         tabStyles.button,
                         activeTab === 'badges' && tabStyles.activeButton
                     ]}
-                    onPress={() => setActiveTab('badges')}
+                    onPress={() => handleTabChange('badges')}
                 >
                     <ThemedText
                         style={[
@@ -889,7 +931,7 @@ export default function AchievementsScreen() {
                         tabStyles.button,
                         activeTab === 'following' && tabStyles.activeButton
                     ]}
-                    onPress={() => setActiveTab('following')}
+                    onPress={() => handleTabChange('following')}
                 >
                     <ThemedText
                         style={[
@@ -1031,6 +1073,8 @@ export default function AchievementsScreen() {
                                     position: entry.position,
                                     isCurrentLearner: entry.isCurrentLearner,
                                     avatar: entry.avatar,
+                                    publicProfile: entry.publicProfile,
+                                    followMeCode: entry.followMeCode,
                                 })) || []}
                             />
                         ) : scoreboardType === 'weekly' ? (
@@ -1042,6 +1086,8 @@ export default function AchievementsScreen() {
                                         position: entry.position,
                                         isCurrentLearner: entry.isCurrentLearner,
                                         avatar: entry.avatar,
+                                        publicProfile: entry.publicProfile,
+                                        followMeCode: entry.followMeCode,
                                     })) || []}
                                 />
                             </>
@@ -1054,6 +1100,8 @@ export default function AchievementsScreen() {
                                         position: entry.position,
                                         isCurrentLearner: entry.isCurrentLearner,
                                         avatar: entry.avatar,
+                                        publicProfile: entry.publicProfile,
+                                        followMeCode: entry.followMeCode,
                                     })) || []}
                                 />
                             </>
@@ -1280,15 +1328,6 @@ export default function AchievementsScreen() {
                                                     <ThemedText style={[styles.followBackButtonText, { color: colors.primary }]}>Follow Back</ThemedText>
                                                 </TouchableOpacity>
                                             )}
-
-                                            <TouchableOpacity
-                                                style={[styles.blockButton, { backgroundColor: isDark ? 'rgba(255, 0, 0, 0.1)' : 'rgba(255, 0, 0, 0.05)' }]}
-                                                onPress={() => handleBlockFollower(follower.uid)}
-                                                disabled={isBlocking}
-                                            >
-                                                <Ionicons name="ban-outline" size={20} color="#FF4444" />
-                                                <ThemedText style={styles.blockButtonText}>Block</ThemedText>
-                                            </TouchableOpacity>
                                         </View>
                                     </ThemedView>
                                 ))
@@ -1979,5 +2018,12 @@ const styles = StyleSheet.create({
     viewReportButtonText: {
         fontSize: 14,
         fontWeight: '600',
+    },
+
+    scoreboardHint: {
+        fontSize: 14,
+        opacity: 0.7,
+        textAlign: 'center',
+        marginBottom: 8,
     },
 }); 

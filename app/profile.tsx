@@ -14,7 +14,7 @@ import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Sw
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { analytics } from '@/services/analytics';
-import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL, HOST_URL } from '@/config/api';
 import { deleteUser } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -246,13 +246,14 @@ export default function ProfileScreen() {
       }) as CreateLearnerResponse;
 
       if (response.status === 'OK') {
-        setLearnerInfo({
+        setLearnerInfo(prev => ({
+          ...prev,
           name: editName.trim(),
           grade: editGrade,
           curriculum: cleanCurriculum,
           terms: cleanTerms,
           avatar: selectedAvatar
-        });
+        }));
 
         // Show success toast
         Toast.show({

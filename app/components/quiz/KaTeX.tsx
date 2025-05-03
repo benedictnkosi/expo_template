@@ -38,11 +38,13 @@ export function KaTeX({ latex, isOption }: KaTeXProps) {
                         overflow-y: visible;
                         padding: 5px 0;
                         color: ${textColor};
+                        line-height: 3;
                     }
                     .katex {
                         font-size: ${isOption && latex.length > 70 ? '0.8em' : '1em'};
                         color: ${textColor} !important;
                         text-align: left;
+                        line-height: 3;
                     }
                     .katex-display {
                         margin: 0;
@@ -50,10 +52,12 @@ export function KaTeX({ latex, isOption }: KaTeXProps) {
                         overflow: visible;
                         text-align: left !important;
                         color: ${textColor} !important;
+                        line-height: 3;
                     }
                     .katex-display > .katex {
                         text-align: left !important;
                         color: ${textColor} !important;
+                        line-height: 3;
                     }
                     .katex .base { color: ${textColor} !important; }
                     .katex .mord { color: ${textColor} !important; }

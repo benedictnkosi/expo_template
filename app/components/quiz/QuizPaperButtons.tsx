@@ -95,6 +95,12 @@ export const QuizPaperButtons = ({
                     <ThemedText style={styles.paperButtonText}>Paper 2</ThemedText>
                 </TouchableOpacity>
             </LinearGradient>
+
+            <View style={styles.hintContainer}>
+                <ThemedText style={styles.hintText}>
+                    💡 Hint: You can change which school terms you want to practice in your profile settings!
+                </ThemedText>
+            </View>
         </View>
     );
 };
@@ -126,5 +132,16 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    hintContainer: {
+        position: 'absolute',
+        bottom: -40,
+        width: '100%',
+        alignItems: 'center',
+    },
+    hintText: {
+        fontSize: 14,
+        textAlign: 'center',
+        color: '#6B7280',
     },
 }); 

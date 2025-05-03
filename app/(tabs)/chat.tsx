@@ -16,19 +16,17 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchMySubjects, getLearner } from '@/services/api';
+import { getLearner } from '@/services/api';
 import { analytics } from '@/services/analytics';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Header } from '@/components/Header';
-import { getSubjectIcon } from '@/utils/subjectIcons';
+import subjectEmojis from '@/assets/subject-emojis.json';
 
 interface Subject {
     id: string;
     name: string;
-    total_questions: number;
-    answered_questions: number;
-    correct_answers: number;
+    emoji: string;
     newThreadCount?: number;
 }
 
@@ -56,7 +54,7 @@ function WarningModal({ visible, onAccept, isDark, colors }: WarningModalProps) 
                         Community Guidelines
                     </ThemedText>
                     <ThemedText style={[styles.modalMessage, { color: colors.textSecondary }]}>
-                        ⚠️ Let's keep it friendly and on topic! No profanity or bullying. Violations will lead to account suspension.{'\n\n'}🔒 For your safety, please do not share personal information like phone numbers in the chat.
+                        ⚠️ Let's keep it friendly and on topic! No profanity or bullying. Violations will lead to account suspension.{'\n\n'}🔒 Sharing phone numbers or asking for them in the chat will result in a ban.
                     </ThemedText>
                     <TouchableOpacity
                         style={[styles.modalButton, { backgroundColor: colors.primary }]}
@@ -81,10 +79,11 @@ export default function ChatScreen() {
         school?: string;
         avatar?: string;
     } | null>(null);
-    const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
     const [learnerGrade, setLearnerGrade] = useState<string>('');
     const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
     const [showWarningModal, setShowWarningModal] = useState(false);
+    const [hiddenSubjects, setHiddenSubjects] = useState<string[]>([]);
+    const [showHiddenModal, setShowHiddenModal] = useState(false);
 
     useEffect(() => {
         async function loadLearnerGrade() {
@@ -104,20 +103,19 @@ export default function ChatScreen() {
                 setIsLoading(true);
 
                 // Check if warning has been accepted
-                const warningAccepted = await AsyncStorage.getItem('chatWarningAccepted');
+                const warningAccepted = await AsyncStorage.getItem('newChatWarningAccepted');
                 if (!warningAccepted) {
                     setShowWarningModal(true);
                 }
-
-                // Load hidden subjects
-                const stored = await AsyncStorage.getItem('hiddenSubjects');
-                const hidden = stored ? JSON.parse(stored) : [];
-                setHiddenSubjects(hidden);
 
                 // Load last access times
                 const times = await AsyncStorage.getItem('subjectLastAccessTimes');
                 const accessTimes = times ? JSON.parse(times) : {};
                 setLastAccessTimes(accessTimes);
+
+                // Load hidden subjects
+                const stored = await AsyncStorage.getItem('hiddenSubjects');
+                setHiddenSubjects(stored ? JSON.parse(stored) : []);
 
                 // Fetch learner info
                 const learner = await getLearner(user.uid);
@@ -128,51 +126,15 @@ export default function ChatScreen() {
                     avatar: learner.avatar || ''
                 });
 
-                // Load subjects
-                const response = await fetchMySubjects(user.uid);
-                if (response?.subjects && Array.isArray(response.subjects)) {
-                    const subjectGroups = response.subjects.reduce((acc: Record<string, Subject>, curr) => {
-                        if (!curr?.name) return acc;
-                        const baseName = curr.name.split(' P')[0];
+                // Create subjects from emojis
+                const subjectsList = Object.entries(subjectEmojis).map(([name, emoji]) => ({
+                    id: name.toLowerCase().replace(/\s+/g, '-'),
+                    name,
+                    emoji,
+                    newThreadCount: 0
+                }));
 
-                        if (!acc[baseName]) {
-                            acc[baseName] = {
-                                id: curr.id.toString(),
-                                name: baseName,
-                                total_questions: curr.totalSubjectQuestions || 0,
-                                answered_questions: curr.totalResults || 0,
-                                correct_answers: curr.correctAnswers || 0
-                            };
-                        } else {
-                            acc[baseName].total_questions += curr.totalSubjectQuestions || 0;
-                            acc[baseName].answered_questions += curr.totalResults || 0;
-                            acc[baseName].correct_answers += curr.correctAnswers || 0;
-                        }
-                        return acc;
-                    }, {});
-
-                    const groupedSubjects = Object.values(subjectGroups);
-
-                    // Get new thread counts for each subject
-                    const subjectsWithCounts = await Promise.all(
-                        groupedSubjects.map(async (subject) => {
-                            const lastAccess = accessTimes[subject.name] || 0;
-                            const threadsRef = collection(db, 'threads');
-                            const threadsQuery = query(
-                                threadsRef,
-                                where('subjectName', '==', subject.name),
-                                where('createdAt', '>', new Date(lastAccess))
-                            );
-                            const threadsSnapshot = await getDocs(threadsQuery);
-                            return {
-                                ...subject,
-                                newThreadCount: threadsSnapshot.size
-                            };
-                        })
-                    );
-
-                    setSubjects(subjectsWithCounts);
-                }
+                setSubjects(subjectsList);
             } catch (error) {
                 console.error('Error loading chats:', error);
             } finally {
@@ -211,8 +173,22 @@ export default function ChatScreen() {
     };
 
     const handleAcceptWarning = async () => {
-        await AsyncStorage.setItem('chatWarningAccepted', 'true');
+        await AsyncStorage.setItem('newChatWarningAccepted', 'true');
         setShowWarningModal(false);
+    };
+
+    // Hide subject handler
+    const handleHideSubject = async (subjectId: string) => {
+        const updated = [...hiddenSubjects, subjectId];
+        setHiddenSubjects(updated);
+        await AsyncStorage.setItem('hiddenSubjects', JSON.stringify(updated));
+    };
+
+    // Unhide subject handler
+    const handleUnhideSubject = async (subjectId: string) => {
+        const updated = hiddenSubjects.filter(id => id !== subjectId);
+        setHiddenSubjects(updated);
+        await AsyncStorage.setItem('hiddenSubjects', JSON.stringify(updated));
     };
 
     if (isLoading) {
@@ -228,6 +204,7 @@ export default function ChatScreen() {
     }
 
     const visibleSubjects = subjects.filter(subject => !hiddenSubjects.includes(subject.id));
+    const hiddenSubjectObjs = subjects.filter(subject => hiddenSubjects.includes(subject.id));
 
     return (
         <ThemedView style={styles.container}>
@@ -237,46 +214,129 @@ export default function ChatScreen() {
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-                {visibleSubjects.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <ThemedText style={styles.emptyText}>No subjects available</ThemedText>
+                {/* Pinned General Discussion */}
+                <TouchableOpacity
+                    style={[
+                        styles.subjectCard,
+                        styles.pinnedCard,
+                        { backgroundColor: isDark ? colors.card : '#FFFFFF' }
+                    ]}
+                    onPress={() => router.push({
+                        pathname: '/threads/[id]',
+                        params: {
+                            id: 'general',
+                            subjectName: 'General Discussion'
+                        }
+                    })}
+                >
+                    <View style={[styles.pinnedIconContainer, { backgroundColor: colors.primary }]}>
+                        <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
                     </View>
-                ) : (
-                    visibleSubjects.map((subject) => (
-                        <TouchableOpacity
-                            key={subject.id}
-                            style={[
-                                styles.subjectCard,
-                                { backgroundColor: isDark ? colors.card : '#FFFFFF' }
-                            ]}
-                            onPress={() => handleSubjectPress(subject)}
-                        >
-                            <Image
-                                source={getSubjectIcon(subject.name)}
-                                style={styles.subjectIcon}
+                    <View style={styles.subjectInfo}>
+                        <ThemedText style={styles.subjectName}>General Discussion</ThemedText>
+                        <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
+                            Grade {learnerGrade} general chat
+                        </ThemedText>
+                    </View>
+                    <Ionicons
+                        name="chevron-forward"
+                        size={24}
+                        color={colors.textSecondary}
+                    />
+                </TouchableOpacity>
+
+                {visibleSubjects.map((subject) => (
+                    <TouchableOpacity
+                        key={subject.id}
+                        style={[
+                            styles.subjectCard,
+                            { backgroundColor: isDark ? colors.card : '#FFFFFF' }
+                        ]}
+                        onPress={() => handleSubjectPress(subject)}
+                    >
+                        <View style={styles.emojiContainer}>
+                            <ThemedText style={styles.emoji}>{subject.emoji}</ThemedText>
+                        </View>
+                        <View style={styles.subjectInfo}>
+                            <ThemedText style={styles.subjectName}>{subject.name}</ThemedText>
+                            <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
+                                Tap to join chat
+                            </ThemedText>
+                        </View>
+                        <View style={styles.subjectRightContent}>
+                            {(subject.newThreadCount ?? 0) > 0 && (
+                                <View style={[styles.newThreadBadge, { backgroundColor: colors.primary }]}>
+                                    <ThemedText style={styles.newThreadCount}>{subject.newThreadCount}</ThemedText>
+                                </View>
+                            )}
+                            <TouchableOpacity
+                                onPress={e => {
+                                    e.stopPropagation();
+                                    handleHideSubject(subject.id);
+                                }}
+                                style={styles.hideButton}
+                                accessibilityLabel={`Hide ${subject.name} group`}
+                            >
+                                <Ionicons name="eye-off" size={20} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                            <Ionicons
+                                name="chevron-forward"
+                                size={24}
+                                color={colors.textSecondary}
                             />
-                            <View style={styles.subjectInfo}>
-                                <ThemedText style={styles.subjectName}>{subject.name}</ThemedText>
-                                <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
-                                    Tap to join chat
-                                </ThemedText>
-                            </View>
-                            <View style={styles.subjectRightContent}>
-                                {(subject.newThreadCount ?? 0) > 0 && (
-                                    <View style={[styles.newThreadBadge, { backgroundColor: colors.primary }]}>
-                                        <ThemedText style={styles.newThreadCount}>{subject.newThreadCount}</ThemedText>
-                                    </View>
-                                )}
-                                <Ionicons
-                                    name="chevron-forward"
-                                    size={24}
-                                    color={colors.textSecondary}
-                                />
-                            </View>
-                        </TouchableOpacity>
-                    ))
+                        </View>
+                    </TouchableOpacity>
+                ))}
+                {hiddenSubjects.length > 0 && (
+                    <TouchableOpacity
+                        style={styles.showHiddenButton}
+                        onPress={() => setShowHiddenModal(true)}
+                        accessibilityLabel="Show hidden groups"
+                    >
+                        <Ionicons name="eye" size={18} color={colors.primary} />
+                        <ThemedText style={[styles.showHiddenText, { color: colors.primary }]}>Show Hidden Groups</ThemedText>
+                    </TouchableOpacity>
                 )}
             </ScrollView>
+
+            {/* Hidden Groups Modal */}
+            <Modal
+                visible={showHiddenModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowHiddenModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.hiddenModalContent, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
+                        <ThemedText style={styles.modalTitle}>Hidden Groups</ThemedText>
+                        {hiddenSubjectObjs.length === 0 ? (
+                            <ThemedText style={styles.emptyText}>No hidden groups</ThemedText>
+                        ) : (
+                            hiddenSubjectObjs.map(subject => (
+                                <View key={subject.id} style={styles.hiddenGroupRow}>
+                                    <View style={styles.emojiContainer}>
+                                        <ThemedText style={styles.emoji}>{subject.emoji}</ThemedText>
+                                    </View>
+                                    <ThemedText style={styles.subjectName}>{subject.name}</ThemedText>
+                                    <TouchableOpacity
+                                        onPress={() => handleUnhideSubject(subject.id)}
+                                        style={styles.unhideButton}
+                                        accessibilityLabel={`Unhide ${subject.name} group`}
+                                    >
+                                        <Ionicons name="eye" size={20} color={colors.primary} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        )}
+                        <TouchableOpacity
+                            style={styles.closeModalButton}
+                            onPress={() => setShowHiddenModal(false)}
+                        >
+                            <ThemedText style={styles.closeModalText}>Close</ThemedText>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
 
             <WarningModal
                 visible={showWarningModal}
@@ -287,7 +347,6 @@ export default function ChatScreen() {
         </ThemedView>
     );
 }
-
 
 const styles = StyleSheet.create({
     container: {
@@ -420,5 +479,78 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    pinnedCard: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        marginBottom: 24,
+    },
+    pinnedIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    emojiContainer: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    emoji: {
+        fontSize: 24,
+    },
+    hideButton: {
+        marginLeft: 8,
+        padding: 4,
+    },
+    showHiddenButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 16,
+        alignSelf: 'center',
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    },
+    showHiddenText: {
+        marginLeft: 6,
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    hiddenModalContent: {
+        width: '80%',
+        maxWidth: 400,
+        borderRadius: 16,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        alignItems: 'center',
+    },
+    hiddenGroupRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        width: '100%',
+    },
+    unhideButton: {
+        marginLeft: 'auto',
+        padding: 4,
+    },
+    closeModalButton: {
+        marginTop: 16,
+        padding: 10,
+        borderRadius: 8,
+        backgroundColor: '#E5E7EB',
+        alignItems: 'center',
+        width: '100%',
+    },
+    closeModalText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
     },
 }); 

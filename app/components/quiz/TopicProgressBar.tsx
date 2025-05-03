@@ -23,8 +23,10 @@ export const TopicProgressBar: React.FC<TopicProgressBarProps> = ({
 
     return (
         <View style={styles.container}>
-            <ThemedText style={styles.topicName}>{topicName}</ThemedText>
-            <View style={styles.progressContainer}>
+            <ThemedText style={[styles.topicName, { color: colors.text }]}>{topicName}</ThemedText>
+            <View style={[styles.progressContainer, {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+            }]}>
                 <LinearGradient
                     colors={isDark ? ['#059669', '#10B981'] : ['#10B981', '#059669']}
                     start={{ x: 0, y: 0 }}
@@ -33,11 +35,11 @@ export const TopicProgressBar: React.FC<TopicProgressBarProps> = ({
                 />
             </View>
             <View style={styles.statsContainer}>
-                <ThemedText style={styles.statsText}>
+                <ThemedText style={[styles.statsText, { color: colors.textSecondary }]}>
                     {viewedQuestions} of {totalQuestions} {lessonsMode ? 'lessons' : 'questions'}
                 </ThemedText>
-                <ThemedText style={styles.percentageText}>
-                    {progressPercentage}% {lessonsMode ? 'lessons' : 'questions'}
+                <ThemedText style={[styles.percentageText, { color: colors.text }]}>
+                    {progressPercentage}% completed
                 </ThemedText>
             </View>
         </View>
@@ -56,7 +58,6 @@ const styles = StyleSheet.create({
     },
     progressContainer: {
         height: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.1)',
         borderRadius: 4,
         overflow: 'hidden',
         marginBottom: 8,

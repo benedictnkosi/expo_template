@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
 import * as StoreReview from 'expo-store-review';
+import * as Sharing from 'expo-sharing';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
@@ -620,6 +621,7 @@ interface QuestionCardProps {
     handleListenToLecture: () => Promise<void>;
     isLoadingLecture: boolean;
     recordingFileName?: string;
+    subjectName: string;
 }
 
 // Then define the QuestionCard component
@@ -649,11 +651,30 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     handleNextRelatedQuestion,
     handleListenToLecture,
     isLoadingLecture,
-    recordingFileName
+    recordingFileName,
+    subjectName
 }) => {
+    const handleShareQuestion = async () => {
+        if (!question) return;
+
+        try {
+            const shareContent = {
+                message: `Check out this ${selectedMode === 'lessons' ? 'lesson' : 'question'} from ExamQuiz:\n\n${subjectName}\n\nDownload ExamQuiz to test your knowledge!\n\nView this ${selectedMode === 'lessons' ? 'lesson' : 'question'} directly: https://examquiz.co.za/(tabs)/quiz?id=${question.id}&subjectName=${encodeURIComponent(subjectName)}`,
+                title: `Share ${selectedMode === 'lessons' ? 'Lesson' : 'Question'}`,
+            };
+
+            await Share.share(shareContent);
+        } catch (error) {
+            console.error('Error sharing:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: `Failed to share ${selectedMode === 'lessons' ? 'lesson' : 'question'}`,
+            });
+        }
+    };
+
     if (!question) return null;
-
-
 
     return (
         <ThemedView
@@ -677,14 +698,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </View>
             )}
 
-            {(question.context || question.image_path) && (
-                <ThemedText
-                    style={styles.questionMeta}
-                    testID="context-label"
-                >
-                    Context
-                </ThemedText>
-            )}
+            <View style={styles.questionHeader}>
+                {(question.context || question.image_path) && (
+                    <ThemedText
+                        style={styles.questionMeta}
+                        testID="context-label"
+                    >
+                        Context
+                    </ThemedText>
+                )}
+            </View>
 
             {question.context && (
                 <QuizContextContainer
@@ -806,7 +829,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             )}
 
             {selectedMode === 'quiz' && (
-
                 <TouchableOpacity
                     style={[styles.reportButton, {
                         marginTop: 16,
@@ -821,6 +843,26 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     </ThemedText>
                 </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+                style={[styles.shareButton, {
+                    marginTop: 8,
+                    marginHorizontal: 16,
+                    backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                    borderColor: isDark ? colors.border : '#E5E7EB'
+                }]}
+                onPress={handleShareQuestion}
+                testID="share-question-button"
+            >
+                <Ionicons
+                    name="share-outline"
+                    size={20}
+                    color={isDark ? colors.text : '#4B5563'}
+                />
+                <ThemedText style={[styles.shareButtonText, { color: isDark ? colors.text : '#4B5563' }]}>
+                    Share this {selectedMode === 'lessons' ? 'lesson' : 'question'}
+                </ThemedText>
+            </TouchableOpacity>
 
             {selectedMode === 'lessons' && (
                 <>
@@ -928,6 +970,8 @@ export default function QuizScreen() {
     const subjectName = params.subjectName as string;
     const learnerRole = params.learnerRole as string;
     const defaultTab = params.defaultTab as string;
+    const topic = params.topic as string;
+    const questionId = params.id as string;
     const [grade, setGrade] = useState<string | null>(null);
     const insets = useSafeAreaInsets();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -987,8 +1031,6 @@ export default function QuizScreen() {
     const [isQuestionLoading, setIsQuestionLoading] = useState(false);
     const [showBadgeModal, setShowBadgeModal] = useState(false);
     const [newBadge, setNewBadge] = useState<Badge | null>(null);
-    const [tabIndex, setTabIndex] = useState(0);
-    const [showStats, setShowStats] = useState(false);
     const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [isSubmittingNote, setIsSubmittingNote] = useState(false);
@@ -1017,6 +1059,13 @@ export default function QuizScreen() {
         image: string | null;
         main_topic: string;
     } | null>(null);
+
+    // Add useEffect to handle topic parameter on mount
+    useEffect(() => {
+        if (topic) {
+            handleTopicSelect(topic);
+        }
+    }, [topic]);
 
     // Add useEffect to check first time loading
     useEffect(() => {
@@ -1279,9 +1328,6 @@ export default function QuizScreen() {
                 });
                 return;
             }
-
-            console.log('data', data);
-
             if (data.status === "NOK" && data.message === "No more questions available") {
                 console.log('No more questions available');
                 setNoMoreQuestions(true);
@@ -1481,9 +1527,9 @@ export default function QuizScreen() {
                 scrollToBottom();
             });
 
-            // Check for new badges after 10 seconds
+            // Check for new badges after 5 seconds
             if (response.correct) {
-                setTimeout(checkForNewBadges, 10000);
+                setTimeout(checkForNewBadges, 5000);
             }
 
         } catch (error) {
@@ -2077,7 +2123,10 @@ export default function QuizScreen() {
         }
 
         setIsSubmittingNote(true);
+
+
         try {
+
             const response = await fetch(`${API_BASE_URL}/notes`, {
                 method: 'POST',
                 headers: {
@@ -2282,7 +2331,7 @@ export default function QuizScreen() {
     const handleListenToLecture = async () => {
         try {
             setIsLoadingLecture(true);
-            const response = await fetch(`${HOST_URL}/api/topics/recordings/${subjectName}/${currentQuestion?.topic}`);
+            const response = await fetch(`${HOST_URL}/api/topics/recording/question/${currentQuestion?.id}`);
             const data = await response.json();
 
             if (data.status === 'success') {
@@ -2505,6 +2554,7 @@ export default function QuizScreen() {
                         handleListenToLecture={handleListenToLecture}
                         isLoadingLecture={isLoadingLecture}
                         recordingFileName={recordingFileName}
+                        subjectName={subjectName}
                     />
                 </ThemedView>
             </ScrollView>
@@ -3455,6 +3505,19 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 16,
     },
+    shareButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        gap: 4,
+        borderWidth: 1,
+    },
+    shareButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
     fireIconContainer: {
         marginLeft: 8,
         justifyContent: 'center',
@@ -4053,7 +4116,7 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 8,
         borderWidth: 1,
-    }
+    },
 });
 
 

@@ -24,7 +24,17 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStoredPushToken } from '@/services/notifications';
 import { HOST_URL } from '@/config/api';
-import { getSubjectIcon } from '@/utils/subjectIcons';
+import subjectEmojis from '@/assets/subject-emojis.json';
+import { analytics } from '@/services/analytics';
+
+// Helper function for safe analytics logging
+async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+    try {
+        await analytics.track(eventName, eventParams);
+    } catch (error) {
+        console.error('[Analytics] Error logging event:', error);
+    }
+}
 
 interface Thread {
     id: string;
@@ -53,7 +63,7 @@ const NoTopicsFound = ({ isDark, colors }: { isDark: boolean; colors: any }) => 
 );
 
 export default function SubjectChatScreen() {
-    const { id, subjectName } = useLocalSearchParams();
+    const { id, subjectName } = useLocalSearchParams<{ id: string; subjectName: string }>();
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
     const [threads, setThreads] = useState<Thread[]>([]);
@@ -65,6 +75,38 @@ export default function SubjectChatScreen() {
     const [newThreadTitle, setNewThreadTitle] = useState('');
     const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
     const THREADS_PER_PAGE = 100;
+
+    // Add useEffect to handle deep links
+    useEffect(() => {
+        const handleDeepLink = async () => {
+            if (!id || !subjectName) return;
+
+            try {
+                // Check if this is a deep link to a specific thread
+                const threadId = id;
+                if (threadId && threadId !== 'general') {
+                    // Navigate to the thread detail screen
+                    router.push({
+                        pathname: '/posts/[threadId]',
+                        params: {
+                            threadId,
+                            subjectName
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error handling deep link:', error);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Failed to load thread',
+                    position: 'bottom'
+                });
+            }
+        };
+
+        handleDeepLink();
+    }, [id, subjectName]);
 
     useEffect(() => {
         if (subjectName) {
@@ -322,7 +364,6 @@ export default function SubjectChatScreen() {
                 return;
             }
 
-
             // Validate grade is a number and within acceptable range
             const grade = parseInt(learnerGrade);
             if (isNaN(grade) || grade < 1 || grade > 12) {
@@ -352,8 +393,40 @@ export default function SubjectChatScreen() {
                 return;
             }
 
+            // Check for existing thread with same title
+            const threadsRef = collection(db, 'threads');
+            const existingThreadQuery = query(
+                threadsRef,
+                where('titleLowercase', '==', newThreadTitle.trim().toLowerCase()),
+                where('subjectName', '==', subjectName),
+                where('grade', '==', grade)
+            );
+            const existingThreadSnapshot = await getDocs(existingThreadQuery);
+
+            if (!existingThreadSnapshot.empty) {
+                // Thread with same title exists, redirect to it
+                const existingThread = existingThreadSnapshot.docs[0].data();
+                setShowNewThreadModal(false);
+                setNewThreadTitle('');
+                Toast.show({
+                    type: 'info',
+                    text1: 'Thread exists',
+                    text2: 'Redirecting to existing thread...',
+                    position: 'bottom'
+                });
+                router.push({
+                    pathname: '/posts/[threadId]',
+                    params: {
+                        threadId: existingThreadSnapshot.docs[0].id,
+                        subjectName: existingThread.subjectName
+                    }
+                });
+                return;
+            }
+
             const threadData = {
                 title: newThreadTitle.trim(),
+                titleLowercase: newThreadTitle.trim().toLowerCase(),
                 subjectName: subjectName as string,
                 grade: grade,
                 createdById: user.uid,
@@ -378,6 +451,14 @@ export default function SubjectChatScreen() {
                 ...threadData,
                 createdAt: threadData.createdAt
             };
+
+            // Log analytics event for new thread creation
+            await logAnalyticsEvent('thread_created', {
+                thread_id: docRef.id,
+                subject_name: subjectName,
+                grade: grade,
+                user_id: user.uid
+            });
 
             // Send push notification for new thread (non-blocking)
             fetch(`${HOST_URL}/api/push-notifications/new-thread`, {
@@ -486,10 +567,11 @@ export default function SubjectChatScreen() {
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <View style={styles.headerTitleContainer}>
-                    <Image
-                        source={getSubjectIcon(subjectName as string)}
-                        style={styles.headerIcon}
-                    />
+                    <View style={styles.emojiHeaderIcon}>
+                        <ThemedText style={styles.emojiHeaderText}>
+                            {subjectEmojis[(subjectName as keyof typeof subjectEmojis)] ?? '❓'}
+                        </ThemedText>
+                    </View>
                     <ThemedText style={styles.headerTitle}>{subjectName}</ThemedText>
                 </View>
                 <TouchableOpacity
@@ -584,9 +666,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    headerIcon: {
+    emojiHeaderIcon: {
         width: 32,
         height: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 0,
+    },
+    emojiHeaderText: {
+        fontSize: 28,
     },
     headerTitle: {
         fontSize: 20,

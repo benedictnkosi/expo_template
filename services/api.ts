@@ -87,6 +87,7 @@ export async function getLearner(uid: string): Promise<{
   streak: number;
   avatar: string;
   follow_me_code: string;
+  public_profile: boolean;
 }> {
   const response = await fetch(
     `${API_BASE_URL}/learner?uid=${uid}`
