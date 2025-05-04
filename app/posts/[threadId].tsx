@@ -1178,7 +1178,7 @@ export default function ThreadDetailScreen() {
 
     const handleShareThread = async () => {
         try {
-            const shareUrl = `https://examquiz.co.za/(tabs)/chat/${threadId}?subjectName=${encodeURIComponent(subjectName as string)}`;
+            const shareUrl = `https://examquiz.co.za/posts/${threadId}?subjectName=${encodeURIComponent(subjectName as string)}`;
 
             await Share.share({
                 message: `🔥 Hot Topic in ${subjectName}! Join the discussion: "${thread?.title}" — Tap to see what others are saying 👀 ${shareUrl}`,

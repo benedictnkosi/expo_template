@@ -659,7 +659,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
         try {
             const shareContent = {
-                message: `Check out this ${selectedMode === 'lessons' ? 'lesson' : 'question'} from ExamQuiz:\n\n${subjectName}\n\nDownload ExamQuiz to test your knowledge!\n\nView this ${selectedMode === 'lessons' ? 'lesson' : 'question'} directly: https://examquiz.co.za/(tabs)/quiz?id=${question.id}&subjectName=${encodeURIComponent(subjectName)}`,
+                message: `Check out this ${selectedMode === 'lessons' ? 'lesson' : 'question'} from ExamQuiz:\n\n${subjectName}\n\nDownload ExamQuiz to test your knowledge!\n\nView this ${selectedMode === 'lessons' ? 'lesson' : 'question'} directly: https://examquiz.co.za/quiz?id=${question.id}&subjectName=${encodeURIComponent(subjectName)}`,
                 title: `Share ${selectedMode === 'lessons' ? 'Lesson' : 'Question'}`,
             };
 
@@ -963,6 +963,18 @@ interface ExamDateResponse {
     };
 }
 
+interface LectureRecordingResponse {
+    status: string;
+    message?: string;
+    data: {
+        id: string;
+        recordingFileName: string;
+        lecture_name: string;
+        main_topic: string;
+        image: string | null;
+    };
+}
+
 export default function QuizScreen() {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
@@ -972,6 +984,8 @@ export default function QuizScreen() {
     const defaultTab = params.defaultTab as string;
     const topic = params.topic as string;
     const questionId = params.id as string;
+    const lectureId = params.lectureId as string;
+    console.log('QuizScreen mounted with params:', { subjectName, questionId, lectureId, params });
     const [grade, setGrade] = useState<string | null>(null);
     const insets = useSafeAreaInsets();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -1016,8 +1030,6 @@ export default function QuizScreen() {
     const [isFavoritesLoading, setIsFavoritesLoading] = useState(false);
     const [isFavoriting, setIsFavoriting] = useState(false);
     const [isCurrentQuestionFavorited, setIsCurrentQuestionFavorited] = useState(false);
-    const [showPoints, setShowPoints] = useState(false);
-    const [earnedPoints, setEarnedPoints] = useState(0);
     const [isFromFavorites, setIsFromFavorites] = useState(false);
     const [isFirstAnswer, setIsFirstAnswer] = useState(false);
     const [showFirstAnswerModal, setShowFirstAnswerModal] = useState(false);
@@ -1054,6 +1066,7 @@ export default function QuizScreen() {
     const [isLectureModalVisible, setIsLectureModalVisible] = useState(false);
     const [isLoadingLecture, setIsLoadingLecture] = useState(false);
     const [lectureData, setLectureData] = useState<{
+        id: string;
         recordingFileName: string;
         lecture_name: string;
         image: string | null;
@@ -1451,13 +1464,12 @@ export default function QuizScreen() {
             }
 
             if (response.streakUpdated && response.correct) {
-                setEarnedPoints(points);
-                setShowPoints(true);
+                setCurrentStreak(response.streak);
+                setShowStreakModal(true);
+                // Prompt for rating after streak achievement
                 setTimeout(() => {
-                    setShowPoints(false);
-                    setCurrentStreak(response.streak);
-                    setShowStreakModal(true);
-                }, 5000);
+                    handleRating();
+                }, 2000);
             } else if (response.streakUpdated) {
                 setCurrentStreak(response.streak);
                 setShowStreakModal(true);
@@ -2039,6 +2051,7 @@ export default function QuizScreen() {
     }
 
     const loadSpecificQuestion = async (questionId: number) => {
+        console.log('loadSpecificQuestion called with:', { questionId, subjectName, user: user?.uid });
         if (!user?.uid || !subjectName) {
             console.log("No user or subject name");
             return;
@@ -2047,11 +2060,16 @@ export default function QuizScreen() {
             setSelectedMode('quiz');
             setIsLoading(true);
 
-            const response = await fetch(
-                `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`
-            );
-            if (!response.ok) throw new Error('Failed to fetch question');
+            const url = `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`;
+            console.log('Fetching question from URL:', url);
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                console.error('Failed to fetch question:', response.status, response.statusText);
+                throw new Error('Failed to fetch question');
+            }
             const data: QuestionResponse = await response.json();
+            console.log('Question response:', data);
             setCurrentQuestion(data);
 
             // Set the selectedPaper to ensure the question is displayed, split and get the last part
@@ -2080,6 +2098,20 @@ export default function QuizScreen() {
             setIsLoading(false);
         }
     };
+
+    // Add useEffect to handle questionId parameter on mount
+    useEffect(() => {
+        console.log('useEffect triggered with questionId:', questionId);
+        if (questionId) {
+            const numericId = parseInt(questionId, 10);
+            if (!isNaN(numericId)) {
+                console.log('Loading specific question with ID:', numericId);
+                loadSpecificQuestion(numericId);
+            } else {
+                console.error('Invalid question ID:', questionId);
+            }
+        }
+    }, [questionId]);
 
     const checkForNewBadges = async () => {
         if (!user?.uid) return;
@@ -2331,13 +2363,27 @@ export default function QuizScreen() {
     const handleListenToLecture = async () => {
         try {
             setIsLoadingLecture(true);
+            console.log('Fetching lecture recording for question ID:', currentQuestion?.id);
             const response = await fetch(`${HOST_URL}/api/topics/recording/question/${currentQuestion?.id}`);
-            const data = await response.json();
+            console.log('Response status:', response.status);
+
+            if (!response.ok) {
+                console.error('Response not OK:', response.statusText);
+                throw new Error('Failed to fetch lecture recording');
+            }
+
+            const data: LectureRecordingResponse = await response.json();
+            console.log('Lecture recording response:', JSON.stringify(data, null, 2));
 
             if (data.status === 'success') {
+                console.log('Setting lecture data:', data.data);
+                setRecordingFileName(data.data.recordingFileName);
                 setLectureData(data.data);
+                console.log('Setting modal visible to true');
                 setIsLectureModalVisible(true);
+                console.log('Modal visibility state set to true');
             } else {
+                console.error('API returned non-success status:', data.status);
                 throw new Error(data.message || 'Failed to fetch lecture');
             }
         } catch (error) {
@@ -2372,371 +2418,439 @@ export default function QuizScreen() {
         }
     };
 
+
+    // Add useEffect to handle lecture recording
+    useEffect(() => {
+        async function fetchLectureRecording() {
+            if (!lectureId) {
+                console.log('No lectureId provided, skipping fetch');
+                return;
+            }
+
+            try {
+                console.log('Fetching lecture recording for ID:', lectureId);
+                console.log('API URL:', `${HOST_URL}/api/topics/recording/${lectureId}`);
+                const response = await fetch(`${HOST_URL}/api/topics/recording/${lectureId}`);
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    console.error('Response not OK:', response.statusText);
+                    throw new Error('Failed to fetch lecture recording');
+                }
+
+                const data: LectureRecordingResponse = await response.json();
+                console.log('Lecture recording response:', JSON.stringify(data, null, 2));
+
+                if (data.status === 'success') {
+                    console.log('Setting lecture data:', data.data);
+                    setRecordingFileName(data.data.recordingFileName);
+                    setLectureData(data.data);
+                    console.log('Setting modal visible to true');
+                    setIsLectureModalVisible(true);
+                    console.log('Modal visibility state set to true');
+                } else {
+                    console.error('API returned non-success status:', data.status);
+                }
+            } catch (error) {
+                console.error('Error fetching lecture recording:', error);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: 'Failed to load lecture recording',
+                    position: 'bottom'
+                });
+            }
+        }
+
+        fetchLectureRecording();
+    }, [lectureId]);
+
+    const renderRecordingPlayerModal = () => (
+        <RecordingPlayerModal
+            isVisible={isLectureModalVisible}
+            onClose={() => {
+                setIsLectureModalVisible(false);
+                setLectureData(null);
+            }}
+            recording={lectureData || {
+                id: '',
+                recordingFileName: '',
+                lecture_name: 'Lecture',
+                image: null,
+                main_topic: '',
+            }}
+            subjectName={subjectName}
+        />
+    );
+
     if (isLoading) {
         return (
-            <ImageLoadingPlaceholder />
+            <>
+                <ImageLoadingPlaceholder />
+                {renderRecordingPlayerModal()}
+            </>
         );
     }
 
     if (isQuestionLoading) {
         return (
-            <AiLoadingPlaceholder />
+            <>
+                <AiLoadingPlaceholder />
+                {renderRecordingPlayerModal()}
+            </>
         );
     }
 
     if (!selectedPaper) {
         return (
-            <LinearGradient
-                colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-                style={[styles.gradient, { paddingTop: insets.top }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                testID="quiz-mode-selection"
-            >
-                <FirstTimeModal
-                    isVisible={showFirstTimeModal}
-                    onClose={() => setShowFirstTimeModal(false)}
-                    isDark={isDark}
-                />
-
-                <ScrollView style={styles.container}>
-                    <View style={styles.paperSelectionContainer}>
-                        <TouchableOpacity
-                            onPress={() => router.back()}
-                            style={styles.closeButton}
-                        >
-                            <Ionicons name="close" size={24} color={colors.text} />
-                        </TouchableOpacity>
-                        <Image
-                            source={getSubjectIcon(subjectName as string)}
-                            style={styles.subjectIcon}
-                        />
-                        <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
-
-                        {/* Add QuickBite before ExamDateDisplay */}
-                        <QuickBite />
-
-                        {/* Add ExamDateDisplay before the paper selection text */}
-                        <ExamDateDisplay />
-
-                        <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
-                            Choose Paper 1 or Paper 2 to start learning
-                        </ThemedText>
-
-                        <QuizModeSelection
-                            modes={[
-                                {
-                                    id: 'quiz',
-                                    title: 'Quiz Mode',
-                                    description: 'Test your knowledge with interactive questions',
-                                    icon: '🎯'
-                                },
-                                {
-                                    id: 'lessons',
-                                    title: 'Lessons Mode',
-                                    description: 'Learn with detailed explanations and examples',
-                                    icon: '📚'
-                                }
-                            ]}
-                            onSelectMode={(mode) => setSelectedMode(mode.id as 'quiz' | 'lessons')}
-                            selectedModeId={selectedMode}
-                        />
-
-                        <QuizPaperButtons
-                            subjectName={subjectName as string}
-                            selectedMode={selectedMode}
-                            onSelectPaper={handlePaperSelect}
-                            onLoadQuestion={loadRandomQuestion}
-                        />
-
-                        {/* Divider */}
-                        <View style={[styles.divider, {
-                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                            marginTop: 24,
-                            marginBottom: 0
-                        }]} />
-
-                        {/* Favorites Section */}
-                        <View style={[styles.favoritesSection]}>
-                            <NotesFavoritesRecordings
-                                subjectName={subjectName as string}
-                                currentQuestion={currentQuestion}
-                                favoriteQuestions={favoriteQuestions}
-                                popularQuestions={popularQuestions.map(q => {
-                                    if ('id' in q) {
-                                        return q as FavoriteQuestion;
-                                    }
-                                    return {
-                                        id: q.questionId.toString(),
-                                        createdAt: {
-                                            date: new Date().toISOString(),
-                                            timezone_type: 3,
-                                            timezone: 'UTC'
-                                        },
-                                        questionId: q.questionId,
-                                        question: q.question,
-                                        aiExplanation: q.aiExplanation,
-                                        subjectId: q.subjectId,
-                                        context: q.context,
-                                        favoriteCount: q.favoriteCount
-                                    };
-                                })}
-                                isFavoritesLoading={isFavoritesLoading}
-                                loadSpecificQuestion={loadFavoriteQuestion}
-                                getFavoriteCardColor={getFavoriteCardColor}
-                                defaultTab={defaultTab as TabType || 'favorites'}
-                                handleTopicSelect={handleTopicSelect}
+            <>
+                <LinearGradient
+                    colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+                    style={[styles.gradient, { paddingTop: insets.top }]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    testID="quiz-mode-selection"
+                >
+                    <FirstTimeModal
+                        isVisible={showFirstTimeModal}
+                        onClose={() => setShowFirstTimeModal(false)}
+                        isDark={isDark}
+                    />
+                    <ScrollView style={styles.container}>
+                        <View style={styles.paperSelectionContainer}>
+                            <TouchableOpacity
+                                onPress={() => router.back()}
+                                style={styles.closeButton}
+                            >
+                                <Ionicons name="close" size={24} color={colors.text} />
+                            </TouchableOpacity>
+                            <Image
+                                source={getSubjectIcon(subjectName as string)}
+                                style={styles.subjectIcon}
                             />
-                        </View>
+                            <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
 
-                    </View>
-                </ScrollView>
-            </LinearGradient>
+                            {/* Add QuickBite before ExamDateDisplay */}
+                            <QuickBite />
+
+                            {/* Add ExamDateDisplay before the paper selection text */}
+                            <ExamDateDisplay />
+
+                            <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
+                                Choose Paper 1 or Paper 2 to start learning
+                            </ThemedText>
+
+                            <QuizModeSelection
+                                modes={[
+                                    {
+                                        id: 'quiz',
+                                        title: 'Quiz Mode',
+                                        description: 'Test your knowledge with interactive questions',
+                                        icon: '🎯'
+                                    },
+                                    {
+                                        id: 'lessons',
+                                        title: 'Lessons Mode',
+                                        description: 'Learn with detailed explanations and examples',
+                                        icon: '📚'
+                                    }
+                                ]}
+                                onSelectMode={(mode) => setSelectedMode(mode.id as 'quiz' | 'lessons')}
+                                selectedModeId={selectedMode}
+                            />
+
+                            <QuizPaperButtons
+                                subjectName={subjectName as string}
+                                selectedMode={selectedMode}
+                                onSelectPaper={handlePaperSelect}
+                                onLoadQuestion={loadRandomQuestion}
+                            />
+
+                            {/* Divider */}
+                            <View style={[styles.divider, {
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                                marginTop: 24,
+                                marginBottom: 0
+                            }]} />
+
+                            {/* Favorites Section */}
+                            <View style={[styles.favoritesSection]}>
+                                <NotesFavoritesRecordings
+                                    subjectName={subjectName as string}
+                                    currentQuestion={currentQuestion}
+                                    favoriteQuestions={favoriteQuestions}
+                                    popularQuestions={popularQuestions.map(q => {
+                                        if ('id' in q) {
+                                            return q as FavoriteQuestion;
+                                        }
+                                        return {
+                                            id: q.questionId.toString(),
+                                            createdAt: {
+                                                date: new Date().toISOString(),
+                                                timezone_type: 3,
+                                                timezone: 'UTC'
+                                            },
+                                            questionId: q.questionId,
+                                            question: q.question,
+                                            aiExplanation: q.aiExplanation,
+                                            subjectId: q.subjectId,
+                                            context: q.context,
+                                            favoriteCount: q.favoriteCount
+                                        };
+                                    })}
+                                    isFavoritesLoading={isFavoritesLoading}
+                                    loadSpecificQuestion={loadFavoriteQuestion}
+                                    getFavoriteCardColor={getFavoriteCardColor}
+                                    defaultTab={defaultTab as TabType || 'favorites'}
+                                    handleTopicSelect={handleTopicSelect}
+                                />
+                            </View>
+
+                        </View>
+                    </ScrollView>
+                </LinearGradient>
+                {renderRecordingPlayerModal()}
+            </>
         );
     }
 
     if (!currentQuestion && selectedMode === 'quiz' && !parentQuestion && !isRestartModalVisible) {
         return (
-            <QuizEmptyState
-                onGoToProfile={() => router.push('/profile')}
-                onRestart={() => setIsRestartModalVisible(true)}
-                onGoBack={() => setSelectedPaper(null)}
-            />
+            <>
+                <QuizEmptyState
+                    onGoToProfile={() => router.push('/profile')}
+                    onRestart={() => setIsRestartModalVisible(true)}
+                    onGoBack={() => setSelectedPaper(null)}
+                />
+                {renderRecordingPlayerModal()}
+            </>
         );
     }
 
     return (
-        <LinearGradient
-            colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
-            style={[styles.gradient, { paddingTop: insets.top }]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-        >
-            <ScrollView
-                style={styles.container}
-                ref={scrollViewRef}
-                testID="quiz-scroll-view"
+        <>
+            <LinearGradient
+                colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+                style={[styles.gradient, { paddingTop: insets.top }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
             >
-                <SubjectHeader />
-                {selectedMode === 'quiz' && (
-                    <View>
-                        <PerformanceSummary
-                            stats={stats}
-                            onRestart={() => setIsRestartModalVisible(true)}
+                <ScrollView
+                    style={styles.container}
+                    ref={scrollViewRef}
+                    testID="quiz-scroll-view"
+                >
+                    <SubjectHeader />
+                    {selectedMode === 'quiz' && (
+                        <View>
+                            <PerformanceSummary
+                                stats={stats}
+                                onRestart={() => setIsRestartModalVisible(true)}
+                            />
+                        </View>
+                    )}
+                    <ThemedView style={styles.content}>
+                        <QuestionCard
+                            question={currentQuestion}
+                            selectedAnswer={selectedAnswer}
+                            showFeedback={showFeedback}
+                            isAnswerLoading={isAnswerLoading}
+                            selectedMode={selectedMode}
+                            handleAnswer={handleAnswer}
+                            cleanAnswer={cleanAnswer}
+                            feedbackMessage={feedbackMessage}
+                            correctAnswer={correctAnswer}
+                            isDark={isDark}
+                            colors={colors}
+                            fetchAIExplanation={fetchAIExplanation}
+                            isLoadingExplanation={isLoadingExplanation}
+                            learnerRole={learnerRole}
+                            handleApproveQuestion={handleApproveQuestion}
+                            isApproving={isApproving}
+                            setZoomImageUrl={setZoomImageUrl}
+                            setIsZoomModalVisible={setIsZoomModalVisible}
+                            renderMixedContent={renderMixedContent}
+                            reportIssue={reportIssue}
+                            relatedQuestions={relatedQuestions}
+                            currentQuestionIndex={currentQuestionIndex}
+                            handleNextRelatedQuestion={handleNextRelatedQuestion}
+                            handleListenToLecture={handleListenToLecture}
+                            isLoadingLecture={isLoadingLecture}
+                            recordingFileName={recordingFileName}
+                            subjectName={subjectName}
                         />
-                    </View>
+                    </ThemedView>
+                </ScrollView>
+                <QuizFooter
+                    isFromFavorites={isFromFavorites}
+                    onNext={handleNext}
+                    onGoBack={() => setSelectedPaper(null)}
+                />
+                <ReportModal
+                    isVisible={isReportModalVisible}
+                    onClose={() => setIsReportModalVisible(false)}
+                    onSubmit={handleSubmitReport}
+                    reportComment={reportComment}
+                    setReportComment={setReportComment}
+                    isSubmitting={isSubmitting}
+                    isDark={isDark}
+                    insets={insets}
+                />
+
+                <ExplanationModal
+                    isVisible={isExplanationModalVisible}
+                    onClose={() => setIsExplanationModalVisible(false)}
+                    aiExplanation={aiExplanation}
+                    isDark={isDark}
+                    renderMixedContent={renderMixedContent}
+                />
+
+                <ZoomModal
+                    isVisible={isZoomModalVisible}
+                    onClose={() => {
+                        setIsZoomModalVisible(false);
+                        setImageRotation(0);
+                    }}
+                    zoomImageUrl={zoomImageUrl}
+                    imageRotation={imageRotation}
+                    setImageRotation={setImageRotation}
+                />
+
+                <RestartModal
+                    isVisible={isRestartModalVisible}
+                    onClose={() => setIsRestartModalVisible(false)}
+                    onRestart={handleRestart}
+                    isDark={isDark}
+                />
+
+                {/* Add StreakModal */}
+                <StreakModal
+                    isVisible={showStreakModal}
+                    onClose={() => setShowStreakModal(false)}
+                    streak={currentStreak}
+                />
+
+                {/* Thank You Modal */}
+                <ThankYouModal
+                    isVisible={isThankYouModalVisible}
+                    onClose={() => setIsThankYouModalVisible(false)}
+                    isDark={isDark}
+                />
+
+                {/* Badge Celebration Modal */}
+                {newBadge && (
+                    <BadgeCelebrationModal
+                        isVisible={showBadgeModal}
+                        onClose={() => {
+                            setShowBadgeModal(false);
+                            // Prompt for rating after badge achievement
+                            setTimeout(() => {
+                                handleRating();
+                            }, 2000);
+                        }}
+                        badge={newBadge}
+                    />
                 )}
-                <ThemedView style={styles.content}>
-                    <QuestionCard
-                        question={currentQuestion}
-                        selectedAnswer={selectedAnswer}
-                        showFeedback={showFeedback}
-                        isAnswerLoading={isAnswerLoading}
-                        selectedMode={selectedMode}
-                        handleAnswer={handleAnswer}
-                        cleanAnswer={cleanAnswer}
-                        feedbackMessage={feedbackMessage}
-                        correctAnswer={correctAnswer}
-                        isDark={isDark}
-                        colors={colors}
-                        fetchAIExplanation={fetchAIExplanation}
-                        isLoadingExplanation={isLoadingExplanation}
-                        learnerRole={learnerRole}
-                        handleApproveQuestion={handleApproveQuestion}
-                        isApproving={isApproving}
-                        setZoomImageUrl={setZoomImageUrl}
-                        setIsZoomModalVisible={setIsZoomModalVisible}
-                        renderMixedContent={renderMixedContent}
-                        reportIssue={reportIssue}
-                        relatedQuestions={relatedQuestions}
-                        currentQuestionIndex={currentQuestionIndex}
-                        handleNextRelatedQuestion={handleNextRelatedQuestion}
-                        handleListenToLecture={handleListenToLecture}
-                        isLoadingLecture={isLoadingLecture}
-                        recordingFileName={recordingFileName}
-                        subjectName={subjectName}
-                    />
-                </ThemedView>
-            </ScrollView>
-            <QuizFooter
-                isFromFavorites={isFromFavorites}
-                onNext={handleNext}
-                onGoBack={() => setSelectedPaper(null)}
-            />
-            <ReportModal
-                isVisible={isReportModalVisible}
-                onClose={() => setIsReportModalVisible(false)}
-                onSubmit={handleSubmitReport}
-                reportComment={reportComment}
-                setReportComment={setReportComment}
-                isSubmitting={isSubmitting}
-                isDark={isDark}
-                insets={insets}
-            />
 
-            <ExplanationModal
-                isVisible={isExplanationModalVisible}
-                onClose={() => setIsExplanationModalVisible(false)}
-                aiExplanation={aiExplanation}
-                isDark={isDark}
-                renderMixedContent={renderMixedContent}
-            />
-
-            <ZoomModal
-                isVisible={isZoomModalVisible}
-                onClose={() => {
-                    setIsZoomModalVisible(false);
-                    setImageRotation(0);
-                }}
-                zoomImageUrl={zoomImageUrl}
-                imageRotation={imageRotation}
-                setImageRotation={setImageRotation}
-            />
-
-            <RestartModal
-                isVisible={isRestartModalVisible}
-                onClose={() => setIsRestartModalVisible(false)}
-                onRestart={handleRestart}
-                isDark={isDark}
-            />
-
-            {/* Add PointsAnimation component */}
-            <PointsAnimation points={earnedPoints} isVisible={showPoints} />
-
-            {/* Add StreakModal */}
-            <StreakModal
-                isVisible={showStreakModal}
-                onClose={() => setShowStreakModal(false)}
-                streak={currentStreak}
-            />
-
-            {/* Thank You Modal */}
-            <ThankYouModal
-                isVisible={isThankYouModalVisible}
-                onClose={() => setIsThankYouModalVisible(false)}
-                isDark={isDark}
-            />
-
-            {/* Badge Celebration Modal */}
-            {newBadge && (
-                <BadgeCelebrationModal
-                    isVisible={showBadgeModal}
-                    onClose={() => setShowBadgeModal(false)}
-                    badge={newBadge}
-                />
-            )}
-
-            <Modal
-                isVisible={isNoteModalVisible}
-                onBackdropPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
-                onBackButtonPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
-                backdropOpacity={0.5}
-                style={{ margin: 0, justifyContent: 'flex-end' }}
-                avoidKeyboard
-            >
-                <ThemedView style={[{
-                    borderTopLeftRadius: 24,
-                    borderTopRightRadius: 24,
-                    padding: 20,
-                    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-                    backgroundColor: isDark ? colors.card : '#FFFFFF',
-                }]}>
-                    <View style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: 16,
-                    }}>
-                        <ThemedText style={{
-                            fontSize: 20,
-                            fontWeight: '600',
-                        }}>Add Note 📝</ThemedText>
-                        {!isSubmittingNote && (
-                            <TouchableOpacity
-                                onPress={() => setIsNoteModalVisible(false)}
-                                style={{ padding: 4 }}
-                            >
-                                <Ionicons name="close" size={24} color={colors.text} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    <TextInput
-                        style={{
-                            borderWidth: 1,
-                            borderRadius: 12,
-                            padding: 16,
-                            minHeight: 120,
-                            fontSize: 16,
-                            textAlignVertical: 'top',
-                            backgroundColor: isDark ? colors.surface : '#F8FAFC',
-                            color: colors.text,
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
-                        }}
-                        placeholder="Enter your note here..."
-                        placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : '#94A3B8'}
-                        multiline
-                        value={noteText}
-                        onChangeText={setNoteText}
-                        editable={!isSubmittingNote}
-                    />
-                    <TouchableOpacity
-                        style={{
-                            marginTop: 16,
-                            padding: 16,
-                            borderRadius: 12,
+                <Modal
+                    isVisible={isNoteModalVisible}
+                    onBackdropPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
+                    onBackButtonPress={() => !isSubmittingNote && setIsNoteModalVisible(false)}
+                    backdropOpacity={0.5}
+                    style={{ margin: 0, justifyContent: 'flex-end' }}
+                    avoidKeyboard
+                >
+                    <ThemedView style={[{
+                        borderTopLeftRadius: 24,
+                        borderTopRightRadius: 24,
+                        padding: 20,
+                        paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+                        backgroundColor: isDark ? colors.card : '#FFFFFF',
+                    }]}>
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
                             alignItems: 'center',
-                            backgroundColor: colors.primary,
-                            opacity: isSubmittingNote ? 0.7 : 1
-                        }}
-                        onPress={handleSubmitNote}
-                        disabled={isSubmittingNote}
-                    >
-                        {isSubmittingNote ? (
-                            <ActivityIndicator color="#FFFFFF" />
-                        ) : (
+                            marginBottom: 16,
+                        }}>
                             <ThemedText style={{
-                                color: '#FFFFFF',
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontWeight: '600',
-                            }}>Save Note</ThemedText>
-                        )}
-                    </TouchableOpacity>
-                </ThemedView>
-            </Modal>
+                            }}>Add Note 📝</ThemedText>
+                            {!isSubmittingNote && (
+                                <TouchableOpacity
+                                    onPress={() => setIsNoteModalVisible(false)}
+                                    style={{ padding: 4 }}
+                                >
+                                    <Ionicons name="close" size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <TextInput
+                            style={{
+                                borderWidth: 1,
+                                borderRadius: 12,
+                                padding: 16,
+                                minHeight: 120,
+                                fontSize: 16,
+                                textAlignVertical: 'top',
+                                backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                                color: colors.text,
+                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0'
+                            }}
+                            placeholder="Enter your note here..."
+                            placeholderTextColor={isDark ? 'rgba(255, 255, 255, 0.5)' : '#94A3B8'}
+                            multiline
+                            value={noteText}
+                            onChangeText={setNoteText}
+                            editable={!isSubmittingNote}
+                        />
+                        <TouchableOpacity
+                            style={{
+                                marginTop: 16,
+                                padding: 16,
+                                borderRadius: 12,
+                                alignItems: 'center',
+                                backgroundColor: colors.primary,
+                                opacity: isSubmittingNote ? 0.7 : 1
+                            }}
+                            onPress={handleSubmitNote}
+                            disabled={isSubmittingNote}
+                        >
+                            {isSubmittingNote ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                                <ThemedText style={{
+                                    color: '#FFFFFF',
+                                    fontSize: 16,
+                                    fontWeight: '600',
+                                }}>Save Note</ThemedText>
+                            )}
+                        </TouchableOpacity>
+                    </ThemedView>
+                </Modal>
 
-            <RecordingPlayerModal
-                isVisible={isLectureModalVisible}
-                onClose={() => {
-                    setIsLectureModalVisible(false);
-                    setLectureData(null);
-                }}
-                recording={lectureData || {
-                    recordingFileName: '',
-                    lecture_name: 'Lecture',
-                    image: null,
-                    main_topic: ''
-                }}
-            />
+                {selectedTopic && topicProgress && (
+                    <TopicProgressBar
+                        topicName={selectedTopic}
+                        totalQuestions={topicProgress.total_questions}
+                        viewedQuestions={topicProgress.viewed_questions}
+                        progressPercentage={topicProgress.progress_percentage}
+                        lessonsMode={selectedMode === 'lessons'}
+                    />
+                )}
 
-            {selectedTopic && topicProgress && (
-                <TopicProgressBar
-                    topicName={selectedTopic}
-                    totalQuestions={topicProgress.total_questions}
-                    viewedQuestions={topicProgress.viewed_questions}
-                    progressPercentage={topicProgress.progress_percentage}
-                    lessonsMode={selectedMode === 'lessons'}
+                {/* Add FirstAnswerPointsModal */}
+                <FirstAnswerPointsModal
+                    isVisible={showFirstAnswerModal}
+                    onClose={() => setShowFirstAnswerModal(false)}
                 />
-            )}
 
-            {/* Add FirstAnswerPointsModal */}
-            <FirstAnswerPointsModal
-                isVisible={showFirstAnswerModal}
-                onClose={() => setShowFirstAnswerModal(false)}
-            />
+                {renderRecordingPlayerModal()}
 
-
-
-        </LinearGradient>
+            </LinearGradient>
+            {renderRecordingPlayerModal()}
+        </>
     );
 }// Add helper function to get subject icons
 
@@ -3508,6 +3622,7 @@ const styles = StyleSheet.create({
     shareButton: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderRadius: 8,
@@ -3517,6 +3632,7 @@ const styles = StyleSheet.create({
     shareButtonText: {
         fontSize: 14,
         fontWeight: '500',
+        textAlign: 'center',
     },
     fireIconContainer: {
         marginLeft: 8,

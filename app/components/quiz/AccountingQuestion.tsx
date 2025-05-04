@@ -38,7 +38,6 @@ interface SelectedCell {
 interface SuccessModalProps {
     isVisible: boolean;
     onClose: () => void;
-    points: number;
     colors: any;
 }
 
@@ -56,7 +55,7 @@ interface CheckAnswerResponse {
     is_favorited: boolean;
 }
 
-const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, points, colors }) => {
+const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, colors }) => {
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const { isDark } = useTheme();
     const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
@@ -90,7 +89,6 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, points,
                 >
                     <MaterialIcons name="check-circle" size={64} color="#4CAF50" />
                     <ThemedText style={styles.successTitle}>Correct!</ThemedText>
-                    <ThemedText style={styles.pointsText}>+{points} points</ThemedText>
                 </Animated.View>
             </Pressable>
         </Modal>
@@ -149,7 +147,6 @@ export const AccountingQuestion = ({
     const { isDark, colors } = useTheme();
     const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [points, setPoints] = useState(0);
     const correctSound = useRef<Audio.Sound>();
     const incorrectSound = useRef<Audio.Sound>();
 
@@ -254,7 +251,6 @@ export const AccountingQuestion = ({
                 await playSound(cell.isCorrect);
 
                 if (cell.isCorrect) {
-                    setPoints(response.points);
                     setShowSuccessModal(true);
                     // Auto-hide the modal after 1.5 seconds
                     setTimeout(() => {
@@ -486,7 +482,6 @@ export const AccountingQuestion = ({
             <SuccessModal
                 isVisible={showSuccessModal}
                 onClose={() => setShowSuccessModal(false)}
-                points={points}
                 colors={colors}
             />
         </>

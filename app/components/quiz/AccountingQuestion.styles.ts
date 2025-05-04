@@ -177,11 +177,6 @@ export const createStyles = (colors: any, isDark: boolean) => StyleSheet.create(
         marginBottom: 8,
         color: colors.text,
     },
-    pointsText: {
-        fontSize: 18,
-        color: '#4CAF50',
-        fontWeight: '600',
-    },
     explanationText: {
         fontSize: 14,
         lineHeight: 20,

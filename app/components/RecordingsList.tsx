@@ -8,6 +8,7 @@ import { RecordingPlayerModal } from './RecordingPlayerModal';
 import { TOPIC_EMOJIS } from '../constants/topicEmojis';
 
 interface LectureRecording {
+    id: string;
     recordingFileName: string;
     lecture_name: string;
     image: string | null;
@@ -17,6 +18,7 @@ interface LectureRecording {
 interface RecordingsListProps {
     recordings: LectureRecording[];
     isLoading: boolean;
+    subjectName: string;
 }
 
 interface GroupedRecordings {
@@ -43,7 +45,7 @@ function getTopicEmoji(topic: string): string {
     return '📚';
 }
 
-export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
+export function RecordingsList({ recordings, isLoading, subjectName }: RecordingsListProps) {
     const { colors, isDark } = useTheme();
     const styles = createStyles(isDark);
     const [selectedRecording, setSelectedRecording] = useState<LectureRecording | null>(null);
@@ -88,7 +90,7 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
 
     const renderRecordingCard = (lecture: LectureRecording) => (
         <TouchableOpacity
-            key={lecture.recordingFileName}
+            key={`${lecture.id}-${lecture.recordingFileName}`}
             style={styles.recordingCard}
             onPress={() => handleRecordingPress(lecture)}
         >
@@ -105,7 +107,7 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
                     </View>
                 )}
                 <View style={styles.recordingInfo}>
-                    <ThemedText style={styles.lectureTitle} numberOfLines={2}>
+                    <ThemedText style={styles.lectureTitle}>
                         {lecture.lecture_name}
                     </ThemedText>
                     <View style={styles.playIconContainer}>
@@ -141,6 +143,7 @@ export function RecordingsList({ recordings, isLoading }: RecordingsListProps) {
                 isVisible={isModalVisible}
                 onClose={handleCloseModal}
                 recording={selectedRecording}
+                subjectName={subjectName}
             />
         </>
     );

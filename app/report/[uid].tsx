@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getLearnerBadges, LearnerBadge } from '@/services/api';
 import { analytics } from '@/services/analytics';
 import subjectEmojisJson from '../../assets/subject-emojis.json';
+import { Share } from 'react-native';
 const subjectEmojis = subjectEmojisJson as Record<string, string>;
 
 function getGradeColor(grade: number): string {
@@ -755,6 +756,9 @@ export default function LearnerPerformanceScreen() {
     };
 
     const shouldShowCareerAdvice = () => {
+        // Don't show career advice if viewing someone else's report
+        if (user?.uid !== uid) return false;
+
         if (!performance || performance.length === 0) return false;
 
         console.log('performance length', performance.length);
@@ -811,6 +815,18 @@ export default function LearnerPerformanceScreen() {
             });
         } catch (error) {
             console.error('Error following learner:', error);
+        }
+    };
+
+    const handleShare = async () => {
+        try {
+            const shareUrl = `https://examquiz.co.za/report/${uid}?name=${encodeURIComponent(name as string)}`;
+            await Share.share({
+                message: `📊 Check out ${name}'s performance report on ExamQuiz! See their progress and achievements in various subjects. Download ExamQuiz to track your own progress!\n\nView the report: ${shareUrl}`,
+                title: `${name}'s Performance Report`,
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
         }
     };
 
@@ -896,44 +912,68 @@ export default function LearnerPerformanceScreen() {
             end={{ x: 0, y: 1 }}
         >
             <View style={styles.headerContainer}>
-                <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={handleClose}
-                    activeOpacity={0.7}
-                >
-                    <Ionicons
-                        name="close"
-                        size={24}
-                        color={isDark ? '#FFFFFF' : '#000000'}
-                    />
-                </TouchableOpacity>
-                <ThemedText style={styles.headerTitle}>🏆 {name}'s Performance</ThemedText>
-                {user?.uid !== uid && !isFollowingLoading && (
+                <View style={styles.headerTopRow}>
                     <TouchableOpacity
-                        style={[
-                            styles.followButton,
-                            {
-                                backgroundColor: isFollowing
-                                    ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#10B981')
-                                    : (isDark ? 'rgba(59, 130, 246, 0.2)' : '#3B82F6'),
-                                borderColor: isFollowing
-                                    ? (isDark ? 'rgba(16, 185, 129, 0.4)' : '#10B981')
-                                    : (isDark ? 'rgba(59, 130, 246, 0.4)' : '#3B82F6'),
-                            }
-                        ]}
-                        onPress={handleFollow}
-                        disabled={isFollowing}
+                        style={styles.closeButton}
+                        onPress={handleClose}
+                        activeOpacity={0.7}
                     >
                         <Ionicons
-                            name={isFollowing ? "checkmark" : "person-add"}
+                            name="close"
+                            size={24}
+                            color={isDark ? '#FFFFFF' : '#000000'}
+                        />
+                    </TouchableOpacity>
+                    <ThemedText style={styles.headerTitle}>🏆 {name}'s Performance</ThemedText>
+                    <View style={styles.closeButton} />
+                </View>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity
+                        style={[
+                            styles.shareButton,
+                            {
+                                backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#6366F1',
+                                borderColor: isDark ? 'rgba(99,102,241,0.4)' : '#6366F1',
+                            }
+                        ]}
+                        onPress={handleShare}
+                    >
+                        <Ionicons
+                            name="share-outline"
                             size={20}
                             color={isDark ? '#FFFFFF' : '#FFFFFF'}
                         />
-                        <ThemedText style={styles.followButtonText}>
-                            {isFollowing ? 'Following' : 'Follow'}
+                        <ThemedText style={[styles.shareButtonText, { color: '#FFFFFF' }]}>
+                            Share Report
                         </ThemedText>
                     </TouchableOpacity>
-                )}
+                    {user?.uid !== uid && !isFollowingLoading && (
+                        <TouchableOpacity
+                            style={[
+                                styles.followButton,
+                                {
+                                    backgroundColor: isFollowing
+                                        ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#10B981')
+                                        : (isDark ? 'rgba(59, 130, 246, 0.2)' : '#3B82F6'),
+                                    borderColor: isFollowing
+                                        ? (isDark ? 'rgba(16, 185, 129, 0.4)' : '#10B981')
+                                        : (isDark ? 'rgba(59, 130, 246, 0.4)' : '#3B82F6'),
+                                }
+                            ]}
+                            onPress={handleFollow}
+                            disabled={isFollowing}
+                        >
+                            <Ionicons
+                                name={isFollowing ? "checkmark" : "person-add"}
+                                size={20}
+                                color={isDark ? '#FFFFFF' : '#FFFFFF'}
+                            />
+                            <ThemedText style={styles.followButtonText}>
+                                {isFollowing ? 'Following' : 'Follow Learner'}
+                            </ThemedText>
+                        </TouchableOpacity>
+                    )}
+                </View>
             </View>
 
             <ScrollView
@@ -1420,53 +1460,253 @@ const styles = StyleSheet.create({
         opacity: 0.9,
     },
     headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(0, 0, 0, 0.1)',
     },
+    headerTopRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
     closeButton: {
         padding: 8,
-        marginRight: 8,
+        width: 40,
     },
     headerTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        textAlign: 'center',
+        flex: 1,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    shareButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    shareButtonText: {
+        marginLeft: 4,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    followButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginLeft: 8,
+    },
+    followButtonText: {
+        marginLeft: 4,
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    topicItem: {
+        marginBottom: 16,
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    topicHeader: {
+        paddingVertical: 8,
+    } as const,
+    topicHeaderContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    } as const,
+    mainTopicName: {
         fontSize: 16,
         fontWeight: '600',
         flex: 1,
-        textAlign: 'center',
     },
-    legendContainer: {
+    topicStats: {
         flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: 16,
-        gap: 24,
-    },
-    legendItem: {
-        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 8,
+        marginBottom: 8,
     },
-    legendColor: {
-        width: 12,
-        height: 12,
-        borderRadius: 6,
+    statGroup: {
+        alignItems: 'center',
+        flex: 1,
     },
-    legendText: {
+    topicStatLabel: {
+        fontSize: 13,
+        opacity: 0.7,
+        marginBottom: 4,
+    },
+    topicStatValue: {
+        fontSize: 20,
+        fontWeight: '600',
+    },
+    gradeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    successRate: {
+        flex: 1,
+    },
+    successRateLabel: {
+        fontSize: 13,
+        opacity: 0.7,
+        marginBottom: 4,
+    },
+    successRateValue: {
+        fontSize: 24,
+        fontWeight: '700',
+    },
+    subTopicsContainer: {
+        marginTop: 16,
+        gap: 12,
+    },
+    subTopicItem: {
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    subTopicName: {
         fontSize: 14,
+        marginBottom: 12,
         opacity: 0.9,
     },
-    emptyDataContainer: {
-        height: 100,
-        justifyContent: 'center',
+    subTopicStats: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
+        marginBottom: 8,
     },
-    emptyDataText: {
+    subTopicStat: {
+        alignItems: 'center',
+        flex: 1,
+    },
+    subTopicStatLabel: {
+        fontSize: 12,
+        opacity: 0.7,
+        marginBottom: 4,
+    },
+    subTopicStatValue: {
         fontSize: 16,
+        fontWeight: '600',
+    },
+    subTopicGradeContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+    },
+    subTopicSuccessRate: {
+        flex: 1,
+    },
+    subTopicGradeValue: {
+        fontSize: 20,
+        fontWeight: '600',
+    },
+    subTopicLevelBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        minWidth: 140,
+    },
+    subTopicLevelText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    subTopicLevelDescription: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        opacity: 0.9,
+    },
+    hintText: {
+        fontSize: 14,
         textAlign: 'center',
+        marginTop: 16,
         opacity: 0.8,
+        fontStyle: 'italic',
+    },
+    todayEventsContainer: {
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+    },
+    todayEventsTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    todayEventsEmpty: {
+        fontSize: 15,
+        opacity: 0.7,
+        fontStyle: 'italic',
+    },
+    todayEventCard: {
+        marginTop: 8,
+        marginBottom: 8,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: 'rgba(99,102,241,0.08)',
+    },
+    todayEventTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    todayEventTime: {
+        fontSize: 14,
+        marginTop: 2,
+        marginBottom: 2,
+    },
+    todayEventSubject: {
+        fontSize: 14,
+        marginBottom: 2,
+    },
+    todayEventReminder: {
+        fontSize: 13,
+        color: '#6366F1',
+        fontWeight: '500',
+    },
+    careerAdviceButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+        gap: 8,
+    },
+    careerAdviceButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    careerAdviceText: {
+        fontSize: 16,
+        lineHeight: 24,
+        marginBottom: 16,
+    },
+    careerAdviceTimestamp: {
+        fontSize: 14,
+        opacity: 0.7,
+        fontStyle: 'italic',
+        marginBottom: 16,
     },
     modalOverlay: {
         flex: 1,
@@ -1691,214 +1931,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center'
     },
-    topicItem: {
-        marginBottom: 16,
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    topicHeader: {
-        paddingVertical: 8,
-    } as const,
-    topicHeaderContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    } as const,
-    mainTopicName: {
-        fontSize: 16,
-        fontWeight: '600',
-        flex: 1,
-    },
-    topicStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    statGroup: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    topicStatLabel: {
-        fontSize: 13,
-        opacity: 0.7,
-        marginBottom: 4,
-    },
-    topicStatValue: {
-        fontSize: 20,
-        fontWeight: '600',
-    },
-    gradeContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    successRate: {
-        flex: 1,
-    },
-    successRateLabel: {
-        fontSize: 13,
-        opacity: 0.7,
-        marginBottom: 4,
-    },
-    successRateValue: {
-        fontSize: 24,
-        fontWeight: '700',
-    },
-    subTopicsContainer: {
-        marginTop: 16,
-        gap: 12,
-    },
-    subTopicItem: {
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    subTopicName: {
-        fontSize: 14,
-        marginBottom: 12,
-        opacity: 0.9,
-    },
-    subTopicStats: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    subTopicStat: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    subTopicStatLabel: {
-        fontSize: 12,
-        opacity: 0.7,
-        marginBottom: 4,
-    },
-    subTopicStatValue: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    subTopicGradeContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: 12,
-    },
-    subTopicSuccessRate: {
-        flex: 1,
-    },
-    subTopicGradeValue: {
-        fontSize: 20,
-        fontWeight: '600',
-    },
-    subTopicLevelBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        minWidth: 140,
-    },
-    subTopicLevelText: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 2,
-    },
-    subTopicLevelDescription: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        opacity: 0.9,
-    },
-    hintText: {
-        fontSize: 14,
-        textAlign: 'center',
-        marginTop: 16,
-        opacity: 0.8,
-        fontStyle: 'italic',
-    },
-    todayEventsContainer: {
-        borderRadius: 16,
-        padding: 16,
-        marginBottom: 16,
-        borderWidth: 1,
-    },
-    todayEventsTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    todayEventsEmpty: {
-        fontSize: 15,
-        opacity: 0.7,
-        fontStyle: 'italic',
-    },
-    todayEventCard: {
-        marginTop: 8,
-        marginBottom: 8,
-        padding: 12,
-        borderRadius: 12,
-        backgroundColor: 'rgba(99,102,241,0.08)',
-    },
-    todayEventTitle: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    todayEventTime: {
-        fontSize: 14,
-        marginTop: 2,
-        marginBottom: 2,
-    },
-    todayEventSubject: {
-        fontSize: 14,
-        marginBottom: 2,
-    },
-    todayEventReminder: {
-        fontSize: 13,
-        color: '#6366F1',
-        fontWeight: '500',
-    },
-    careerAdviceButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 16,
-        borderWidth: 1,
-        gap: 8,
-    },
-    careerAdviceButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    careerAdviceText: {
-        fontSize: 16,
-        lineHeight: 24,
-        marginBottom: 16,
-    },
-    careerAdviceTimestamp: {
-        fontSize: 14,
-        opacity: 0.7,
-        fontStyle: 'italic',
-        marginBottom: 16,
-    },
-    followButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        marginLeft: 8,
-    },
-    followButtonText: {
-        marginLeft: 4,
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
     topicActions: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1917,5 +1949,25 @@ const styles = StyleSheet.create({
     quizButtonText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    legendContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        marginTop: 16,
+        gap: 24,
+    },
+    legendItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    legendColor: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    legendText: {
+        fontSize: 14,
+        opacity: 0.9,
     },
 }); 

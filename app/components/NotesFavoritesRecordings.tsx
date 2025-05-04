@@ -44,6 +44,7 @@ interface PopularQuestion {
 }
 
 interface LectureRecording {
+    id: string;
     recordingFileName: string;
     lecture_name: string;
     image: string | null;
@@ -339,6 +340,7 @@ export function NotesFavoritesRecordings({
                     <RecordingsList
                         recordings={lectureRecordings}
                         isLoading={isLecturesLoading}
+                        subjectName={subjectName}
                     />
                 ) : (
                     <TopicsList

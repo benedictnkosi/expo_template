@@ -35,7 +35,7 @@ export const QuizPaperButtons = ({
             return;
         }
 
-        if (paper === 'P2' && (
+        if (paper === 'P2' && subjectName && (
             subjectName.toLowerCase().includes('life orientation') ||
             subjectName.toLowerCase().includes('tourism')
         )) {

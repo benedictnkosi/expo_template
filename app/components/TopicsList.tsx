@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
@@ -56,10 +56,23 @@ function getTopicEmoji(topic: string): string {
     return '📚';
 }
 
+function calculateTotalQuestions(subtopics: Topic[]): number {
+    return subtopics.reduce((total, topic) => total + topic.questionCount, 0);
+}
+
+function calculatePercentage(current: number, total: number): number {
+    if (total === 0) return 0;
+    return Math.round((current / total) * 100);
+}
+
+type SortType = 'weight' | 'alphabetical';
+
 export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: TopicsListProps) {
     const { user } = useAuth();
     const [topics, setTopics] = useState<TopicResponse['topics']>({});
     const [isLoading, setIsLoading] = useState(true);
+    const [totalQuestions, setTotalQuestions] = useState(0);
+    const [sortType, setSortType] = useState<SortType>('weight');
 
     useEffect(() => {
         fetchTopics();
@@ -81,6 +94,11 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                     );
                 }
                 setTopics(data.topics);
+
+                // Calculate total questions across all categories
+                const total = Object.values(data.topics as Record<string, Topic[]>).reduce((sum: number, subtopics: Topic[]) =>
+                    sum + calculateTotalQuestions(subtopics), 0);
+                setTotalQuestions(total);
             } else {
                 Toast.show({
                     type: 'error',
@@ -98,6 +116,19 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const getSortedCategories = () => {
+        const categories = Object.entries(topics);
+        return categories.sort(([categoryA, topicsA], [categoryB, topicsB]) => {
+            if (sortType === 'weight') {
+                const weightA = calculateTotalQuestions(topicsA);
+                const weightB = calculateTotalQuestions(topicsB);
+                return weightB - weightA; // Descending order by weight
+            } else {
+                return categoryA.localeCompare(categoryB); // Alphabetical order
+            }
+        });
     };
 
     if (isLoading) {
@@ -129,7 +160,52 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                     👆 Tap a topic to start the quiz or lessons
                 </ThemedText>
             </View>
-            {Object.entries(topics).map(([category, subtopics]) => (
+
+            <View style={styles.sortContainer}>
+                <TouchableOpacity
+                    style={[
+                        styles.sortButton,
+                        sortType === 'weight' && styles.activeSortButton,
+                        { borderColor: colors.primary }
+                    ]}
+                    onPress={() => setSortType('weight')}
+                >
+                    <MaterialCommunityIcons
+                        name="weight"
+                        size={16}
+                        color={sortType === 'weight' ? colors.primary : colors.textSecondary}
+                    />
+                    <ThemedText style={[
+                        styles.sortButtonText,
+                        sortType === 'weight' && { color: colors.primary }
+                    ]}>
+                        By Exam Weight
+                    </ThemedText>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[
+                        styles.sortButton,
+                        sortType === 'alphabetical' && styles.activeSortButton,
+                        { borderColor: colors.primary }
+                    ]}
+                    onPress={() => setSortType('alphabetical')}
+                >
+                    <MaterialCommunityIcons
+                        name="alphabetical"
+                        size={16}
+                        color={sortType === 'alphabetical' ? colors.primary : colors.textSecondary}
+                    />
+                    <ThemedText style={[
+                        styles.sortButtonText,
+                        sortType === 'alphabetical' && { color: colors.primary }
+                    ]}>
+                        A-Z
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
+
+            {getSortedCategories().map(([category, subtopics]) => (
                 <View key={category} style={styles.categoryContainer}>
                     {category !== 'Uncategorized' && (
                         <View style={styles.categoryTitleContainer}>
@@ -139,6 +215,9 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                                 onPress={() => handleTopicSelect(category)}
                             >
                                 {category}
+                            </ThemedText>
+                            <ThemedText style={styles.totalQuestions}>
+                                ({calculatePercentage(calculateTotalQuestions(subtopics), totalQuestions)}%)
                             </ThemedText>
                             <View style={styles.startQuizContainer}>
                                 <MaterialCommunityIcons
@@ -254,15 +333,14 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     topicContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
         marginBottom: 4,
     },
     topicText: {
         fontSize: 14,
         lineHeight: 24,
         flex: 1,
+        flexWrap: 'wrap',
     },
     questionCountContainer: {
         alignSelf: 'flex-end',
@@ -270,5 +348,31 @@ const styles = StyleSheet.create({
     questionCount: {
         fontSize: 12,
         opacity: 0.7,
+    },
+    totalQuestions: {
+        fontSize: 14,
+        opacity: 0.7,
+        marginLeft: 8,
+    },
+    sortContainer: {
+        flexDirection: 'row',
+        marginBottom: 16,
+        gap: 8,
+    },
+    sortButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        gap: 4,
+    },
+    activeSortButton: {
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    sortButtonText: {
+        fontSize: 14,
+        opacity: 0.8,
     },
 }); 

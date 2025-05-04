@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Image, Dimensions, Platform, Share, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform, Share, TouchableOpacity } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
 import { AudioPlayer } from '@/components/AudioPlayer';
@@ -8,9 +8,9 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
 
 interface LectureRecording {
+    id: string;
     recordingFileName: string;
     lecture_name: string;
-    image: string | null;
     main_topic: string;
 }
 
@@ -18,11 +18,12 @@ interface RecordingPlayerModalProps {
     isVisible: boolean;
     onClose: () => void;
     recording: LectureRecording | null;
+    subjectName: string;
 }
 
 const { width } = Dimensions.get('window');
 
-export function RecordingPlayerModal({ isVisible, onClose, recording }: RecordingPlayerModalProps) {
+export function RecordingPlayerModal({ isVisible, onClose, recording, subjectName }: RecordingPlayerModalProps) {
     const { colors, isDark } = useTheme();
     const styles = createStyles(isDark);
 
@@ -33,9 +34,10 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
 
     const handleShare = async () => {
         try {
-            const shareUrl = `https://examquiz.co.za/lecture/${recording.recordingFileName}`;
+            const cleanSubjectName = subjectName.replace(/P[12]/g, '').trim();
+            const shareUrl = `https://examquiz.co.za/quiz?lectureId=${recording.id}&subjectName=${encodeURIComponent(cleanSubjectName)}`;
             await Share.share({
-                message: `Check out this podcast on ExamQuiz: ${recording.lecture_name}\n${shareUrl}`,
+                message: `Check out this podcast on ExamQuiz:\n\n${recording.lecture_name}\n\nDownload ExamQuiz to listen to more educational podcasts!\n\nView this podcast directly: ${shareUrl}`,
                 title: recording.lecture_name,
             });
         } catch (error) {
@@ -64,26 +66,10 @@ export function RecordingPlayerModal({ isVisible, onClose, recording }: Recordin
                 </View>
 
                 <View style={styles.content}>
-                    {recording.image ? (
-                        <Image
-                            source={{ uri: `${HOST_URL}/public/learn/learner/get-lecture-image?image=` + recording.image }}
-                            style={styles.image}
-                            resizeMode="cover"
-                            onLoadStart={() => console.log('[RecordingPlayerModal] Image loading started:', recording.image)}
-                            onLoad={() => console.log('[RecordingPlayerModal] Image loaded successfully:', recording.image)}
-                            onError={(error) => console.error('[RecordingPlayerModal] Image loading error:', error.nativeEvent.error)}
-                        />
-                    ) : (
-                        <View style={[styles.image, styles.imagePlaceholder]}>
-                            <Ionicons name="headset" size={48} color={colors.text} />
-                        </View>
-                    )}
-
                     <TouchableOpacity
                         style={[styles.shareButton, {
                             backgroundColor: isDark ? colors.surface : '#F3F4F6',
                             borderColor: isDark ? colors.border : '#E5E7EB',
-                            marginTop: 16,
                             marginBottom: 16,
                         }]}
                         onPress={handleShare}
@@ -144,17 +130,6 @@ function createStyles(isDark: boolean) {
         },
         content: {
             padding: 16,
-        },
-        image: {
-            width: '100%',
-            height: width * 0.6,
-            borderRadius: 12,
-            marginBottom: 16,
-        },
-        imagePlaceholder: {
-            backgroundColor: isDark ? '#3a3a3a' : '#e0e0e0',
-            justifyContent: 'center',
-            alignItems: 'center',
         },
         playerContainer: {
             marginTop: 24,

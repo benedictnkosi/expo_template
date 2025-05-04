@@ -103,7 +103,7 @@ export const PerformanceSummary = ({ stats, onRestart }: PerformanceSummaryProps
             <View style={styles.progressSection}>
                 <View style={styles.progressHeader}>
                     <ThemedText style={[styles.progressLabel, { color: themeColors.textSecondary }]}>
-                        Mastery Level
+                        🐐 GOAT Level
                     </ThemedText>
                     <ThemedText style={[styles.progressPercentage, { color: themeColors.text }]}>
                         {progress}%

@@ -76,38 +76,6 @@ export default function SubjectChatScreen() {
     const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
     const THREADS_PER_PAGE = 100;
 
-    // Add useEffect to handle deep links
-    useEffect(() => {
-        const handleDeepLink = async () => {
-            if (!id || !subjectName) return;
-
-            try {
-                // Check if this is a deep link to a specific thread
-                const threadId = id;
-                if (threadId && threadId !== 'general') {
-                    // Navigate to the thread detail screen
-                    router.push({
-                        pathname: '/posts/[threadId]',
-                        params: {
-                            threadId,
-                            subjectName
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Error handling deep link:', error);
-                Toast.show({
-                    type: 'error',
-                    text1: 'Error',
-                    text2: 'Failed to load thread',
-                    position: 'bottom'
-                });
-            }
-        };
-
-        handleDeepLink();
-    }, [id, subjectName]);
-
     useEffect(() => {
         if (subjectName) {
             loadThreads();

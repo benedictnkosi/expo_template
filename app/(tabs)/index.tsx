@@ -1091,12 +1091,10 @@ export default function HomeScreen() {
       style={[styles.gradient, { paddingTop: insets.top }]}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      testID="home-screen-gradient"
     >
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
-        testID="home-screen-scroll-view"
       >
         <Header
           learnerInfo={learnerInfo ? {
@@ -1167,7 +1165,7 @@ export default function HomeScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.reportButton, { backgroundColor: colors.primary }]}
+            style={[styles.reportButton, { backgroundColor: '#10B981' }]}
             onPress={() => {
               if (user?.uid && learnerInfo?.name) {
                 router.push({
@@ -1195,6 +1193,8 @@ export default function HomeScreen() {
             </ThemedText>
           </TouchableOpacity>
         </View>
+
+
 
         <RandomLessonPreview
           randomLesson={randomLesson}
@@ -1406,15 +1406,25 @@ export default function HomeScreen() {
                             ]}
                           />
                         </View>
-                        <ThemedText
-                          style={[
-                            styles.masteryText,
-                            { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
-                          ]}
-                        >
-                          {subject.answered_questions === 0 ? 0 :
-                            Math.round((subject.correct_answers / subject.answered_questions) * 100)}% GOAT 🐐
-                        </ThemedText>
+                        <View style={styles.masteryContainer}>
+                          <ThemedText
+                            style={[
+                              styles.masteryText,
+                              { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
+                            ]}
+                          >
+                            🐐 GOAT Level
+                          </ThemedText>
+                          <ThemedText
+                            style={[
+                              styles.masteryPercentage,
+                              { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
+                            ]}
+                          >
+                            {subject.answered_questions === 0 ? 0 :
+                              Math.round((subject.correct_answers / subject.answered_questions) * 100)}%
+                          </ThemedText>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -1714,11 +1724,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flexWrap: 'wrap',
   },
+  masteryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
   masteryText: {
     fontSize: 14,
-    marginTop: 4,
-    textAlign: 'right',
     flexWrap: 'wrap',
+  },
+  masteryPercentage: {
+    fontSize: 14,
+    flexWrap: 'wrap',
+    fontWeight: 'bold',
+
   },
   progressBarContainer: {
     width: 'auto',
@@ -2306,6 +2326,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    backgroundColor: '#10B981', // Changed from colors.primary to a green color
   },
   reportButtonText: {
     color: '#FFFFFF',
@@ -2436,6 +2457,20 @@ const styles = StyleSheet.create({
   },
   subjectRequestModalButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  testButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    gap: 8,
+  },
+  testButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
