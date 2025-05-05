@@ -111,7 +111,26 @@ export default function RootLayout() {
             console.log('[Notifications] Received notification response:', data);
 
             // Handle notification tap
-            if (data?.screen) {
+            if (data?.threadId) {
+              // Navigate to the specific thread
+              router.push({
+                pathname: '/posts/[threadId]',
+                params: {
+                  threadId: data.threadId,
+                  subjectName: data.subjectName || ''
+                }
+              });
+            } else if (data?.badgeName) {
+              router.push({
+                pathname: '/report/[uid]',
+                params: { uid: data.learnerUid, name: data.learnerName }
+              });
+            }
+            else if (data?.followerUid) {
+              router.push({
+                pathname: '/(tabs)/social',
+              });
+            } else if (data?.screen) {
               router.push(data.screen);
             }
           }

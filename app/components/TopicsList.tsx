@@ -88,12 +88,12 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
             const data = await response.json();
 
             if (data.status === 'OK') {
-                // Filter out "no match" from Uncategorized
-                if (data.topics['Uncategorized']) {
-                    data.topics['Uncategorized'] = data.topics['Uncategorized'].filter(
-                        (topic: Topic) => topic.name.toLowerCase() !== 'no match'
+                // Filter out topics containing "no match" from all categories
+                Object.keys(data.topics).forEach(category => {
+                    data.topics[category] = data.topics[category].filter(
+                        (topic: Topic) => !topic.name.toLowerCase().includes('no match')
                     );
-                }
+                });
                 setTopics(data.topics);
 
                 // Calculate total questions across all categories
