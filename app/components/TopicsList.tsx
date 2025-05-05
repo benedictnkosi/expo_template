@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
@@ -73,6 +73,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
     const [isLoading, setIsLoading] = useState(true);
     const [totalQuestions, setTotalQuestions] = useState(0);
     const [sortType, setSortType] = useState<SortType>('weight');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         fetchTopics();
@@ -124,11 +125,35 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
             if (sortType === 'weight') {
                 const weightA = calculateTotalQuestions(topicsA);
                 const weightB = calculateTotalQuestions(topicsB);
-                return weightB - weightA; // Descending order by weight
+                return weightB - weightA;
             } else {
-                return categoryA.localeCompare(categoryB); // Alphabetical order
+                return categoryA.localeCompare(categoryB);
             }
         });
+    };
+
+    const getFilteredCategories = () => {
+        if (!searchQuery.trim()) return getSortedCategories();
+
+        const query = searchQuery.toLowerCase().trim();
+        return getSortedCategories().filter(([category, subtopics]) => {
+            // Check if category matches
+            if (category.toLowerCase().includes(query)) return true;
+
+            // Check if any subtopic matches
+            return subtopics.some(topic =>
+                topic.name.toLowerCase().includes(query)
+            );
+        });
+    };
+
+    const getFilteredSubtopics = (subtopics: Topic[]) => {
+        if (!searchQuery.trim()) return subtopics;
+
+        const query = searchQuery.toLowerCase().trim();
+        return subtopics.filter(topic =>
+            topic.name.toLowerCase().includes(query)
+        );
     };
 
     if (isLoading) {
@@ -159,6 +184,41 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                 <ThemedText style={styles.hintText}>
                     👆 Tap a topic to start the quiz or lessons
                 </ThemedText>
+            </View>
+
+            <View style={styles.searchContainer}>
+                <MaterialCommunityIcons
+                    name="magnify"
+                    size={20}
+                    color={colors.textSecondary}
+                    style={styles.searchIcon}
+                />
+                <TextInput
+                    style={[
+                        styles.searchInput,
+                        {
+                            color: colors.text,
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                        }
+                    ]}
+                    placeholder="Search topics..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery ? (
+                    <TouchableOpacity
+                        onPress={() => setSearchQuery('')}
+                        style={styles.clearButton}
+                    >
+                        <MaterialCommunityIcons
+                            name="close-circle"
+                            size={20}
+                            color={colors.textSecondary}
+                        />
+                    </TouchableOpacity>
+                ) : null}
             </View>
 
             <View style={styles.sortContainer}>
@@ -205,7 +265,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                 </TouchableOpacity>
             </View>
 
-            {getSortedCategories().map(([category, subtopics]) => (
+            {getFilteredCategories().map(([category, subtopics]) => (
                 <View key={category} style={styles.categoryContainer}>
                     {category !== 'Uncategorized' && (
                         <View style={styles.categoryTitleContainer}>
@@ -234,7 +294,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                             </View>
                         </View>
                     )}
-                    {subtopics.map((topic, index) => (
+                    {getFilteredSubtopics(subtopics).map((topic, index) => (
                         <View
                             key={index}
                             style={[
@@ -374,5 +434,29 @@ const styles = StyleSheet.create({
     sortButtonText: {
         fontSize: 14,
         opacity: 0.8,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        position: 'relative',
+    },
+    searchIcon: {
+        position: 'absolute',
+        left: 12,
+        zIndex: 1,
+    },
+    searchInput: {
+        flex: 1,
+        height: 40,
+        paddingHorizontal: 40,
+        borderRadius: 8,
+        borderWidth: 1,
+        fontSize: 16,
+    },
+    clearButton: {
+        position: 'absolute',
+        right: 12,
+        zIndex: 1,
     },
 }); 

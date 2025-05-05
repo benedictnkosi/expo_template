@@ -136,7 +136,10 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'history.png': require('@/assets/images/badges/history.png'),
     'tourism.png': require('@/assets/images/badges/tourism.png'),
     'business-studies.png': require('@/assets/images/badges/business-studies.png'),
-    'accounting.png': require('@/assets/images/badges/accounting.png')
+    'accounting.png': require('@/assets/images/badges/accounting.png'),
+    'daily-goat.png': require('@/assets/images/badges/daily-goat.png'),
+    'weekly-goat.png': require('@/assets/images/badges/weekly-goat.png'),
+    'all-time-goat.png': require('@/assets/images/badges/all-time-goat.png')
 };
 
 // Helper to clean subject name for display and emoji lookup

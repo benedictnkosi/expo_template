@@ -507,7 +507,7 @@ export default function OnboardingScreen() {
                     }));
 
                     // Log onboarding completion event
-                    logAnalyticsEvent('onboarding_complete', {
+                    logAnalyticsEvent('register_success', {
                       grade,
                       curriculum: 'CAPS',
                       difficult_subject: difficultSubject,

@@ -654,6 +654,29 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     recordingFileName,
     subjectName
 }) => {
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (isLoadingLecture) {
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(fadeAnim, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(fadeAnim, {
+                        toValue: 0,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        } else {
+            fadeAnim.setValue(0);
+        }
+    }, [isLoadingLecture]);
+
     const handleShareQuestion = async () => {
         if (!question) return;
 
@@ -684,7 +707,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             }]}
             testID="question-card"
         >
-            {question.topic && question.topic !== "NO MATCH" && (
+            {question.topic && question.topic !== "NO MATCH" && question.topic !== "NO MATCH WITH IMAGE" && (
                 <View style={[styles.topicContainer, {
                     backgroundColor: isDark ? 'rgba(5, 150, 105, 0.1)' : 'rgba(16, 185, 129, 0.1)',
                     borderColor: isDark ? '#059669' : '#10B981'
@@ -863,6 +886,36 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     Share this {selectedMode === 'lessons' ? 'lesson' : 'question'}
                 </ThemedText>
             </TouchableOpacity>
+
+            {recordingFileName !== '' && (
+                <TouchableOpacity
+                    style={[styles.lectureButton, {
+                        backgroundColor: isDark ? '#059669' : '#10B981'
+                    }]}
+                    onPress={handleListenToLecture}
+                    disabled={isLoadingLecture}
+                    testID="lecture-button"
+                >
+                    <ThemedText style={styles.lectureButtonText}>
+                        {isLoadingLecture ? (
+                            <View
+                                style={styles.loaderContainer}
+                                testID="lecture-loading"
+                            >
+                                <ThemedText style={styles.lectureButtonText}>
+                                    Loading lecture
+                                    <Animated.Text style={[styles.loadingDots, { opacity: fadeAnim }]}>
+                                        ...
+                                    </Animated.Text>
+                                </ThemedText>
+                                <ActivityIndicator size="small" color={isDark ? '#FFFFFF' : colors.primary} />
+                            </View>
+                        ) : (
+                            '🎧 Listen to a Lecture'
+                        )}
+                    </ThemedText>
+                </TouchableOpacity>
+            )}
 
             {selectedMode === 'lessons' && (
                 <>
@@ -1346,6 +1399,32 @@ export default function QuizScreen() {
                 setNoMoreQuestions(true);
                 setCurrentQuestion(null);
             } else {
+                setCurrentQuestion(data);
+                // Fetch lecture data if in lessons mode
+                if (selectedMode === 'lessons' && data.id) {
+                    try {
+                        const lectureRes = await fetch(`${HOST_URL}/api/topics/recording/question/${data.id}`);
+                        if (lectureRes.ok) {
+                            const lectureJson = await lectureRes.json();
+                            if (lectureJson.status === 'success') {
+                                setRecordingFileName(lectureJson.data.recordingFileName);
+                                setLectureData(lectureJson.data);
+                            } else {
+                                setRecordingFileName('');
+                                setLectureData(null);
+                            }
+                        } else {
+                            setRecordingFileName('');
+                            setLectureData(null);
+                        }
+                    } catch (err) {
+                        setRecordingFileName('');
+                        setLectureData(null);
+                    }
+                } else {
+                    setRecordingFileName('');
+                    setLectureData(null);
+                }
                 // Shuffle options
                 const options = data.options;
                 const entries = Object.entries(options);
@@ -1376,8 +1455,6 @@ export default function QuizScreen() {
                     .replace(/\*\*\*/g, '**')
                     .replace(/\$\s*\n\s*([^$]+)\s*\n\s*\$/g, '$ $1 $')
                     : '';
-
-                setCurrentQuestion(data);
 
                 // If this question has related questions, load them
                 if (data.related_question_ids && data.related_question_ids.length > 0) {
@@ -4232,6 +4309,20 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 8,
         borderWidth: 1,
+    },
+    lectureButton: {
+        marginTop: 10,
+        padding: 12,
+        borderRadius: 8,
+        width: '100%',
+        alignItems: 'center',
+    },
+    lectureButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+    },
+    loadingDots: {
+        color: '#FFFFFF',
     },
 });
 

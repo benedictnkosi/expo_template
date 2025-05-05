@@ -1,7 +1,7 @@
 export default {
   name: 'Exam Quiz',
   slug: 'exam-quiz',
-  version: '2.7.17',
+  version: '2.8.7',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'examquiz',
