@@ -1801,6 +1801,13 @@ export default function QuizScreen() {
     const fetchAIExplanation = async (questionId: number) => {
         setIsLoadingExplanation(true);
         try {
+            await logAnalyticsEvent('request_ai_explanation', {
+                questionId,
+                subjectId: currentQuestion?.subject.id,
+                subjectName: currentQuestion?.subject.name,
+                questionType: currentQuestion?.type
+            });
+
             const response = await fetch(
                 `${API_BASE_URL}/question/ai-explanation?question_id=${questionId}`
             );
