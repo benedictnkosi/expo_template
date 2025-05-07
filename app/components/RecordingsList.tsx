@@ -125,6 +125,9 @@ export function RecordingsList({ recordings, isLoading, subjectName }: Recording
                     <ThemedText style={styles.disclaimerText}>
                         ⚠️ All lectures are AI-generated and have not been quality checked
                     </ThemedText>
+                    <ThemedText style={styles.termsNote}>
+                        Note: Only showing podcasts for your selected school terms
+                    </ThemedText>
                 </View>
                 {Object.entries(groupedRecordings).map(([topic, topicRecordings]) => (
                     <View key={topic} style={styles.topicSection}>
@@ -241,6 +244,15 @@ function createStyles(isDark: boolean) {
         },
         disclaimerContainer: {
             paddingHorizontal: 16,
+            marginTop: 8,
+        },
+        termsNote: {
+            fontSize: 12,
+            color: isDark ? '#A0A0A0' : '#666666',
+            textAlign: 'center',
+            padding: 8,
+            backgroundColor: isDark ? 'rgba(160, 160, 160, 0.1)' : 'rgba(102, 102, 102, 0.1)',
+            borderRadius: 8,
             marginTop: 8,
         },
     });

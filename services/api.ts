@@ -20,7 +20,7 @@ function ensureHttps(url: string): string {
 
 export async function fetchMySubjects(uid: string): Promise<MySubjectsResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/learner/subjects?uid=${uid}&accounting=true`
+    `${API_BASE_URL}/learner/subjects?uid=${uid}&accounting2=true`
   );
 
   if (!response.ok) {

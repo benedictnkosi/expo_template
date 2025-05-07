@@ -7,7 +7,7 @@ import 'react-native-reanimated';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import AuthLayout from './_auth';
-import Toast from 'react-native-toast-message';
+import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { app } from '@/config/firebase';
@@ -24,6 +24,58 @@ export {
 
 export const unstable_settings = {
   initialRouteName: '(tabs)',
+};
+
+// Toast configuration
+const toastConfig = {
+  success: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#4CAF50', backgroundColor: '#FFFFFF' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1B1464'
+      }}
+      text2Style={{
+        fontSize: 14,
+        color: '#666666'
+      }}
+    />
+  ),
+  error: (props: any) => (
+    <ErrorToast
+      {...props}
+      style={{ borderLeftColor: '#DC2626', backgroundColor: '#FFFFFF' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1B1464'
+      }}
+      text2Style={{
+        fontSize: 14,
+        color: '#666666'
+      }}
+    />
+  ),
+  info: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#3B82F6', backgroundColor: '#FFFFFF' }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1B1464'
+      }}
+      text2Style={{
+        fontSize: 14,
+        color: '#666666'
+      }}
+    />
+  )
 };
 
 function RootLayoutNav() {
@@ -57,7 +109,7 @@ function RootLayoutNav() {
           }}
         />
       </Stack>
-      <Toast />
+      <Toast config={toastConfig} />
     </AuthProvider>
   );
 }

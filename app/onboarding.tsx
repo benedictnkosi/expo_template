@@ -132,6 +132,8 @@ export default function OnboardingScreen() {
     curriculum: ''
   });
 
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+
   useEffect(() => {
     async function checkAuthAndOnboarding() {
       try {
@@ -257,7 +259,7 @@ export default function OnboardingScreen() {
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
               </ThemedText>
               <ThemedText style={[styles.statsText, { fontSize: 18, lineHeight: 28 }]} testID="welcome-stats">
-                💡 Join 4,000+ students sharpening their skills with 8,000+ brain-boosting questions every day! 🧠🔥
+                💡 Join 15,000+ students sharpening their skills with 24,000+ brain-boosting questions every day! 🧠🔥
               </ThemedText>
             </View>
           </View>
@@ -417,14 +419,42 @@ export default function OnboardingScreen() {
                 Choose your preferred way to sign up
               </ThemedText>
             </View>
+            <View style={styles.disclaimerContainer}>
+              <View style={styles.disclaimerInner}>
+                <View style={styles.disclaimerTextWrapper}>
+                  <View style={styles.disclaimerIconRow}>
+                    <ThemedText style={styles.disclaimerIcon} accessibilityElementsHidden>⚠️</ThemedText>
+                    <ThemedText style={styles.disclaimerTitle}>Disclaimer</ThemedText>
+                  </View>
+                  <ThemedText style={styles.disclaimerText}>
+                    Heads up! Our quiz questions come from real past exam papers, but they haven't been officially checked or endorsed by any school or the Department of Education. We're here to help you learn and have fun—so enjoy, and let's get quizzing! 🎉
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={styles.checkboxContainer}>
+                <TouchableOpacity
+                  style={[styles.checkbox, disclaimerAccepted && styles.checkboxChecked]}
+                  onPress={() => setDisclaimerAccepted(!disclaimerAccepted)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: disclaimerAccepted }}
+                  accessibilityLabel="Accept disclaimer"
+                >
+                  {disclaimerAccepted && (
+                    <Ionicons name="checkmark" size={16} color="#4F46E5" />
+                  )}
+                </TouchableOpacity>
+                <ThemedText style={styles.checkboxText}>I accept the disclaimer</ThemedText>
+              </View>
+            </View>
             <View style={styles.authOptionsContainer}>
               <TouchableOpacity
-                style={[styles.authButton, styles.emailButton]}
+                style={[styles.authButton, styles.emailButton, !disclaimerAccepted && styles.authButtonDisabled]}
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'email' });
                   setRegistrationMethod('email');
                   setStep(5);
                 }}
+                disabled={!disclaimerAccepted}
                 testID="email-auth-button"
               >
                 <Ionicons name="mail-outline" size={24} color="#FFFFFF" />
@@ -432,12 +462,13 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.authButton, styles.phoneButton]}
+                style={[styles.authButton, styles.phoneButton, !disclaimerAccepted && styles.authButtonDisabled]}
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'phone' });
                   setRegistrationMethod('phone');
                   setStep(5);
                 }}
+                disabled={!disclaimerAccepted}
                 testID="phone-auth-button"
               >
                 <Ionicons name="call-outline" size={24} color="#FFFFFF" />
@@ -449,7 +480,7 @@ export default function OnboardingScreen() {
               </ThemedText>
 
               <TouchableOpacity
-                style={[styles.authButton, styles.guestButton]}
+                style={[styles.authButton, styles.guestButton, !disclaimerAccepted && styles.authButtonDisabled]}
                 onPress={async () => {
                   logAnalyticsEvent('auth_option_selected', { option: 'guest' });
 
@@ -530,6 +561,7 @@ export default function OnboardingScreen() {
                     });
                   }
                 }}
+                disabled={!disclaimerAccepted}
                 testID="guest-auth-button"
               >
                 <Ionicons name="person-outline" size={24} color="#FFFFFF" />
@@ -679,10 +711,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textContainer: {
-    marginTop: 64,
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 20,
     marginBottom: 20,
   },
   illustration: {
@@ -1356,5 +1388,75 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     marginBottom: 8,
+  },
+  disclaimerContainer: {
+    width: '90%',
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  disclaimerInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    gap: 16,
+  },
+
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  checkboxChecked: {
+    backgroundColor: '#E0E7FF',
+    borderColor: '#4F46E5',
+  },
+  disclaimerTextWrapper: {
+    flex: 1,
+    flexDirection: 'column',
+    gap: 2,
+  },
+  disclaimerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  disclaimerIcon: {
+    fontSize: 18,
+    marginRight: 2,
+  },
+  disclaimerTitle: {
+    fontWeight: '700',
+    color: '#FBBF24',
+    fontSize: 15,
+  },
+  disclaimerText: {
+    fontSize: 15,
+    color: '#F3F4F6',
+    lineHeight: 22,
+    opacity: 0.85,
+  },
+  authButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  checkboxText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    opacity: 0.9,
   },
 });

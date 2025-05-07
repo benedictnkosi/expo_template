@@ -184,6 +184,9 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                 <ThemedText style={styles.hintText}>
                     👆 Tap a topic to start the quiz or lessons
                 </ThemedText>
+                <ThemedText style={styles.termsNote}>
+                    Note: Only showing topics for your selected school terms
+                </ThemedText>
             </View>
 
             <View style={styles.searchContainer}>
@@ -337,6 +340,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         opacity: 0.8,
+        marginBottom: 4,
+    },
+    termsNote: {
+        fontSize: 12,
+        textAlign: 'center',
+        opacity: 0.6,
     },
     loadingContainer: {
         flex: 1,

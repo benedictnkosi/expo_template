@@ -10,9 +10,9 @@ export interface QuizAdditionalImageProps {
     onZoom: (url: string) => void;
 }
 
-export const QuizAdditionalImage = ({ 
-    imagePath, 
-    onZoom 
+export const QuizAdditionalImage = ({
+    imagePath,
+    onZoom
 }: QuizAdditionalImageProps) => {
     const [hasError, setHasError] = useState(false);
     const { isDark, colors } = useTheme();

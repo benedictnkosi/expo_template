@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated, Share } from 'react-native';
+import { StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, ScrollView, View, Linking, Dimensions, Platform, Animated, Share, useColorScheme, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, router } from 'expo-router';
 import Modal from 'react-native-modal';
@@ -95,29 +95,7 @@ interface QuestionResponse extends Question {
 
 // Helper function to clean the answer string
 function cleanAnswer(answer: string): string {
-    try {
-        // If it's a JSON array, parse first
-        let cleanedAnswer = answer;
-        if (answer.startsWith('[')) {
-            cleanedAnswer = JSON.parse(answer)
-                .map((a: string) => a.trim())
-                .join(', ');
-        }
-
-        // If answer contains pipe character, split into new lines
-        if (cleanedAnswer.includes('|')) {
-            return cleanedAnswer
-                .split('|')
-                .map(part => part.trim())
-                .join('\n');
-        }
-
-        // Return single line answer
-        return cleanedAnswer.trim();
-    } catch {
-        // If parsing fails, return the original answer
-        return answer;
-    }
+    return answer.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
 
@@ -622,6 +600,7 @@ interface QuestionCardProps {
     isLoadingLecture: boolean;
     recordingFileName?: string;
     subjectName: string;
+    setShowFeedback: (show: boolean) => void;
 }
 
 // Then define the QuestionCard component
@@ -652,7 +631,8 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     handleListenToLecture,
     isLoadingLecture,
     recordingFileName,
-    subjectName
+    subjectName,
+    setShowFeedback
 }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -801,6 +781,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 <AccountingQuestion
                     question={question.answer_sheet}
                     questionId={question.id}
+                    setShowFeedback={setShowFeedback}
                 />
             )}
 
@@ -887,7 +868,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 </ThemedText>
             </TouchableOpacity>
 
-            {recordingFileName !== '' && (
+            {recordingFileName !== '' && selectedMode === 'lessons' && (
                 <TouchableOpacity
                     style={[styles.lectureButton, {
                         backgroundColor: isDark ? '#059669' : '#10B981'
@@ -1028,6 +1009,44 @@ interface LectureRecordingResponse {
     };
 }
 
+async function resetTopicProgress(topic: string, user: any, subjectName: string, setStats: any, fetchTopicProgress: any) {
+    if (!user?.uid || !topic) return;
+    try {
+        const response = await fetch(
+            `${HOST_URL}/public/learn/topic/reset-progress?uid=${user.uid}&topic=${encodeURIComponent(topic)}&subject_name=${encodeURIComponent(subjectName)}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        if (response.ok) {
+            setStats({
+                total_answers: 0,
+                correct_answers: 0,
+                incorrect_answers: 0,
+                correct_percentage: 0,
+                incorrect_percentage: 0
+            });
+            await fetchTopicProgress(topic);
+            Toast.show({
+                type: 'success',
+                text1: 'Progress Reset',
+                text2: 'Topic progress has been reset',
+                position: 'bottom'
+            });
+        }
+    } catch (error) {
+        Toast.show({
+            type: 'error',
+            text1: 'Error',
+            text2: 'Failed to reset progress',
+            position: 'bottom'
+        });
+    }
+}
+
 export default function QuizScreen() {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
@@ -1038,7 +1057,6 @@ export default function QuizScreen() {
     const topic = params.topic as string;
     const questionId = params.id as string;
     const lectureId = params.lectureId as string;
-    console.log('QuizScreen mounted with params:', { subjectName, questionId, lectureId, params });
     const [grade, setGrade] = useState<string | null>(null);
     const insets = useSafeAreaInsets();
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -1329,9 +1347,9 @@ export default function QuizScreen() {
         }
     };
 
-    const loadRandomQuestion = async (paper: string, questionId?: number, topic?: string) => {
-        if (!user?.uid || !subjectName) {
-            console.warn('Missing required parameters: user ID or subject name');
+    const loadQuestion = async (paper: string, topic?: string) => {
+        if (!user?.uid) {
+            console.warn('User not authenticated');
             return;
         }
 
@@ -1354,7 +1372,10 @@ export default function QuizScreen() {
             setIsQuestionLoading(true);
             const endpoint = selectedMode === 'lessons' ? 'random' : 'byname';
             const encodedSubjectName = `${subjectName}`;
-            console.log('Loading question with topic:', topic);
+
+            // Get the current topic value directly from state
+            const currentTopic = topic || selectedTopic;
+            console.log('Loading question with topic:', currentTopic);
 
             // Build URL with topic if selected
             const url = new URL(`${API_BASE_URL}/question/${endpoint}`);
@@ -1362,8 +1383,10 @@ export default function QuizScreen() {
             url.searchParams.append('paper_name', paper);
             url.searchParams.append('uid', user.uid);
             url.searchParams.append('question_id', (questionId || 0).toString());
-            if (topic) {
-                url.searchParams.append('topic', topic);
+
+            // Add topic parameter if currentTopic is set
+            if (currentTopic) {
+                url.searchParams.append('topic', currentTopic);
             }
 
             const response = await fetch(url.toString());
@@ -1381,8 +1404,12 @@ export default function QuizScreen() {
                     paper_name: paper
                 });
             }
-            if (topic) {
-                fetchTopicProgress(topic);
+
+            // Only fetch stats from API for regular quiz (not topic quiz)
+            if (!currentTopic) {
+                console.log('Fetching regular quiz stats');
+                const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
+                setStats(newStats.data.stats);
             }
 
             const data: QuestionResponse = await response.json();
@@ -1464,8 +1491,8 @@ export default function QuizScreen() {
                         relatedUrl.searchParams.append('paper_name', paper);
                         relatedUrl.searchParams.append('uid', user.uid);
                         relatedUrl.searchParams.append('question_id', id.toString());
-                        if (topic) {
-                            relatedUrl.searchParams.append('topic', topic);
+                        if (selectedTopic) {
+                            relatedUrl.searchParams.append('topic', selectedTopic);
                         }
                         const response = await fetch(relatedUrl.toString());
                         if (!response.ok) return null;
@@ -1493,9 +1520,6 @@ export default function QuizScreen() {
                 setNoMoreQuestions(false);
                 startTimer(); // Start timer when new question is loaded
             }
-
-            const newStats = await getSubjectStats(user.uid, subjectName + " " + paper);
-            setStats(newStats.data.stats);
         } catch (error) {
             console.error('Error loading question:', error);
             Toast.show({
@@ -1519,7 +1543,7 @@ export default function QuizScreen() {
         try {
             stopTimer();
             setIsAnswerLoading(true);
-            setSelectedAnswer(answer);
+            setSelectedAnswer(answer)
 
             const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration, "Normal", "");
 
@@ -1552,23 +1576,49 @@ export default function QuizScreen() {
                 setShowStreakModal(true);
             }
 
-            // Update local stats immediately
-            if (stats) {
-                setStats({
-                    total_answers: stats.total_answers + 1,
-                    correct_answers: response.correct
-                        ? stats.correct_answers + 1
-                        : stats.correct_answers,
-                    incorrect_answers: !response.correct
-                        ? stats.incorrect_answers + 1
-                        : stats.incorrect_answers,
-                    correct_percentage: response.correct
-                        ? ((stats.correct_answers + 1) / (stats.total_answers + 1)) * 100
-                        : (stats.correct_answers / (stats.total_answers + 1)) * 100,
-                    incorrect_percentage: !response.correct
-                        ? ((stats.incorrect_answers + 1) / (stats.total_answers + 1)) * 100
-                        : (stats.incorrect_answers / (stats.total_answers + 1)) * 100,
+            // Update stats based on quiz type
+            if (selectedTopic) {
+                console.log('Updating topic quiz stats');
+                // Update local stats for topic quiz
+                setStats(prevStats => {
+                    if (!prevStats) {
+                        return {
+                            total_answers: 1,
+                            correct_answers: response.correct ? 1 : 0,
+                            incorrect_answers: response.correct ? 0 : 1,
+                            correct_percentage: response.correct ? 100 : 0,
+                            incorrect_percentage: response.correct ? 0 : 100
+                        };
+                    }
+                    const newTotal = prevStats.total_answers + 1;
+                    const newCorrect = response.correct ? prevStats.correct_answers + 1 : prevStats.correct_answers;
+                    const newIncorrect = !response.correct ? prevStats.incorrect_answers + 1 : prevStats.incorrect_answers;
+                    return {
+                        total_answers: newTotal,
+                        correct_answers: newCorrect,
+                        incorrect_answers: newIncorrect,
+                        correct_percentage: (newCorrect / newTotal) * 100,
+                        incorrect_percentage: (newIncorrect / newTotal) * 100
+                    };
                 });
+
+                // Update topic progress after answering
+                try {
+                    const progressResponse = await fetch(
+                        `${HOST_URL}/public/learn/topic/progress?uid=${user.uid}&topic=${encodeURIComponent(selectedTopic)}&subject_name=${encodeURIComponent(subjectName)}`
+                    );
+                    const progressData = await progressResponse.json();
+                    if (progressData.status === "OK") {
+                        setTopicProgress(progressData);
+                    }
+                } catch (error) {
+                    console.error('Error updating topic progress:', error);
+                }
+            } else {
+                console.log('Updating regular quiz stats');
+                // Update stats from API for regular quiz
+                const newStats = await getSubjectStats(user.uid, subjectName + " " + selectedPaper);
+                setStats(newStats.data.stats);
             }
 
             // Play sound using the new playSound function
@@ -1636,22 +1686,56 @@ export default function QuizScreen() {
 
     const handleNext = () => {
         if (!selectedPaper) return;
-        setSelectedAnswer(null);
-        setShowFeedback(false);
-        console.log('handleNext - selectedTopic:', selectedTopic);
-        loadRandomQuestion(selectedPaper, undefined, selectedTopic || undefined);
+
+        if (selectedTopic) {
+            // For topic quizzes, load next question and update progress
+            loadQuestion(selectedPaper, selectedTopic).then(() => {
+                // Update topic progress after loading new question
+                fetchTopicProgress(selectedTopic);
+            });
+        } else {
+            // For regular quizzes, just load next question
+            loadQuestion(selectedPaper);
+        }
     };
 
-    const handleTopicSelect = (topic?: string) => {
+    const handleTopicSelect = async (topic?: string) => {
         console.log('Topic selected:', topic);
-        // Set the topic first
-        setSelectedTopic(topic || null);
+
+        // Initialize local stats for topic quiz with zeros
+        setStats({
+            total_answers: 0,
+            correct_answers: 0,
+            incorrect_answers: 0,
+            correct_percentage: 0,
+            incorrect_percentage: 0
+        });
+
+        // Set paper and reset UI state
         setSelectedPaper('P1');
         setSelectedAnswer(null);
         setShowFeedback(false);
 
-        // Call loadRandomQuestion with the topic directly
-        loadRandomQuestion('P1', undefined, topic);
+        // Set the topic first
+        setSelectedTopic(topic || null);
+
+        // Reset topic progress if topic is selected
+        if (topic && user?.uid) {
+            try {
+                await resetTopicProgress(topic, user, subjectName, setStats, fetchTopicProgress);
+            } catch (error) {
+                console.error('Error resetting topic progress:', error);
+            }
+        }
+
+        // Add a small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Now load the question with the topic
+        if (topic) {
+            console.log('Loading question with topic:', topic);
+            loadQuestion('P1', topic);
+        }
 
         logAnalyticsEvent('start_topic_quiz', {
             subject_name: subjectName,
@@ -1695,7 +1779,7 @@ export default function QuizScreen() {
             setNoMoreQuestions(false);
             setIsRestartModalVisible(false);
 
-            await loadRandomQuestion(selectedPaper || '');
+            await loadQuestion(selectedPaper || '');
             Toast.show({
                 type: 'success',
                 text1: 'Progress Reset',
@@ -1784,7 +1868,7 @@ export default function QuizScreen() {
                 text2: 'The question has been approved successfully.',
                 position: 'bottom'
             });
-            await loadRandomQuestion(selectedPaper || '');
+            await loadQuestion(selectedPaper || '');
         } catch (error) {
             Toast.show({
                 type: 'error',
@@ -2448,7 +2532,6 @@ export default function QuizScreen() {
                 console.error('Response not OK:', response.statusText);
                 throw new Error('Failed to fetch lecture recording');
             }
-
             const data: LectureRecordingResponse = await response.json();
             console.log('Lecture recording response:', JSON.stringify(data, null, 2));
 
@@ -2477,7 +2560,8 @@ export default function QuizScreen() {
 
     const handlePaperSelect = (paper: string) => {
         setSelectedPaper(paper);
-        loadRandomQuestion(paper);
+        setSelectedTopic(null); // Reset the selected topic
+        loadQuestion(paper);
     };
 
     const fetchTopicProgress = async (topic: string) => {
@@ -2614,7 +2698,7 @@ export default function QuizScreen() {
                             <ExamDateDisplay />
 
                             <ThemedText style={[styles.paperSelectionText, { color: colors.textSecondary }]}>
-                                Choose Paper 1 or Paper 2 to start learning
+                                Choose Paper 1 or Paper 2 to start learning, or select a topic for a more focused journey.
                             </ThemedText>
 
                             <QuizModeSelection
@@ -2640,7 +2724,7 @@ export default function QuizScreen() {
                                 subjectName={subjectName as string}
                                 selectedMode={selectedMode}
                                 onSelectPaper={handlePaperSelect}
-                                onLoadQuestion={loadRandomQuestion}
+                                onLoadQuestion={loadQuestion}
                             />
 
                             {/* Divider */}
@@ -2755,9 +2839,20 @@ export default function QuizScreen() {
                             isLoadingLecture={isLoadingLecture}
                             recordingFileName={recordingFileName}
                             subjectName={subjectName}
+                            setShowFeedback={setShowFeedback}
                         />
                     </ThemedView>
                 </ScrollView>
+                {selectedTopic && (
+                    <TopicProgressBar
+                        topicName={selectedTopic}
+                        totalQuestions={topicProgress?.total_questions ?? 0}
+                        viewedQuestions={topicProgress?.viewed_questions ?? 0}
+                        progressPercentage={topicProgress?.progress_percentage ?? 0}
+                        lessonsMode={selectedMode === 'lessons'}
+                        onReset={() => selectedTopic && resetTopicProgress(selectedTopic, user, subjectName, setStats, fetchTopicProgress)}
+                    />
+                )}
                 <QuizFooter
                     isFromFavorites={isFromFavorites}
                     onNext={handleNext}
@@ -2907,15 +3002,7 @@ export default function QuizScreen() {
                     </ThemedView>
                 </Modal>
 
-                {selectedTopic && topicProgress && (
-                    <TopicProgressBar
-                        topicName={selectedTopic}
-                        totalQuestions={topicProgress.total_questions}
-                        viewedQuestions={topicProgress.viewed_questions}
-                        progressPercentage={topicProgress.progress_percentage}
-                        lessonsMode={selectedMode === 'lessons'}
-                    />
-                )}
+
 
                 {/* Add FirstAnswerPointsModal */}
                 <FirstAnswerPointsModal
@@ -4324,7 +4411,59 @@ const styles = StyleSheet.create({
     loadingDots: {
         color: '#FFFFFF',
     },
+    topicProgressContainer: {
+        width: '100%',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2,
+    },
+    topicProgressHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    topicProgressTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#1E293B',
+    },
+    topicProgressContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    topicProgressStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    topicProgressText: {
+        fontSize: 14,
+        color: '#64748B',
+    },
+    progressBarContainer: {
+        width: '100%',
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#E2E8F0',
+    },
+    progressBar: {
+        height: '100%',
+        borderRadius: 4,
+    },
 });
+
 
 
 

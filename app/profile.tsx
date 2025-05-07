@@ -551,6 +551,21 @@ export default function ProfileScreen() {
 
         <ThemedView style={styles.content}>
           <ThemedView style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
+            <View style={styles.profileCardHeader}>
+              <View style={styles.avatarDisplayContainer}>
+                <Image
+                  source={AVATAR_IMAGES[selectedAvatar]}
+                  style={styles.avatarDisplay}
+                  resizeMode="cover"
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.closeButton, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}
+                onPress={() => router.back()}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
             <View style={styles.editForm}>
               <View style={styles.inputGroup}>
                 <ThemedText style={[styles.label, { color: colors.text }]}>🔹 What do we call our quiz champion?</ThemedText>
@@ -1109,24 +1124,38 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  profileImageContainer: {
+  profileCardHeader: {
+    position: 'relative',
+    alignItems: 'center',
     marginBottom: 16,
   },
-  profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#000000',
-    marginBottom: 16,
+  closeButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1,
   },
-  profilePlaceholder: {
+  avatarDisplayContainer: {
+    marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileInitial: {
-    color: '#FFFFFF',
-    fontSize: 48,
-    fontWeight: 'bold',
+  avatarDisplay: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: '#4F46E5',
   },
   editForm: {
     width: '100%',

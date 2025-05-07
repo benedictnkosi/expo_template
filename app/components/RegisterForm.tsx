@@ -51,7 +51,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 type: 'error',
                 text1: 'Error',
                 text2: 'Please fill in all fields',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -61,7 +65,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 type: 'error',
                 text1: 'Error',
                 text2: 'Please enter a valid 10-digit phone number',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -71,7 +79,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 type: 'error',
                 text1: 'Error',
                 text2: 'Please enter your email',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -81,7 +93,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 type: 'error',
                 text1: 'Error',
                 text2: 'Password must be at least 6 characters',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -91,7 +107,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 type: 'error',
                 text1: 'Error',
                 text2: 'Passwords do not match',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -126,7 +146,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                         type: 'error',
                         text1: 'Warning',
                         text2: 'Account created but failed to save preferences',
-                        position: 'bottom'
+                        position: 'bottom',
+                        visibilityTime: 3000,
+                        autoHide: true,
+                        topOffset: 30,
+                        bottomOffset: 40
                     });
 
                     await logAnalyticsEvent('register_failed', {
@@ -145,6 +169,18 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 email: userEmail,
             });
 
+            // Show success toast
+            Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: 'Account created successfully!',
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
+            });
+
             // Navigate to tabs
             router.replace('/(tabs)');
         } catch (error) {
@@ -153,7 +189,11 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                 type: 'error',
                 text1: 'Error',
                 text2: 'Failed to create account',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
         } finally {
             setIsLoading(false);

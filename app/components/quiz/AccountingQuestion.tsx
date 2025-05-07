@@ -27,6 +27,7 @@ interface TableRow {
 interface QuizQuestionTextProps {
     question: string;
     questionId: number;
+    setShowFeedback: (show: boolean) => void;
 }
 
 interface SelectedCell {
@@ -98,6 +99,18 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, colors 
 const SelectOption = ({ option, onSelect, colors, styles }: { option: string; onSelect: () => void; colors: any; styles: any }) => {
     const scaleAnim = useRef(new Animated.Value(1)).current;
 
+    const formatOption = (value: string) => {
+        // Check if the value is a number
+        const num = parseFloat(value);
+        if (!isNaN(num)) {
+            // If negative, wrap in parentheses and remove the minus sign
+            if (num < 0) {
+                return `(${Math.abs(num)})`;
+            }
+        }
+        return value;
+    };
+
     const handlePressIn = () => {
         Animated.spring(scaleAnim, {
             toValue: 0.95,
@@ -133,7 +146,7 @@ const SelectOption = ({ option, onSelect, colors, styles }: { option: string; on
                 activeOpacity={0.7}
             >
                 <ThemedText style={[styles.optionText, { color: colors.text }]}>
-                    {option}
+                    {formatOption(option)}
                 </ThemedText>
             </TouchableOpacity>
         </Animated.View>
@@ -142,7 +155,8 @@ const SelectOption = ({ option, onSelect, colors, styles }: { option: string; on
 
 export const AccountingQuestion = ({
     question,
-    questionId
+    questionId,
+    setShowFeedback
 }: QuizQuestionTextProps) => {
     const { isDark, colors } = useTheme();
     const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
@@ -152,22 +166,59 @@ export const AccountingQuestion = ({
 
     const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
 
+    // Function to calculate font size based on indentation level
+    const getFontSizeForIndentation = (indentationLevel: number, maxIndentation: number) => {
+        const baseSize = 14;
+        const minSize = 10;
+        const sizeStep = (baseSize - minSize) / maxIndentation;
+        return Math.max(minSize, baseSize - (indentationLevel * sizeStep));
+    };
+
     // Parse the JSON string into table data
     const tableData: TableRow[] = React.useMemo(() => {
         try {
             const parsed = JSON.parse(question);
-            // Log the number of columns in the first row
-            if (parsed.length > 0) {
-                const numColumns = Object.keys(parsed[0]).length;
-                console.log('Number of columns in table:', numColumns);
-                console.log('Column names:', Object.keys(parsed[0]));
-            }
+            // Calculate max indentation level
+            const maxIndentation = Math.max(...parsed.map(row => {
+                if (typeof row.A === 'string') {
+                    return (row.A.match(/^\s*/) || [''])[0].length;
+                }
+                return 0;
+            }));
             return parsed;
         } catch (error) {
             console.error('Failed to parse question JSON:', error);
             return [];
         }
     }, [question]);
+
+    // Calculate max indentation level
+    const maxIndentation = useMemo(() => {
+        return Math.max(...tableData.map((row: TableRow) => {
+            if (typeof row.A === 'string') {
+                return (row.A.match(/^\s*/) || [''])[0].length;
+            }
+            return 0;
+        }));
+    }, [tableData]);
+
+    // Add logging for editable cells
+    useEffect(() => {
+        const totalEditableCells = tableData.reduce((count, row) => {
+            return count + Object.values(row).filter(cell =>
+                typeof cell === 'object' && cell.isEditable
+            ).length;
+        }, 0);
+
+        const remainingCells = tableData.reduce((count, row) => {
+            return count + Object.values(row).filter(cell =>
+                typeof cell === 'object' && cell.isEditable
+            ).length;
+        }, 0);
+
+        console.log(`Total editable cells: ${totalEditableCells}`);
+        console.log(`Remaining cells to fill: ${remainingCells}`);
+    }, [tableData]);
 
     // Load sounds
     useEffect(() => {
@@ -247,17 +298,30 @@ export const AccountingQuestion = ({
                 cell.isCorrect = response.correct;
                 cell.isEditable = false; // Disable after any selection
 
-                // Play appropriate sound
-                await playSound(cell.isCorrect);
+                // Log remaining cells after selection
+                const remainingCells = updatedTableData.reduce((count, row) => {
+                    return count + Object.values(row).filter(cell =>
+                        typeof cell === 'object' && cell.isEditable
+                    ).length;
+                }, 0);
+                console.log(`Cells remaining to fill after selection: ${remainingCells}`);
 
-                if (cell.isCorrect) {
-                    setShowSuccessModal(true);
-                    // Auto-hide the modal after 1.5 seconds
-                    setTimeout(() => {
-                        setShowSuccessModal(false);
-                    }, 1500);
+                // Check if all editable cells are now populated
+                const allCellsPopulated = tableData.every(row => {
+                    return Object.entries(row).every(([_, cell]) => {
+                        if (typeof cell === 'object' && cell.isEditable) {
+                            return cell.value !== undefined;
+                        }
+                        return true;
+                    });
+                });
+
+                if (allCellsPopulated) {
+                    setShowFeedback(true);
                 }
 
+                // Play appropriate sound
+                await playSound(cell.isCorrect);
                 setSelectedCell(null);
             } catch (error) {
                 console.error('Error checking answer:', error);
@@ -328,9 +392,19 @@ export const AccountingQuestion = ({
                                 const cell = row.A;
                                 const cellB = row.B;
                                 if (typeof cell === 'string') {
+                                    // Count leading spaces to determine indentation level
+                                    const leadingSpaces = (cell.match(/^\s*/) || [''])[0].length;
+
                                     return (
                                         <View style={{ width: '100%' }}>
-                                            <ThemedText style={[styles.cellText, { color: colors.text }]}>
+                                            <ThemedText style={[
+                                                styles.cellText,
+                                                {
+                                                    color: colors.text,
+                                                    fontWeight: leadingSpaces === maxIndentation ? 'normal' : 'bold',
+                                                    fontSize: getFontSizeForIndentation(leadingSpaces, maxIndentation)
+                                                }
+                                            ]}>
                                                 {cell}
                                             </ThemedText>
                                             {typeof cellB === 'object' && !cellB.isEditable && cellB.explanation && (
@@ -355,10 +429,18 @@ export const AccountingQuestion = ({
 
                                 // Show incorrect answer with correct value
                                 if (cell.value && !cell.isCorrect) {
+                                    const formatValue = (value: string | undefined) => {
+                                        if (!value) return '';
+                                        const num = parseFloat(value);
+                                        if (!isNaN(num) && num < 0) {
+                                            return `(${Math.abs(num)})`;
+                                        }
+                                        return value;
+                                    };
                                     return (
                                         <View style={styles.incorrectCell}>
                                             <ThemedText style={[styles.correctText, { color: '#ff4d4f' }]}>
-                                                {cell.correct}
+                                                {formatValue(cell.correct)}
                                             </ThemedText>
                                         </View>
                                     );
@@ -366,10 +448,18 @@ export const AccountingQuestion = ({
 
                                 // Show correct answer with green highlight
                                 if (cell.value && cell.isCorrect) {
+                                    const formatValue = (value: string | undefined) => {
+                                        if (!value) return '';
+                                        const num = parseFloat(value);
+                                        if (!isNaN(num) && num < 0) {
+                                            return `(${Math.abs(num)})`;
+                                        }
+                                        return value;
+                                    };
                                     return (
                                         <View style={styles.correctCell}>
                                             <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
-                                                {cell.value}
+                                                {formatValue(cell.value)}
                                             </ThemedText>
                                         </View>
                                     );
@@ -405,10 +495,18 @@ export const AccountingQuestion = ({
 
                                 // Show incorrect answer with correct value
                                 if (cell.value && !cell.isCorrect) {
+                                    const formatValue = (value: string | undefined) => {
+                                        if (!value) return '';
+                                        const num = parseFloat(value);
+                                        if (!isNaN(num) && num < 0) {
+                                            return `(${Math.abs(num)})`;
+                                        }
+                                        return value;
+                                    };
                                     return (
                                         <View style={styles.incorrectCell}>
                                             <ThemedText style={[styles.correctText, { color: '#ff4d4f' }]}>
-                                                {cell.correct}
+                                                {formatValue(cell.correct)}
                                             </ThemedText>
                                         </View>
                                     );
@@ -416,10 +514,18 @@ export const AccountingQuestion = ({
 
                                 // Show correct answer with green highlight
                                 if (cell.value && cell.isCorrect) {
+                                    const formatValue = (value: string | undefined) => {
+                                        if (!value) return '';
+                                        const num = parseFloat(value);
+                                        if (!isNaN(num) && num < 0) {
+                                            return `(${Math.abs(num)})`;
+                                        }
+                                        return value;
+                                    };
                                     return (
                                         <View style={styles.correctCell}>
                                             <ThemedText style={[styles.correctText, { color: '#388e3c' }]}>
-                                                {cell.value}
+                                                {formatValue(cell.value)}
                                             </ThemedText>
                                         </View>
                                     );

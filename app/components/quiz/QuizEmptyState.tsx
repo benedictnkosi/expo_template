@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../ThemedView';
@@ -15,13 +15,37 @@ interface QuizEmptyStateProps {
     onGoBack: () => void;
 }
 
-export function QuizEmptyState({ 
-    onGoToProfile, 
-    onRestart, 
-    onGoBack 
+export function QuizEmptyState({
+    onGoToProfile,
+    onRestart,
+    onGoBack
 }: QuizEmptyStateProps) {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (isLoading) {
+        return (
+            <LinearGradient
+                colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
+                style={[styles.gradient, { paddingTop: insets.top }]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+            >
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={isDark ? colors.primary : '#4F46E5'} />
+                </View>
+            </LinearGradient>
+        );
+    }
 
     return (
         <LinearGradient
@@ -157,5 +181,10 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 }); 

@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 interface TopicProgressBarProps {
     totalQuestions: number;
@@ -10,6 +11,7 @@ interface TopicProgressBarProps {
     progressPercentage: number;
     topicName: string;
     lessonsMode?: boolean;
+    onReset?: () => void;
 }
 
 export const TopicProgressBar: React.FC<TopicProgressBarProps> = ({
@@ -17,13 +19,25 @@ export const TopicProgressBar: React.FC<TopicProgressBarProps> = ({
     viewedQuestions,
     progressPercentage,
     topicName,
-    lessonsMode
+    lessonsMode,
+    onReset
 }) => {
     const { colors, isDark } = useTheme();
 
     return (
         <View style={styles.container}>
-            <ThemedText style={[styles.topicName, { color: colors.text }]}>{topicName}</ThemedText>
+            <View style={styles.headerRow}>
+                <ThemedText style={[styles.topicName, { color: colors.text }]}>{topicName}</ThemedText>
+                {onReset && (
+                    <TouchableOpacity
+                        onPress={onReset}
+                        accessibilityLabel="Reset topic progress"
+                        style={styles.resetButton}
+                    >
+                        <Ionicons name="refresh" size={20} color={colors.text} />
+                    </TouchableOpacity>
+                )}
+            </View>
             <View style={[styles.progressContainer, {
                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
             }]}>
@@ -50,6 +64,15 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         width: '100%',
+    },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    resetButton: {
+        padding: 4,
     },
     topicName: {
         fontSize: 16,

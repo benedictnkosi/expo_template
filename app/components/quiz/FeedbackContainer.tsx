@@ -82,136 +82,138 @@ export function FeedbackContainer({
             >
                 {feedbackMessage}
             </ThemedText>
-
-            <ThemedView
-                style={[styles.correctAnswerContainer, {
-                    backgroundColor: isDark ? colors.surface : '#FFFFFF'
-                }]}
-                testID="correct-answer-container"
-            >
-                <ThemedText
-                    style={[styles.correctAnswerLabel, { color: isDark ? '#22C55E' : colors.textSecondary }]}
-                    testID="correct-answer-label"
+            {correctAnswer && correctAnswer !== '0' && (
+                <ThemedView
+                    style={[styles.correctAnswerContainer, {
+                        backgroundColor: isDark ? colors.surface : '#FFFFFF'
+                    }]}
+                    testID="correct-answer-container"
                 >
-                    ✅ Right Answer!
-                </ThemedText>
 
-                {cleanAnswer(correctAnswer).includes('$') ? (
-                    <View style={[styles.latexContainer, {
-                        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF'
-                    }]}>
-                        <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
-                    </View>
-                ) : (
                     <ThemedText
-                        style={styles.correctAnswerText}
-                        testID="correct-answer-text"
+                        style={[styles.correctAnswerLabel, { color: isDark ? '#22C55E' : colors.textSecondary }]}
+                        testID="correct-answer-label"
                     >
-                        {cleanAnswer(correctAnswer)}
+                        ✅ Right Answer!
                     </ThemedText>
-                )}
 
-                {(currentQuestion.answer_image && currentQuestion.answer_image !== null && currentQuestion.answer_image !== 'NULL') && (
-                    <View style={styles.imageWrapper}>
-                        <TouchableOpacity
-                            style={styles.touchableImage}
-                            onPress={() => {
-                                setZoomImageUrl(currentQuestion.answer_image);
-                                setIsZoomModalVisible(true);
-                            }}
-                            activeOpacity={0.7}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            testID='question-additional-image-container'
-                        >
-                            <Image
-                                source={{
-                                    uri: `${IMAGE_BASE_URL}${currentQuestion.answer_image}`
-                                }}
-                                style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
-                                resizeMode="contain"
-                                onLoadStart={() => setIsImageLoading(true)}
-                                onLoadEnd={() => setIsImageLoading(false)}
-                                testID='question-image'
-                            />
-                            {isImageLoading && (
-                                <View style={styles.loadingPlaceholder}>
-                                    <ActivityIndicator size="small" color={colors.primary} />
-                                </View>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                )}
 
-                {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
-                    <>
+                    {cleanAnswer(correctAnswer).includes('$') ? (
+                        <View style={[styles.latexContainer, {
+                            backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF'
+                        }]}>
+                            <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
+                        </View>
+                    ) : (
                         <ThemedText
-                            style={[styles.correctAnswerLabel, { color: isDark ? '#22C55E' : colors.textSecondary }]}
-                            testID="correct-answer-label"
+                            style={styles.correctAnswerText}
+                            testID="correct-answer-text"
                         >
-                            ✅ Explanation
+                            {cleanAnswer(correctAnswer)}
                         </ThemedText>
+                    )}
 
-                        {cleanAnswer(currentQuestion.explanation).includes('$') ? (
-                            <View style={[styles.latexContainer, {
-                                backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF'
-                            }]}>
-                                <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
-                            </View>
-                        ) : (
-                            <ThemedText
-                                style={styles.correctAnswerText}
-                                testID="correct-answer-text"
+                    {(currentQuestion.answer_image && currentQuestion.answer_image !== null && currentQuestion.answer_image !== 'NULL') && (
+                        <View style={styles.imageWrapper}>
+                            <TouchableOpacity
+                                style={styles.touchableImage}
+                                onPress={() => {
+                                    setZoomImageUrl(currentQuestion.answer_image);
+                                    setIsZoomModalVisible(true);
+                                }}
+                                activeOpacity={0.7}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                testID='question-additional-image-container'
                             >
-                                {currentQuestion.explanation?.split('\n').map((line: string, index: number) => {
-                                    const trimmedLine = line.trim();
-                                    if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
-                                        const content = trimmedLine.substring(1).trim();
-                                        const indentLevel = line.indexOf('-') / 2;
+                                <Image
+                                    source={{
+                                        uri: `${IMAGE_BASE_URL}${currentQuestion.answer_image}`
+                                    }}
+                                    style={[styles.questionImage, { opacity: isImageLoading ? 0 : 1 }]}
+                                    resizeMode="contain"
+                                    onLoadStart={() => setIsImageLoading(true)}
+                                    onLoadEnd={() => setIsImageLoading(false)}
+                                    testID='question-image'
+                                />
+                                {isImageLoading && (
+                                    <View style={styles.loadingPlaceholder}>
+                                        <ActivityIndicator size="small" color={colors.primary} />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
-                                        return (
-                                            <View
-                                                key={index}
-                                                style={[
-                                                    styles.bulletPointRow,
-                                                    { marginLeft: indentLevel * 5 }
-                                                ]}
-                                            >
-                                                <ThemedText style={[styles.bulletPoint, {
-                                                    color: isDark ? '#4ADE80' : colors.text,
-                                                    marginTop: 4
-                                                }]}>
-                                                    {indentLevel > 0 ? '•' : '👉'}
-                                                </ThemedText>
-                                                <View style={styles.bulletTextWrapper}>
-                                                    {renderMixedContent(content, isDark, colors)}
+                    {(currentQuestion.explanation && currentQuestion.explanation !== null && currentQuestion.explanation !== 'NULL') && (
+                        <>
+                            <ThemedText
+                                style={[styles.correctAnswerLabel, { color: isDark ? '#22C55E' : colors.textSecondary }]}
+                                testID="correct-answer-label"
+                            >
+                                ✅ Explanation
+                            </ThemedText>
+
+                            {cleanAnswer(currentQuestion.explanation).includes('$') ? (
+                                <View style={[styles.latexContainer, {
+                                    backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF'
+                                }]}>
+                                    <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
+                                </View>
+                            ) : (
+                                <ThemedText
+                                    style={styles.correctAnswerText}
+                                    testID="correct-answer-text"
+                                >
+                                    {currentQuestion.explanation?.split('\n').map((line: string, index: number) => {
+                                        const trimmedLine = line.trim();
+                                        if (trimmedLine.startsWith('-') && !trimmedLine.includes('- $')) {
+                                            const content = trimmedLine.substring(1).trim();
+                                            const indentLevel = line.indexOf('-') / 2;
+
+                                            return (
+                                                <View
+                                                    key={index}
+                                                    style={[
+                                                        styles.bulletPointRow,
+                                                        { marginLeft: indentLevel * 5 }
+                                                    ]}
+                                                >
+                                                    <ThemedText style={[styles.bulletPoint, {
+                                                        color: isDark ? '#4ADE80' : colors.text,
+                                                        marginTop: 4
+                                                    }]}>
+                                                        {indentLevel > 0 ? '•' : '👉'}
+                                                    </ThemedText>
+                                                    <View style={styles.bulletTextWrapper}>
+                                                        {renderMixedContent(content, isDark, colors)}
+                                                    </View>
                                                 </View>
-                                            </View>
-                                        );
-                                    }
-                                    if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
-                                        line = trimmedLine.substring(1).trim();
-                                    }
-                                    if (trimmedLine.includes('{')) {
+                                            );
+                                        }
+                                        if (trimmedLine.startsWith('-') && trimmedLine.includes('- $')) {
+                                            line = trimmedLine.substring(1).trim();
+                                        }
+                                        if (trimmedLine.includes('{')) {
+                                            return (
+                                                <View key={index}>
+                                                    {renderMixedContent(line, isDark, colors)}
+                                                </View>
+                                            );
+                                        }
                                         return (
                                             <View key={index}>
-                                                {renderMixedContent(line, isDark, colors)}
+                                                <ThemedText style={{ color: isDark ? '#E5E7EB' : colors.text }}>
+                                                    {line}
+                                                </ThemedText>
                                             </View>
                                         );
-                                    }
-                                    return (
-                                        <View key={index}>
-                                            <ThemedText style={{ color: isDark ? '#E5E7EB' : colors.text }}>
-                                                {line}
-                                            </ThemedText>
-                                        </View>
-                                    );
-                                })}
-                            </ThemedText>
-                        )}
-                    </>
-                )}
-            </ThemedView>
-
+                                    })}
+                                </ThemedText>
+                            )}
+                        </>
+                    )}
+                </ThemedView>
+            )}
             <TouchableOpacity
                 style={[styles.aiExplanationButton, {
                     backgroundColor: isDark ? '#4338CA' : '#4F46E5'

@@ -8,9 +8,13 @@ cp google-services.json android/app/google-services.json
 echo "Copying and renaming keystore file..."
 cp @nkosib__exam-quiz.jks android/app/keystore.jks
 
+#copy build.gradle to android/app directory
+echo "Copying build.gradle to android/app directory..."
+cp app-build.gradle android/app/build.gradle
+
 #copy build.gradle to android directory
 echo "Copying build.gradle to android directory..."
-cp build.gradle android/app/build.gradle
+cp android-build.gradle android/build.gradle
 
 # Navigate to android directory
 cd android
