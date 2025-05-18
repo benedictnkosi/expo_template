@@ -37,7 +37,9 @@ export const QuizPaperButtons = ({
 
         if (paper === 'P2' && subjectName && (
             subjectName.toLowerCase().includes('life orientation') ||
-            subjectName.toLowerCase().includes('tourism')
+            subjectName.toLowerCase().includes('tourism') ||
+            subjectName.toLowerCase().includes('consumer studies') ||
+            subjectName.toLowerCase().includes('religion studies')
         )) {
             Toast.show({
                 type: 'error',

@@ -3,7 +3,6 @@ import { StyleSheet, View, TouchableOpacity, Image, ScrollView } from 'react-nat
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
@@ -46,7 +45,114 @@ const SUPERHERO_NAMES = [
   'Hawkman',
   'Green Arrow',
   'Blue Beetle',
-  'Batgirl'
+  'Batgirl',
+  // Additional superheroes
+  'Thor',
+  'Black Widow',
+  'Hulk',
+  'Ant-Man',
+  'Wasp',
+  'Vision',
+  'Falcon',
+  'Winter Soldier',
+  'Black Canary',
+  'Supergirl',
+  // South African Celebrities
+  'Trevor Noah',
+  'Black Mambazo',
+  'Die Heuwels Fantasties',
+  'Die Antwoord',
+  'Goldfish',
+  'Black Coffee',
+  'DJ Fresh',
+  'Cassper Nyovest',
+  'Aka',
+  'Nasty C',
+  'Sho Madjozi',
+  'Mafikizolo',
+  'Mi Casa',
+  'Freshlyground',
+  'Loyiso Bala',
+  'Lira',
+  'Yvonne Chaka Chaka',
+  'Brenda Fassie',
+  'Lucky Dube',
+  'Johnny Clegg',
+  // American Pop Stars
+  'Taylor Swift',
+  'Beyoncé',
+  'Lady Gaga',
+  'Ariana Grande',
+  'Billie Eilish',
+  'Dua Lipa',
+  'Harry Styles',
+  'Justin Bieber',
+  'Rihanna',
+  'Katy Perry',
+  'Bruno Mars',
+  'The Weeknd',
+  'Post Malone',
+  'Drake',
+  'Ed Sheeran',
+  'Adele',
+  'Miley Cyrus',
+  'Selena Gomez',
+  'Shawn Mendes',
+  'Olivia Rodrigo',
+  // Famous Geniuses and Inventors
+  'Albert Einstein',
+  'Nikola Tesla',
+  'Marie Curie',
+  'Leonardo da Vinci',
+  'Isaac Newton',
+  'Thomas Edison',
+  'Stephen Hawking',
+  'Alan Turing',
+  'Ada Lovelace',
+  'Galileo Galilei',
+  'Archimedes',
+  'Charles Darwin',
+  'James Watt',
+  'Alexander Graham Bell',
+  'Wright Brothers',
+  'Tim Berners-Lee',
+  'Grace Hopper',
+  'Steve Jobs',
+  'Bill Gates',
+  'Elon Musk',
+  // Famous Athletes
+  'Usain Bolt',
+  'Serena Williams',
+  'Michael Jordan',
+  'Muhammad Ali',
+  'Lionel Messi',
+  'Cristiano Ronaldo',
+  'Roger Federer',
+  'Simone Biles',
+  'Michael Phelps',
+  'LeBron James',
+  // Nobel Laureates
+  'Nelson Mandela',
+  'Malala Yousafzai',
+  'Martin Luther King Jr',
+  'Mother Teresa',
+  'Albert Schweitzer',
+  'Wangari Maathai',
+  'Kofi Annan',
+  'Desmond Tutu',
+  'Jimmy Carter',
+  'Barack Obama',
+  // Inspirational Leaders
+  'Mahatma Gandhi',
+  'Winston Churchill',
+  'Abraham Lincoln',
+  'Queen Elizabeth II',
+  'Walt Disney',
+  'Oprah Winfrey',
+  'J.K. Rowling',
+  'Maya Angelou',
+  'Rosa Parks',
+  'Helen Keller'
 ];
 
 function getRandomSuperheroName(): string {
@@ -253,7 +359,7 @@ export default function OnboardingScreen() {
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="welcome-text-container">
               <ThemedText style={[styles.welcomeTitle, { fontSize: 28, marginBottom: 24 }]} testID="welcome-title">
-                🎉 Welcome to Exam Quiz! 🚀
+                🎉 Welcome to Dimpo Learning App! 🚀
               </ThemedText>
               <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]} testID="welcome-description">
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
@@ -277,7 +383,7 @@ export default function OnboardingScreen() {
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle} testID="grade-step-title">What grade are you in?</ThemedText>
               <View style={styles.gradeButtons} testID="grade-buttons-container">
-                {[10, 11, 12].map((g) => (
+                {[8, 9, 10, 11, 12].map((g) => (
                   <TouchableOpacity
                     key={g}
                     style={[
@@ -328,7 +434,7 @@ export default function OnboardingScreen() {
                   { id: 'mathematics', label: 'Mathematics', emoji: '1️⃣' },
                   { id: 'physics', label: 'Physical Sciences', emoji: '⚡' },
                   { id: 'life_sciences', label: 'Life Sciences', emoji: '🧬' },
-                  { id: 'accounting', label: 'Accounting', emoji: '📊' },
+                  { id: 'business_studies', label: 'Business Studies', emoji: '📊' },
                   { id: 'other', label: 'Other', emoji: '📚' }
                 ].map((subject) => (
                   <TouchableOpacity
@@ -406,7 +512,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.step} testID="auth-options-step">
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[styles.closeButton, { left: insets.left + 8 }]}
               onPress={() => setStep(3)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -575,7 +681,7 @@ export default function OnboardingScreen() {
         return (
           <View style={styles.step}>
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[styles.closeButton, { left: insets.left + 8 }]}
               onPress={() => setStep(4)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -948,15 +1054,20 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 20,
-    left: 20,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    top: 0,
+    left: 0,
+    zIndex: 100,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   planContainer: {
     flex: 1,

@@ -8,6 +8,7 @@ import {
     Image,
     Platform,
     Modal,
+    Text,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -134,7 +135,31 @@ export default function ChatScreen() {
                     newThreadCount: 0
                 }));
 
-                setSubjects(subjectsList);
+                // Get new thread counts for each subject
+                const threadsRef = collection(db, 'threads');
+                const learnerGrade = await AsyncStorage.getItem('learnerGrade');
+                const grade = parseInt(learnerGrade || '0');
+
+                if (grade > 0) {
+                    const updatedSubjects = await Promise.all(subjectsList.map(async (subject) => {
+                        const lastAccess = accessTimes[subject.name] || 0;
+                        const threadsQuery = query(
+                            threadsRef,
+                            where('subjectName', '==', subject.name),
+                            where('grade', '==', grade),
+                            where('createdAt', '>', new Date(lastAccess))
+                        );
+                        const threadsSnapshot = await getDocs(threadsQuery);
+                        return {
+                            ...subject,
+                            newThreadCount: threadsSnapshot.size
+                        };
+                    }));
+
+                    setSubjects(updatedSubjects);
+                } else {
+                    setSubjects(subjectsList);
+                }
             } catch (error) {
                 console.error('Error loading chats:', error);
             } finally {
@@ -230,12 +255,43 @@ export default function ChatScreen() {
                     })}
                 >
                     <View style={[styles.pinnedIconContainer, { backgroundColor: colors.primary }]}>
-                        <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
+                        <Text style={{ fontSize: 24 }}>💬</Text>
                     </View>
                     <View style={styles.subjectInfo}>
                         <ThemedText style={styles.subjectName}>General Discussion</ThemedText>
                         <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
                             Grade {learnerGrade} general chat
+                        </ThemedText>
+                    </View>
+                    <Ionicons
+                        name="chevron-forward"
+                        size={24}
+                        color={colors.textSecondary}
+                    />
+                </TouchableOpacity>
+
+                {/* Daily Reading - Dimpo */}
+                <TouchableOpacity
+                    style={[
+                        styles.subjectCard,
+                        styles.pinnedCard,
+                        { backgroundColor: isDark ? colors.card : '#FFFFFF' }
+                    ]}
+                    onPress={() => router.push({
+                        pathname: '/threads/[id]',
+                        params: {
+                            id: 'tales-of-dimpo',
+                            subjectName: 'Tales of Dimpo'
+                        }
+                    })}
+                >
+                    <View style={[styles.pinnedIconContainer, { backgroundColor: colors.primary }]}>
+                        <Text style={{ fontSize: 24 }}>📖</Text>
+                    </View>
+                    <View style={styles.subjectInfo}>
+                        <ThemedText style={styles.subjectName}>Tales of Dimpo</ThemedText>
+                        <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
+                            Daily reading discussions and insights
                         </ThemedText>
                     </View>
                     <Ionicons

@@ -190,7 +190,7 @@ async function getLearnerWeeklyProgress(uid: string, subjectId?: number): Promis
             throw new Error('Failed to fetch weekly progress');
         }
         const data = await response.json();
-        console.log(data);
+        //console.log(data);
         return data;
     } catch (error) {
         console.error('Error fetching weekly progress:', error);
@@ -682,9 +682,10 @@ export default function LearnerPerformanceScreen() {
     const [isTodayEventsLoading, setIsTodayEventsLoading] = useState(true);
     const [careerAdvice, setCareerAdvice] = useState<CareerAdvice | null>(null);
     const [isCareerAdviceLoading, setIsCareerAdviceLoading] = useState(false);
-    const [isCareerAdviceModalVisible, setIsCareerAdviceModalVisible] = useState(false);
+    const [isCareerAdviceRulesModalVisible, setIsCareerAdviceRulesModalVisible] = useState(false);
     const [isFollowing, setIsFollowing] = useState(false);
     const [isFollowingLoading, setIsFollowingLoading] = useState(true);
+    const [isCareerAdviceModalVisible, setIsCareerAdviceModalVisible] = useState(false);
 
     // Reset modal state when component mounts or uid changes
     useEffect(() => {
@@ -742,13 +743,19 @@ export default function LearnerPerformanceScreen() {
     const showCareerAdvice = async () => {
         setIsCareerAdviceLoading(true);
         try {
+            console.log('Fetching career advice for user:', uid);
             const response = await fetch(`${HOST_URL}/api/learner/${uid}/career-advice`);
             if (!response.ok) {
+                console.error('Career advice API error:', response.status, response.statusText);
                 throw new Error('Failed to fetch career advice');
             }
             const data = await response.json();
+            console.log('Career advice API response:', JSON.stringify(data, null, 2));
             if (data.status === 'OK') {
-                setCareerAdvice(data.data);
+                setCareerAdvice({
+                    ...data.data,
+                    advice: data.data.advice
+                });
                 setIsCareerAdviceModalVisible(true);
             }
         } catch (error) {
@@ -759,12 +766,8 @@ export default function LearnerPerformanceScreen() {
     };
 
     const shouldShowCareerAdvice = () => {
-        // Don't show career advice if viewing someone else's report
-        if (user?.uid !== uid) return false;
-
         if (!performance || performance.length === 0) return false;
 
-        console.log('performance length', performance.length);
         // Group P1 and P2 subjects together
         const subjectGroups = new Map<string, number>();
         performance.forEach(subject => {
@@ -777,9 +780,7 @@ export default function LearnerPerformanceScreen() {
         const subjectsWithEnoughQuestions = Array.from(subjectGroups.values())
             .filter(total => total >= 10).length;
 
-        console.log('subjectGroups', subjectsWithEnoughQuestions);
-
-        return subjectsWithEnoughQuestions >= 4;
+        return subjectsWithEnoughQuestions >= 3;
     };
 
     const checkFollowingStatus = async () => {
@@ -1123,7 +1124,7 @@ export default function LearnerPerformanceScreen() {
                             </ThemedView>
                         ) : null}
 
-                        {!isLoading && !error && shouldShowCareerAdvice() && (uid as string).length > 4 && (
+                        {!isLoading && !error && (user?.uid === uid || shouldShowCareerAdvice()) && (
                             <TouchableOpacity
                                 style={[
                                     styles.careerAdviceButton,
@@ -1132,7 +1133,13 @@ export default function LearnerPerformanceScreen() {
                                         borderColor: isDark ? 'rgba(99,102,241,0.4)' : '#6366F1',
                                     }
                                 ]}
-                                onPress={showCareerAdvice}
+                                onPress={() => {
+                                    if (user?.uid === uid || shouldShowCareerAdvice()) {
+                                        showCareerAdvice();
+                                    } else {
+                                        setIsCareerAdviceRulesModalVisible(true);
+                                    }
+                                }}
                                 disabled={isCareerAdviceLoading}
                             >
                                 {isCareerAdviceLoading ? (
@@ -1145,7 +1152,7 @@ export default function LearnerPerformanceScreen() {
                                             color={isDark ? '#FFFFFF' : '#FFFFFF'}
                                         />
                                         <ThemedText style={styles.careerAdviceButtonText}>
-                                            Get Career Advice
+                                            {user?.uid === uid ? 'Get Career Advice' : `View ${name}'s Career Advice`}
                                         </ThemedText>
                                     </>
                                 )}
@@ -1257,6 +1264,57 @@ export default function LearnerPerformanceScreen() {
             )}
 
             <Modal
+                visible={isCareerAdviceRulesModalVisible}
+                transparent={false}
+                animationType="slide"
+                onRequestClose={() => setIsCareerAdviceRulesModalVisible(false)}
+                presentationStyle="fullScreen"
+            >
+                <View style={[styles.modalOverlay, {
+                    backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                    paddingTop: insets.top,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                }]}>
+                    <View style={[
+                        styles.modalContent,
+                        {
+                            backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                            flex: 0,
+                            width: '90%',
+                            maxWidth: 400,
+                            alignSelf: 'center',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            paddingVertical: 32,
+                        }
+                    ]}>
+                        <View style={[styles.modalHeader, { justifyContent: 'center', alignItems: 'center', width: '100%', position: 'relative', minHeight: 48 }]}>
+                            <ThemedText style={[styles.modalTitle, { textAlign: 'center', flex: 1, fontSize: 22, paddingRight: 40 }]}>🔒 Unlock AI Career Advice</ThemedText>
+                            <TouchableOpacity
+                                onPress={() => setIsCareerAdviceRulesModalVisible(false)}
+                                style={[styles.closeModalButton, { position: 'absolute', right: 0, top: 0, zIndex: 10 }]}
+                            >
+                                <Ionicons
+                                    name="close"
+                                    size={28}
+                                    color={isDark ? '#FFFFFF' : '#000000'}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={[styles.modalScrollView, { width: '100%' }]} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center' }}>
+                            <ThemedText style={[styles.careerAdviceText, { textAlign: 'center', fontSize: 17, marginBottom: 18 }]}>✨ To unlock personalized career advice, complete these steps:</ThemedText>
+                            <ThemedText style={[styles.careerAdviceText, { textAlign: 'center', fontSize: 16, marginBottom: 10 }]}>📚 Answer at least <ThemedText style={{ fontWeight: 'bold', fontSize: 16 }}>10 questions</ThemedText> in <ThemedText style={{ fontWeight: 'bold', fontSize: 16 }}>3 or more subjects</ThemedText>.</ThemedText>
+                            <ThemedText style={[styles.careerAdviceText, { textAlign: 'center', fontSize: 16, marginBottom: 10 }]}>🤖 This helps our AI give you accurate and personalized guidance!</ThemedText>
+                            <ThemedText style={[styles.careerAdviceText, { textAlign: 'center', fontSize: 15, marginTop: 18, opacity: 0.7 }]}>Keep learning and check back soon! 🚀</ThemedText>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Add Career Advice Modal */}
+            <Modal
                 visible={isCareerAdviceModalVisible}
                 transparent={false}
                 animationType="slide"
@@ -1265,51 +1323,51 @@ export default function LearnerPerformanceScreen() {
             >
                 <View style={[styles.modalOverlay, {
                     backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
-                    paddingTop: insets.top
+                    paddingTop: insets.top,
+                    justifyContent: 'center',
+                    alignItems: 'center',
                 }]}>
                     <View style={[
                         styles.modalContent,
                         {
                             backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF',
                             borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                            flex: 1,
+                            flex: 0,
+                            width: '90%',
+                            maxWidth: 400,
+                            alignSelf: 'center',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            paddingVertical: 32,
                         }
                     ]}>
-                        <View style={styles.modalHeader}>
-                            <ThemedText style={[styles.modalTitle, { textAlign: 'center', flex: 1 }]}>
-                                🎓 AI Career Advice 💡
-                            </ThemedText>
+                        <View style={[styles.modalHeader, { justifyContent: 'center', alignItems: 'center', width: '100%', position: 'relative', minHeight: 48 }]}>
+                            <ThemedText style={[styles.modalTitle, { textAlign: 'center', flex: 1, fontSize: 22, paddingRight: 40 }]}>🎯 Career Advice</ThemedText>
                             <TouchableOpacity
                                 onPress={() => setIsCareerAdviceModalVisible(false)}
-                                style={styles.closeModalButton}
+                                style={[styles.closeModalButton, { position: 'absolute', right: 0, top: 0, zIndex: 10 }]}
                             >
                                 <Ionicons
                                     name="close"
-                                    size={24}
+                                    size={28}
                                     color={isDark ? '#FFFFFF' : '#000000'}
                                 />
                             </TouchableOpacity>
                         </View>
-
-                        <ScrollView style={styles.modalScrollView}>
+                        <ScrollView style={[styles.modalScrollView, { width: '100%' }]} contentContainerStyle={{ alignItems: 'center', justifyContent: 'center' }}>
                             {careerAdvice ? (
                                 <>
-                                    <ThemedText style={styles.careerAdviceText}>
-                                        {careerAdvice.advice.replace(/\n-/g, '\n•')}
+                                    <ThemedText style={[styles.careerAdviceText, { textAlign: 'left', fontSize: 16, marginBottom: 16, lineHeight: 24 }]}>
+                                        {careerAdvice.advice}
                                     </ThemedText>
-                                    <ThemedText style={styles.careerAdviceTimestamp}>
+                                    <ThemedText style={[styles.careerAdviceTimestamp, { textAlign: 'center', fontSize: 14, opacity: 0.7 }]}>
                                         Last updated: {new Date(careerAdvice.last_updated).toLocaleDateString()}
                                     </ThemedText>
                                 </>
                             ) : (
-                                <View style={[styles.modalLoadingContainer, { padding: 20 }]}>
-                                    <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 16 }} />
-                                    <ThemedText style={{ fontSize: 20, fontWeight: '600', marginBottom: 8, textAlign: 'center' }}>
-                                        Analyzing your performance...
-                                    </ThemedText>
-                                    <ThemedText style={{ fontSize: 16, opacity: 0.7, textAlign: 'center', marginBottom: 24, paddingHorizontal: 24 }}>
-                                        Our AI is carefully reviewing your strengths and interests to provide personalized career guidance
-                                    </ThemedText>
+                                <View style={styles.modalLoadingContainer}>
+                                    <ActivityIndicator size="large" color={colors.primary} />
+                                    <ThemedText style={styles.modalLoadingText}>Loading career advice...</ThemedText>
                                 </View>
                             )}
                         </ScrollView>

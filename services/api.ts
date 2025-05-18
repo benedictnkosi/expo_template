@@ -13,6 +13,49 @@ export interface MySubjectsResponse {
   }[];
 }
 
+export interface ChapterResponse {
+  status: string;
+  chapter: {
+    id: number;
+    chapterName: string;
+    summary: string;
+    content: string;
+    level: number;
+    chapterNumber: number;
+    status?: 'in_progress' | 'completed' | 'not_started';
+    publishDate: string;
+    readingDuration?: number;
+    wordCount?: number;
+    speed?: number;
+    score?: number;
+  };
+  streak?: number;
+  points?: number;
+  readingPoints?: number;
+  nextLevelWPM?: number;
+  nextLevelNumber?: number;
+  stats?: {
+    completedChapters: number;
+    readingDays: number;
+    speeds?: {
+      date: string;
+      speed: number;
+      score: number;
+      chapterNumber: number;
+    }[];
+  };
+}
+
+export async function getNextChapter(learnerUid: string): Promise<ChapterResponse> {
+  const response = await fetch(`${HOST_URL}/api/learner/next-chapter?learnerUid=${learnerUid}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch next chapter');
+  }
+
+  return response.json();
+}
+
 function ensureHttps(url: string): string {
   // return url.replace('http://', 'https://');
   return url;
@@ -473,5 +516,65 @@ export async function updateVersion(uid: string, version: string, os: string): P
     throw new Error('Failed to update version');
   }
 
+  return response.json();
+}
+
+export interface PastChapter {
+  id: number;
+  chapterName: string;
+  summary: string;
+  content: string;
+  level: number;
+  chapterNumber: number;
+  publishDate: string;
+  readingDuration: number;
+  wordCount: number;
+}
+
+export interface PastChaptersResponse {
+  status: string;
+  chapters: PastChapter[];
+}
+
+export async function getPastChapters(learnerUid: string): Promise<PastChaptersResponse> {
+  const response = await fetch(`${HOST_URL}/api/learner/past-chapters?learnerUid=${learnerUid}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch past chapters');
+  }
+
+  return response.json();
+}
+
+export async function getChapterById(learnerUid: string, chapterId: number): Promise<ChapterResponse> {
+  const response = await fetch(`${HOST_URL}/api/learner/chapter/${chapterId}?learnerUid=${learnerUid}`);
+  const data = await response.json();
+  return data;
+}
+
+export interface ReadingStats {
+  status: string;
+  streak: number;
+  points: number;
+  readingPoints: number;
+  nextLevelWPM?: number;
+  nextLevelNumber?: number;
+  stats: {
+    completedChapters: number;
+    readingDays: number;
+    speeds: {
+      date: string;
+      speed: number;
+      score: number;
+      chapterNumber: number;
+    }[];
+  };
+}
+
+export async function getLearnerStats(learnerUid: string): Promise<ReadingStats> {
+  const response = await fetch(`${HOST_URL}/api/learner/reading-stats?learnerUid=${learnerUid}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch learner stats');
+  }
   return response.json();
 } 

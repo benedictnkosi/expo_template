@@ -270,15 +270,6 @@ export function NoteList({
 
             const data = await response.json();
             if (data.status === "OK") {
-                // Track successful note creation
-                await analytics.track('add_note_success', {
-                    user_id: userUid,
-                    subject_name: subjectName,
-                    question_id: currentQuestionId,
-                    note_id: data.note.id,
-                    note_length: newNoteText.trim().length
-                });
-
                 onNotesChange([...notes, data.note]);
                 setNewNoteText('');
                 setShowAddNoteModal(false);

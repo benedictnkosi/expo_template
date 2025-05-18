@@ -1,7 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Platform, View, Text } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -20,6 +19,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderTopColor: isDark ? colors.border : '#E5E7EB',
+          height: 60,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
@@ -41,11 +41,11 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
-        name="index"
+        name="reading"
         options={{
-          title: 'Learn',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book-outline" size={size} color={color} />
+          title: 'Reading',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>📖</Text>
           ),
         }}
       />
@@ -53,8 +53,36 @@ export default function TabLayout() {
         name="timetable"
         options={{
           title: 'Calendar',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>📅</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Learn',
+          tabBarIcon: ({ color }) => (
+            <View
+              style={{
+                backgroundColor: colors.primary,
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 20,
+                shadowColor: '#000',
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+                elevation: 5,
+              }}>
+              <Text style={{ fontSize: 28 }}>📚</Text>
+            </View>
           ),
         }}
       />
@@ -62,8 +90,8 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: 'Chats',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>💬</Text>
           ),
         }}
       />
@@ -71,8 +99,8 @@ export default function TabLayout() {
         name="social"
         options={{
           title: 'Social',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>👥</Text>
           ),
         }}
       />

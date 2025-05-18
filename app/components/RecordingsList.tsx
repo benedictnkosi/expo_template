@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { RecordingPlayerModal } from './RecordingPlayerModal';
 import { TOPIC_EMOJIS } from '../constants/topicEmojis';
 
@@ -50,6 +50,7 @@ export function RecordingsList({ recordings, isLoading, subjectName }: Recording
     const styles = createStyles(isDark);
     const [selectedRecording, setSelectedRecording] = useState<LectureRecording | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const groupedRecordings = useMemo(() => {
         return recordings.reduce((groups: GroupedRecordings, recording) => {
@@ -61,6 +62,32 @@ export function RecordingsList({ recordings, isLoading, subjectName }: Recording
             return groups;
         }, {});
     }, [recordings]);
+
+    const getFilteredRecordings = () => {
+        if (!searchQuery.trim()) return groupedRecordings;
+
+        const query = searchQuery.toLowerCase().trim();
+        const filtered: GroupedRecordings = {};
+
+        Object.entries(groupedRecordings).forEach(([topic, topicRecordings]) => {
+            // Check if topic matches
+            if (topic.toLowerCase().includes(query)) {
+                filtered[topic] = topicRecordings;
+                return;
+            }
+
+            // Check if any recording matches
+            const matchingRecordings = topicRecordings.filter(recording =>
+                recording.lecture_name.toLowerCase().includes(query)
+            );
+
+            if (matchingRecordings.length > 0) {
+                filtered[topic] = matchingRecordings;
+            }
+        });
+
+        return filtered;
+    };
 
     const handleRecordingPress = (recording: LectureRecording) => {
         setSelectedRecording(recording);
@@ -95,17 +122,9 @@ export function RecordingsList({ recordings, isLoading, subjectName }: Recording
             onPress={() => handleRecordingPress(lecture)}
         >
             <View style={styles.recordingHeader}>
-                {lecture.image ? (
-                    <Image
-                        source={{ uri: `${HOST_URL}/public/learn/learner/get-lecture-image?image=thumb_` + lecture.image }}
-                        style={styles.thumbnail}
-                        resizeMode="cover"
-                    />
-                ) : (
-                    <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-                        <Ionicons name="headset" size={40} color={colors.text} />
-                    </View>
-                )}
+                <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+                    <Ionicons name="headset" size={40} color={colors.text} />
+                </View>
                 <View style={styles.recordingInfo}>
                     <ThemedText style={styles.lectureTitle}>
                         {lecture.lecture_name}
@@ -129,7 +148,43 @@ export function RecordingsList({ recordings, isLoading, subjectName }: Recording
                         Note: Only showing podcasts for your selected school terms
                     </ThemedText>
                 </View>
-                {Object.entries(groupedRecordings).map(([topic, topicRecordings]) => (
+
+                <View style={styles.searchContainer}>
+                    <MaterialCommunityIcons
+                        name="magnify"
+                        size={20}
+                        color={colors.textSecondary}
+                        style={styles.searchIcon}
+                    />
+                    <TextInput
+                        style={[
+                            styles.searchInput,
+                            {
+                                color: colors.text,
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
+                            }
+                        ]}
+                        placeholder="Search lectures..."
+                        placeholderTextColor={colors.textSecondary}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery ? (
+                        <TouchableOpacity
+                            onPress={() => setSearchQuery('')}
+                            style={styles.clearButton}
+                        >
+                            <MaterialCommunityIcons
+                                name="close-circle"
+                                size={20}
+                                color={colors.textSecondary}
+                            />
+                        </TouchableOpacity>
+                    ) : null}
+                </View>
+
+                {Object.entries(getFilteredRecordings()).map(([topic, topicRecordings]) => (
                     <View key={topic} style={styles.topicSection}>
                         <View style={styles.topicHeader}>
                             <View style={styles.topicTitleContainer}>
@@ -254,6 +309,31 @@ function createStyles(isDark: boolean) {
             backgroundColor: isDark ? 'rgba(160, 160, 160, 0.1)' : 'rgba(102, 102, 102, 0.1)',
             borderRadius: 8,
             marginTop: 8,
+        },
+        searchContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 16,
+            position: 'relative',
+            paddingHorizontal: 16,
+        },
+        searchIcon: {
+            position: 'absolute',
+            left: 28,
+            zIndex: 1,
+        },
+        searchInput: {
+            flex: 1,
+            height: 40,
+            paddingHorizontal: 40,
+            borderRadius: 8,
+            borderWidth: 1,
+            fontSize: 16,
+        },
+        clearButton: {
+            position: 'absolute',
+            right: 28,
+            zIndex: 1,
         },
     });
 } 

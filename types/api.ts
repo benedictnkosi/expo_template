@@ -88,6 +88,7 @@ export interface CheckAnswerResponse {
   streakUpdated: boolean;
   streak: number;
   recordingFileName?: string;
+  remaining_quizzes?: number;
 }
 
 export interface Todo {
@@ -101,7 +102,8 @@ export interface Todo {
 
 export interface RandomAIQuestion {
   status: string;
-  question: {
+  message?: string;
+  question?: {
     id: number;
     question: string;
     ai_explanation: string;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { View, StyleSheet, Image, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,9 +10,14 @@ interface AudioPlayerProps {
     audioUrl: string;
     imageUrl?: string;
     title?: string;
+    disabled?: boolean;
 }
 
-export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
+export interface AudioPlayerRef {
+    playSound: () => Promise<void>;
+}
+
+export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(({ audioUrl, imageUrl, title, disabled }, ref) => {
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +27,14 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
     const { colors } = useTheme();
 
     const SKIP_DURATION = 5000; // 5 seconds in milliseconds
+
+    useImperativeHandle(ref, () => ({
+        playSound: async () => {
+            if (!disabled) {
+                await playSound();
+            }
+        }
+    }));
 
     useEffect(() => {
         // Configure audio session
@@ -228,8 +241,11 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
                 <View style={styles.controlsRow}>
                     <TouchableOpacity
                         onPress={rewindSound}
-                        style={[styles.skipButton, { borderColor: colors.primary }]}
-                        disabled={!sound || isLoading}
+                        style={[styles.skipButton, {
+                            borderColor: colors.primary,
+                            opacity: disabled ? 0.5 : 1
+                        }]}
+                        disabled={!sound || isLoading || disabled}
                     >
                         <View style={styles.skipContent}>
                             <Ionicons
@@ -246,8 +262,11 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
 
                     <TouchableOpacity
                         onPress={isPlaying ? stopSound : playSound}
-                        style={[styles.playButton, { backgroundColor: colors.primary }]}
-                        disabled={isLoading}
+                        style={[styles.playButton, {
+                            backgroundColor: disabled ? '#ccc' : colors.primary,
+                            opacity: disabled ? 0.5 : 1
+                        }]}
+                        disabled={isLoading || disabled}
                     >
                         {isLoading ? (
                             <Ionicons name="hourglass-outline" size={24} color={colors.text} />
@@ -260,8 +279,11 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
 
                     <TouchableOpacity
                         onPress={fastForwardSound}
-                        style={[styles.skipButton, { borderColor: colors.primary }]}
-                        disabled={!sound || isLoading}
+                        style={[styles.skipButton, {
+                            borderColor: colors.primary,
+                            opacity: disabled ? 0.5 : 1
+                        }]}
+                        disabled={!sound || isLoading || disabled}
                     >
                         <View style={styles.skipContent}>
                             <Ionicons
@@ -279,7 +301,7 @@ export function AudioPlayer({ audioUrl, imageUrl, title }: AudioPlayerProps) {
             </View>
         </View>
     );
-}
+});
 
 const styles = StyleSheet.create({
     container: {

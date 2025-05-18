@@ -456,6 +456,8 @@ export default function ProfileScreen() {
       old_grade: learnerInfo?.grade,
       new_grade: editGrade
     });
+    // Set hasNewAnswers to true when grade changes
+    await AsyncStorage.setItem('hasNewAnswers', 'true');
     await saveChanges();
   };
 

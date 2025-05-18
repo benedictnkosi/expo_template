@@ -67,16 +67,6 @@ export async function registerForPushNotificationsAsync() {
                     console.error('[PushNotifications] Failed to store push token:', storageError);
                     throw storageError;
                 }
-
-                try {
-                    await analytics.track('push_notification_permission_granted', {
-                        platform: Platform.OS,
-                        token: token
-                    });
-                } catch (analyticsError) {
-                    console.error('[PushNotifications] Failed to track analytics event:', analyticsError);
-                }
-
                 return token;
             } catch (error) {
                 console.error('[PushNotifications] Error during permission/token process:', error);

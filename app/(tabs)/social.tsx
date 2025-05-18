@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator, Dimensions, TextInput, Clipboard, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, ImageSourcePropType, TouchableOpacity, Share, Platform, ActivityIndicator, Dimensions, TextInput, Clipboard, KeyboardAvoidingView, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -18,6 +18,8 @@ import { Asset } from 'expo-asset';
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { FontAwesome } from '@expo/vector-icons';
+import { FollowedLearnerStatsCard } from '../components/ui/FollowedLearnerStatsCard';
 
 const badgeImages: Record<string, ImageSourcePropType> = {
     '3-day-streak.png': require('@/assets/images/badges/3-day-streak.png'),
@@ -142,6 +144,8 @@ interface FollowedLearner {
     };
     questionsAnsweredToday: number;
     questionsAnsweredThisWeek: number;
+    chaptersCompletedToday: number;
+    chaptersCompletedThisWeek: number;
 }
 
 interface FollowingList {
@@ -498,12 +502,16 @@ export default function AchievementsScreen() {
     const { activeTab: initialTab } = useLocalSearchParams<{ activeTab: string }>();
     const [activeTab, setActiveTab] = useState<'badges' | 'scoreboard' | 'following'>(initialTab as 'badges' | 'scoreboard' | 'following' || 'scoreboard');
     const [scoreboardType, setScoreboardType] = useState<'all-time' | 'weekly' | 'today'>('today');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isBadgesLoading, setIsBadgesLoading] = useState(false);
     const [badgeCategories, setBadgeCategories] = useState<BadgeCategory[]>([]);
     const { user } = useAuth();
-    const [isLoading, setIsLoading] = useState(true);
     const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
     const [weeklyScoreboard, setWeeklyScoreboard] = useState<WeeklyScoreboardResponse | null>(null);
     const [todayScoreboard, setTodayScoreboard] = useState<TodayScoreboardResponse | null>(null);
+    const [isWeeklyLoading, setIsWeeklyLoading] = useState(false);
+    const [isAllTimeLoading, setIsAllTimeLoading] = useState(false);
+    const [isTodayLoading, setIsTodayLoading] = useState(false);
     const [learnerInfo, setLearnerInfo] = useState<{
         name: string;
         grade: string;
@@ -604,16 +612,42 @@ export default function AchievementsScreen() {
     const handleTabChange = (tab: 'badges' | 'scoreboard' | 'following') => {
         setActiveTab(tab);
         saveActiveTab(tab);
+        if (tab === 'badges') {
+            setIsBadgesLoading(true);
+            fetchBadges();
+        } else if (tab === 'scoreboard') {
+            // Fetch all scoreboard data at once
+            setIsAllTimeLoading(true);
+            setIsWeeklyLoading(true);
+            Promise.all([
+                fetchLeaderboard(),
+                fetchWeeklyScoreboard(),
+                fetchTodayScoreboard()
+            ]).finally(() => {
+                setIsAllTimeLoading(false);
+                setIsWeeklyLoading(false);
+            });
+        } else if (tab === 'following') {
+            setIsFollowingListLoading(true);
+            fetchFollowingList();
+            setIsFollowersLoading(true);
+            fetchFollowers();
+        }
+    };
+
+    const handleScoreboardTypeChange = (type: 'all-time' | 'weekly' | 'today') => {
+        setScoreboardType(type);
     };
 
     const fetchLeaderboard = useCallback(async () => {
         if (!user?.uid) return;
         try {
             const data = await getLeaderboard(user.uid);
-            console.log('Leaderboard Data:', data);
             setLeaderboard(data);
         } catch (error) {
             console.error('Failed to fetch leaderboard:', error);
+        } finally {
+            setIsAllTimeLoading(false);
         }
     }, [user?.uid]);
 
@@ -635,7 +669,6 @@ export default function AchievementsScreen() {
 
     const fetchBadges = useCallback(async () => {
         if (!user?.uid) return;
-        setIsLoading(true);
         try {
             const allBadges = await getAllBadges();
             const learnerBadges = await getLearnerBadges(user.uid);
@@ -700,7 +733,7 @@ export default function AchievementsScreen() {
 
             setBadgeCategories(categories);
         } finally {
-            setIsLoading(false);
+            setIsBadgesLoading(false);
         }
     }, [user?.uid]);
 
@@ -708,21 +741,24 @@ export default function AchievementsScreen() {
         if (!user?.uid) return;
         try {
             const data = await getWeeklyScoreboard(user.uid);
-            console.log('Weekly Scoreboard Data:', data);
             setWeeklyScoreboard(data);
         } catch (error) {
             console.error('Failed to fetch weekly scoreboard:', error);
+        } finally {
+            setIsWeeklyLoading(false);
         }
     }, [user?.uid]);
 
     const fetchTodayScoreboard = useCallback(async () => {
         if (!user?.uid) return;
+        setIsTodayLoading(true);
         try {
             const data = await getTodayScoreboard(user.uid);
-            console.log('Today Scoreboard Data:', data);
             setTodayScoreboard(data);
         } catch (error) {
             console.error('Failed to fetch today scoreboard:', error);
+        } finally {
+            setIsTodayLoading(false);
         }
     }, [user?.uid]);
 
@@ -814,17 +850,56 @@ export default function AchievementsScreen() {
         }
     };
 
-    // Use useFocusEffect to fetch data when the tab is focused
+    const clearCachedData = useCallback(() => {
+        setLeaderboard(null);
+        setWeeklyScoreboard(null);
+        setTodayScoreboard(null);
+        setBadgeCategories([]);
+        setFollowingList([]);
+        setFollowers([]);
+    }, []);
+
+    // Modify useFocusEffect to fetch all scoreboard data when focused
     useFocusEffect(
         useCallback(() => {
+            // Clear cached data first
+            clearCachedData();
+
             fetchLearnerInfo();
-            fetchBadges();
-            fetchLeaderboard();
-            fetchWeeklyScoreboard();
-            fetchTodayScoreboard();
-            fetchFollowingList();
-            fetchFollowers();
-        }, [fetchLearnerInfo, fetchBadges, fetchLeaderboard, fetchWeeklyScoreboard, fetchTodayScoreboard, fetchFollowingList, fetchFollowers])
+
+            // Load data based on active tab
+            if (activeTab === 'badges') {
+                setIsBadgesLoading(true);
+                fetchBadges();
+            } else if (activeTab === 'scoreboard') {
+                // Fetch all scoreboard data at once
+                setIsAllTimeLoading(true);
+                setIsWeeklyLoading(true);
+                Promise.all([
+                    fetchLeaderboard(),
+                    fetchWeeklyScoreboard(),
+                    fetchTodayScoreboard()
+                ]).finally(() => {
+                    setIsAllTimeLoading(false);
+                    setIsWeeklyLoading(false);
+                });
+            } else if (activeTab === 'following') {
+                setIsFollowingListLoading(true);
+                fetchFollowingList();
+                setIsFollowersLoading(true);
+                fetchFollowers();
+            }
+        }, [
+            fetchLearnerInfo,
+            fetchBadges,
+            fetchLeaderboard,
+            fetchWeeklyScoreboard,
+            fetchTodayScoreboard,
+            fetchFollowingList,
+            fetchFollowers,
+            activeTab,
+            clearCachedData
+        ])
     );
 
     const handleShareBadge = async (badge: Badge) => {
@@ -857,7 +932,7 @@ export default function AchievementsScreen() {
                 }
             } else {
                 // Fallback to regular share if sharing is not available
-                const message = `I just earned the ${badge.name} badge on Exam Quiz! 🎉\n\n${badge.rules}\n\nJoin me on Exam Quiz and start earning badges too! https://examquiz.co.za`;
+                const message = `I just earned the ${badge.name} badge on Dimpo Learning App! 🎉\n\n${badge.rules}\n\nJoin me on Dimpo Learning App and start earning badges too! https://Dimpo.co.za`;
                 await Share.share({
                     message,
                     title: 'Share Badge Achievement'
@@ -867,15 +942,6 @@ export default function AchievementsScreen() {
             console.error('Error sharing badge:', error);
         }
     };
-
-    // Add effect to refetch data when scoreboardType changes
-    useEffect(() => {
-        if (scoreboardType === 'weekly') {
-            fetchWeeklyScoreboard();
-        } else if (scoreboardType === 'today') {
-            fetchTodayScoreboard();
-        }
-    }, [scoreboardType, fetchWeeklyScoreboard, fetchTodayScoreboard]);
 
     return (
         <LinearGradient
@@ -946,7 +1012,10 @@ export default function AchievementsScreen() {
 
             <ScrollView
                 style={styles.container}
-                contentContainerStyle={styles.contentContainer}
+                contentContainerStyle={[
+                    styles.contentContainer,
+                    activeTab === 'badges' && { paddingBottom: 120 }
+                ]}
             >
                 {isLoading ? (
                     <View style={styles.loadingContainer}>
@@ -954,64 +1023,71 @@ export default function AchievementsScreen() {
                         <ThemedText style={styles.loadingText}>Loading...</ThemedText>
                     </View>
                 ) : activeTab === 'badges' ? (
-                    badgeCategories.map((category, index) => (
-                        <View key={category.title} style={styles.categoryContainer}>
-                            <ThemedText style={[styles.categoryTitle, { color: colors.text }]}>
-                                {category.title}
-                            </ThemedText>
-                            <View style={styles.badgesGrid}>
-                                {category.badges.map((badge) => (
-                                    <View
-                                        key={badge.id}
-                                        style={[
-                                            styles.badgeCard,
-                                            {
-                                                backgroundColor: isDark ? 'rgba(30, 30, 30, 0.8)' : '#F8FAFC',
-                                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-                                                opacity: badge.earned ? 1 : 0.5
-                                            }
-                                        ]}
-                                    >
-                                        <View style={styles.badgeImageContainer}>
-                                            <Image
-                                                source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
-                                                style={[
-                                                    styles.badgeImage,
-                                                    !badge.earned && styles.lockedBadgeImage
-                                                ]}
-                                                resizeMode="contain"
-                                            />
-                                            {!badge.earned && (
-                                                <View style={styles.lockOverlay}>
-                                                    <Ionicons name="lock-closed" size={48} color={isDark ? '#FFFFFF' : '#000000'} />
-                                                </View>
-                                            )}
-                                        </View>
-                                        <View style={styles.badgeInfo}>
-                                            <ThemedText style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
-                                                {badge.name}
-                                            </ThemedText>
-                                            <ThemedText
-                                                style={[styles.badgeRules, { color: colors.textSecondary }]}
-                                                numberOfLines={2}
-                                            >
-                                                {badge.rules}
-                                            </ThemedText>
-                                            {badge.earned && (
-                                                <TouchableOpacity
-                                                    style={[styles.shareButton, { backgroundColor: isDark ? colors.primary : '#022b66' }]}
-                                                    onPress={() => handleShareBadge(badge)}
-                                                >
-                                                    <Ionicons name="share-social" size={16} color="#FFFFFF" />
-                                                    <ThemedText style={styles.shareButtonText}>Share</ThemedText>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                    </View>
-                                ))}
-                            </View>
+                    isBadgesLoading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={colors.primary} />
+                            <ThemedText style={styles.loadingText}>Loading your badges...</ThemedText>
                         </View>
-                    ))
+                    ) : (
+                        badgeCategories.map((category, index) => (
+                            <View key={category.title} style={styles.categoryContainer}>
+                                <ThemedText style={[styles.categoryTitle, { color: colors.text }]}>
+                                    {category.title}
+                                </ThemedText>
+                                <View style={styles.badgesGrid}>
+                                    {category.badges.map((badge) => (
+                                        <View
+                                            key={badge.id}
+                                            style={[
+                                                styles.badgeCard,
+                                                {
+                                                    backgroundColor: isDark ? 'rgba(30, 30, 30, 0.8)' : '#F8FAFC',
+                                                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                                                    opacity: badge.earned ? 1 : 0.5
+                                                }
+                                            ]}
+                                        >
+                                            <View style={styles.badgeImageContainer}>
+                                                <Image
+                                                    source={badgeImages[badge.image] || require('@/assets/images/badges/3-day-streak.png')}
+                                                    style={[
+                                                        styles.badgeImage,
+                                                        !badge.earned && styles.lockedBadgeImage
+                                                    ]}
+                                                    resizeMode="contain"
+                                                />
+                                                {!badge.earned && (
+                                                    <View style={styles.lockOverlay}>
+                                                        <Ionicons name="lock-closed" size={48} color={isDark ? '#FFFFFF' : '#000000'} />
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <View style={styles.badgeInfo}>
+                                                <ThemedText style={[styles.badgeName, { color: colors.text }]} numberOfLines={1}>
+                                                    {badge.name}
+                                                </ThemedText>
+                                                <ThemedText
+                                                    style={[styles.badgeRules, { color: colors.textSecondary }]}
+                                                    numberOfLines={2}
+                                                >
+                                                    {badge.rules}
+                                                </ThemedText>
+                                                {badge.earned && (
+                                                    <TouchableOpacity
+                                                        style={[styles.shareButton, { backgroundColor: isDark ? colors.primary : '#022b66' }]}
+                                                        onPress={() => handleShareBadge(badge)}
+                                                    >
+                                                        <Ionicons name="share-social" size={16} color="#FFFFFF" />
+                                                        <ThemedText style={styles.shareButtonText}>Share</ThemedText>
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        ))
+                    )
                 ) : activeTab === 'scoreboard' ? (
                     <>
                         <View style={subTabStyles.container}>
@@ -1020,7 +1096,7 @@ export default function AchievementsScreen() {
                                     subTabStyles.button,
                                     scoreboardType === 'today' && subTabStyles.activeButton
                                 ]}
-                                onPress={() => setScoreboardType('today')}
+                                onPress={() => handleScoreboardTypeChange('today')}
                             >
                                 <ThemedText
                                     style={[
@@ -1036,7 +1112,7 @@ export default function AchievementsScreen() {
                                     subTabStyles.button,
                                     scoreboardType === 'weekly' && subTabStyles.activeButton
                                 ]}
-                                onPress={() => setScoreboardType('weekly')}
+                                onPress={() => handleScoreboardTypeChange('weekly')}
                             >
                                 <ThemedText
                                     style={[
@@ -1052,7 +1128,7 @@ export default function AchievementsScreen() {
                                     subTabStyles.button,
                                     scoreboardType === 'all-time' && subTabStyles.activeButton
                                 ]}
-                                onPress={() => setScoreboardType('all-time')}
+                                onPress={() => handleScoreboardTypeChange('all-time')}
                             >
                                 <ThemedText
                                     style={[
@@ -1066,19 +1142,31 @@ export default function AchievementsScreen() {
                         </View>
 
                         {scoreboardType === 'all-time' ? (
-                            <Scoreboard
-                                entries={leaderboard?.rankings.map(entry => ({
-                                    name: entry.name,
-                                    score: entry.points,
-                                    position: entry.position,
-                                    isCurrentLearner: entry.isCurrentLearner,
-                                    avatar: entry.avatar,
-                                    publicProfile: entry.publicProfile,
-                                    followMeCode: entry.followMeCode,
-                                })) || []}
-                            />
+                            isAllTimeLoading ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={colors.primary} />
+                                    <ThemedText style={styles.loadingText}>Loading all-time rankings...</ThemedText>
+                                </View>
+                            ) : (
+                                <Scoreboard
+                                    entries={leaderboard?.rankings.map(entry => ({
+                                        name: entry.name,
+                                        score: entry.points,
+                                        position: entry.position,
+                                        isCurrentLearner: entry.isCurrentLearner,
+                                        avatar: entry.avatar,
+                                        publicProfile: entry.publicProfile,
+                                        followMeCode: entry.followMeCode,
+                                    })) || []}
+                                />
+                            )
                         ) : scoreboardType === 'weekly' ? (
-                            <>
+                            isWeeklyLoading ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={colors.primary} />
+                                    <ThemedText style={styles.loadingText}>Loading weekly rankings...</ThemedText>
+                                </View>
+                            ) : (
                                 <Scoreboard
                                     entries={weeklyScoreboard?.scoreboard.map(entry => ({
                                         name: entry.name,
@@ -1090,9 +1178,14 @@ export default function AchievementsScreen() {
                                         followMeCode: entry.followMeCode,
                                     })) || []}
                                 />
-                            </>
+                            )
                         ) : (
-                            <>
+                            isTodayLoading ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={colors.primary} />
+                                    <ThemedText style={styles.loadingText}>Loading today's rankings...</ThemedText>
+                                </View>
+                            ) : (
                                 <Scoreboard
                                     entries={todayScoreboard?.scoreboard.map(entry => ({
                                         name: entry.name,
@@ -1104,7 +1197,7 @@ export default function AchievementsScreen() {
                                         followMeCode: entry.followMeCode,
                                     })) || []}
                                 />
-                            </>
+                            )
                         )}
                     </>
                 ) : activeTab === 'following' ? (
@@ -1231,7 +1324,6 @@ export default function AchievementsScreen() {
                                                 <ThemedText style={styles.followingName}>
                                                     {learner.learner_name}
                                                 </ThemedText>
-
                                                 <View style={styles.followingMetaInfo}>
                                                     <View style={[styles.statsRow, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.03)' }]}>
                                                         <View style={styles.statItemContainer}>
@@ -1246,9 +1338,7 @@ export default function AchievementsScreen() {
                                                                 </ThemedText>
                                                             </View>
                                                         </View>
-
                                                         <View style={[styles.statsDivider, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }]} />
-
                                                         <View style={styles.statItemContainer}>
                                                             <ThemedText style={styles.statsLabel}>Streak</ThemedText>
                                                             <View style={styles.statsContainer}>
@@ -1259,30 +1349,13 @@ export default function AchievementsScreen() {
                                                             </View>
                                                         </View>
                                                     </View>
-
-                                                    <View style={[styles.questionsContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC', borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.03)' }]}>
-                                                        <View style={[styles.questionStat, { opacity: isDark ? 1 : 0.8 }]}>
-                                                            <Ionicons name="today-outline" size={16} style={{ marginRight: 8 }} color={colors.text} />
-                                                            <ThemedText style={[styles.questionStat, { color: colors.text }]}>
-                                                                {learner.questionsAnsweredToday} questions today
-                                                            </ThemedText>
-                                                        </View>
-                                                        <View style={[styles.questionStat, { opacity: isDark ? 1 : 0.8 }]}>
-                                                            <Ionicons name="calendar-outline" size={16} style={{ marginRight: 8 }} color={colors.text} />
-                                                            <ThemedText style={[styles.questionStat, { color: colors.text }]}>
-                                                                {learner.questionsAnsweredThisWeek} questions this week
-                                                            </ThemedText>
-                                                        </View>
-                                                        <TouchableOpacity
-                                                            style={[styles.viewReportButton, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)' }]}
-                                                            onPress={() => router.push(`/report/${learner.learner_uid}?name=${encodeURIComponent(learner.learner_name)}`)}
-                                                        >
-                                                            <Ionicons name="analytics-outline" size={16} style={{ marginRight: 8 }} color={colors.primary} />
-                                                            <ThemedText style={[styles.viewReportButtonText, { color: colors.primary }]}>
-                                                                View Report
-                                                            </ThemedText>
-                                                        </TouchableOpacity>
-                                                    </View>
+                                                    <FollowedLearnerStatsCard
+                                                        questionsToday={learner.questionsAnsweredToday}
+                                                        questionsWeek={learner.questionsAnsweredThisWeek}
+                                                        chaptersToday={learner.chaptersCompletedToday}
+                                                        chaptersWeek={learner.chaptersCompletedThisWeek}
+                                                        onViewReport={() => router.push(`/report/${learner.learner_uid}?name=${encodeURIComponent(learner.learner_name)}`)}
+                                                    />
                                                 </View>
                                             </View>
                                         </ThemedView>
@@ -1335,6 +1408,24 @@ export default function AchievementsScreen() {
                         </View>
                     </View>
                 ) : null}
+
+                <View style={styles.footerContainer}>
+                    <TouchableOpacity
+                        style={[styles.socialButton, {
+                            backgroundColor: isDark ? colors.card : 'rgba(255, 255, 255, 0.9)',
+                            borderColor: colors.border,
+                            borderWidth: 1,
+                        }]}
+                        onPress={() => Linking.openURL('https://www.facebook.com/profile.php?id=61573761144016')}
+                    >
+                        <FontAwesome name="facebook" size={24} color="#1877F2" style={styles.socialIcon} />
+                        <ThemedText style={[styles.socialButtonText, {
+                            color: isDark ? '#1877F2' : '#1877F2'
+                        }]}>
+                            Join our Facebook page
+                        </ThemedText>
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
             <Toast />
         </LinearGradient>
@@ -1350,6 +1441,9 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         padding: 16,
+    },
+    badgesContentContainer: {
+        paddingBottom: 100, // Add extra padding at the bottom for badges tab
     },
     header: {
         padding: 16,
@@ -1860,19 +1954,6 @@ const styles = StyleSheet.create({
         height: 36,
         marginHorizontal: 16,
     },
-    questionsContainer: {
-        marginTop: 8,
-        flexDirection: 'column',
-        gap: 8,
-        borderRadius: 12,
-        padding: 12,
-        borderWidth: 1,
-    },
-    questionStat: {
-        fontSize: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
     noFollowingText: {
         fontSize: 16,
         textAlign: 'center',
@@ -2025,5 +2106,40 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         textAlign: 'center',
         marginBottom: 8,
+    },
+    footerContainer: {
+        padding: 16,
+        marginVertical: 16,
+        marginBottom: 32,
+    },
+    socialButton: {
+        marginTop: 16,
+        padding: 16,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 2,
+            },
+            web: {
+                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+            },
+        }),
+    },
+    socialButtonText: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginLeft: 8,
+    },
+    socialIcon: {
+        marginRight: 8,
     },
 }); 

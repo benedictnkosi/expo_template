@@ -257,6 +257,14 @@ export default function AddClassModal() {
             const formattedStartTime = format(startTime, 'HH:mm');
             const formattedEndTime = format(endTime, 'HH:mm');
 
+            // Check if start time and end time are the same
+            if (formattedStartTime === formattedEndTime) {
+                setErrorMessage('Start time and end time cannot be the same. Please choose different times.');
+                setErrorVisible(true);
+                setIsSubmitting(false);
+                return;
+            }
+
             // Check for conflicts and find the conflicting class
             const conflictingClassInfo = existingClasses.find((class_: { subject: string; startTime: string; endTime: string }) =>
                 hasTimeOverlap(formattedStartTime, formattedEndTime, [class_])

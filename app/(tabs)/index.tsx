@@ -28,6 +28,7 @@ import { getSubjectIcon } from '@/utils/subjectIcons';
 import { WelcomeModal } from '../components/WelcomeModal';
 import subjectEmojis from '@/assets/subject-emojis.json';
 import { SubjectPicker } from '@/components/SubjectPicker';
+import { NextChapterCard } from '@/components/reading/next-chapter-card';
 
 const SUBJECTS = [
   'Accounting',
@@ -296,7 +297,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
   const [currentClass, setCurrentClass] = useState<{ subject: string; startTime: string; endTime: string } | null>(null);
   const [currentEvent, setCurrentEvent] = useState<{ title: string; startTime: string; endTime: string; subject?: string } | null>(null);
   const [upcomingClasses, setUpcomingClasses] = useState<{ subject: string; startTime: string; endTime: string }[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<{ title: string; startTime: string; endTime: string }[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<{ title: string; startTime: string; endTime: string; subject?: string }[]>([]);
 
   useEffect(() => {
     if (!learnerInfo?.timetable || !learnerInfo?.events) return;
@@ -426,7 +427,7 @@ const CurrentSchedule = ({ learnerInfo, colors, isDark }: CurrentScheduleProps) 
           {upcomingEvents.map((event, index) => (
             <View key={index} style={styles.upcomingItem}>
               <ThemedText style={[styles.scheduleItemSubject, { color: colors.text }]}>
-                {getRandomEducationEmoji()} {event.title}
+                {event.subject ? `${getSubjectEmoji(event.subject)} ${event.subject}` : getRandomEducationEmoji()} {event.title}
               </ThemedText>
               <ThemedText style={[styles.scheduleItemTime, { color: colors.textSecondary }]}>
                 {event.startTime} - {event.endTime}
@@ -462,9 +463,6 @@ export default function HomeScreen() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [showSubjectRequestModal, setShowSubjectRequestModal] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [isRequestingSubject, setIsRequestingSubject] = useState(false);
 
   // Check for saved notification preferences on mount
   useEffect(() => {
@@ -630,7 +628,9 @@ export default function HomeScreen() {
           const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
             if (!curr?.name) return acc;
 
-            const baseName = curr.name.split(' P')[0];
+            const baseName = curr.name.includes(' P1') ? curr.name.split(' P1')[0] :
+              curr.name.includes(' P2') ? curr.name.split(' P2')[0] :
+                curr.name;
 
             if (!acc[baseName]) {
               acc[baseName] = {
@@ -666,21 +666,15 @@ export default function HomeScreen() {
 
   // Initial data load
   useEffect(() => {
+    console.log('fetching learner data - initial');
     fetchLearnerData();
     fetchRandomLesson();
-  }, [fetchLearnerData]);
+  }, [user?.uid]); // Only depend on user.uid changes
 
   // Fetch learner data and random lesson when tab is focused
   useFocusEffect(
     useCallback(() => {
-      fetchLearnerData();
-      fetchRandomLesson();
-    }, [fetchLearnerData])
-  );
-
-  // Check for new answers on focus
-  useFocusEffect(
-    useCallback(() => {
+      console.log('checking for new answers');
       async function checkForNewAnswers() {
         if (!user?.uid) return;
 
@@ -692,7 +686,9 @@ export default function HomeScreen() {
               const subjectGroups = enrolledResponse.subjects.reduce((acc: Record<string, Subject>, curr) => {
                 if (!curr?.name) return acc;
 
-                const baseName = curr.name.split(' P')[0];
+                const baseName = curr.name.includes(' P1') ? curr.name.split(' P1')[0] :
+                  curr.name.includes(' P2') ? curr.name.split(' P2')[0] :
+                    curr.name;
 
                 if (!acc[baseName]) {
                   acc[baseName] = {
@@ -712,6 +708,7 @@ export default function HomeScreen() {
               }, {});
 
               const groupedSubjects = Object.values(subjectGroups);
+              console.log('gettoing lerner subjects');
               setMySubjects(groupedSubjects);
 
               // Clear the flag after refreshing
@@ -800,16 +797,10 @@ export default function HomeScreen() {
   const handleShare = useCallback(async () => {
     try {
       await Share.share({
-        message: 'Check out Exam Quiz - Your ultimate study companion! https://examquiz.co.za',
-        title: 'Share Exam Quiz'
+        message: 'Check out Dimpo Learning App - Your ultimate study companion! https://Dimpo.co.za',
+        title: 'Share Dimpo Learning App'
       });
 
-      if (user?.uid) {
-        await analytics.track('share_app', {
-          user_id: user.uid,
-          platform: Platform.OS
-        });
-      }
     } catch (error) {
       console.error('Error sharing:', error);
     }
@@ -820,12 +811,6 @@ export default function HomeScreen() {
     try {
       if (rating >= 4) {
         await Linking.openURL('https://play.google.com/store/apps/details?id=com.examquiz.app');
-        if (user?.uid) {
-          await analytics.track('submit_rating', {
-            user_id: user.uid,
-            rating
-          });
-        }
       }
       setShowRatingModal(false);
     } catch (error) {
@@ -835,11 +820,6 @@ export default function HomeScreen() {
 
   const handleDismissRating = useCallback(async () => {
     try {
-      if (user?.uid) {
-        await analytics.track('dismiss_rating', {
-          user_id: user.uid
-        });
-      }
       setShowRatingModal(false);
     } catch (error) {
       console.error('Error dismissing rating:', error);
@@ -1029,50 +1009,6 @@ export default function HomeScreen() {
     }
   };
 
-  // Add function to handle subject request
-  const handleSubjectRequest = useCallback(async () => {
-    if (!user?.uid || !selectedSubject) return;
-
-    try {
-      setIsRequestingSubject(true);
-      const response = await fetch(`${HOST_URL}/api/request-subject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          learnerUid: user.uid,
-          subjectName: selectedSubject,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.status === 'OK') {
-        Toast.show({
-          type: 'success',
-          text1: 'Request Submitted',
-          text2: 'Your subject request has been submitted successfully!',
-          position: 'bottom',
-        });
-        setShowSubjectRequestModal(false);
-        setSelectedSubject('');
-      } else {
-        throw new Error(data.message || 'Failed to submit request');
-      }
-    } catch (error) {
-      console.error('Error requesting subject:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to submit subject request. Please try again.',
-        position: 'bottom',
-      });
-    } finally {
-      setIsRequestingSubject(false);
-    }
-  }, [user?.uid, selectedSubject]);
-
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
@@ -1194,12 +1130,12 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-
-
         <RandomLessonPreview
           randomLesson={randomLesson}
           onRefresh={fetchRandomLesson}
         />
+
+        <NextChapterCard />
 
         <CurrentSchedule
           learnerInfo={learnerInfo}
@@ -1269,6 +1205,28 @@ export default function HomeScreen() {
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
         <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>Click on a subject to start learning</ThemedText>
+
+        <View style={[styles.introContainer, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}>
+          <ThemedText style={[styles.introTitle, { color: colors.text }]}>What's Inside Each Subject? 📚</ThemedText>
+          <View style={styles.introContent}>
+            <View style={styles.introItem}>
+              <ThemedText style={[styles.introEmoji, { color: colors.text }]}>🎯</ThemedText>
+              <ThemedText style={[styles.introText, { color: colors.textSecondary }]}>Quizzes</ThemedText>
+            </View>
+            <View style={styles.introItem}>
+              <ThemedText style={[styles.introEmoji, { color: colors.text }]}>🎧</ThemedText>
+              <ThemedText style={[styles.introText, { color: colors.textSecondary }]}>Podcasts</ThemedText>
+            </View>
+            <View style={styles.introItem}>
+              <ThemedText style={[styles.introEmoji, { color: colors.text }]}>📝</ThemedText>
+              <ThemedText style={[styles.introText, { color: colors.textSecondary }]}>Notes</ThemedText>
+            </View>
+            <View style={styles.introItem}>
+              <ThemedText style={[styles.introEmoji, { color: colors.text }]}>🎓</ThemedText>
+              <ThemedText style={[styles.introText, { color: colors.textSecondary }]}>Lessons</ThemedText>
+            </View>
+          </View>
+        </View>
 
         <ScrollView
           showsVerticalScrollIndicator={true}
@@ -1451,83 +1409,17 @@ export default function HomeScreen() {
         )}
 
         <TouchableOpacity
-          style={[styles.requestSubjectButton, { backgroundColor: colors.primary }]}
-          onPress={() => setShowSubjectRequestModal(true)}
-          testID="request-subject-button"
+          style={[styles.infoLink, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border
+          }]}
+          onPress={() => router.push('/info')}
         >
-          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-          <ThemedText style={styles.requestSubjectButtonText}>
-            Request a New Subject
+          <ThemedText style={[styles.infoLinkText, { color: colors.textSecondary }]}>
+            🔍 Can't find your subject? Click here to learn more
           </ThemedText>
         </TouchableOpacity>
       </ScrollView>
-
-      <Modal
-        visible={showSubjectRequestModal}
-        transparent
-        animationType="fade"
-        testID="subject-request-modal"
-      >
-        <View style={styles.modalOverlay} testID="subject-request-modal-overlay">
-          <View style={[styles.subjectRequestModalContainer, {
-            backgroundColor: isDark ? colors.card : '#FFFFFF'
-          }]} testID="subject-request-modal-content">
-            <ThemedText style={[styles.subjectRequestModalTitle, { color: colors.text }]}>
-              📚 Request a New Subject
-            </ThemedText>
-            <ThemedText style={[styles.subjectRequestModalText, { color: colors.textSecondary }]}>
-              Select a subject you'd like to request
-            </ThemedText>
-
-            <View style={{ width: '100%' }}>
-              <Picker
-                selectedValue={selectedSubject}
-                onValueChange={setSelectedSubject}
-                style={{ width: '100%', color: isDark ? '#fff' : '#000', backgroundColor: isDark ? '#23272f' : '#F2F2F7', borderRadius: 12 }}
-                itemStyle={{
-                  fontSize: 17,
-                  fontWeight: '400',
-                  color: isDark ? '#fff' : '#000'
-                }}
-              >
-                <Picker.Item label="Select a subject" value="" />
-                {SUBJECTS.filter(subject => !LANGUAGE_SUBJECTS.includes(subject)).map(subject => (
-                  <Picker.Item key={subject} label={subject} value={subject} />
-                ))}
-              </Picker>
-            </View>
-
-            <View style={styles.subjectRequestModalButtons}>
-              <TouchableOpacity
-                style={[styles.subjectRequestModalButton, { backgroundColor: colors.primary }]}
-                onPress={handleSubjectRequest}
-                disabled={!selectedSubject || isRequestingSubject}
-                testID="submit-subject-request-button"
-              >
-                {isRequestingSubject ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <ThemedText style={styles.subjectRequestModalButtonText}>
-                    Submit Request
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.subjectRequestModalButton, { backgroundColor: isDark ? colors.surface : '#F3F4F6' }]}
-                onPress={() => {
-                  setShowSubjectRequestModal(false);
-                  setSelectedSubject('');
-                }}
-                testID="cancel-subject-request-button"
-              >
-                <ThemedText style={[styles.subjectRequestModalButtonText, { color: colors.text }]}>
-                  Cancel
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       <RatingModal
         visible={showRatingModal}
@@ -1738,7 +1630,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     flexWrap: 'wrap',
     fontWeight: 'bold',
-
   },
   progressBarContainer: {
     width: 'auto',
@@ -2326,7 +2217,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    backgroundColor: '#10B981', // Changed from colors.primary to a green color
+    backgroundColor: '#10B981',
   },
   reportButtonText: {
     color: '#FFFFFF',
@@ -2402,63 +2293,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     opacity: 0.7,
   },
-  requestSubjectButton: {
+  introContainer: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    marginHorizontal: 16,
+  },
+  introTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  introContent: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 20,
+    justifyContent: 'space-between',
     gap: 8,
   },
-  requestSubjectButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  subjectRequestModalContainer: {
-    margin: 20,
-    borderRadius: 12,
-    padding: 20,
+  introItem: {
+    flex: 1,
     alignItems: 'center',
-    borderWidth: 1,
-    width: '100%',
-    maxWidth: 400,
   },
-  subjectRequestModalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 12,
+  introEmoji: {
+    fontSize: 24,
+    marginBottom: 2,
+  },
+  introText: {
+    fontSize: 12,
     textAlign: 'center',
-  },
-  subjectRequestModalText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 24,
-  },
-  pickerContainer: {
-    width: '100%',
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  picker: {
-    width: '100%',
-    height: 50,
-  },
-  subjectRequestModalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  subjectRequestModalButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  subjectRequestModalButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   testButton: {
     flexDirection: 'row',
@@ -2473,5 +2334,19 @@ const styles = StyleSheet.create({
   testButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  infoLink: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 32,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoLinkText: {
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

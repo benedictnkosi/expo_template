@@ -132,8 +132,8 @@ function renderMixedContent(text: string, isDark: boolean, colors: any) {
         text = text.replace(/\*\*/g, '')
 
         // Clean up LaTeX commands
-        text = text.replace(/\\newlineeq/g, '=')  // Replace \newlineeq with =
-        text = text.replace(/\\newline/g, ' ')    // Replace \newline with space
+        text = text.replace(/\\newlineeq/g, '=')  // Replace \\newlineeq with =
+        text = text.replace(/\\newline/g, '\\\\')    // Replace \\newline with LaTeX new line
 
         // First split by LaTeX delimiters
         const parts = text.split(/(\$[^$]+\$)/g);
@@ -578,7 +578,7 @@ interface QuestionCardProps {
     showFeedback: boolean;
     isAnswerLoading: boolean;
     selectedMode: 'quiz' | 'lessons';
-    handleAnswer: (answer: string) => Promise<void>;
+    handleAnswer: (answer: string, options?: { sheet_cell: string }) => Promise<void>;
     cleanAnswer: (answer: string) => string;
     feedbackMessage: string;
     correctAnswer: string;
@@ -601,6 +601,7 @@ interface QuestionCardProps {
     recordingFileName?: string;
     subjectName: string;
     setShowFeedback: (show: boolean) => void;
+    isCorrect: boolean;
 }
 
 // Then define the QuestionCard component
@@ -632,8 +633,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     isLoadingLecture,
     recordingFileName,
     subjectName,
-    setShowFeedback
+    setShowFeedback,
+    isCorrect
 }) => {
+    console.log('Question Text:', question?.question);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -782,6 +785,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     question={question.answer_sheet}
                     questionId={question.id}
                     setShowFeedback={setShowFeedback}
+                    handleAnswer={handleAnswer}
+                    isCorrect={isCorrect}
+
                 />
             )}
 
@@ -1122,6 +1128,7 @@ export default function QuizScreen() {
     const [showRelatedQuestions, setShowRelatedQuestions] = useState(false);
     const [totalRelatedQuestions, setTotalRelatedQuestions] = useState(0);
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+    const [remainingQuizzes, setRemainingQuizzes] = useState<number | undefined>(undefined);
     const [topicProgress, setTopicProgress] = useState<{
         total_questions: number;
         viewed_questions: number;
@@ -1143,6 +1150,8 @@ export default function QuizScreen() {
         image: string | null;
         main_topic: string;
     } | null>(null);
+    const [remainingLessons, setRemainingLessons] = useState<number>(0);
+    const [quizLimitReached, setQuizLimitReached] = useState(false);
 
     // Add useEffect to handle topic parameter on mount
     useEffect(() => {
@@ -1177,6 +1186,15 @@ export default function QuizScreen() {
             const response = await getRandomAIQuestion(user.uid, subjectName);
             if (response.status === "OK" && response.question) {
                 setRandomLesson(response);
+            } else if (response.status === "NOK" && response.message === "Daily limit reached") {
+                setQuizLimitReached(true);
+                setRandomLesson(null);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Quiz Limit Reached',
+                    text2: 'You have reached your daily quiz limit. Please try again tomorrow.',
+                    position: 'bottom'
+                });
             } else {
                 console.log('No random lesson available');
                 setRandomLesson(null);
@@ -1184,6 +1202,7 @@ export default function QuizScreen() {
         } catch (error) {
             console.error('Error fetching random lesson:', error);
             setRandomLesson(null);
+            setQuizLimitReached(true);
         }
     };
 
@@ -1327,13 +1346,6 @@ export default function QuizScreen() {
 
             setReportComment('');
 
-            // Log analytics event
-            logAnalyticsEvent('report_issue', {
-                user_id: user?.uid,
-                question_id: currentQuestion?.id
-            });
-
-
         } catch (error) {
             console.error('Error reporting issue:', error);
             Toast.show({
@@ -1367,6 +1379,7 @@ export default function QuizScreen() {
         stopTimer();
         setRecordingFileName('');
         setLectureData(null);
+        setQuizLimitReached(false);
 
         try {
             setIsQuestionLoading(true);
@@ -1389,7 +1402,32 @@ export default function QuizScreen() {
                 url.searchParams.append('topic', currentTopic);
             }
 
+            // If in lessons mode, fetch daily usage first
+            if (selectedMode === 'lessons') {
+                try {
+                    const usageResponse = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user.uid}`);
+                    const usageData = await usageResponse.json();
+                    if (usageData.status === "OK") {
+                        setRemainingLessons(usageData.data.lesson);
+                    }
+                } catch (error) {
+                    setQuizLimitReached(true);
+                    console.error('Error fetching daily usage:', error);
+                }
+            }
+
             const response = await fetch(url.toString());
+
+            if (response.status === 403) {
+                setQuizLimitReached(true);
+                Toast.show({
+                    type: 'error',
+                    text1: 'Quiz Limit Reached',
+                    text2: 'You have reached your daily quiz limit. Please try again tomorrow.',
+                    position: 'bottom'
+                });
+                return;
+            }
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -1534,7 +1572,7 @@ export default function QuizScreen() {
         }
     };
 
-    const handleAnswer = async (answer: string) => {
+    const handleAnswer = async (answer: string, options?: { sheet_cell: string }) => {
         if (!user?.uid || !currentQuestion) return;
 
         // Set flag to indicate answers were submitted
@@ -1545,7 +1583,14 @@ export default function QuizScreen() {
             setIsAnswerLoading(true);
             setSelectedAnswer(answer)
 
-            const response = await checkAnswer(user.uid, currentQuestion.id, answer, duration, "Normal", "");
+            const response = await checkAnswer(
+                user.uid,
+                currentQuestion.id,
+                answer,
+                duration,
+                "Normal",
+                options?.sheet_cell || ""
+            );
 
             // Always award 1 point for correct answers
             const points = response.correct ? 1 : 0;
@@ -1555,6 +1600,7 @@ export default function QuizScreen() {
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
             setCorrectAnswer(response.correctAnswer);
             setRecordingFileName(response.recordingFileName || '');
+            setRemainingQuizzes(response.remaining_quizzes);
 
             // Show first answer bonus modal for first-time correct answers
             if (isFirstAnswer) {
@@ -1624,12 +1670,6 @@ export default function QuizScreen() {
             // Play sound using the new playSound function
             await playSound(response.correct);
 
-            // Log answer submission
-            logAnalyticsEvent('submit_answer', {
-                user_id: user.uid,
-                question_id: currentQuestion.id,
-                is_correct: response.correct,
-            });
 
             // Check if we should show rating prompt after correct answer
             if (response.correct) {
@@ -1764,12 +1804,6 @@ export default function QuizScreen() {
         try {
             setIsLoading(true);
 
-            // Log quiz restart
-            logAnalyticsEvent('restart_quiz', {
-                user_id: user.uid,
-                subject_name: subjectName
-            });
-
             await removeResults(user.uid, subjectName + " " + selectedPaper);
 
             setCurrentQuestion(null);
@@ -1801,12 +1835,6 @@ export default function QuizScreen() {
     const fetchAIExplanation = async (questionId: number) => {
         setIsLoadingExplanation(true);
         try {
-            await logAnalyticsEvent('request_ai_explanation', {
-                questionId,
-                subjectId: currentQuestion?.subject.id,
-                subjectName: currentQuestion?.subject.name,
-                questionType: currentQuestion?.type
-            });
 
             const response = await fetch(
                 `${API_BASE_URL}/question/ai-explanation?question_id=${questionId}`
@@ -1891,13 +1919,6 @@ export default function QuizScreen() {
     const handleFavoriteQuestion = async () => {
         if (!user?.uid || !currentQuestion) return;
 
-        // Log analytics event
-        await logAnalyticsEvent('favorite_question', {
-            question_id: currentQuestion.id,
-            subject_id: currentQuestion.subject.id,
-            subject_name: currentQuestion.subject.name,
-            paper: currentQuestion.year + currentQuestion.term
-        });
 
         // Optimistically update UI
         setIsCurrentQuestionFavorited(true);
@@ -2298,13 +2319,6 @@ export default function QuizScreen() {
                 // Show the first new badge
                 setNewBadge(data.new_badges[0]);
                 setShowBadgeModal(true);
-
-                // Log badge earned event
-                logAnalyticsEvent('badge_earned', {
-                    user_id: user.uid,
-                    badge_id: data.new_badges[0].id,
-                    badge_name: data.new_badges[0].name
-                });
             }
         } catch (error) {
             console.error('Error checking for new badges:', error);
@@ -2586,6 +2600,23 @@ export default function QuizScreen() {
         }
     };
 
+    const fetchDailyUsage = async () => {
+        try {
+            const response = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user?.uid}`);
+            const data = await response.json();
+            if (data.status === "OK") {
+                setRemainingLessons(data.data.lesson);
+            }
+        } catch (error) {
+            console.error('Error fetching daily usage:', error);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedMode === 'lessons') {
+            fetchDailyUsage();
+        }
+    }, [selectedMode]);
 
     // Add useEffect to handle lecture recording
     useEffect(() => {
@@ -2782,13 +2813,15 @@ export default function QuizScreen() {
         );
     }
 
-    if (!currentQuestion && selectedMode === 'quiz' && !parentQuestion && !isRestartModalVisible) {
+    if (!currentQuestion && !parentQuestion && !isRestartModalVisible) {
         return (
             <>
                 <QuizEmptyState
                     onGoToProfile={() => router.push('/profile')}
                     onRestart={() => setIsRestartModalVisible(true)}
                     onGoBack={() => setSelectedPaper(null)}
+                    isQuizLimitReached={quizLimitReached}
+                    mode={selectedMode}
                 />
                 {renderRecordingPlayerModal()}
             </>
@@ -2804,8 +2837,8 @@ export default function QuizScreen() {
                 end={{ x: 0, y: 1 }}
             >
                 <ScrollView
-                    style={styles.container}
                     ref={scrollViewRef}
+                    style={styles.container}
                     testID="quiz-scroll-view"
                 >
                     <SubjectHeader />
@@ -2818,6 +2851,27 @@ export default function QuizScreen() {
                         </View>
                     )}
                     <ThemedView style={styles.content}>
+                        {selectedMode === 'lessons' ? (
+                            <ThemedText style={{
+                                textAlign: 'center',
+                                color: colors.textSecondary,
+                                fontSize: 16,
+                                fontWeight: '600',
+                                marginBottom: 16,
+                            }}>
+                                📚 {remainingLessons} lessons remaining today
+                            </ThemedText>
+                        ) : remainingQuizzes !== undefined && (
+                            <ThemedText style={{
+                                textAlign: 'center',
+                                color: colors.textSecondary,
+                                fontSize: 16,
+                                fontWeight: '600',
+                                marginBottom: 16,
+                            }}>
+                                🎯 {remainingQuizzes} questions remaining
+                            </ThemedText>
+                        )}
                         <QuestionCard
                             question={currentQuestion}
                             selectedAnswer={selectedAnswer}
@@ -2847,6 +2901,7 @@ export default function QuizScreen() {
                             recordingFileName={recordingFileName}
                             subjectName={subjectName}
                             setShowFeedback={setShowFeedback}
+                            isCorrect={isCorrect ?? false}
                         />
                     </ThemedView>
                 </ScrollView>
@@ -2864,6 +2919,7 @@ export default function QuizScreen() {
                     isFromFavorites={isFromFavorites}
                     onNext={handleNext}
                     onGoBack={() => setSelectedPaper(null)}
+                    selectedMode={selectedMode}
                 />
                 <ReportModal
                     isVisible={isReportModalVisible}
@@ -4468,6 +4524,12 @@ const styles = StyleSheet.create({
     progressBar: {
         height: '100%',
         borderRadius: 4,
+    },
+    remainingText: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginBottom: 16,
+        textAlign: 'center',
     },
 });
 

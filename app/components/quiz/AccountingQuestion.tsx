@@ -5,7 +5,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
-import { checkAnswer } from '@/services/api';
 import { createStyles } from './AccountingQuestion.styles';
 
 interface TableCell {
@@ -28,6 +27,8 @@ interface QuizQuestionTextProps {
     question: string;
     questionId: number;
     setShowFeedback: (show: boolean) => void;
+    handleAnswer: (answer: string, options?: { sheet_cell: string }) => Promise<void>;
+    isCorrect: boolean | null;
 }
 
 interface SelectedCell {
@@ -40,20 +41,6 @@ interface SuccessModalProps {
     isVisible: boolean;
     onClose: () => void;
     colors: any;
-}
-
-interface CheckAnswerResponse {
-    status: string;
-    correct: boolean;
-    explanation: string | null;
-    correctAnswer: string;
-    points: number;
-    message: string;
-    lastThreeCorrect: boolean;
-    streak: number;
-    streakUpdated: boolean;
-    subject: string;
-    is_favorited: boolean;
 }
 
 const SuccessModal: React.FC<SuccessModalProps> = ({ isVisible, onClose, colors }) => {
@@ -153,10 +140,22 @@ const SelectOption = ({ option, onSelect, colors, styles }: { option: string; on
     );
 };
 
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
 export const AccountingQuestion = ({
     question,
     questionId,
-    setShowFeedback
+    setShowFeedback,
+    handleAnswer,
+    isCorrect
 }: QuizQuestionTextProps) => {
     const { isDark, colors } = useTheme();
     const [selectedCell, setSelectedCell] = useState<SelectedCell | null>(null);
@@ -174,18 +173,21 @@ export const AccountingQuestion = ({
         return Math.max(minSize, baseSize - (indentationLevel * sizeStep));
     };
 
-    // Parse the JSON string into table data
+    // Parse the JSON string into table data and shuffle options
     const tableData: TableRow[] = React.useMemo(() => {
         try {
             const parsed = JSON.parse(question);
-            // Calculate max indentation level
-            const maxIndentation = Math.max(...parsed.map(row => {
-                if (typeof row.A === 'string') {
-                    return (row.A.match(/^\s*/) || [''])[0].length;
-                }
-                return 0;
-            }));
-            return parsed;
+            // Shuffle options for each editable cell
+            return parsed.map((row: TableRow) => {
+                const newRow = { ...row };
+                Object.keys(newRow).forEach(key => {
+                    const cell = newRow[key as keyof TableRow];
+                    if (typeof cell === 'object' && cell.isEditable && cell.options) {
+                        cell.options = shuffleArray(cell.options);
+                    }
+                });
+                return newRow;
+            });
         } catch (error) {
             console.error('Failed to parse question JSON:', error);
             return [];
@@ -248,23 +250,6 @@ export const AccountingQuestion = ({
         };
     }, []);
 
-    const playSound = async (isCorrect: boolean) => {
-        try {
-            // Check if sound is enabled in AsyncStorage
-            const soundEnabled = await AsyncStorage.getItem('soundEnabled');
-
-            // Only play sound if it's enabled (null means default which is true)
-            if (soundEnabled === null || soundEnabled === 'true') {
-                const soundToPlay = isCorrect ? correctSound.current : incorrectSound.current;
-                if (soundToPlay) {
-                    await soundToPlay.replayAsync();
-                }
-            }
-        } catch (error) {
-            console.log('Error playing sound:', error);
-        }
-    };
-
     const handleCellPress = (rowIndex: number, column: string, cell: TableCell) => {
         if (cell.isEditable) {
             setSelectedCell({ rowIndex, column, cell });
@@ -274,28 +259,19 @@ export const AccountingQuestion = ({
     const handleOptionSelect = async (option: string) => {
         if (selectedCell) {
             try {
-                const userUID = await AsyncStorage.getItem('userUID');
-                if (!userUID) {
-                    console.error('No user UID found');
-                    return;
-                }
-
                 // Convert row index to 1-based and format cell reference (e.g., A1, B2, C3)
                 const cellReference = `${selectedCell.column}${selectedCell.rowIndex + 1}`;
 
-                const response = await checkAnswer(
-                    userUID,
-                    questionId,
-                    option,
-                    0,
-                    "Normal",
-                    cellReference
-                ) as CheckAnswerResponse;
+                // Call handleAnswer with the option and sheet_cell
+                await handleAnswer(option, { sheet_cell: cellReference });
 
                 const updatedTableData = [...tableData];
                 const cell = updatedTableData[selectedCell.rowIndex][selectedCell.column as keyof TableRow] as TableCell;
                 cell.value = option;
-                cell.isCorrect = response.correct;
+                // Only set isCorrect if it's not null
+                if (isCorrect !== null) {
+                    cell.isCorrect = isCorrect;
+                }
                 cell.isEditable = false; // Disable after any selection
 
                 // Log remaining cells after selection
@@ -320,11 +296,9 @@ export const AccountingQuestion = ({
                     setShowFeedback(true);
                 }
 
-                // Play appropriate sound
-                await playSound(cell.isCorrect);
                 setSelectedCell(null);
             } catch (error) {
-                console.error('Error checking answer:', error);
+                console.error('Error handling answer:', error);
                 // Handle error appropriately
             }
         }

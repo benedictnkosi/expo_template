@@ -6,12 +6,17 @@ export function getSubjectIcon(subjectName: string) {
         'Geography': require('@/assets/images/subjects/geography.png'),
         'Life Sciences': require('@/assets/images/subjects/life-science.png'),
         'mathematics': require('@/assets/images/subjects/mathematics.png'),
+        'technical mathematics': require('@/assets/images/subjects/technical-mathematics.png'),
+        'technical sciences': require('@/assets/images/subjects/technical-sciences.png'),
         'Physical Sciences': require('@/assets/images/subjects/physics.png'),
         'Mathematical Literacy': require('@/assets/images/subjects/maths.png'),
         'History': require('@/assets/images/subjects/history.png'),
         'Life orientation': require('@/assets/images/subjects/life-orientation.png'),
         'Tourism': require('@/assets/images/subjects/tourism.png'),
         'Accounting': require('@/assets/images/subjects/accounting.png'),
+        'Consumer Studies': require('@/assets/images/subjects/consumer-studies.png'),
+        'Religion Studies': require('@/assets/images/subjects/religion-studies.png'),
+        'Agricultural Management Practices': require('@/assets/images/subjects/agricultural-management-practices.png'),
         'default': require('@/assets/images/subjects/mathematics.png')
     };
     return icons[subjectName as keyof typeof icons] || icons.default;

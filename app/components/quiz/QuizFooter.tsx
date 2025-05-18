@@ -10,12 +10,16 @@ interface QuizFooterProps {
     isFromFavorites: boolean;
     onNext: () => void;
     onGoBack: () => void;
+    remainingQuizzes?: number;
+    selectedMode: 'quiz' | 'lessons';
 }
 
-export function QuizFooter({ 
+export function QuizFooter({
     isFromFavorites,
     onNext,
-    onGoBack
+    onGoBack,
+    remainingQuizzes,
+    selectedMode
 }: QuizFooterProps) {
     const { colors, isDark } = useTheme();
 
@@ -26,7 +30,7 @@ export function QuizFooter({
             }]}
             testID="quiz-footer"
         >
-            {!isFromFavorites && (
+            <View style={styles.footerRow}>
                 <LinearGradient
                     colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
                     start={{ x: 0, y: 0 }}
@@ -39,36 +43,44 @@ export function QuizFooter({
                         testID="next-question-button"
                     >
                         <Ionicons name="play" size={20} color="#FFFFFF" />
-                        <ThemedText style={styles.footerButtonText}>🎯 Keep Going!</ThemedText>
+                        <View style={styles.buttonTextContainer}>
+                            <ThemedText style={styles.footerButtonText}>
+                                {selectedMode === 'lessons' ? '📚 Next Lesson' : '🎯 Keep Going!'}
+                            </ThemedText>
+                        </View>
                     </TouchableOpacity>
                 </LinearGradient>
-            )}
 
-            <LinearGradient
-                colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.footerButton}
-            >
-                <TouchableOpacity
-                    style={styles.buttonContent}
-                    onPress={onGoBack}
-                    testID="home-button"
+                <LinearGradient
+                    colors={isDark ? ['#EA580C', '#C2410C'] : ['#F59E0B', '#F97316']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.footerButton}
                 >
-                    <Ionicons name="menu-outline" size={20} color="#FFFFFF" />
-                    <ThemedText style={styles.footerButtonText}>Menu</ThemedText>
-                </TouchableOpacity>
-            </LinearGradient>
+                    <TouchableOpacity
+                        style={styles.buttonContent}
+                        onPress={onGoBack}
+                        testID="home-button"
+                    >
+                        <Ionicons name="menu-outline" size={20} color="#FFFFFF" />
+                        <ThemedText style={styles.footerButtonText}>Menu</ThemedText>
+                    </TouchableOpacity>
+                </LinearGradient>
+            </View>
         </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
     footer: {
-        flexDirection: 'row',
-        gap: 16,
         padding: 16,
         paddingBottom: 24,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'relative',
     },
     footerButton: {
         flex: 1,
@@ -79,6 +91,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        marginHorizontal: 8,
     },
     buttonContent: {
         flexDirection: 'row',
@@ -87,9 +100,28 @@ const styles = StyleSheet.create({
         gap: 8,
         padding: 16,
     },
+    buttonTextContainer: {
+        alignItems: 'center',
+    },
     footerButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    remainingQuizzesOverlay: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        textAlign: 'center',
+        color: '#fff',
+        fontSize: 14,
+        top: '50%',
+        transform: [{ translateY: -12 }],
+        zIndex: 2,
+        fontWeight: '500',
+        opacity: 0.95,
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
 }); 

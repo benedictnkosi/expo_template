@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Dimensions, Platform, Share, TouchableOpacity } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
@@ -6,6 +6,7 @@ import { AudioPlayer } from '@/components/AudioPlayer';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LectureRecording {
     id: string;
@@ -21,11 +22,50 @@ interface RecordingPlayerModalProps {
     subjectName: string;
 }
 
+interface DailyUsage {
+    quiz: number;
+    lesson: number;
+    podcast: number;
+    date: string;
+}
+
 const { width } = Dimensions.get('window');
 
 export function RecordingPlayerModal({ isVisible, onClose, recording, subjectName }: RecordingPlayerModalProps) {
     const { colors, isDark } = useTheme();
+    const { user } = useAuth();
     const styles = createStyles(isDark);
+    const audioPlayerRef = useRef<{ playSound: () => Promise<void> }>(null);
+    const [remainingPodcasts, setRemainingPodcasts] = useState<number | null>(null);
+    const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+
+    useEffect(() => {
+        if (isVisible && user?.uid) {
+            fetchDailyUsage();
+        }
+    }, [isVisible, user?.uid]);
+
+    const fetchDailyUsage = async () => {
+        if (!user?.uid) return;
+        setIsLoadingUsage(true);
+        try {
+            const response = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user.uid}`);
+            const data = await response.json();
+            if (data.status === "OK") {
+                setRemainingPodcasts(data.data.podcast);
+            }
+        } catch (error) {
+            console.error('Error fetching daily usage:', error);
+        } finally {
+            setIsLoadingUsage(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isVisible && audioPlayerRef.current && recording && remainingPodcasts !== 0) {
+            audioPlayerRef.current.playSound();
+        }
+    }, [isVisible, recording, remainingPodcasts]);
 
     if (!recording) return null;
 
@@ -35,7 +75,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     const handleShare = async () => {
         try {
             const cleanSubjectName = subjectName.replace(/P[12]/g, '').trim();
-            const shareUrl = `https://examquiz.co.za/quiz?lectureId=${recording.id}&subjectName=${encodeURIComponent(cleanSubjectName)}`;
+            const shareUrl = `https://examquiz.co.za/quiz?lectureId=${recording.id}&subjectName=${encodeURIComponent(cleanSubjectName)}&uid=${user?.uid}`;
             await Share.share({
                 message: `Check out this podcast on ExamQuiz:\n\n${recording.lecture_name}\n\nDownload ExamQuiz to listen to more educational podcasts!\n\nView this podcast directly: ${shareUrl}`,
                 title: recording.lecture_name,
@@ -66,10 +106,33 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
                 </View>
 
                 <View style={styles.content}>
+                    {remainingPodcasts !== null && (
+                        <View style={[styles.usageContainer, {
+                            backgroundColor: remainingPodcasts === 0
+                                ? (isDark ? 'rgba(234, 179, 8, 0.1)' : '#FEF3C7')
+                                : (isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6'),
+                            borderColor: remainingPodcasts === 0
+                                ? (isDark ? 'rgba(234, 179, 8, 0.3)' : '#FCD34D')
+                                : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#E5E7EB'),
+                        }]}>
+
+                            <ThemedText style={[styles.usageText, {
+                                color: remainingPodcasts === 0
+                                    ? (isDark ? '#FCD34D' : '#D97706')
+                                    : (isDark ? colors.text : '#4B5563')
+                            }]}>
+                                {remainingPodcasts === 0
+                                    ? "⚠️ You've reached your daily podcast limit"
+                                    : `⚠️ ${remainingPodcasts} podcasts remaining today`}
+                            </ThemedText>
+                        </View>
+                    )}
+
                     <TouchableOpacity
                         style={[styles.shareButton, {
                             backgroundColor: isDark ? colors.surface : '#F3F4F6',
                             borderColor: isDark ? colors.border : '#E5E7EB',
+                            marginTop: 16,
                             marginBottom: 16,
                         }]}
                         onPress={handleShare}
@@ -86,8 +149,10 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
 
                     <View style={styles.playerContainer}>
                         <AudioPlayer
+                            ref={audioPlayerRef}
                             audioUrl={audioUrl}
                             title={recording.lecture_name}
+                            disabled={remainingPodcasts === 0}
                         />
                     </View>
                 </View>
@@ -145,6 +210,20 @@ function createStyles(isDark: boolean) {
             alignSelf: 'center',
         },
         shareButtonText: {
+            fontSize: 14,
+            fontWeight: '500',
+        },
+        usageContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 8,
+            gap: 8,
+            borderWidth: 1,
+            alignSelf: 'center',
+        },
+        usageText: {
             fontSize: 14,
             fontWeight: '500',
         },

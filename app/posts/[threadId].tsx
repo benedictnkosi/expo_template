@@ -884,17 +884,6 @@ export default function ThreadDetailScreen() {
             // Send message
             const docRef = await addDoc(collection(db, 'messages'), messageData);
 
-            // Log analytics event for new message
-            await logAnalyticsEvent('message_sent', {
-                message_id: docRef.id,
-                thread_id: threadId,
-                subject_name: thread?.subjectName,
-                has_attachment: !!attachment,
-                attachment_type: attachment?.type,
-                is_reply: !!replyingTo,
-                user_id: user.uid
-            });
-
             // Enable notifications for this thread if not already enabled
             const pushToken = await getStoredPushToken();
             if (pushToken) {

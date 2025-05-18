@@ -98,18 +98,18 @@ export function FeedbackContainer({
                     </ThemedText>
 
 
-                    {cleanAnswer(correctAnswer).includes('$') ? (
+                    {correctAnswer.includes('$') ? (
                         <View style={[styles.latexContainer, {
                             backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF'
                         }]}>
-                            <KaTeX latex={cleanAnswer(correctAnswer).replace(/\$/g, '')} />
+                            <KaTeX latex={correctAnswer.replace(/\$/g, '')} />
                         </View>
                     ) : (
                         <ThemedText
                             style={styles.correctAnswerText}
                             testID="correct-answer-text"
                         >
-                            {cleanAnswer(correctAnswer)}
+                            {correctAnswer}
                         </ThemedText>
                     )}
 
@@ -153,11 +153,11 @@ export function FeedbackContainer({
                                 ✅ Explanation
                             </ThemedText>
 
-                            {cleanAnswer(currentQuestion.explanation).includes('$') ? (
+                            {(currentQuestion.explanation).includes('$') ? (
                                 <View style={[styles.latexContainer, {
                                     backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF'
                                 }]}>
-                                    <KaTeX latex={cleanAnswer(currentQuestion.explanation).replace(/\$/g, '')} />
+                                    <KaTeX latex={(currentQuestion.explanation).replace(/\$/g, '')} />
                                 </View>
                             ) : (
                                 <ThemedText

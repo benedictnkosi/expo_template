@@ -86,7 +86,7 @@ export default function Login() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <ThemedText style={styles.title}>Exam Quiz 👋</ThemedText>
+            <ThemedText style={styles.title}>Dimpo Learning App 👋</ThemedText>
             <ThemedText style={styles.subtitle}>Ready to ace those exams? Let's get started! 🚀</ThemedText>
           </View>
 
@@ -138,7 +138,7 @@ export default function Login() {
 
             <View style={styles.registerContainer}>
               <ThemedText style={styles.helperText}>
-                New to Exam Quiz? Join thousands of students acing their exams! 🎯
+                New to Dimpo Learning App? Join thousands of students acing their exams! 🎯
               </ThemedText>
               <TouchableOpacity
                 style={styles.createAccountButton}

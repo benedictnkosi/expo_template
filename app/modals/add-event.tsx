@@ -193,6 +193,7 @@ export default function AddEventModal() {
             return;
         }
 
+        // Check if start time and end time are the same
         const formattedDate = format(selectedDate, 'yyyy-MM-dd');
         const newEvent = {
             title,
@@ -201,6 +202,12 @@ export default function AddEventModal() {
             endTime: format(endTime, 'HH:mm'),
             reminder: reminderEnabled
         };
+
+        if (newEvent.startTime === newEvent.endTime) {
+            setErrorMessage('Start time and end time cannot be the same. Please choose different times.');
+            setErrorVisible(true);
+            return;
+        }
 
         try {
             // First get current events
@@ -263,16 +270,6 @@ export default function AddEventModal() {
 
             const data = await response.json();
             if (data.status === 'OK') {
-                // Log the new plan creation
-                await analytics.track('create_plan', {
-                    title,
-                    subject: finalSubject,
-                    date: formattedDate,
-                    startTime: format(startTime, 'HH:mm'),
-                    endTime: format(endTime, 'HH:mm'),
-                    reminder: reminderEnabled
-                });
-
                 Toast.show({
                     type: 'success',
                     text1: 'Success',

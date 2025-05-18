@@ -35,7 +35,7 @@ export function Header({ learnerInfo }: HeaderProps) {
     <View style={styles.header}>
       <View style={styles.greeting}>
         <ThemedText style={styles.welcomeText} testID='welcome-text'>
-          <ThemedText style={styles.appName}>📚 Exam Quiz</ThemedText> <ThemedText style={styles.emoji}>✨</ThemedText>
+          <ThemedText style={styles.appName}>📚 Dimpo Learning App </ThemedText> <ThemedText style={styles.emoji}>✨</ThemedText>
         </ThemedText>
         <ThemedText style={styles.subtitle}>Explore the Joy of Learning! 🎓</ThemedText>
       </View>

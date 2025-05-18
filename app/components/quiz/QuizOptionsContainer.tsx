@@ -123,9 +123,9 @@ export function QuizOptionsContainer({
                                     <ActivityIndicator size="small" color={colors.primary} />
                                 </View>
                             ) : (
-                                cleanAnswer(value).includes('$') ? (
+                                (value).includes('$') ? (
                                     <KaTeX
-                                        latex={cleanAnswer(value).replace(/\$/g, '')}
+                                        latex={(value).replace(/\$/g, '')}
                                         isOption={true}
                                     />
                                 ) : (
