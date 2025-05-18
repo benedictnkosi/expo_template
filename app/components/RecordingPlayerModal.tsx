@@ -122,7 +122,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
                                     : (isDark ? colors.text : '#4B5563')
                             }]}>
                                 {remainingPodcasts === 0
-                                    ? "⚠️ You've reached your daily podcast limit"
+                                    ? "⚠️ You've reached your daily podcast limit. Try our quizzes and lessons to continue learning!"
                                     : `⚠️ ${remainingPodcasts} podcasts remaining today`}
                             </ThemedText>
                         </View>
