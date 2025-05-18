@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { analytics } from './analytics';
 import { app } from '@/config/firebase';
+import { router } from 'expo-router';
 
 // Configure how notifications should be handled when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -13,6 +14,60 @@ Notifications.setNotificationHandler({
         shouldSetBadge: true,
     }),
 });
+
+// Deep linking types
+export interface NotificationData {
+    threadId?: string;
+    subjectName?: string;
+    badgeName?: string;
+    learnerUid?: string;
+    learnerName?: string;
+    followerUid?: string;
+    screen?: string;
+    data?: any;
+    [key: string]: any;
+}
+
+export interface DeepLinkConfig {
+    path: '/posts/[threadId]' | '/report/[uid]' | '/(tabs)/social' | '/_auth' | '/constants' | '/forgot-password' | '/threads/[id]' | string;
+    params?: Record<string, string>;
+}
+
+// Deep link handler
+export function handleNotificationDeepLink(data: NotificationData): DeepLinkConfig | null {
+    // Handle nested data structure
+    const notificationData = data.data || data;
+
+    if (notificationData.threadId) {
+        return {
+            path: `/posts/${notificationData.threadId}?subjectName=${encodeURIComponent(notificationData.subjectName || '')}`,
+        };
+    }
+
+    if (notificationData.badgeName) {
+        return {
+            path: '/report/[uid]',
+            params: {
+                uid: notificationData.learnerUid || '',
+                name: notificationData.learnerName || ''
+            }
+        };
+    }
+
+    if (notificationData.followerUid) {
+        return {
+            path: '/(tabs)/social'
+        };
+    }
+
+    if (notificationData.screen) {
+        return {
+            path: notificationData.screen as DeepLinkConfig['path']
+        };
+    }
+
+    return null;
+}
 
 export async function registerForPushNotificationsAsync() {
     try {

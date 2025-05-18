@@ -12,7 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { app } from '@/config/firebase';
 import * as Notifications from 'expo-notifications';
-import { registerForPushNotificationsAsync } from '@/services/notifications';
+import { registerForPushNotificationsAsync, handleNotificationDeepLink } from '@/services/notifications';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { styles } from '@/styles/global';
@@ -127,6 +127,8 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
+    console.log('[Notifications] useEffect');
+
     if (loaded) {
       SplashScreen.hideAsync();
     }
@@ -160,30 +162,16 @@ export default function RootLayout() {
         responseListener.current = Notifications.addNotificationResponseReceivedListener(
           (response: Notifications.NotificationResponse) => {
             const data = response.notification.request.content.data;
-            console.log('[Notifications] Received notification response:', data);
+            console.log('[Notifications] Full notification response:', JSON.stringify(response, null, 2));
+            console.log('[Notifications] Notification data:', JSON.stringify(data, null, 2));
 
-            // Handle notification tap
-            if (data?.threadId) {
-              // Navigate to the specific thread
-              router.push({
-                pathname: '/posts/[threadId]',
-                params: {
-                  threadId: data.threadId,
-                  subjectName: data.subjectName || ''
-                }
-              });
-            } else if (data?.badgeName) {
-              router.push({
-                pathname: '/report/[uid]',
-                params: { uid: data.learnerUid, name: data.learnerName }
-              });
-            }
-            else if (data?.followerUid) {
-              router.push({
-                pathname: '/(tabs)/social',
-              });
-            } else if (data?.screen) {
-              router.push(data.screen);
+            // Handle deep linking
+            const deepLink = handleNotificationDeepLink(data);
+            console.log('[Notifications] Generated deep link:', JSON.stringify(deepLink, null, 2));
+
+            if (deepLink) {
+              console.log('[Notifications] Navigating to:', deepLink.path, 'with params:', deepLink.params);
+              router.push(deepLink.path as any, deepLink.params);
             }
           }
         );
