@@ -1,5 +1,5 @@
 export default {
-  name: 'Dimpo Learning App',
+  name: 'Dimpo',
   slug: 'exam-quiz',
   version: '2.8.7',
   orientation: 'portrait',

@@ -21,7 +21,7 @@ use_modular_headers!
 
   use_frameworks! :linkage => :static
 
-target 'ExamQuiz' do
+target 'Dimpo' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'

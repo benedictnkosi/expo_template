@@ -278,26 +278,30 @@ export function BookQuiz({ chapterId, startTime, onClose, wordCount }: BookQuizP
 
     if (showResults) {
         const percentage = (score / quiz.quiz.length) * 100;
-        let resultEmoji, resultMessage, resultColor, shouldRetry;
+        let resultEmoji, resultMessage, resultColor, shouldRetry, resultSubText;
 
         if (percentage >= 90) {
             resultEmoji = '🎉';
-            resultMessage = 'Outstanding! You\'ve really connected with the story!';
+            resultMessage = 'Amazing! You and Dimpo are totally in sync with the story!';
+            resultSubText = 'You caught every detail — like a true story explorer!';
             resultColor = '#10B981'; // Emerald
             shouldRetry = false;
         } else if (percentage >= 75) {
             resultEmoji = '🌟';
-            resultMessage = 'Great job! You\'ve captured the essence of the chapter!';
+            resultMessage = "Great work! You're catching all the key moments!";
+            resultSubText = "Dimpo's impressed. You're really following the journey!";
             resultColor = '#3B82F6'; // Blue
             shouldRetry = false;
         } else if (percentage >= 60) {
             resultEmoji = '👍';
-            resultMessage = 'Good understanding! Keep exploring the story!';
+            resultMessage = "Nice try! You're getting the hang of it — keep going!";
+            resultSubText = "Some twists might've slipped by — read closely next time!";
             resultColor = '#F59E0B'; // Amber
             shouldRetry = true;
         } else {
-            resultEmoji = '💪';
-            resultMessage = 'Keep reading! The story has more to reveal!';
+            resultEmoji = '📖';
+            resultMessage = "Let's dive back into the story together. Dimpo believes in you!";
+            resultSubText = "Sometimes it takes a second read — every hero learns with time!";
             resultColor = '#EF4444'; // Red
             shouldRetry = true;
         }
@@ -309,14 +313,16 @@ export function BookQuiz({ chapterId, startTime, onClose, wordCount }: BookQuizP
                     style={styles.gradientBackground}
                 />
                 <Text style={styles.resultEmoji}>{resultEmoji}</Text>
-                <Text style={[styles.quizTitle, { color: colors.primary }]}>Quiz Results</Text>
+                <Text style={[styles.quizTitle, { color: colors.primary }]}>
+                    {resultEmoji} Quiz Results
+                </Text>
                 <View style={styles.scoreContainer}>
                     <Text style={[styles.scoreText, { color: resultColor }]}>
                         {score} / {quiz.quiz.length}
                     </Text>
                 </View>
                 <Text style={[styles.resultMessage, { color: isDark ? '#E5E7EB' : '#374151' }]}>
-                    {resultMessage}
+                    {resultEmoji} {resultMessage}
                 </Text>
                 {shouldRetry && (
                     <Text style={[styles.retryMessage, { color: colors.textSecondary }]}>

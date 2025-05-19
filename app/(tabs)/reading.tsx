@@ -76,6 +76,18 @@ export default function ReadingScreen() {
         AsyncStorage.setItem(FONT_SIZE_KEY, String(newSize)).catch(() => { });
     }
 
+    // Helper to format time until publish for next chapter
+    function getTimeUntil(dateString: string) {
+        const publishDate = new Date(dateString);
+        const now = new Date();
+        const diffMs = publishDate.getTime() - now.getTime();
+        if (diffMs <= 0) return null;
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        const minutes = Math.ceil((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+        return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    }
+
     // Extract loadChapter function to be reusable
     const loadChapter = useCallback(async () => {
         if (!user?.uid) return;
@@ -85,25 +97,22 @@ export default function ReadingScreen() {
                 getLearnerStats(user.uid)
             ]);
 
+            const mergedChapterData = {
+                ...data,
+                streak: stats.streak,
+                readingPoints: stats.readingPoints,
+                stats: stats.stats,
+                nextLevelWPM: stats.nextLevelWPM,
+                nextLevelNumber: stats.nextLevelNumber,
+                promotionProgress: stats.promotionProgress,
+                nextChapter: data.nextChapter
+            };
+
             if (data.status === 'OK' && data.chapter === null) {
                 setNoMoreChapters(true);
-                setChapterData({
-                    ...data,
-                    streak: stats.streak,
-                    readingPoints: stats.readingPoints,
-                    stats: stats.stats,
-                    nextLevelWPM: stats.nextLevelWPM,
-                    nextLevelNumber: stats.nextLevelNumber
-                });
+                setChapterData(mergedChapterData);
             } else {
-                setChapterData({
-                    ...data,
-                    streak: stats.streak,
-                    readingPoints: stats.readingPoints,
-                    stats: stats.stats,
-                    nextLevelWPM: stats.nextLevelWPM,
-                    nextLevelNumber: stats.nextLevelNumber
-                });
+                setChapterData(mergedChapterData);
             }
         } catch (error) {
             console.error('Error loading chapter:', error);
@@ -156,7 +165,10 @@ export default function ReadingScreen() {
         }
     }, [showPastChapters]);
 
-
+    // Calculate currentWPM for conditional rendering
+    const currentWPM = chapterData?.stats?.speeds?.length
+        ? chapterData.stats.speeds[chapterData.stats.speeds.length - 1].speed
+        : 0;
 
     const formatTimeUntilPublish = (timeUntilPublish: number) => {
         const hoursUntilPublish = Math.floor(timeUntilPublish / (1000 * 60 * 60));
@@ -337,35 +349,43 @@ export default function ReadingScreen() {
                                     <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Chapters</Text>
                                 </View>
                             </View>
-                            <View style={[styles.wpmProgressContainer, { backgroundColor: isDark ? '#23263A' : '#fff', borderColor: isDark ? '#23263A' : '#E5E7EB' }]}>
-                                <View style={styles.wpmProgressHeader}>
-                                    <Text style={[styles.wpmProgressTitle, { color: colors.text }]}>Level Up Progress</Text>
-                                    <Text style={[styles.wpmProgressTarget, { color: colors.textSecondary }]}>
-                                        Level {chapterData?.nextLevelNumber}: {chapterData?.nextLevelWPM} WPM
-                                    </Text>
-                                </View>
-                                <View style={styles.wpmProgressBarContainer}>
-                                    <View
-                                        style={[
-                                            styles.wpmProgressBar,
-                                            {
-                                                width: `${Math.min(100, (chapterData?.stats?.speeds?.[chapterData.stats.speeds.length - 1]?.speed || 0) / (chapterData?.nextLevelWPM || 100) * 100)}%`,
-                                                backgroundColor: '#7C3AED'
-                                            }
-                                        ]}
-                                    />
-                                </View>
-                                <View style={styles.wpmProgressFooter}>
-                                    <View style={styles.wpmProgressInfo}>
-                                        <Text style={[styles.wpmProgressCurrent, { color: colors.textSecondary }]}>
-                                            Current Speed: {chapterData?.stats?.speeds?.[chapterData.stats.speeds.length - 1]?.speed || 0} WPM
-                                        </Text>
-                                        <Text style={[styles.wpmProgressRemaining, { color: colors.textSecondary }]}>
-                                            {Math.max(0, (chapterData?.nextLevelWPM || 0) - (chapterData?.stats?.speeds?.[chapterData.stats.speeds.length - 1]?.speed || 0))} WPM to Level {chapterData?.nextLevelNumber}
-                                        </Text>
+                            {/* Only show the level up card if currentWPM is a positive number */}
+                            {currentWPM > 0 && (
+                                <>
+                                    <View style={[styles.wpmProgressContainer, { backgroundColor: isDark ? '#23263A' : '#fff', borderColor: isDark ? '#23263A' : '#E5E7EB' }]}>
+                                        <View style={styles.wpmProgressHeader}>
+                                            <Text style={[styles.wpmProgressTitle, { color: colors.text }]}>Next Level</Text>
+                                            <Text style={[styles.wpmProgressTarget, { color: colors.textSecondary }]}>
+                                                Level {chapterData?.nextLevelNumber}: {chapterData?.nextLevelWPM} WPM
+                                            </Text>
+                                        </View>
+                                        <View style={styles.wpmProgressBarContainer}>
+                                            <View
+                                                style={[
+                                                    styles.wpmProgressBar,
+                                                    {
+                                                        width: `${Math.min(100, currentWPM / (chapterData?.nextLevelWPM || 100) * 100)}%`,
+                                                        backgroundColor: '#7C3AED'
+                                                    }
+                                                ]}
+                                            />
+                                        </View>
+                                        <View style={styles.wpmProgressFooter}>
+                                            <View style={styles.wpmProgressInfo}>
+                                                <Text style={[styles.wpmProgressCurrent, { color: colors.textSecondary }]}>
+                                                    Current Speed: {currentWPM} WPM
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        {chapterData?.promotionProgress && (
+                                            <Text style={[styles.chapterProgressRemaining, { color: colors.textSecondary, marginTop: 12 }]}>
+                                                {chapterData.promotionProgress.chaptersRemaining} chapter{chapterData.promotionProgress.chaptersRemaining !== 1 ? 's' : ''} until Level {chapterData.nextLevelNumber}
+                                            </Text>
+                                        )}
                                     </View>
-                                </View>
-                            </View>
+                                    <Text style={[styles.unlockNote, { color: colors.textSecondary }]}>🔓 Next chapter unlocks after you score 100% on the chapter quiz!</Text>
+                                </>
+                            )}
                             {chapterData?.stats?.speeds && chapterData.stats.speeds.length >= 3 && (
                                 <View style={styles.graphContainer}>
                                     <ReadingSpeedGraph speeds={chapterData.stats.speeds.map(speed => ({
@@ -395,6 +415,24 @@ export default function ReadingScreen() {
                                         />
                                     ))}
                                 </View>
+                                {chapterData?.promotionProgress && (
+                                    <View style={styles.promotionProgressContainer}>
+                                        <Text style={[styles.promotionProgressText, { color: colors.textSecondary }]}>
+                                            {chapterData.promotionProgress.chaptersRemaining} chapter{chapterData.promotionProgress.chaptersRemaining !== 1 ? 's' : ''} until Level {chapterData.nextLevelNumber}
+                                        </Text>
+                                        <View style={styles.promotionProgressBar}>
+                                            <View
+                                                style={[
+                                                    styles.promotionProgressFill,
+                                                    {
+                                                        width: `${(chapterData.promotionProgress.chaptersCompleted / chapterData.promotionProgress.chaptersRequired) * 100}%`,
+                                                        backgroundColor: '#7C3AED'
+                                                    }
+                                                ]}
+                                            />
+                                        </View>
+                                    </View>
+                                )}
                             </View>
                             <Pressable
                                 style={({ pressed }) => [
@@ -435,6 +473,28 @@ export default function ReadingScreen() {
                                     </Text>
                                 </LinearGradient>
                             </Pressable>
+
+                            {/* After the unlock note, show the next chapter card if available */}
+                            {chapterData?.nextChapter && (
+                                <View style={[styles.nextChapterCard, { backgroundColor: isDark ? '#23263A' : '#fff' }]}>
+                                    <Text style={[styles.nextChapterLabel, { color: colors.textSecondary }]}>
+                                        Next Chapter
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        {chapterData.nextChapter.publishDate && !getTimeUntil(chapterData.nextChapter.publishDate) && (
+                                            <Ionicons name="lock-closed" size={18} color={colors.primary} />
+                                        )}
+                                        <Text style={[styles.nextChapterTitle, { color: colors.text }]}>
+                                            {chapterData.nextChapter.chapterName}
+                                        </Text>
+                                    </View>
+                                    {chapterData.nextChapter.publishDate && getTimeUntil(chapterData.nextChapter.publishDate) && (
+                                        <Text style={[styles.nextChapterDrop, { color: colors.textSecondary }]}>
+                                            Dropping in {getTimeUntil(chapterData.nextChapter.publishDate)} ⏰
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
                             <Pressable
                                 style={({ pressed }) => [
                                     styles.pastChaptersButton,
@@ -532,7 +592,7 @@ export default function ReadingScreen() {
                                             style={styles.readAgainGradient}
                                         >
                                             <Text style={styles.readAgainButtonText}>
-                                                Read Again 
+                                                Read Again
                                             </Text>
                                         </LinearGradient>
                                     </Pressable>
@@ -733,7 +793,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     pastChaptersButton: {
-        marginTop: 8,
+        marginTop: 24,
         padding: 8,
         borderRadius: 12,
         backgroundColor: 'rgba(120,120,140,0.10)',
@@ -949,5 +1009,94 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
         opacity: 0.8,
+    },
+    promotionProgressContainer: {
+        width: '100%',
+        marginTop: 12,
+        alignItems: 'center',
+        gap: 8,
+    },
+    promotionProgressText: {
+        fontSize: 14,
+        fontWeight: '500',
+        textAlign: 'center',
+    },
+    promotionProgressBar: {
+        width: '100%',
+        height: 6,
+        backgroundColor: 'rgba(120,120,140,0.10)',
+        borderRadius: 3,
+        overflow: 'hidden',
+    },
+    promotionProgressFill: {
+        height: '100%',
+        borderRadius: 3,
+        transitionProperty: 'width',
+        transitionDuration: '200ms',
+    },
+    divider: {
+        height: 1,
+        backgroundColor: 'rgba(120,120,140,0.18)',
+        marginVertical: 16,
+    },
+    chapterProgressSection: {
+        gap: 8,
+    },
+    chapterProgressTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    chapterProgressBarContainer: {
+        height: 8,
+        backgroundColor: 'rgba(120,120,140,0.10)',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    chapterProgressBar: {
+        height: '100%',
+        borderRadius: 4,
+        transitionProperty: 'width',
+        transitionDuration: '200ms',
+    },
+    chapterProgressText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    chapterProgressRemaining: {
+        fontSize: 13,
+        fontWeight: '500',
+        opacity: 0.8,
+    },
+    unlockNote: {
+        fontSize: 13,
+        fontWeight: '500',
+        textAlign: 'center',
+        marginTop: 10,
+        opacity: 0.85,
+    },
+    nextChapterCard: {
+        marginTop: 18,
+        borderRadius: 14,
+        padding: 14,
+        alignItems: 'flex-start',
+        gap: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(120,120,140,0.10)',
+        width: '100%',
+        maxWidth: '100%',
+    },
+    nextChapterTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    nextChapterDrop: {
+        fontSize: 14,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    nextChapterLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
     },
 }); 

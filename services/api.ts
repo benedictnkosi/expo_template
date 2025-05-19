@@ -44,6 +44,17 @@ export interface ChapterResponse {
       chapterNumber: number;
     }[];
   };
+  promotionProgress?: {
+    chaptersCompleted: number;
+    chaptersRequired: number;
+    chaptersRemaining: number;
+  };
+  nextChapter?: {
+    id: number;
+    chapterName: string;
+    status: string;
+    publishDate: string;
+  };
 }
 
 export async function getNextChapter(learnerUid: string): Promise<ChapterResponse> {
@@ -101,12 +112,15 @@ export async function checkAnswer(
     }
   );
 
+  // Only read the response body once
+  const responseBody = await response.json();
+  console.log('responseBody', responseBody);
+
   if (!response.ok) {
-    throw new Error('Failed to check answer');
+    throw new Error('Failed to check answer' + response.statusText);
   }
 
-  const data = await response.json();
-  return data;
+  return responseBody;
 }
 
 export async function getLearner(uid: string): Promise<{
@@ -568,6 +582,11 @@ export interface ReadingStats {
       score: number;
       chapterNumber: number;
     }[];
+  };
+  promotionProgress?: {
+    chaptersCompleted: number;
+    chaptersRequired: number;
+    chaptersRemaining: number;
   };
 }
 

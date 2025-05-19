@@ -636,7 +636,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     setShowFeedback,
     isCorrect
 }) => {
-    console.log('Question Text:', question?.question);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -2869,7 +2868,7 @@ export default function QuizScreen() {
                                 fontWeight: '600',
                                 marginBottom: 16,
                             }}>
-                                🎯 {remainingQuizzes} questions remaining
+                                🎯 {remainingQuizzes} questions remaining for today
                             </ThemedText>
                         )}
                         <QuestionCard

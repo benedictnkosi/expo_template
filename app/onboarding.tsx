@@ -537,30 +537,15 @@ export default function OnboardingScreen() {
                   </ThemedText>
                 </View>
               </View>
-              <View style={styles.checkboxContainer}>
-                <TouchableOpacity
-                  style={[styles.checkbox, disclaimerAccepted && styles.checkboxChecked]}
-                  onPress={() => setDisclaimerAccepted(!disclaimerAccepted)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: disclaimerAccepted }}
-                  accessibilityLabel="Accept disclaimer"
-                >
-                  {disclaimerAccepted && (
-                    <Ionicons name="checkmark" size={16} color="#4F46E5" />
-                  )}
-                </TouchableOpacity>
-                <ThemedText style={styles.checkboxText}>I accept the disclaimer</ThemedText>
-              </View>
             </View>
             <View style={styles.authOptionsContainer}>
               <TouchableOpacity
-                style={[styles.authButton, styles.emailButton, !disclaimerAccepted && styles.authButtonDisabled]}
+                style={[styles.authButton, styles.emailButton]}
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'email' });
                   setRegistrationMethod('email');
                   setStep(5);
                 }}
-                disabled={!disclaimerAccepted}
                 testID="email-auth-button"
               >
                 <Ionicons name="mail-outline" size={24} color="#FFFFFF" />
@@ -568,13 +553,12 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.authButton, styles.phoneButton, !disclaimerAccepted && styles.authButtonDisabled]}
+                style={[styles.authButton, styles.phoneButton]}
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'phone' });
                   setRegistrationMethod('phone');
                   setStep(5);
                 }}
-                disabled={!disclaimerAccepted}
                 testID="phone-auth-button"
               >
                 <Ionicons name="call-outline" size={24} color="#FFFFFF" />
@@ -586,7 +570,7 @@ export default function OnboardingScreen() {
               </ThemedText>
 
               <TouchableOpacity
-                style={[styles.authButton, styles.guestButton, !disclaimerAccepted && styles.authButtonDisabled]}
+                style={[styles.authButton, styles.guestButton]}
                 onPress={async () => {
                   logAnalyticsEvent('auth_option_selected', { option: 'guest' });
 
@@ -667,7 +651,6 @@ export default function OnboardingScreen() {
                     });
                   }
                 }}
-                disabled={!disclaimerAccepted}
                 testID="guest-auth-button"
               >
                 <Ionicons name="person-outline" size={24} color="#FFFFFF" />
@@ -824,12 +807,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   illustration: {
-    width: '80%',
-    height: 200,
+    width: '60%',
+    height: 150,
     marginBottom: 24,
   },
   bigIllustration: {
-    width: '100%',
+    width: '80%',
     marginBottom: 40,
   },
   welcomeTitle: {
@@ -927,8 +910,8 @@ const styles = StyleSheet.create({
   },
   gradeButton: {
     width: '100%',
-    padding: 16,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -939,7 +922,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   gradeButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
