@@ -10,6 +10,8 @@ import * as SecureStore from 'expo-secure-store';
 import { Audio } from 'expo-av';
 import * as StoreReview from 'expo-store-review';
 import * as Sharing from 'expo-sharing';
+import RevenueCatUI from 'react-native-purchases-ui';
+import Purchases from 'react-native-purchases';
 
 import { ThemedView } from '../components/ThemedView';
 import { ThemedText } from '../components/ThemedText';
@@ -1151,6 +1153,7 @@ export default function QuizScreen() {
     } | null>(null);
     const [remainingLessons, setRemainingLessons] = useState<number>(0);
     const [quizLimitReached, setQuizLimitReached] = useState(false);
+    const [offerings, setOfferings] = useState<any>(null);
 
     // Add useEffect to handle topic parameter on mount
     useEffect(() => {
@@ -1358,6 +1361,7 @@ export default function QuizScreen() {
         }
     };
 
+    // Modify loadQuestion function
     const loadQuestion = async (paper: string, topic?: string) => {
         if (!user?.uid) {
             console.warn('User not authenticated');
@@ -1395,6 +1399,7 @@ export default function QuizScreen() {
             url.searchParams.append('paper_name', paper);
             url.searchParams.append('uid', user.uid);
             url.searchParams.append('question_id', (questionId || 0).toString());
+            url.searchParams.append('subscriptionCheck', 'true');
 
             // Add topic parameter if currentTopic is set
             if (currentTopic) {
@@ -1408,6 +1413,11 @@ export default function QuizScreen() {
                     const usageData = await usageResponse.json();
                     if (usageData.status === "OK") {
                         setRemainingLessons(usageData.data.lesson);
+                        if (usageData.data.lesson <= 0) {
+                            setQuizLimitReached(true);
+                            await showPaywall(); // Add this call back
+                            return;
+                        }
                     }
                 } catch (error) {
                     setQuizLimitReached(true);
@@ -1419,12 +1429,7 @@ export default function QuizScreen() {
 
             if (response.status === 403) {
                 setQuizLimitReached(true);
-                Toast.show({
-                    type: 'error',
-                    text1: 'Quiz Limit Reached',
-                    text2: 'You have reached your daily quiz limit. Please try again tomorrow.',
-                    position: 'bottom'
-                });
+                await showPaywall(); // Add this call back
                 return;
             }
 
@@ -1599,7 +1604,8 @@ export default function QuizScreen() {
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
             setCorrectAnswer(response.correctAnswer);
             setRecordingFileName(response.recordingFileName || '');
-            setRemainingQuizzes(response.remaining_quizzes);
+            // setRemainingQuizzes(response.remaining_quizzes); // Removed as per requirement
+            fetchDailyUsage(); // Fetch updated daily usage after an answer
 
             // Show first answer bonus modal for first-time correct answers
             if (isFirstAnswer) {
@@ -2248,7 +2254,7 @@ export default function QuizScreen() {
             setSelectedMode('quiz');
             setIsLoading(true);
 
-            const url = `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}`;
+            const url = `${API_BASE_URL}/question/byname?subject_name=${subjectName}&paper_name=P1&uid=${user.uid}&question_id=${questionId}?subscriptionCheck=true`;
             console.log('Fetching question from URL:', url);
 
             const response = await fetch(url);
@@ -2600,22 +2606,46 @@ export default function QuizScreen() {
     };
 
     const fetchDailyUsage = async () => {
+        if (!user?.uid) {
+            console.warn("User not authenticated, skipping fetchDailyUsage.");
+            return;
+        }
         try {
-            const response = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user?.uid}`);
+            const response = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user.uid}`);
             const data = await response.json();
             if (data.status === "OK") {
                 setRemainingLessons(data.data.lesson);
+                if (data.data.quiz !== undefined) {
+                    setRemainingQuizzes(data.data.quiz);
+                    if (data.data.quiz <= 0 && selectedMode === 'quiz') {
+                        setQuizLimitReached(true);
+                    }
+                }
+            } else {
+                setQuizLimitReached(true); // Assume limit reached if status is not OK
+                console.warn('Failed to fetch daily usage or status not OK:', data.message);
             }
         } catch (error) {
             console.error('Error fetching daily usage:', error);
+            setQuizLimitReached(true); // Assume limit reached on error
         }
     };
 
     useEffect(() => {
-        if (selectedMode === 'lessons') {
+        if (user?.uid) {
             fetchDailyUsage();
         }
-    }, [selectedMode]);
+    }, [user?.uid, selectedMode]);
+
+    const showPaywall = async () => {
+        if (!offerings) return false;
+
+        const paywallResult = await RevenueCatUI.presentPaywall({
+            offering: offerings,
+            displayCloseButton: true,
+        });
+        return false;
+    };
 
     // Add useEffect to handle lecture recording
     useEffect(() => {
@@ -2680,6 +2710,22 @@ export default function QuizScreen() {
             subjectName={subjectName}
         />
     );
+
+    // Add useEffect to initialize RevenueCat offerings
+    useEffect(() => {
+        const initializeOfferings = async () => {
+            try {
+                const offerings = await Purchases.getOfferings();
+                if (offerings.current) {
+                    setOfferings(offerings.current);
+                }
+            } catch (error) {
+                console.error('Error initializing RevenueCat offerings:', error);
+            }
+        };
+
+        initializeOfferings();
+    }, []);
 
     if (isLoading) {
         return (
@@ -2851,15 +2897,17 @@ export default function QuizScreen() {
                     )}
                     <ThemedView style={styles.content}>
                         {selectedMode === 'lessons' ? (
-                            <ThemedText style={{
-                                textAlign: 'center',
-                                color: colors.textSecondary,
-                                fontSize: 16,
-                                fontWeight: '600',
-                                marginBottom: 16,
-                            }}>
-                                📚 {remainingLessons} lessons remaining today
-                            </ThemedText>
+                            remainingLessons !== 999 && (
+                                <ThemedText style={{
+                                    textAlign: 'center',
+                                    color: colors.textSecondary,
+                                    fontSize: 16,
+                                    fontWeight: '600',
+                                    marginBottom: 16,
+                                }}>
+                                    ⚠️ {remainingLessons} lessons remaining today
+                                </ThemedText>
+                            )
                         ) : remainingQuizzes !== undefined && (
                             <ThemedText style={{
                                 textAlign: 'center',
@@ -2868,7 +2916,7 @@ export default function QuizScreen() {
                                 fontWeight: '600',
                                 marginBottom: 16,
                             }}>
-                                🎯 {remainingQuizzes} questions remaining for today
+                                ⚠️ {remainingQuizzes} questions remaining for today
                             </ThemedText>
                         )}
                         <QuestionCard

@@ -10,7 +10,11 @@ cp @nkosib__exam-quiz.jks android/app/keystore.jks
 
 #copy build.gradle to android directory
 echo "Copying build.gradle to android directory..."
-cp build.gradle android/app/build.gradle
+cp app-build.gradle android/app/build.gradle
+
+#copy build.gradle to android directory
+echo "Copying build.gradle to android directory..."
+cp android-build.gradle android/build.gradle
 
 # Path to build.gradle
 GRADLE_FILE="./android/app/build.gradle"

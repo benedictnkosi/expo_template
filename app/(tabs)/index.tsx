@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,6 +29,11 @@ import { WelcomeModal } from '../components/WelcomeModal';
 import subjectEmojis from '@/assets/subject-emojis.json';
 import { SubjectPicker } from '@/components/SubjectPicker';
 import { NextChapterCard } from '@/components/reading/next-chapter-card';
+import { revenueCatService } from '../../services/revenueCat';
+import type { PurchasesOffering } from 'react-native-purchases';
+import RevenueCatUI from 'react-native-purchases-ui';
+import { useRevenueCat } from '@/contexts/RevenueCatContext';
+import Purchases from 'react-native-purchases';
 
 const SUBJECTS = [
   'Accounting',
@@ -463,6 +468,9 @@ export default function HomeScreen() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showOfferingsModal, setShowOfferingsModal] = useState(false);
+  const [currentOfferings, setCurrentOfferings] = useState<PurchasesOffering | null>(null);
+  const [isLoadingOfferings, setIsLoadingOfferings] = useState(false);
 
   // Check for saved notification preferences on mount
   useEffect(() => {
@@ -620,6 +628,36 @@ export default function HomeScreen() {
           points: learner.points || 0,
           streak: learner.streak || 0
         });
+
+        // RevenueCat login and attribute setting
+        try {
+          console.log(`Logging into RevenueCat with AppUserID: ${user.uid}`);
+          await Purchases.logIn(user.uid);
+
+          if (learner.email) {
+            console.log(`Setting RevenueCat email attribute: ${learner.email}`);
+            await Purchases.setEmail(learner.email);
+          }
+          if (learner.name) {
+            console.log(`Setting RevenueCat displayName attribute: ${learner.name}`);
+            await Purchases.setDisplayName(learner.name);
+          }
+
+          const attributesToSet: Record<string, string | null> = {};
+          // Add other relevant attributes as needed (e.g., curriculum)
+          if (learner.uid) {
+            attributesToSet.userUID = learner.uid;
+          }
+
+
+          if (Object.keys(attributesToSet).length > 0) {
+            console.log('Setting RevenueCat attributes:', attributesToSet);
+            await Purchases.setAttributes(attributesToSet);
+          }
+
+        } catch (e) {
+          console.error('RevenueCat.logIn or setAttributes failed:', e);
+        }
 
         // Always fetch subjects on load
         console.log('Fetching subjects');
@@ -1009,6 +1047,48 @@ export default function HomeScreen() {
     }
   };
 
+  // Add function to handle showing offerings
+  const handleShowOfferings = async () => {
+    try {
+      setIsLoadingOfferings(true);
+      const offerings = await revenueCatService.showOfferings();
+      setCurrentOfferings(offerings);
+      setShowOfferingsModal(true);
+    } catch (error) {
+      console.error('Error showing offerings:', error);
+      Alert.alert('Error', 'Failed to load offerings. Please try again later.');
+    } finally {
+      setIsLoadingOfferings(false);
+    }
+  };
+
+  // Add function to handle purchase
+  const handlePurchase = async (packageToPurchase: any) => {
+    try {
+      setIsLoadingOfferings(true);
+      const customerInfo = await revenueCatService.purchasePackage(packageToPurchase);
+      Alert.alert('Success', 'Purchase completed successfully!');
+      setShowOfferingsModal(false);
+    } catch (error: any) {
+      console.error('Purchase error:', error);
+      Alert.alert('Error', error.message || 'Failed to complete purchase');
+    } finally {
+      setIsLoadingOfferings(false);
+    }
+  };
+
+  const { offerings, isLoading: isRevenueCatLoading } = useRevenueCat();
+
+  const showPaywall = async () => {
+    if (!offerings) return false;
+
+    const paywallResult = await RevenueCatUI.presentPaywall({
+      offering: offerings,
+      displayCloseButton: true,
+    });
+    return false;
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: isDark ? colors.background : '#F3F4F6' }]}>
@@ -1126,6 +1206,29 @@ export default function HomeScreen() {
             <Ionicons name="share-social" size={24} color="#FFFFFF" />
             <ThemedText style={styles.shareButtonText} testID="share-button-text">
               Spread the fun, tell your friends!  📢
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.shareButton, { backgroundColor: colors.primary, marginTop: 12 }]}
+            onPress={() => router.push('/purchase-test')}
+            testID="purchase-test-button"
+          >
+            <Ionicons name="cart-outline" size={24} color="#FFFFFF" />
+            <ThemedText style={styles.shareButtonText} testID="purchase-test-button-text">
+              Test Purchases 🛍️
+            </ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.shareButton, { backgroundColor: colors.primary, marginTop: 12 }]}
+            onPress={showPaywall}
+            testID="show-offerings-button"
+            disabled={isLoadingOfferings}
+          >
+            <Ionicons name="diamond-outline" size={24} color="#FFFFFF" />
+            <ThemedText style={styles.shareButtonText} testID="show-offerings-button-text">
+              {isLoadingOfferings ? 'Loading...' : 'Upgrade to Premium ✨'}
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -1419,6 +1522,30 @@ export default function HomeScreen() {
             🔍 Can't find your subject? Click here to learn more
           </ThemedText>
         </TouchableOpacity>
+
+        {/* WhatsApp Feedback Section */}
+        <View style={[styles.whatsAppFeedbackContainer, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <ThemedText style={[styles.whatsAppFeedbackTitle, { color: colors.text }]}>
+            💡 Have an Idea?
+          </ThemedText>
+          <ThemedText style={[styles.whatsAppFeedbackText, { color: colors.textSecondary }]}>
+            Got a brilliant idea for a new feature or improvement? We'd love to hear it!
+          </ThemedText>
+          <TouchableOpacity
+            style={[styles.whatsAppButton, { backgroundColor: '#25D366' }]}
+            onPress={() => {
+              const phoneNumber = '27786864479'; // Replace with your WhatsApp number
+              const message = 'Hello! I have an idea for the Dimpo Learning App: ';
+              Linking.openURL(`whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`);
+            }}
+          >
+            <Ionicons name="logo-whatsapp" size={24} color="#FFFFFF" />
+            <ThemedText style={styles.whatsAppButtonText}>Send us a WhatsApp</ThemedText>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <RatingModal
@@ -1473,6 +1600,62 @@ export default function HomeScreen() {
         isVisible={showWelcomeModal}
         onClose={handleCloseWelcomeModal}
       />
+
+      {/* Add Offerings Modal */}
+      <Modal
+        visible={showOfferingsModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOfferingsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.offeringsModalContainer, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border
+          }]}>
+            <View style={styles.offeringsModalHeader}>
+              <ThemedText style={[styles.offeringsModalTitle, { color: colors.text }]}>
+                Upgrade to Premium
+              </ThemedText>
+              <TouchableOpacity
+                onPress={() => setShowOfferingsModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {isLoadingOfferings ? (
+              <ActivityIndicator size="large" color={colors.primary} />
+            ) : (
+              <ScrollView style={styles.offeringsList}>
+                {currentOfferings?.availablePackages.map((pkg) => (
+                  <TouchableOpacity
+                    key={pkg.identifier}
+                    style={[styles.offeringButton, {
+                      backgroundColor: isDark ? colors.surface : '#F8FAFC',
+                      borderColor: colors.border
+                    }]}
+                    onPress={() => handlePurchase(pkg)}
+                  >
+                    <View style={styles.offeringContent}>
+                      <ThemedText style={[styles.offeringTitle, { color: colors.text }]}>
+                        {pkg.product.title}
+                      </ThemedText>
+                      <ThemedText style={[styles.offeringDescription, { color: colors.textSecondary }]}>
+                        {pkg.product.description}
+                      </ThemedText>
+                      <ThemedText style={[styles.offeringPrice, { color: colors.primary }]}>
+                        {pkg.product.priceString}
+                      </ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -2348,5 +2531,90 @@ const styles = StyleSheet.create({
   infoLinkText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  offeringsModalContainer: {
+    margin: 20,
+    borderRadius: 16,
+    padding: 20,
+    maxHeight: '80%',
+    width: '90%',
+    borderWidth: 1,
+  },
+  offeringsModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  offeringsModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  offeringsList: {
+    maxHeight: '80%',
+  },
+  offeringButton: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  offeringContent: {
+    gap: 8,
+  },
+  offeringTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  offeringDescription: {
+    fontSize: 14,
+  },
+  offeringPrice: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  whatsAppFeedbackContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 24, // Adjusted margin to separate from RatingModal
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  whatsAppFeedbackTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  whatsAppFeedbackText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  whatsAppButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25, // Make it more pill-shaped
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  whatsAppButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

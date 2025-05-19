@@ -92,8 +92,8 @@ android {
         applicationId 'za.co.examquizafrica'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 288
-        versionName "2.8.8"
+        versionCode 300
+        versionName "3.0.0"
     }
     signingConfigs {
         debug {

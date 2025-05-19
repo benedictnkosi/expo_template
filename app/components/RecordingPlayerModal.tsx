@@ -70,7 +70,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     if (!recording) return null;
 
     const audioFileName = recording.recordingFileName.replace('.opus', '.m4a');
-    const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}`;
+    const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}?subscriptionCheck=true`;
 
     const handleShare = async () => {
         try {
@@ -106,7 +106,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
                 </View>
 
                 <View style={styles.content}>
-                    {remainingPodcasts !== null && (
+                    {remainingPodcasts !== null && remainingPodcasts !== 999 && (
                         <View style={[styles.usageContainer, {
                             backgroundColor: remainingPodcasts === 0
                                 ? (isDark ? 'rgba(234, 179, 8, 0.1)' : '#FEF3C7')

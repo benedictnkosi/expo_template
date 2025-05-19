@@ -6,6 +6,7 @@ import React, { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 import AuthLayout from './_auth';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -83,33 +84,35 @@ function RootLayoutNav() {
 
   return (
     <AuthProvider>
-      <AuthLayout />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background }
-        }}
-      >
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="register" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="quiz"
-          options={{
+      <RevenueCatProvider>
+        <AuthLayout />
+        <Stack
+          screenOptions={{
             headerShown: false,
-            presentation: 'fullScreenModal'
+            contentStyle: { backgroundColor: colors.background }
           }}
-        />
-        <Stack.Screen
-          name="profile"
-          options={{
-            headerShown: false,
-            presentation: 'modal'
-          }}
-        />
-      </Stack>
-      <Toast config={toastConfig} />
+        >
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="quiz"
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal'
+            }}
+          />
+          <Stack.Screen
+            name="profile"
+            options={{
+              headerShown: false,
+              presentation: 'modal'
+            }}
+          />
+        </Stack>
+        <Toast config={toastConfig} />
+      </RevenueCatProvider>
     </AuthProvider>
   );
 }
