@@ -15,7 +15,7 @@ interface QuizEmptyStateProps {
     onRestart: () => void;
     onGoBack: () => void;
     isQuizLimitReached?: boolean;
-    mode?: 'quiz' | 'lessons';
+    mode?: 'quiz' | 'lessons' | 'practice';
 }
 
 export function QuizEmptyState({
@@ -72,19 +72,17 @@ export function QuizEmptyState({
                     <ThemedText style={[styles.noQuestionsTitle, { color: colors.text }]}>
                         {isQuizLimitReached
                             ? mode === 'quiz'
-                                ? "⏰ That’s all the brain power we can handle for today! Come back tomorrow for more quizzes with Dimpo!"
-                                : "⏰ You’ve soaked up today’s lesson! Dimpo says it's time to stretch and come back refreshed tomorrow!"
-                            : "🚨 Whoa! Looks like the quiz bank is empty! Dimpo’s off to fetch some new questions! 🏃‍♂️📚"
+                                ? "⏰ That's all the brain power we can handle for today! Come back tomorrow for more quizzes with Dimpo!"
+                                : "⏰ You've soaked up today's lesson! Dimpo says it's time to stretch and come back refreshed tomorrow!"
+                            : "🚨 Whoa! Looks like the quiz bank is empty! Dimpo's off to fetch some new questions! 🏃‍♂️📚"
                         }
                     </ThemedText>
                     <ThemedText style={[styles.noQuestionsSubtitle, { color: colors.textSecondary }]}>
                         {isQuizLimitReached
                             ? mode === 'quiz'
                                 ? "Don't worry — your progress is safe! 📘 Why not dive into a lesson or enjoy a quick podcast with Dimpo while you recharge?"
-
                                 : "Don't worry — your progress is safe! 🎧 Try a fun quiz or tune into an episode of our learning podcast while you wait!"
                             : "Check your profile settings and make sure you've selected the right subjects and school terms so Dimpo can fetch the right quizzes! 🎯"
-
                         }
                     </ThemedText>
 

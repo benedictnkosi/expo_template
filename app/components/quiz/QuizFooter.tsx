@@ -11,7 +11,9 @@ interface QuizFooterProps {
     onNext: () => void;
     onGoBack: () => void;
     remainingQuizzes?: number;
-    selectedMode: 'quiz' | 'lessons';
+    selectedMode: 'quiz' | 'lessons' | 'practice' | null;
+    isDark: boolean;
+    colors: any;
 }
 
 export function QuizFooter({
@@ -19,9 +21,11 @@ export function QuizFooter({
     onNext,
     onGoBack,
     remainingQuizzes,
-    selectedMode
+    selectedMode,
+    isDark,
+    colors
 }: QuizFooterProps) {
-    const { colors, isDark } = useTheme();
+    const { isDark: themeIsDark } = useTheme();
 
     return (
         <ThemedView
@@ -45,7 +49,7 @@ export function QuizFooter({
                         <Ionicons name="play" size={20} color="#FFFFFF" />
                         <View style={styles.buttonTextContainer}>
                             <ThemedText style={styles.footerButtonText}>
-                                {selectedMode === 'lessons' ? '📚 Next Lesson' : '🎯 Keep Going!'}
+                                {selectedMode === 'lessons' ? '📚 Next Lesson' : selectedMode === 'practice' ? '🎯 Keep Going!' : '🎯 Keep Going!'}
                             </ThemedText>
                         </View>
                     </TouchableOpacity>

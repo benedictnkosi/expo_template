@@ -8,53 +8,82 @@ export function PurchaseTest() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        Alert.alert('Component Mounted', 'PurchaseTest component has been mounted');
         loadOfferings();
     }, []);
 
     async function loadOfferings() {
         try {
+            Alert.alert('Loading State', 'Starting to load offerings...');
             setIsLoading(true);
             const currentOfferings = await revenueCatService.getOfferings();
             if (currentOfferings?.availablePackages) {
+                Alert.alert('Offerings Loaded', `Found ${currentOfferings.availablePackages.length} packages`);
                 setOfferings(currentOfferings.availablePackages);
+            } else {
+                Alert.alert('No Offerings', 'No available packages found');
             }
         } catch (error) {
-            console.error('Error loading offerings:', error);
-            Alert.alert('Error', 'Failed to load offerings');
+            Alert.alert('Error Loading Offerings', `Failed to load offerings: ${error}`);
         } finally {
             setIsLoading(false);
+            Alert.alert('Loading Complete', 'Finished loading offerings');
         }
     }
 
     async function handlePurchase(packageToPurchase: PurchasePackage) {
         try {
+            Alert.alert('Purchase Initiated', `Starting purchase for: ${packageToPurchase.product.title}`);
             setIsLoading(true);
             const customerInfo = await revenueCatService.purchasePackage(packageToPurchase);
             Alert.alert('Success', 'Purchase completed successfully!');
-            console.log('Customer Info:', customerInfo);
+            Alert.alert('Customer Info', JSON.stringify(customerInfo, null, 2));
         } catch (error: any) {
-            console.error('Purchase error:', error);
-            Alert.alert('Error', error.message || 'Failed to complete purchase');
+            Alert.alert('Purchase Error', `Failed to complete purchase: ${error.message || error}`);
         } finally {
             setIsLoading(false);
+            Alert.alert('Purchase Process Complete', 'Purchase flow has finished');
         }
     }
 
     async function handleRestore() {
         try {
+            Alert.alert('Restore Initiated', 'Starting to restore purchases...');
             setIsLoading(true);
             const customerInfo = await revenueCatService.restorePurchases();
             Alert.alert('Success', 'Purchases restored successfully!');
-            console.log('Restored Customer Info:', customerInfo);
+            Alert.alert('Restored Customer Info', JSON.stringify(customerInfo, null, 2));
         } catch (error: any) {
-            console.error('Restore error:', error);
-            Alert.alert('Error', error.message || 'Failed to restore purchases');
+            Alert.alert('Restore Error', `Failed to restore purchases: ${error.message || error}`);
+        } finally {
+            setIsLoading(false);
+            Alert.alert('Restore Process Complete', 'Restore flow has finished');
+        }
+    }
+
+    async function handleShowPaywall() {
+        try {
+            Alert.alert('Paywall', 'Showing paywall...');
+            await revenueCatService.showPaywall();
+        } catch (error: any) {
+            Alert.alert('Paywall Error', `Failed to show paywall: ${error.message || error}`);
+        }
+    }
+
+    async function handleLoadOfferings() {
+        try {
+            Alert.alert('Loading State', 'Refreshing offerings...');
+            setIsLoading(true);
+            await loadOfferings();
+        } catch (error: any) {
+            Alert.alert('Error', `Failed to refresh offerings: ${error.message || error}`);
         } finally {
             setIsLoading(false);
         }
     }
 
     if (isLoading) {
+        Alert.alert('Loading State', 'Currently loading...');
         return (
             <View style={styles.container}>
                 <Text>Loading offerings...</Text>
@@ -77,11 +106,25 @@ export function PurchaseTest() {
                 </TouchableOpacity>
             ))}
             <TouchableOpacity
+                style={styles.loadOfferingsButton}
+                onPress={handleLoadOfferings}
+                disabled={isLoading}
+            >
+                <Text style={styles.loadOfferingsButtonText}>Refresh Offerings</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.paywallButton}
+                onPress={handleShowPaywall}
+                disabled={isLoading}
+            >
+                <Text style={styles.paywallButtonText}>Show Paywall</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
                 style={styles.restoreButton}
                 onPress={handleRestore}
                 disabled={isLoading}
             >
-                <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+                <Text style={styles.restoreButtonText}>Restore Purchases v9h50</Text>
             </TouchableOpacity>
         </View>
     );
@@ -114,6 +157,30 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 14,
         marginTop: 5,
+    },
+    loadOfferingsButton: {
+        backgroundColor: '#FF9500',
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 20,
+    },
+    loadOfferingsButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    paywallButton: {
+        backgroundColor: '#5856D6',
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 20,
+    },
+    paywallButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
     restoreButton: {
         backgroundColor: '#34C759',

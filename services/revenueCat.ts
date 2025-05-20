@@ -1,6 +1,7 @@
 import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage, PurchasesStoreProduct } from 'react-native-purchases';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import RevenueCatUI from 'react-native-purchases-ui';
 
 // Replace these with your actual API keys from RevenueCat dashboard
 const REVENUECAT_API_KEYS = {
@@ -158,6 +159,23 @@ class RevenueCatService {
             return offerings.current;
         } catch (error) {
             console.error('Failed to show offerings:', error);
+            throw error;
+        }
+    }
+
+    async showPaywall(): Promise<void> {
+        await this.ensureInitialized();
+        try {
+            const offerings = await Purchases.getOfferings();
+            if (!offerings.current) {
+                throw new Error('No offerings available');
+            }
+            await RevenueCatUI.presentPaywall({
+                offering: offerings.current,
+                displayCloseButton: true,
+            });
+        } catch (error) {
+            console.error('Failed to show paywall:', error);
             throw error;
         }
     }

@@ -8,16 +8,14 @@ cp google-services.json android/app/google-services.json
 echo "Copying and renaming keystore file..."
 cp @nkosib__exam-quiz.jks android/app/keystore.jks
 
-#copy build.gradle to android directory
-echo "Copying build.gradle to android directory..."
-cp app-build.gradle android/app/build.gradle
+
 
 #copy build.gradle to android directory
 echo "Copying build.gradle to android directory..."
 cp android-build.gradle android/build.gradle
 
 # Path to build.gradle
-GRADLE_FILE="./android/app/build.gradle"
+GRADLE_FILE="app-build.gradle"
 
 # First, fix any double quotes in build.gradle
 sed -i '' 's/versionName "[0-9]\+\.[0-9]\+\.[0-9]\+"/versionName "2.0.4"/' $GRADLE_FILE
@@ -37,6 +35,10 @@ sed -i '' "s/versionCode $CURRENT_CODE/versionCode $NEW_CODE/" $GRADLE_FILE
 sed -i '' "s/versionName \"$CURRENT_NAME\"/versionName \"$NEW_NAME\"/" $GRADLE_FILE
 
 echo "Updated version from $CURRENT_CODE ($CURRENT_NAME) to $NEW_CODE ($NEW_NAME)"
+
+#copy build.gradle to android directory
+echo "Copying build.gradle to android directory..."
+cp app-build.gradle android/app/build.gradle
 
 # Navigate to android directory and run build commands
 cd android

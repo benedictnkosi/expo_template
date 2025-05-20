@@ -9,9 +9,9 @@ import Toast from 'react-native-toast-message';
 
 export interface QuizPaperButtonsProps {
     subjectName: string;
-    selectedMode: 'quiz' | 'lessons' | null;
+    selectedMode: 'quiz' | 'lessons' | 'practice' | null;
     onSelectPaper: (paper: string) => void;
-    onLoadQuestion: (paper: string) => void;
+    onLoadQuestion: (paper: string, topic?: string) => Promise<void>;
 }
 
 export const QuizPaperButtons = ({

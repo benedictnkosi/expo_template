@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
+import RevenueCatUI from 'react-native-purchases-ui';
+import Purchases from 'react-native-purchases';
 
 interface LectureRecording {
     id: string;
@@ -39,6 +41,21 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     const [remainingPodcasts, setRemainingPodcasts] = useState<number | null>(null);
     const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
+    const showPaywall = async () => {
+        try {
+            const offerings = await Purchases.getOfferings();
+            if (!offerings.current) {
+                throw new Error('No offerings available');
+            }
+            await RevenueCatUI.presentPaywall({
+                offering: offerings.current,
+                displayCloseButton: true,
+            });
+        } catch (error) {
+            console.error('Failed to show paywall:', error);
+        }
+    };
+
     useEffect(() => {
         if (isVisible && user?.uid) {
             fetchDailyUsage();
@@ -53,6 +70,9 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
             const data = await response.json();
             if (data.status === "OK") {
                 setRemainingPodcasts(data.data.podcast);
+                if (data.data.podcast === 0) {
+                    await showPaywall();
+                }
             }
         } catch (error) {
             console.error('Error fetching daily usage:', error);

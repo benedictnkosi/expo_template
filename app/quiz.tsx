@@ -2967,6 +2967,8 @@ export default function QuizScreen() {
                     onNext={handleNext}
                     onGoBack={() => setSelectedPaper(null)}
                     selectedMode={selectedMode}
+                    isDark={isDark}
+                    colors={colors}
                 />
                 <ReportModal
                     isVisible={isReportModalVisible}
