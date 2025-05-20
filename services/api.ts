@@ -61,7 +61,7 @@ export async function getNextChapter(learnerUid: string): Promise<ChapterRespons
   const response = await fetch(`${HOST_URL}/api/learner/next-chapter?learnerUid=${learnerUid}`);
 
   if (!response.ok) {
-    throw new Error('Failed to fetch next chapter');
+    console.log('Failed to fetch next chapter');
   }
 
   return response.json();

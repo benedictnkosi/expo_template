@@ -39,7 +39,7 @@ export function NextChapterCard() {
         }, [loadNextChapter])
     );
 
-    if (isLoading || !chapterData) {
+    if (isLoading || !chapterData || (chapterData.chapter && chapterData.chapter.status === 'in_progress')) {
         return null;
     }
 
@@ -98,6 +98,7 @@ export function NextChapterCard() {
         : `${minutesUntilPublish} minute${minutesUntilPublish > 1 ? 's' : ''}`;
 
     return (
+
         <Pressable
             style={({ pressed }) => [
                 styles.container,

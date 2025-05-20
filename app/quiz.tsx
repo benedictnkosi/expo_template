@@ -1406,6 +1406,21 @@ export default function QuizScreen() {
                 url.searchParams.append('topic', currentTopic);
             }
 
+
+
+            const response = await fetch(url.toString());
+
+            if (response.status === 403) {
+                setQuizLimitReached(true);
+                return;
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API Error:', errorText);
+                throw new Error(`Failed to fetch random question: ${response.status} ${response.statusText}`);
+            }
+
             // If in lessons mode, fetch daily usage first
             if (selectedMode === 'lessons') {
                 try {
@@ -1415,7 +1430,6 @@ export default function QuizScreen() {
                         setRemainingLessons(usageData.data.lesson);
                         if (usageData.data.lesson <= 0) {
                             setQuizLimitReached(true);
-                            await showPaywall(); // Add this call back
                             return;
                         }
                     }
@@ -1423,20 +1437,6 @@ export default function QuizScreen() {
                     setQuizLimitReached(true);
                     console.error('Error fetching daily usage:', error);
                 }
-            }
-
-            const response = await fetch(url.toString());
-
-            if (response.status === 403) {
-                setQuizLimitReached(true);
-                await showPaywall(); // Add this call back
-                return;
-            }
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('API Error:', errorText);
-                throw new Error(`Failed to fetch random question: ${response.status} ${response.statusText}`);
             }
 
             if (selectedMode === 'lessons') {
@@ -2637,17 +2637,6 @@ export default function QuizScreen() {
         }
     }, [user?.uid, selectedMode]);
 
-    const showPaywall = async () => {
-        if (!offerings) return false;
-
-        const paywallResult = await RevenueCatUI.presentPaywall({
-            offering: offerings,
-            displayCloseButton: true,
-        });
-        return false;
-    };
-
-    // Add useEffect to handle lecture recording
     useEffect(() => {
         async function fetchLectureRecording() {
             if (!lectureId) {
@@ -2867,6 +2856,7 @@ export default function QuizScreen() {
                     onGoBack={() => setSelectedPaper(null)}
                     isQuizLimitReached={quizLimitReached}
                     mode={selectedMode}
+                    offerings={offerings}
                 />
                 {renderRecordingPlayerModal()}
             </>
@@ -2897,7 +2887,10 @@ export default function QuizScreen() {
                     )}
                     <ThemedView style={styles.content}>
                         {selectedMode === 'lessons' ? (
-                            remainingLessons !== 999 && (
+                            remainingLessons !== 999 &&
+                            remainingLessons !== undefined &&
+                            remainingLessons !== 0 &&
+                            (
                                 <ThemedText style={{
                                     textAlign: 'center',
                                     color: colors.textSecondary,
@@ -2905,10 +2898,13 @@ export default function QuizScreen() {
                                     fontWeight: '600',
                                     marginBottom: 16,
                                 }}>
-                                    ⚠️ {remainingLessons} lessons remaining today
+                                    ⚠️ {remainingLessons} lessons remaining for today
                                 </ThemedText>
                             )
-                        ) : remainingQuizzes !== undefined && (
+                        ) : remainingQuizzes !== undefined &&
+                        remainingQuizzes !== 999 &&
+                        remainingQuizzes !== 0 &&
+                        (
                             <ThemedText style={{
                                 textAlign: 'center',
                                 color: colors.textSecondary,

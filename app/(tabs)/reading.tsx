@@ -10,7 +10,7 @@ import { Header } from '@/components/Header';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { BookQuiz } from '@/components/reading/book-quiz';
-import { getNextChapter, ChapterResponse, getPastChapters, PastChapter, getChapterById, getLearnerStats } from '@/services/api';
+import { getNextChapter, ChapterResponse, getPastChapters, PastChapter, getChapterById, getLearnerStats, getLearner } from '@/services/api';
 import { ReadingSpeedGraph } from '@/components/reading/reading-speed-graph';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -46,15 +46,35 @@ export default function ReadingScreen() {
     const [selectedPastChapter, setSelectedPastChapter] = useState<PastChapter | null>(null);
     const [timeUntilPublish, setTimeUntilPublish] = useState<number>(0);
     const [pastChaptersError, setPastChaptersError] = useState<string | null>(null);
+    const [learnerInfo, setLearnerInfo] = useState<{
+        name: string;
+        grade: string;
+        school?: string;
+        avatar?: string;
+        follow_me_code?: string;
+    } | null>(null);
 
-    // Build learnerInfo for Header
-    const learnerInfo = user
-        ? {
-            name: user.displayName || user.email?.split('@')[0] || 'Learner',
-            grade: '',
-            avatar: user.photoURL || undefined,
+    // Fetch learner info
+    const fetchLearnerInfo = useCallback(async () => {
+        if (!user?.uid) return;
+        try {
+            const learner = await getLearner(user.uid);
+            setLearnerInfo({
+                name: learner.name || '',
+                grade: learner.grade?.number?.toString() || '',
+                school: learner.school_name || '',
+                avatar: learner.avatar || '',
+                follow_me_code: learner.follow_me_code || ''
+            });
+        } catch (error) {
+            console.log('Failed to fetch learner info:', error);
         }
-        : null;
+    }, [user?.uid]);
+
+    // Load learner info when component mounts
+    useEffect(() => {
+        fetchLearnerInfo();
+    }, [fetchLearnerInfo]);
 
     const randomQuote = useMemo(() => {
         const randomIndex = Math.floor(Math.random() * QUOTES.length);
@@ -115,7 +135,7 @@ export default function ReadingScreen() {
                 setChapterData(mergedChapterData);
             }
         } catch (error) {
-            console.error('Error loading chapter:', error);
+            console.log('Error loading chapter:', error);
         } finally {
             setIsLoading(false);
         }
@@ -152,7 +172,7 @@ export default function ReadingScreen() {
             const response = await getPastChapters(user.uid);
             setPastChapters(response.chapters);
         } catch (error) {
-            console.error('Error loading past chapters:', error);
+            console.log('Error loading past chapters:', error);
             setPastChaptersError('Unable to load past chapters. Please try again.');
         } finally {
             setIsLoadingPastChapters(false);
@@ -202,7 +222,7 @@ export default function ReadingScreen() {
             setHasStarted(true);
             setReadingStartTime(Date.now());
         } catch (error) {
-            console.error('Error loading past chapter:', error);
+            console.log('Error loading past chapter:', error);
         }
     };
 
@@ -327,6 +347,14 @@ export default function ReadingScreen() {
                         )
                     ) : (
                         <>
+                            <View style={styles.bookTitleContainer}>
+                                <Text style={[styles.bookTitle, { color: colors.primary }]}>
+                                    The Dimpo Chronicles
+                                </Text>
+                                <View style={styles.bookTitleUnderlineContainer}>
+                                    <View style={[styles.bookTitleUnderline, { backgroundColor: colors.primary }]} />
+                                </View>
+                            </View>
                             <Text style={[styles.quote, { color: colors.textSecondary }]}>
                                 {randomQuote.text}
                             </Text>
@@ -395,13 +423,13 @@ export default function ReadingScreen() {
                                 </View>
                             )}
                             <View style={styles.levelContainer}>
-                                {chapterData.chapter.level === 1 && (
+                                {chapterData?.chapter?.level === 1 && (
                                     <Text style={[styles.levelHint, { color: colors.textSecondary }]}>
                                         We start you at Grade 5 level and adjust as you read more 😊
                                     </Text>
                                 )}
                                 <Text style={[styles.levelText, { color: colors.textSecondary }]}>
-                                    Reading Level {chapterData.chapter.level} of 4
+                                    Reading Level {chapterData?.chapter?.level || 1} of 4
                                 </Text>
                                 <View style={styles.levelProgress}>
                                     {[1, 2, 3, 4].map((level) => (
@@ -409,8 +437,8 @@ export default function ReadingScreen() {
                                             key={level}
                                             style={[
                                                 styles.levelDot,
-                                                level <= chapterData.chapter.level && styles.levelDotActive,
-                                                { backgroundColor: level <= chapterData.chapter.level ? '#7C3AED' : 'rgba(120,120,140,0.18)' }
+                                                level <= (chapterData?.chapter?.level || 1) && styles.levelDotActive,
+                                                { backgroundColor: level <= (chapterData?.chapter?.level || 1) ? '#7C3AED' : 'rgba(120,120,140,0.18)' }
                                             ]}
                                         />
                                     ))}
@@ -1098,5 +1126,28 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         marginBottom: 8,
+    },
+    bookTitleContainer: {
+        alignItems: 'center',
+        marginBottom: 28,
+        marginTop: 12,
+    },
+    bookTitle: {
+        fontSize: 36,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+        textAlign: 'center',
+        marginBottom: 8,
+    },
+    bookTitleUnderlineContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 4,
+    },
+    bookTitleUnderline: {
+        width: 80,
+        height: 3,
+        borderRadius: 2,
+        opacity: 0.8,
     },
 }); 

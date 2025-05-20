@@ -20,6 +20,7 @@ import { auth } from '@/config/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { Paywall } from './components/Paywall';
 
 
 // Helper function for safe analytics logging
@@ -39,6 +40,7 @@ interface LearnerInfo {
   photoURL?: string;
   imagePath?: string;
   avatar?: string;
+  subscription?: string;
 }
 
 interface Grade {
@@ -109,6 +111,7 @@ export default function ProfileScreen() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newThreadNotification, setNewThreadNotification] = useState(true);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Available options
   const TERMS = [1, 2, 3, 4];
@@ -142,7 +145,8 @@ export default function ProfileScreen() {
           curriculum: learner.curriculum || '',
           terms: learner.terms || '',
           imagePath: user.photoURL || "",
-          avatar: learner.avatar || ""
+          avatar: learner.avatar || "",
+          subscription: (learner as any).subscription || 'free' // Type assertion to handle API response
         });
 
         setEditName(name);
@@ -551,6 +555,20 @@ export default function ProfileScreen() {
           learnerInfo={learnerInfo}
         />
 
+        {learnerInfo?.subscription === 'free' && (
+          <TouchableOpacity
+            style={[styles.upgradeButton, { backgroundColor: colors.primary }]}
+            onPress={() => setShowPaywall(true)}
+          >
+            <LinearGradient
+              colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+              style={styles.upgradeButtonGradient}
+            >
+              <ThemedText style={styles.upgradeButtonText}>✨ Upgrade to Pro</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         <ThemedView style={styles.content}>
           <ThemedView style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>
             <View style={styles.profileCardHeader}>
@@ -882,6 +900,51 @@ export default function ProfileScreen() {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
         }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Subscription</ThemedText>
+          <View style={styles.subscriptionContainer}>
+            <View style={styles.subscriptionInfo}>
+              <ThemedText style={[styles.subscriptionType, { color: colors.text }]}>
+                {learnerInfo?.subscription === 'dimpo_gold_annual'
+                  ? '✨ Gold Plan'
+                  : learnerInfo?.subscription === 'dimpo_silver_annual'
+                    ? '✨ Silver Plan'
+                    : 'Free Plan'
+                }
+              </ThemedText>
+              <ThemedText style={[styles.subscriptionDescription, { color: colors.textSecondary }]}>
+                {learnerInfo?.subscription === 'dimpo_gold_annual'
+                  ? 'You have access to all premium features with Gold benefits'
+                  : learnerInfo?.subscription === 'dimpo_silver_annual'
+                    ? 'You have access to premium features. Upgrade to Gold for even more benefits!'
+                    : 'Upgrade to Gold for unlimited access to all premium features'
+                }
+              </ThemedText>
+            </View>
+            {learnerInfo?.subscription !== 'dimpo_gold_annual' && (
+              <TouchableOpacity
+                style={[styles.upgradeButton]}
+                onPress={() => setShowPaywall(true)}
+              >
+                <LinearGradient
+                  colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                  style={styles.upgradeButtonGradient}
+                >
+                  <ThemedText style={styles.upgradeButtonText}>
+                    {learnerInfo?.subscription === 'dimpo_silver_annual'
+                      ? '✨ Upgrade to Gold'
+                      : '✨ Upgrade to Gold'
+                    }
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ThemedView>
+
+        <ThemedView style={[styles.sectionCard, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
           <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Help & Support</ThemedText>
           <TouchableOpacity
             style={[styles.infoButton, { backgroundColor: isDark ? colors.surface : '#F8FAFC' }]}
@@ -946,6 +1009,28 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ThemedView>
       </ScrollView>
+
+      {showPaywall && (
+        <Paywall
+          onSuccess={() => {
+            setShowPaywall(false);
+            // Refresh learner info to update subscription status
+            if (user?.uid) {
+              getLearner(user.uid).then(learner => {
+                setLearnerInfo(prev => {
+                  if (!prev) return null;
+                  return {
+                    ...prev,
+                    subscription: (learner as any).subscription || 'free'
+                  };
+                });
+              });
+            }
+          }}
+          onClose={() => setShowPaywall(false)}
+        />
+      )}
+
       <Modal
         isVisible={showGradeChangeModal}
         onBackdropPress={() => setShowGradeChangeModal(false)}
@@ -1615,5 +1700,108 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  upgradeButton: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  upgradeButtonGradient: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  paywallContainer: {
+    borderRadius: 24,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  paywallHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  paywallTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  closePaywallButton: {
+    padding: 8,
+  },
+  paywallFeatures: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureText: {
+    fontSize: 16,
+    flex: 1,
+  },
+  pricingContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  price: {
+    fontSize: 48,
+    fontWeight: '700',
+  },
+  pricePeriod: {
+    fontSize: 16,
+    marginTop: 4,
+  },
+  upgradeNowButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    marginBottom: 16,
+  },
+  upgradeNowGradient: {
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeNowText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  termsText: {
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  subscriptionContainer: {
+    gap: 16,
+  },
+  subscriptionInfo: {
+    gap: 4,
+  },
+  subscriptionType: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  subscriptionDescription: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 }); 

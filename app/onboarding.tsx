@@ -160,25 +160,6 @@ function getRandomSuperheroName(): string {
   return SUPERHERO_NAMES[randomIndex];
 }
 
-// Add function before WebBrowser.maybeCompleteAuthSession()
-async function getSchoolFunfacts(schoolName: string) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/school/fact?school_name=${encodeURIComponent(schoolName)}`);
-    const data = await response.json();
-    if (data.status === "OK") {
-      return {
-        fact: data.fact
-      };
-    }
-    throw new Error('Failed to fetch school facts');
-  } catch (error) {
-    console.error('Error fetching school facts:', error);
-    return {
-      fact: `${schoolName} is a great place to learn!`
-    };
-  }
-}
-
 WebBrowser.maybeCompleteAuthSession();
 
 const ILLUSTRATIONS = {
@@ -295,8 +276,10 @@ export default function OnboardingScreen() {
       case 3:
         return 'avatar_selection';
       case 4:
-        return 'auth_options';
+        return 'ratings';
       case 5:
+        return 'auth_options';
+      case 6:
         return 'registration';
       default:
         return 'unknown';
@@ -510,10 +493,37 @@ export default function OnboardingScreen() {
 
       case 4:
         return (
+          <View style={styles.step} testID="ratings-step">
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle}>
+                ⭐️ Quick Rating Guide
+              </ThemedText>
+              <ThemedText style={styles.stepSubtitle}>
+                Help other students find Dimpo!
+              </ThemedText>
+            </View>
+
+            <View style={styles.ratingsContainer}>
+              <View style={styles.ratingInfoCard}>
+                <ThemedText style={styles.ratingInfoText}>
+                  • 5 stars = I love it and would recommend it!{'\n'}
+                  • 1 star = I don't like it and would not recommend it
+                </ThemedText>
+              </View>
+
+
+
+
+            </View>
+          </View>
+        );
+
+      case 5:
+        return (
           <View style={styles.step} testID="auth-options-step">
             <TouchableOpacity
               style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(3)}
+              onPress={() => setStep(4)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -544,7 +554,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'email' });
                   setRegistrationMethod('email');
-                  setStep(5);
+                  setStep(6);
                 }}
                 testID="email-auth-button"
               >
@@ -557,7 +567,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'phone' });
                   setRegistrationMethod('phone');
-                  setStep(5);
+                  setStep(6);
                 }}
                 testID="phone-auth-button"
               >
@@ -566,7 +576,7 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <ThemedText style={styles.guestPromptText}>
-                Not ready to register? Try our quiz as a guest!
+                Not ready to register? Try Dimpo as a guest!
               </ThemedText>
 
               <TouchableOpacity
@@ -654,18 +664,18 @@ export default function OnboardingScreen() {
                 testID="guest-auth-button"
               >
                 <Ionicons name="person-outline" size={24} color="#FFFFFF" />
-                <ThemedText style={styles.authButtonText}>Try Quiz as Guest</ThemedText>
+                <ThemedText style={styles.authButtonText}>Try Dimpo as Guest</ThemedText>
               </TouchableOpacity>
             </View>
           </View>
         );
 
-      case 5:
+      case 6:
         return (
           <View style={styles.step}>
             <TouchableOpacity
               style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(4)}
+              onPress={() => setStep(5)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -710,6 +720,8 @@ export default function OnboardingScreen() {
         return true;
       case 5:
         return true;
+      case 6:
+        return true;
       default:
         return false;
     }
@@ -725,7 +737,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 4 && (
+        {step < 5 && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
@@ -1552,5 +1564,70 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     opacity: 0.9,
+  },
+  ratingsContainer: {
+    flex: 1,
+    width: '100%',
+    paddingHorizontal: 24,
+    justifyContent: 'space-between',
+  },
+  ratingsContent: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  ratingsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 28,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  starButton: {
+    padding: 8,
+  },
+  starIcon: {
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  ratingsSubtitle: {
+    fontSize: 16,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  ratingsFooter: {
+    marginBottom: 40,
+    paddingHorizontal: 20,
+  },
+  ratingsFooterText: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  ratingInfoCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  ratingInfoText: {
+    fontSize: 15,
+    color: '#E2E8F0',
+    lineHeight: 24,
   },
 });

@@ -7,8 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
-import RevenueCatUI from 'react-native-purchases-ui';
-import Purchases from 'react-native-purchases';
+import { Paywall } from '../components/Paywall';
 
 interface LectureRecording {
     id: string;
@@ -40,21 +39,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     const audioPlayerRef = useRef<{ playSound: () => Promise<void> }>(null);
     const [remainingPodcasts, setRemainingPodcasts] = useState<number | null>(null);
     const [isLoadingUsage, setIsLoadingUsage] = useState(false);
-
-    const showPaywall = async () => {
-        try {
-            const offerings = await Purchases.getOfferings();
-            if (!offerings.current) {
-                throw new Error('No offerings available');
-            }
-            await RevenueCatUI.presentPaywall({
-                offering: offerings.current,
-                displayCloseButton: true,
-            });
-        } catch (error) {
-            console.error('Failed to show paywall:', error);
-        }
-    };
+    const [showPaywall, setShowPaywall] = useState(false);
 
     useEffect(() => {
         if (isVisible && user?.uid) {
@@ -71,7 +56,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
             if (data.status === "OK") {
                 setRemainingPodcasts(data.data.podcast);
                 if (data.data.podcast === 0) {
-                    await showPaywall();
+                    setShowPaywall(true);
                 }
             }
         } catch (error) {
@@ -90,7 +75,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     if (!recording) return null;
 
     const audioFileName = recording.recordingFileName.replace('.opus', '.m4a');
-    const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}?subscriptionCheck=true`;
+    const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}?subscriptionCheck=true&uid=${user?.uid}`;
 
     const handleShare = async () => {
         try {
@@ -106,78 +91,89 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     };
 
     return (
-        <Modal
-            isVisible={isVisible}
-            onBackdropPress={onClose}
-            onBackButtonPress={onClose}
-            style={styles.modal}
-            backdropOpacity={0.8}
-        >
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <ThemedText style={styles.title}>{recording.main_topic}</ThemedText>
-                    <Ionicons
-                        name="close"
-                        size={24}
-                        color={colors.text}
-                        onPress={onClose}
-                        style={styles.closeButton}
-                    />
-                </View>
-
-                <View style={styles.content}>
-                    {remainingPodcasts !== null && remainingPodcasts !== 999 && (
-                        <View style={[styles.usageContainer, {
-                            backgroundColor: remainingPodcasts === 0
-                                ? (isDark ? 'rgba(234, 179, 8, 0.1)' : '#FEF3C7')
-                                : (isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6'),
-                            borderColor: remainingPodcasts === 0
-                                ? (isDark ? 'rgba(234, 179, 8, 0.3)' : '#FCD34D')
-                                : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#E5E7EB'),
-                        }]}>
-
-                            <ThemedText style={[styles.usageText, {
-                                color: remainingPodcasts === 0
-                                    ? (isDark ? '#FCD34D' : '#D97706')
-                                    : (isDark ? colors.text : '#4B5563')
-                            }]}>
-                                {remainingPodcasts === 0
-                                    ? "⚠️ You've reached your daily podcast limit. Try our quizzes and lessons to continue learning!"
-                                    : `⚠️ ${remainingPodcasts} podcasts remaining today`}
-                            </ThemedText>
-                        </View>
-                    )}
-
-                    <TouchableOpacity
-                        style={[styles.shareButton, {
-                            backgroundColor: isDark ? colors.surface : '#F3F4F6',
-                            borderColor: isDark ? colors.border : '#E5E7EB',
-                            marginTop: 16,
-                            marginBottom: 16,
-                        }]}
-                        onPress={handleShare}
-                    >
+        <>
+            {showPaywall && (
+                <Paywall
+                    onSuccess={() => {
+                        setShowPaywall(false);
+                        fetchDailyUsage(); // Refresh usage after successful purchase
+                    }}
+                    onClose={() => setShowPaywall(false)}
+                />
+            )}
+            <Modal
+                isVisible={isVisible}
+                onBackdropPress={onClose}
+                onBackButtonPress={onClose}
+                style={styles.modal}
+                backdropOpacity={0.8}
+            >
+                <View style={styles.container}>
+                    <View style={styles.header}>
+                        <ThemedText style={styles.title}>{recording.main_topic}</ThemedText>
                         <Ionicons
-                            name="share-outline"
-                            size={20}
-                            color={isDark ? colors.text : '#4B5563'}
-                        />
-                        <ThemedText style={[styles.shareButtonText, { color: isDark ? colors.text : '#4B5563' }]}>
-                            Share this lecture
-                        </ThemedText>
-                    </TouchableOpacity>
-
-                    <View style={styles.playerContainer}>
-                        <AudioPlayer
-                            ref={audioPlayerRef}
-                            audioUrl={audioUrl}
-                            title={recording.lecture_name}
-                            disabled={remainingPodcasts === 0}
+                            name="close"
+                            size={24}
+                            color={colors.text}
+                            onPress={onClose}
+                            style={styles.closeButton}
                         />
                     </View>
+
+                    <View style={styles.content}>
+                        {remainingPodcasts !== null && remainingPodcasts !== 999 && (
+                            <View style={[styles.usageContainer, {
+                                backgroundColor: remainingPodcasts === 0
+                                    ? (isDark ? 'rgba(234, 179, 8, 0.1)' : '#FEF3C7')
+                                    : (isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6'),
+                                borderColor: remainingPodcasts === 0
+                                    ? (isDark ? 'rgba(234, 179, 8, 0.3)' : '#FCD34D')
+                                    : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#E5E7EB'),
+                            }]}>
+
+                                <ThemedText style={[styles.usageText, {
+                                    color: remainingPodcasts === 0
+                                        ? (isDark ? '#FCD34D' : '#D97706')
+                                        : (isDark ? colors.text : '#4B5563')
+                                }]}>
+                                    {remainingPodcasts === 0
+                                        ? "⚠️ You've reached your daily podcast limit. Try our quizzes and lessons to continue learning!"
+                                        : `⚠️ ${remainingPodcasts} podcasts remaining today`}
+                                </ThemedText>
+                            </View>
+                        )}
+
+                        <TouchableOpacity
+                            style={[styles.shareButton, {
+                                backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                                borderColor: isDark ? colors.border : '#E5E7EB',
+                                marginTop: 16,
+                                marginBottom: 16,
+                            }]}
+                            onPress={handleShare}
+                        >
+                            <Ionicons
+                                name="share-outline"
+                                size={20}
+                                color={isDark ? colors.text : '#4B5563'}
+                            />
+                            <ThemedText style={[styles.shareButtonText, { color: isDark ? colors.text : '#4B5563' }]}>
+                                Share this lecture
+                            </ThemedText>
+                        </TouchableOpacity>
+
+                        <View style={styles.playerContainer}>
+                            <AudioPlayer
+                                ref={audioPlayerRef}
+                                audioUrl={audioUrl}
+                                title={recording.lecture_name}
+                                disabled={remainingPodcasts === 0}
+                            />
+                        </View>
+                    </View>
                 </View>
-            </View>
-        </Modal>
+            </Modal>
+        </>
     );
 }
 

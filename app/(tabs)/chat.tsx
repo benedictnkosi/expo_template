@@ -280,8 +280,8 @@ export default function ChatScreen() {
                     onPress={() => router.push({
                         pathname: '/threads/[id]',
                         params: {
-                            id: 'tales-of-dimpo',
-                            subjectName: 'Tales of Dimpo'
+                            id: 'the-dimpo-chronicles',
+                            subjectName: 'The Dimpo Chronicles'
                         }
                     })}
                 >

@@ -19,7 +19,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderTopColor: isDark ? colors.border : '#E5E7EB',
-          height: 60,
+          height: 60
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,

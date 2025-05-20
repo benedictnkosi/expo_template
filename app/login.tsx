@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, TouchableOpacity, TextInput, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, TextInput, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
@@ -84,85 +84,108 @@ export default function Login() {
         colors={['#1B1464', '#2B2F77']}
         style={styles.gradient}
       >
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <ThemedText style={styles.title}>Dimpo Learning App 👋</ThemedText>
-            <ThemedText style={styles.subtitle}>Ready to ace those exams? Let's get started! 🚀</ThemedText>
-          </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoidingView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.content}>
+              <View style={styles.header}>
+                <ThemedText style={styles.title}>Dimpo Learning App 👋</ThemedText>
+                <ThemedText style={styles.subtitle}>Ready to ace those exams? Let's get started! 🚀</ThemedText>
+              </View>
 
-          <View style={styles.form}>
-            <TextInput
-              style={styles.input}
-              placeholder="Email or Phone Number"
-              placeholderTextColor="#94A3B8"
-              value={emailOrPhone}
-              onChangeText={setEmailOrPhone}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              testID="email-input"
-              maxLength={50}
-            />
-            <View style={styles.passwordContainer}>
-              <TextInput
-                style={[styles.input, styles.passwordInput]}
-                placeholder="Password"
-                placeholderTextColor="#94A3B8"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                testID="password-input"
-                maxLength={50}
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-                testID="toggle-password-visibility"
-              >
-                <Ionicons
-                  name={showPassword ? "eye-off" : "eye"}
-                  size={24}
-                  color="#94A3B8"
+              <View style={styles.form}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email or Phone Number"
+                  placeholderTextColor="#94A3B8"
+                  value={emailOrPhone}
+                  onChangeText={setEmailOrPhone}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  testID="email-input"
+                  maxLength={50}
                 />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={isLoading}
-              testID="login-button"
-            >
-              <ThemedText style={styles.buttonText}>
-                {isLoading ? 'Signing in...' : 'Start Learning →'}
-              </ThemedText>
-            </TouchableOpacity>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    placeholder="Password"
+                    placeholderTextColor="#94A3B8"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    testID="password-input"
+                    maxLength={50}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                    testID="toggle-password-visibility"
+                  >
+                    <Ionicons
+                      name={showPassword ? "eye-off" : "eye"}
+                      size={24}
+                      color="#94A3B8"
+                    />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={[styles.button, isLoading && styles.buttonDisabled]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                  testID="login-button"
+                >
+                  <ThemedText style={styles.buttonText}>
+                    {isLoading ? 'Signing in...' : 'Start Learning →'}
+                  </ThemedText>
+                </TouchableOpacity>
 
-            <View style={styles.registerContainer}>
-              <ThemedText style={styles.helperText}>
-                New to Dimpo Learning App? Join thousands of students acing their exams! 🎯
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.createAccountButton}
-                onPress={() => router.push('/onboarding')}
-                testID="create-account-button"
-              >
-                <ThemedText style={styles.createAccountButtonText}>Create an account</ThemedText>
-              </TouchableOpacity>
-            </View>
+                <View style={styles.registerContainer}>
+                  <ThemedText style={styles.helperText}>
+                    New to Dimpo Learning App? Join thousands of students acing their exams! 🎯
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={styles.createAccountButton}
+                    onPress={() => router.push('/onboarding')}
+                    testID="create-account-button"
+                  >
+                    <ThemedText style={styles.createAccountButtonText}>Create an account</ThemedText>
+                  </TouchableOpacity>
+                </View>
 
-            <View style={styles.forgotPasswordContainer}>
-              <ThemedText style={styles.helperText}>
-                Forgot your password? Don't worry, it happens to the best of us! 😅
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.linkButton}
-                onPress={() => router.push('/forgot-password')}
-                testID="forgot-password-button"
-              >
-                <ThemedText style={styles.linkText}>Reset it here</ThemedText>
-              </TouchableOpacity>
+                <View style={styles.deleteAccountContainer}>
+                  <TouchableOpacity
+                    style={styles.deleteAccountButton}
+                    onPress={() => router.push('https://examquiz.co.za/info/delete-account')}
+                    testID="delete-account-button"
+                  >
+                    <ThemedText style={styles.deleteAccountText}>Delete Account</ThemedText>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.forgotPasswordContainer}>
+                  <ThemedText style={styles.helperText}>
+                    Forgot your password? Don't worry, it happens to the best of us! 😅
+                  </ThemedText>
+                  <TouchableOpacity
+                    style={styles.linkButton}
+                    onPress={() => router.push('/forgot-password')}
+                    testID="forgot-password-button"
+                  >
+                    <ThemedText style={styles.linkText}>Reset it here</ThemedText>
+                  </TouchableOpacity>
+                </View>
+
+
+              </View>
             </View>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -175,11 +198,18 @@ const styles = StyleSheet.create({
   gradient: {
     flex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingTop: 40,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
@@ -282,5 +312,21 @@ const styles = StyleSheet.create({
     right: 12,
     top: 12,
     padding: 4,
+  },
+  deleteAccountContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    paddingTop: 24,
+  },
+  deleteAccountButton: {
+    padding: 8,
+  },
+  deleteAccountText: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 }); 
