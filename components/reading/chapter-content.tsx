@@ -38,10 +38,12 @@ export function ChapterContent({ chapterName, chapterNumber, content, fontSize =
     useEffect(() => {
         if (!chapterNumber) return;
         const imageUrl = `${HOST_URL}/public/learn/learner/get-image?image=chapter-${chapterNumber}.png`;
+        console.log('imageUrl', imageUrl);
         fetch(imageUrl, { method: 'HEAD' })
             .then(res => setChapterImageUrl(res.ok ? imageUrl : null))
             .catch(() => setChapterImageUrl(null));
 
+        console.log('chapterImageUrl', chapterImageUrl);
         // Log chapter view event
         logAnalyticsEvent('chapter_view', {
             chapter_name: chapterName,

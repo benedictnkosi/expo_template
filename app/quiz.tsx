@@ -579,7 +579,7 @@ interface QuestionCardProps {
     selectedAnswer: string | null;
     showFeedback: boolean;
     isAnswerLoading: boolean;
-    selectedMode: 'quiz' | 'lessons';
+    selectedMode: 'quiz' | 'lessons' | 'practice';
     handleAnswer: (answer: string, options?: { sheet_cell: string }) => Promise<void>;
     cleanAnswer: (answer: string) => string;
     feedbackMessage: string;
@@ -1117,7 +1117,7 @@ export default function QuizScreen() {
     const [currentStreak, setCurrentStreak] = useState(0);
     const [correctAnswer, setCorrectAnswer] = useState<string>('');
     const [recordingFileName, setRecordingFileName] = useState<string>('');
-    const [selectedMode, setSelectedMode] = useState<'quiz' | 'lessons'>('quiz');
+    const [selectedMode, setSelectedMode] = useState<'quiz' | 'lessons' | 'practice'>('quiz');
     const [isQuestionLoading, setIsQuestionLoading] = useState(false);
     const [showBadgeModal, setShowBadgeModal] = useState(false);
     const [newBadge, setNewBadge] = useState<Badge | null>(null);
@@ -2786,9 +2786,15 @@ export default function QuizScreen() {
                                         title: 'Lessons Mode',
                                         description: 'Learn with detailed explanations and examples',
                                         icon: '📚'
-                                    }
+                                    },
+                                    ...(subjectName?.includes('Mathematics') ? [{
+                                        id: 'practice',
+                                        title: 'Practice Mode',
+                                        description: 'Practice with step-by-step problem solving',
+                                        icon: '✏️'
+                                    }] : [])
                                 ]}
-                                onSelectMode={(mode) => setSelectedMode(mode.id as 'quiz' | 'lessons')}
+                                onSelectMode={(mode) => setSelectedMode(mode.id as 'quiz' | 'lessons' | 'practice')}
                                 selectedModeId={selectedMode}
                             />
 
