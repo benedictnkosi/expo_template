@@ -5,20 +5,16 @@ import { useTheme } from '../../../contexts/ThemeContext';
 interface KaTeXProps {
     latex: string;
     isOption?: boolean;
-    fontSize?: number;
-    border?: boolean;
-    color?: string;
-    width?: string;
+    fontSize?: string;
     height?: string;
 }
 
-export function KaTeX({ latex, isOption, fontSize = 1.5, border = true, color, width = '100%', height = '120px' }: KaTeXProps) {
+export function KaTeX({ latex, isOption, fontSize = '1em', height = '60px' }: KaTeXProps) {
     const [webViewHeight, setWebViewHeight] = useState(60);
     const { isDark } = useTheme();
 
-    const textColor = color || (isDark ? '#4ADE80' : '#166534');
+    const textColor = isDark ? '#4ADE80' : '#334155';
     const backgroundColor = isDark ? 'transparent' : 'transparent';
-    const borderStyle = border ? `1.5px solid ${textColor}` : 'none';
 
     const html = `
         <!DOCTYPE html>
@@ -32,51 +28,59 @@ export function KaTeX({ latex, isOption, fontSize = 1.5, border = true, color, w
                     :root {
                         color-scheme: ${isDark ? 'dark' : 'light'};
                     }
-                    body {
+                    html, body {
                         margin: 0;
-                        padding: 8px;
+                        padding: 0;
+                        width: 100vw;
+                        height: 100vh;
+                        box-sizing: border-box;
                         background-color: ${backgroundColor};
                         color: ${textColor};
+                        overflow: hidden;
                     }
-                    #formula {
-                        width: 100%;
-                        box-sizing: border-box;
-                        overflow-x: hidden;
-                        overflow-y: hidden;
-                        color: ${textColor};
-                        line-height: 3;
-                        border: ${borderStyle};
-                        border-radius: 16px;
-                        padding: 24px;
+                    body {
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        height: ${height}px;
-                        width: ${width};
-                        font-size: ${fontSize}em;
-                        letter-spacing: 0.12em;
+                        width: 100vw;
+                        height: ${height};
+                        overflow: hidden;
+                    }
+                    #formula {
+                        width: 100%;
+                        height: 100%;
+                        color: ${textColor};
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        box-sizing: border-box;
+                        overflow: hidden;
                     }
                     .katex {
-                        font-size: ${fontSize}em !important;
+                        font-size: ${fontSize};
                         color: ${textColor} !important;
-                        line-height: 3;
+                        text-align: center;
+                        line-height: 1.5;
                         width: 100%;
                         box-sizing: border-box;
-                        text-align: center !important;
-                        letter-spacing: 0.12em;
+                        overflow: hidden;
                     }
                     .katex-display {
                         margin: 0;
-                        padding: 5px 0;
+                        padding: 0;
                         overflow: visible;
                         text-align: center !important;
                         color: ${textColor} !important;
-                        line-height: 3;
+                        line-height: 1.5;
+                        width: 100%;
+                        box-sizing: border-box;
                     }
                     .katex-display > .katex {
                         text-align: center !important;
                         color: ${textColor} !important;
-                        line-height: 3;
+                        line-height: 2;
+                        width: 100%;
+                        box-sizing: border-box;
                     }
                     .katex .base { color: ${textColor} !important; }
                     .katex .mord { color: ${textColor} !important; }
@@ -113,7 +117,7 @@ export function KaTeX({ latex, isOption, fontSize = 1.5, border = true, color, w
     return (
         <WebView
             source={{ html }}
-            style={{ height: webViewHeight, backgroundColor }}
+            style={{ height: webViewHeight, backgroundColor, width: '100%' }}
             scrollEnabled={false}
             onMessage={(event) => {
                 const height = parseInt(event.nativeEvent.data);

@@ -2794,7 +2794,21 @@ export default function QuizScreen() {
                                         icon: '✏️'
                                     }] : [])
                                 ]}
-                                onSelectMode={(mode) => setSelectedMode(mode.id as 'quiz' | 'lessons' | 'practice')}
+                                onSelectMode={(mode) => {
+                                    if (mode.id === 'practice') {
+                                        console.log('Practice mode selected');
+                                        router.replace({
+                                            pathname: '/maths',
+                                            params: {
+                                                subjectName: subjectName,
+                                                learnerUid: user?.uid,
+                                                grade: grade
+                                            }
+                                        });
+                                    } else {
+                                        setSelectedMode(mode.id as 'quiz' | 'lessons' | 'practice');
+                                    }
+                                }}
                                 selectedModeId={selectedMode}
                             />
 

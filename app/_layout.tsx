@@ -104,6 +104,13 @@ function RootLayoutNav() {
             }}
           />
           <Stack.Screen
+            name="maths"
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal'
+            }}
+          />
+          <Stack.Screen
             name="profile"
             options={{
               headerShown: false,
