@@ -1147,6 +1147,20 @@ export default function HomeScreen() {
           </View>
         )}
 
+        <TouchableOpacity
+          style={[styles.testButton, { backgroundColor: '#6366F1', borderColor: '#6366F1' }]}
+          onPress={() => router.push({
+            pathname: '/maths',
+            params: {
+              subjectName: 'Mathemetics',
+              learnerUid: 'u65pX1a9KCbshI5VuprMcgVVfQl2',
+              grade: 12
+            }
+          })}
+        >
+          <ThemedText style={[styles.testButtonText, { color: '#fff' }]}>Open Maths Demo</ThemedText>
+        </TouchableOpacity>
+
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
         <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>Click on a subject to start learning</ThemedText>
 
@@ -1387,6 +1401,8 @@ export default function HomeScreen() {
             <ThemedText style={styles.whatsAppButtonText}>Send us a WhatsApp</ThemedText>
           </TouchableOpacity>
         </View>
+
+
       </ScrollView>
 
       <RatingModal

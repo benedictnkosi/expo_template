@@ -185,10 +185,18 @@ export default function MathsScreen() {
         return option === selectedQuestion.steps.steps[currentStepIndex].answer;
     };
 
-    const isRowLayout = selectedQuestion?.steps?.steps[currentStepIndex]?.options?.every(opt => opt.length < 20);
+    const isRowLayout = selectedQuestion?.steps?.steps[currentStepIndex]?.options?.every(opt => opt.length < 10);
+
+    const sortedSteps = selectedQuestion?.steps?.steps
+        ? [...selectedQuestion.steps.steps].sort((a, b) => a.step_number - b.step_number)
+        : [];
 
     function cleanLatex(input: string): string {
-        input = removeLatexTextWrappers(input);
+        if (!isLatex(input)) {
+            return input;
+        }
+
+        //input = removeLatexTextWrappers(input);
         console.log("input", input);
         // Break long \text{...} blocks into two lines if >30 chars
         const textBlockMatch = input.match(/\\text\{([^}]+)\}/);
@@ -210,14 +218,16 @@ export default function MathsScreen() {
             .replace(/\\\(/g, '(')
             .replace(/\\\)/g, ')')
             .replace(/ } /g, ' } \\newline ')
+            .replace(/: /g, ' \\newline ')
             .replace(/(?<!^)\\text/g, '\\newline \\text');
     }
 
     function calculateKaTeXHeight(latex: string): string {
         const baseHeight = 60;
         const newlineCount = (latex.match(/\\newline/g) || []).length;
-        console.log(latex, newlineCount);
-        return `${baseHeight + (newlineCount * 45)}px`;
+        const height = baseHeight + (newlineCount * 45);
+        console.log(latex, newlineCount, height);
+        return `${height}px`;
     }
 
     // Helper to get dynamic font size for KaTeX
@@ -229,7 +239,7 @@ export default function MathsScreen() {
 
     function removeLatexTextWrappers(input: string): string {
         // Check for common LaTeX commands (add more as needed)
-        const hasLatex = /\\(frac|sqrt|sum|int|begin|end|over|cdot|leq|geq|neq|pm|times|div|[a-zA-Z]+[\\^_])|[=+-]/g.test(input);
+        const hasLatex = /\\(frac|sqrt|sum|int|begin|end|over|cdot|leq|geq|neq|pm|times|div|[a-zA-Z]+[\\^_])/g.test(input);
         if (!hasLatex) {
             // Only remove \text{...} if no other LaTeX is present
             return input.replace(/\\text\{([^}]*)\}/g, '$1');
@@ -237,6 +247,12 @@ export default function MathsScreen() {
         return input;
     }
 
+    function isLatex(input: string): boolean {
+        // Check for common LaTeX commands or math symbols
+        const hasLatex = /\\(frac|sqrt|sum|int|begin|end|over|cdot|leq|geq|neq|pm|times|div|[a-zA-Z]+[\\^_])|{|}/g.test(input);
+        console.log("isLatex", input, hasLatex);
+        return hasLatex;
+    }
     return (
         <LinearGradient
             colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -294,7 +310,7 @@ export default function MathsScreen() {
                             <View style={[styles.stepsCard, { paddingTop: 8, paddingBottom: 96 }]}>
 
                                 {selectedQuestion?.steps?.question &&
-                                    (cleanLatex(selectedQuestion.steps.question.replace(/\$/g, '')).includes('\\') || cleanLatex(selectedQuestion.steps.question.replace(/\$/g, '')).includes('=') ? (
+                                    (isLatex(selectedQuestion.steps.question) ? (
                                         <View style={{ marginTop: 8 }}>
                                             <KaTeX
                                                 latex={cleanLatex(selectedQuestion.steps.question.replace(/\$/g, ''))}
@@ -305,12 +321,32 @@ export default function MathsScreen() {
                                         </View>
                                     ) : (
                                         <ThemedText style={[styles.stepsTitle, { color: colors.text }]}>
-                                            {cleanLatex(selectedQuestion.steps.question.replace(/\$/g, ''))}
+                                            {selectedQuestion.steps.question}
                                         </ThemedText>
                                     ))}
 
-                                {selectedQuestion.steps && selectedQuestion.steps.steps.length > 0 && (
-                                    <View style={[styles.stepsContainer, {
+                                {/* Add Progress Indicator */}
+                                {selectedQuestion.steps && sortedSteps.length > 0 && (
+                                    <View style={styles.progressContainer}>
+                                        <View style={styles.progressBar}>
+                                            <View
+                                                style={[
+                                                    styles.progressFill,
+                                                    {
+                                                        width: `${((currentStepIndex + 1) / sortedSteps.length) * 100}%`,
+                                                        backgroundColor: isDark ? '#6366F1' : '#4F46E5'
+                                                    }
+                                                ]}
+                                            />
+                                        </View>
+                                        <ThemedText style={styles.progressText}>
+                                            Step {currentStepIndex + 1} of {sortedSteps.length}
+                                        </ThemedText>
+                                    </View>
+                                )}
+
+                                {selectedQuestion.steps && sortedSteps.length > 0 && (
+                                    <View key={currentStepIndex} style={[styles.stepsContainer, {
                                         backgroundColor: isDark ? colors.card : '#FFFFFF',
                                         borderColor: colors.border,
                                     }]}>
@@ -318,28 +354,28 @@ export default function MathsScreen() {
                                             <ThemedText style={[styles.stepsTitle, { color: colors.text }]}>
                                                 Step {currentStepIndex + 1}:
                                             </ThemedText>
-                                            {selectedQuestion?.steps?.steps[currentStepIndex]?.prompt &&
-                                                (cleanLatex(selectedQuestion.steps.steps[currentStepIndex].prompt.replace(/\$/g, '')).includes('\\') || cleanLatex(selectedQuestion.steps.steps[currentStepIndex].prompt.replace(/\$/g, '')).includes('=') ? (
+                                            {sortedSteps[currentStepIndex]?.prompt &&
+                                                (isLatex(sortedSteps[currentStepIndex].prompt) ? (
                                                     <View style={{ marginTop: 8 }}>
                                                         <KaTeX
-                                                            latex={cleanLatex(selectedQuestion.steps.steps[currentStepIndex].prompt.replace(/\$/g, ''))}
+                                                            latex={cleanLatex(sortedSteps[currentStepIndex].prompt.replace(/\$/g, ''))}
                                                             isOption={false}
-                                                            fontSize={getKaTeXFontSize(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].prompt.replace(/\$/g, '')))}
-                                                            height={calculateKaTeXHeight(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].prompt.replace(/\$/g, '')))}
+                                                            fontSize={getKaTeXFontSize(cleanLatex(sortedSteps[currentStepIndex].prompt.replace(/\$/g, '')))}
+                                                            height={calculateKaTeXHeight(cleanLatex(sortedSteps[currentStepIndex].prompt.replace(/\$/g, '')))}
                                                         />
                                                     </View>
                                                 ) : (
                                                     <ThemedText style={[styles.stepsTitle, { color: colors.text }]}>
-                                                        {cleanLatex(selectedQuestion.steps.steps[currentStepIndex].prompt.replace(/\$/g, ''))}
+                                                        {(sortedSteps[currentStepIndex].prompt)}
                                                     </ThemedText>
                                                 ))}
                                         </View>
-                                        {selectedQuestion?.steps?.steps[currentStepIndex]?.expression && (
+                                        {sortedSteps[currentStepIndex]?.expression && (
                                             <View style={{ marginBottom: 8 }}>
                                                 <KaTeX
-                                                    latex={cleanLatex(selectedQuestion.steps.steps[currentStepIndex].expression)}
-                                                    fontSize={getKaTeXFontSize(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].expression))}
-                                                    height={calculateKaTeXHeight(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].expression))}
+                                                    latex={cleanLatex(sortedSteps[currentStepIndex].expression)}
+                                                    fontSize={getKaTeXFontSize(cleanLatex(sortedSteps[currentStepIndex].expression))}
+                                                    height={calculateKaTeXHeight(cleanLatex(sortedSteps[currentStepIndex].expression))}
                                                 />
                                             </View>
                                         )}
@@ -355,16 +391,16 @@ export default function MathsScreen() {
                                         </TouchableOpacity>
                                         {showHint && (
                                             // LaTeX support for hint
-                                            cleanLatex(selectedQuestion.steps.steps[currentStepIndex].hint.replace(/\$/g, '')).includes('\\') || cleanLatex(selectedQuestion.steps.steps[currentStepIndex].hint.replace(/\$/g, '')).includes('=') ? (
+                                            isLatex(sortedSteps[currentStepIndex]?.hint) ? (
                                                 <KaTeX
-                                                    latex={cleanLatex(selectedQuestion.steps.steps[currentStepIndex].hint.replace(/\$/g, ''))}
+                                                    latex={cleanLatex(sortedSteps[currentStepIndex]?.hint.replace(/\$/g, ''))}
                                                     isOption={false}
-                                                    fontSize={getKaTeXFontSize(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].hint.replace(/\$/g, '')))}
-                                                    height={calculateKaTeXHeight(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].hint.replace(/\$/g, '')))}
+                                                    fontSize={getKaTeXFontSize(cleanLatex(sortedSteps[currentStepIndex]?.hint.replace(/\$/g, '')))}
+                                                    height={calculateKaTeXHeight(cleanLatex(sortedSteps[currentStepIndex]?.hint.replace(/\$/g, '')))}
                                                 />
                                             ) : (
                                                 <ThemedText style={[styles.stepsHint, { color: colors.textSecondary }]}>
-                                                    Hint: {cleanLatex(selectedQuestion.steps.steps[currentStepIndex].hint.replace(/\$/g, ''))}
+                                                    Hint: {(sortedSteps[currentStepIndex]?.hint)}
                                                 </ThemedText>
                                             )
                                         )}
@@ -373,9 +409,9 @@ export default function MathsScreen() {
                                             styles.stepsOptionsContainer,
                                             isRowLayout && styles.stepsOptionsRow
                                         ]}>
-                                            {selectedQuestion.steps?.steps[currentStepIndex]?.options.map((option, index) => {
+                                            {sortedSteps[currentStepIndex]?.options.map((option, index) => {
                                                 const isSelected = selectedOptionIndex === index;
-                                                const isCorrectAnswer = option === selectedQuestion?.steps?.steps[currentStepIndex]?.answer;
+                                                const isCorrectAnswer = option === sortedSteps[currentStepIndex]?.answer;
                                                 const isUserWrong = selectedOptionIndex !== null && !isCorrectAnswer && isSelected;
                                                 let optionStyle = [styles.stepOptionButton, isRowLayout && styles.stepOptionButtonRow];
                                                 let dynamicOptionColors = {};
@@ -391,13 +427,14 @@ export default function MathsScreen() {
                                                     dynamicOptionColors = { backgroundColor: isDark ? colors.surface : '#F8FAFC', borderColor: '#E5E7EB' };
                                                 }
                                                 return (
+
                                                     <TouchableOpacity
                                                         key={index}
                                                         style={[StyleSheet.flatten(optionStyle), dynamicOptionColors]}
                                                         onPress={() => setSelectedOptionIndex(index)}
                                                         disabled={selectedOptionIndex !== null}
                                                     >
-                                                        {cleanLatex(option).includes('\\') || cleanLatex(option).includes('=') ? (
+                                                        {isLatex(option) ? (
                                                             <KaTeX
                                                                 latex={cleanLatex(option)}
                                                                 isOption={true}
@@ -405,8 +442,21 @@ export default function MathsScreen() {
                                                                 height={calculateKaTeXHeight(cleanLatex(option))}
                                                             />
                                                         ) : (
-                                                            <ThemedText style={styles.stepOptionText}>
-                                                                {cleanLatex(option)}
+                                                            <ThemedText
+                                                                style={[
+                                                                    styles.stepOptionText,
+                                                                    {
+                                                                        textAlign: 'center',
+                                                                        fontFamily: 'serif',
+                                                                        fontStyle: 'italic',
+                                                                        fontWeight: '300',
+                                                                        fontSize: 24,
+
+                                                                    },
+                                                                ]}
+                                                                testID={`option-${index}`}
+                                                            >
+                                                                {option}
                                                             </ThemedText>
                                                         )}
                                                     </TouchableOpacity>
@@ -416,35 +466,40 @@ export default function MathsScreen() {
                                     </View>
                                 )}
 
-                                {selectedOptionIndex !== null && selectedQuestion?.steps?.steps[currentStepIndex] && (
-                                    <View style={{ marginTop: 16 }}>
+                                {selectedOptionIndex !== null && sortedSteps[currentStepIndex] && (
+                                    <View style={{ marginTop: 16, marginBottom: 16 }}>
                                         {selectedOptionIndex !== null && (
-                                            isOptionCorrect(selectedQuestion.steps.steps[currentStepIndex].options[selectedOptionIndex]) ? (
+                                            isOptionCorrect(sortedSteps[currentStepIndex].options[selectedOptionIndex]) ? (
                                                 <ThemedText style={{ fontSize: 20, marginBottom: 8, textAlign: 'center' }} accessibilityRole="alert">🎉 Congratulations!</ThemedText>
                                             ) : (
                                                 <ThemedText style={{ fontSize: 20, marginBottom: 8, textAlign: 'center' }} accessibilityRole="alert">❌ Try again!</ThemedText>
                                             )
                                         )}
-                                        {cleanLatex(selectedQuestion.steps.steps[currentStepIndex].teach.replace(/\$/g, '')).includes('\\') || cleanLatex(selectedQuestion.steps.steps[currentStepIndex].teach.replace(/\$/g, '')).includes('=') ? (
+                                        {isLatex(sortedSteps[currentStepIndex].teach) ? (
                                             <KaTeX
-                                                latex={cleanLatex(selectedQuestion.steps.steps[currentStepIndex].teach.replace(/\$/g, ''))}
+                                                latex={cleanLatex(sortedSteps[currentStepIndex].teach.replace(/\$/g, ''))}
                                                 isOption={false}
-                                                fontSize={getKaTeXFontSize(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].teach.replace(/\$/g, '')))}
-                                                height={calculateKaTeXHeight(cleanLatex(selectedQuestion.steps.steps[currentStepIndex].teach.replace(/\$/g, '')))}
+                                                fontSize={getKaTeXFontSize(cleanLatex(sortedSteps[currentStepIndex].teach.replace(/\$/g, '')))}
+                                                height={calculateKaTeXHeight(cleanLatex(sortedSteps[currentStepIndex].teach.replace(/\$/g, '')))}
                                             />
                                         ) : (
                                             <ThemedText style={[styles.stepsTeach, { color: colors.textSecondary }]}>
-                                                {cleanLatex(selectedQuestion.steps.steps[currentStepIndex].teach.replace(/\$/g, ''))}
+                                                {(sortedSteps[currentStepIndex].teach)}
                                             </ThemedText>
                                         )}
                                     </View>
                                 )}
 
-                                {selectedOptionIndex !== null && currentStepIndex < (selectedQuestion?.steps?.steps.length || 0) - 1 && (
+                                {selectedOptionIndex !== null && currentStepIndex < sortedSteps.length - 1 && (
                                     <View style={styles.nextStepIndicator}>
                                         <TouchableOpacity
                                             onPress={() => {
-                                                setCurrentStepIndex(i => i + 1);
+                                                console.log('Next Step pressed', { currentStepIndex, sortedStepsLength: sortedSteps.length });
+                                                setCurrentStepIndex(i => {
+                                                    const next = i + 1;
+                                                    console.log('Updating currentStepIndex to', next);
+                                                    return next;
+                                                });
                                                 setSelectedOptionIndex(null);
                                                 setShowHint(false);
                                             }}
@@ -458,6 +513,25 @@ export default function MathsScreen() {
                                 )}
                             </View>
                             <SafeAreaView style={styles.stickyButtonBar} edges={['bottom']}>
+                                {/* Add Question Progress Indicator */}
+                                <View style={styles.questionProgressWrapper}>
+                                    <View style={styles.questionProgressContainer}>
+                                        <View style={styles.questionProgressBar}>
+                                            <View
+                                                style={[
+                                                    styles.questionProgressFill,
+                                                    {
+                                                        width: `${((currentQuestionIndex + 1) / questionIds.length) * 100}%`,
+                                                        backgroundColor: '#22C55E' // Green
+                                                    }
+                                                ]}
+                                            />
+                                        </View>
+                                        <ThemedText style={styles.questionProgressText}>
+                                            Question {currentQuestionIndex + 1} of {questionIds.length}
+                                        </ThemedText>
+                                    </View>
+                                </View>
                                 <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
                                     <TouchableOpacity
                                         style={styles.backButton}
@@ -473,28 +547,7 @@ export default function MathsScreen() {
                                     >
                                         <ThemedText style={styles.backButtonText}>Topics</ThemedText>
                                     </TouchableOpacity>
-                                    {selectedQuestion?.steps?.steps && currentStepIndex < selectedQuestion.steps.steps.length - 1 && (
-                                        <TouchableOpacity
-                                            style={[
-                                                styles.modernButton,
-                                                selectedOptionIndex === null && styles.modernButtonDisabled,
-                                            ]}
-                                            onPress={() => {
-                                                setCurrentStepIndex(i => i + 1);
-                                                setSelectedOptionIndex(null);
-                                                setShowHint(false);
-                                            }}
-                                            accessibilityRole="button"
-                                            accessibilityLabel="Next Step"
-                                            disabled={selectedOptionIndex === null}
-                                        >
-                                            <ThemedText style={[
-                                                styles.modernButtonText,
-                                                selectedOptionIndex === null && { opacity: 0.6 }
-                                            ]}>Next</ThemedText>
-                                        </TouchableOpacity>
-                                    )}
-                                    {selectedQuestion?.steps?.steps && currentStepIndex === selectedQuestion.steps.steps.length - 1 && (
+                                    {sortedSteps.length > 0 && currentStepIndex === sortedSteps.length - 1 && (
                                         <TouchableOpacity
                                             style={styles.modernButton}
                                             onPress={loadNextQuestion}
@@ -648,6 +701,7 @@ function getStyles(isDark: boolean, colors: any) {
         },
         stepsOptionsContainer: {
             gap: 12,
+            marginBottom: 16,
         },
         stepsOptionsRow: {
             flexDirection: 'row',
@@ -668,7 +722,7 @@ function getStyles(isDark: boolean, colors: any) {
             marginBottom: 8,
         },
         stepOptionText: {
-            fontSize: 16,
+            fontSize: 24
         },
         closeButton: {
             backgroundColor: isDark ? '#27272A' : '#E5E7EB',
@@ -782,6 +836,57 @@ function getStyles(isDark: boolean, colors: any) {
         nextStepTouchable: {
             padding: 8,
             borderRadius: 8,
+            marginBottom: 16,
+        },
+        progressContainer: {
+            marginVertical: 16,
+            width: '100%',
+            alignItems: 'center',
+        },
+        progressBar: {
+            width: '100%',
+            height: 8,
+            backgroundColor: isDark ? '#334155' : '#E5E7EB',
+            borderRadius: 4,
+            overflow: 'hidden',
+            marginBottom: 8,
+        },
+        progressFill: {
+            height: '100%',
+            borderRadius: 4,
+        },
+        progressText: {
+            fontSize: 14,
+            fontWeight: '600',
+            color: isDark ? '#A7F3D0' : '#1E293B',
+        },
+        questionProgressContainer: {
+            width: '100%',
+            alignItems: 'center',
+            marginBottom: 16,
+            paddingHorizontal: 16,
+            marginTop: 32,
+        },
+        questionProgressBar: {
+            width: '100%',
+            height: 6,
+            backgroundColor: isDark ? '#334155' : '#E5E7EB',
+            borderRadius: 3,
+            overflow: 'hidden',
+            marginBottom: 8,
+        },
+        questionProgressFill: {
+            height: '100%',
+            borderRadius: 3,
+        },
+        questionProgressText: {
+            fontSize: 12,
+            fontWeight: '500',
+            color: isDark ? '#94A3B8' : '#64748B',
+        },
+        questionProgressWrapper: {
+            width: '100%',
+            paddingTop: 40, // Ensures visible space above the progress bar
         },
     });
 } 
