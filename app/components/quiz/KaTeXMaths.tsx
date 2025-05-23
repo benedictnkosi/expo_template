@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { WebView } from 'react-native-webview';
+import { ScrollView } from 'react-native';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 interface KaTeXProps {
@@ -36,15 +37,17 @@ export function KaTeX({ latex, isOption, fontSize = '1em', height = '60px' }: Ka
                         box-sizing: border-box;
                         background-color: ${backgroundColor};
                         color: ${textColor};
-                        overflow: hidden;
+                        overflow-x: auto;
+                        overflow-y: hidden;
                     }
                     body {
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        width: 100vw;
+                        min-width: 100vw;
                         height: ${height};
-                        overflow: hidden;
+                        overflow-x: auto;
+                        overflow-y: hidden;
                     }
                     #formula {
                         width: 100%;
@@ -54,32 +57,36 @@ export function KaTeX({ latex, isOption, fontSize = '1em', height = '60px' }: Ka
                         align-items: center;
                         justify-content: center;
                         box-sizing: border-box;
-                        overflow: hidden;
+                        overflow-x: auto;
+                        overflow-y: hidden;
+                        padding: 0 8px;
                     }
                     .katex {
                         font-size: ${fontSize};
                         color: ${textColor} !important;
                         text-align: center;
                         line-height: 1.5;
-                        width: 100%;
+                        min-width: 100%;
                         box-sizing: border-box;
-                        overflow: hidden;
+                        overflow-x: auto;
+                        overflow-y: hidden;
                     }
                     .katex-display {
                         margin: 0;
                         padding: 0;
-                        overflow: visible;
+                        overflow-x: auto;
+                        overflow-y: hidden;
                         text-align: center !important;
                         color: ${textColor} !important;
                         line-height: 1.5;
-                        width: 100%;
+                        min-width: 100%;
                         box-sizing: border-box;
                     }
                     .katex-display > .katex {
                         text-align: center !important;
                         color: ${textColor} !important;
                         line-height: 2;
-                        width: 100%;
+                        min-width: 100%;
                         box-sizing: border-box;
                     }
                     .katex .base { color: ${textColor} !important; }
@@ -115,14 +122,20 @@ export function KaTeX({ latex, isOption, fontSize = '1em', height = '60px' }: Ka
     `;
 
     return (
-        <WebView
-            source={{ html }}
-            style={{ height: webViewHeight, backgroundColor, width: '100%' }}
-            scrollEnabled={false}
-            onMessage={(event) => {
-                const height = parseInt(event.nativeEvent.data);
-                setWebViewHeight(height);
-            }}
-        />
+        <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={true}
+            contentContainerStyle={{ flexGrow: 1 }}
+        >
+            <WebView
+                source={{ html }}
+                style={{ height: webViewHeight, backgroundColor, minWidth: '100%' }}
+                scrollEnabled={false}
+                onMessage={(event) => {
+                    const height = parseInt(event.nativeEvent.data);
+                    setWebViewHeight(height);
+                }}
+            />
+        </ScrollView>
     );
 } 

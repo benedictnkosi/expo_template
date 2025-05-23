@@ -39,7 +39,7 @@ export function NextChapterCard() {
         }, [loadNextChapter])
     );
 
-    if (isLoading || !chapterData || (chapterData.chapter && chapterData.chapter.status === 'in_progress')) {
+    if (isLoading || !chapterData) {
         return null;
     }
 
@@ -139,7 +139,7 @@ export function NextChapterCard() {
                                 onPress={() => router.push('/(tabs)/reading')}
                             >
                                 <Text style={styles.startButtonText}>
-                                    {chapterData.chapter.status === 'in_progress' ? 'Read Again 📚' : 'Start Reading 📖'}
+                                    {'Start Reading 📖'}
                                 </Text>
                             </Pressable>
                         ) : (

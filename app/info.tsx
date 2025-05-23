@@ -138,6 +138,10 @@ export default function InfoScreen() {
           </ThemedText>
         </TouchableOpacity>
 
+        <ThemedText style={[styles.versionText, { color: colors.textSecondary }]}>
+          Version 2.8.7
+        </ThemedText>
+
       </ScrollView>
     </LinearGradient>
   );
@@ -267,5 +271,12 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  versionText: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+    opacity: 0.7,
   },
 }); 

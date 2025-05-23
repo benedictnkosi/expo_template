@@ -89,7 +89,7 @@ export function ChapterContent({ chapterName, chapterNumber, content, fontSize =
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.contentContainer}
-                showsVerticalScrollIndicator={false}
+                showsVerticalScrollIndicator={true}
                 accessibilityRole="scrollbar"
                 onScroll={handleScroll}
                 scrollEventThrottle={16}

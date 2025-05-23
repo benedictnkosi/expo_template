@@ -98,11 +98,7 @@ export const QuizPaperButtons = ({
                 </TouchableOpacity>
             </LinearGradient>
 
-            <View style={styles.hintContainer}>
-                <ThemedText style={styles.hintText}>
-                    💡 Hint: You can change which school terms you want to practice in your profile settings!
-                </ThemedText>
-            </View>
+
         </View>
     );
 };

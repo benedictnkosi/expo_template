@@ -46,6 +46,9 @@ import { RecordingPlayerModal } from './components/RecordingPlayerModal';
 import { TopicProgressBar } from './components/quiz/TopicProgressBar';
 import { FirstAnswerPointsModal } from './components/quiz/FirstAnswerPointsModal';
 import { FirstTimeModal } from './components/quiz/quiz-modals';
+import { Paywall } from './components/Paywall';
+import { getLearner } from '../services/api';
+import { TermsSelector } from './components/quiz/TermsSelector';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -1154,6 +1157,19 @@ export default function QuizScreen() {
     const [remainingLessons, setRemainingLessons] = useState<number>(0);
     const [quizLimitReached, setQuizLimitReached] = useState(false);
     const [offerings, setOfferings] = useState<any>(null);
+    const [questionsAnswered, setQuestionsAnswered] = useState(0);
+    const [showPaywall, setShowPaywall] = useState(false);
+    const [hasShownPaywall, setHasShownPaywall] = useState(false);
+    const [learnerInfo, setLearnerInfo] = useState<{
+        subscription: string;
+        terms: string;
+    } | null>(null);
+    const [selectedTerms, setSelectedTerms] = useState<string>('');
+    const [isUpdatingTerms, setIsUpdatingTerms] = useState(false);
+    const [studyKitKey, setStudyKitKey] = useState(0);
+
+    // Available terms
+    const TERMS = [1, 2, 3, 4];
 
     // Add useEffect to handle topic parameter on mount
     useEffect(() => {
@@ -1579,6 +1595,13 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string, options?: { sheet_cell: string }) => {
         if (!user?.uid || !currentQuestion) return;
 
+        // Check if user has reached the question limit and hasn't seen the paywall yet
+        if (learnerInfo?.subscription === 'free' && questionsAnswered >= 5 && !hasShownPaywall) {
+            setShowPaywall(true);
+            setHasShownPaywall(true);
+            return;
+        }
+
         // Set flag to indicate answers were submitted
         await AsyncStorage.setItem('hasNewAnswers', 'true');
 
@@ -1595,6 +1618,17 @@ export default function QuizScreen() {
                 "Normal",
                 options?.sheet_cell || ""
             );
+
+            // Increment questions answered counter
+            setQuestionsAnswered(prev => prev + 1);
+
+            // Check if we need to show paywall after this answer (only if we haven't shown it before)
+            if (learnerInfo?.subscription === 'free' && questionsAnswered + 1 === 5 && !hasShownPaywall) {
+                setTimeout(() => {
+                    setShowPaywall(true);
+                    setHasShownPaywall(true);
+                }, 3000);
+            }
 
             // Always award 1 point for correct answers
             const points = response.correct ? 1 : 0;
@@ -2123,7 +2157,6 @@ export default function QuizScreen() {
                     </View>
                 </View>
             </View>
-
 
         </LinearGradient>
     );
@@ -2716,6 +2749,79 @@ export default function QuizScreen() {
         initializeOfferings();
     }, []);
 
+    // Add useEffect to fetch learner info
+    useEffect(() => {
+        async function fetchLearnerInfo() {
+            if (!user?.uid) return;
+            try {
+                const learner = await getLearner(user.uid);
+                setLearnerInfo({
+                    subscription: (learner as any).subscription || 'free',
+                    terms: learner.terms || ''
+                });
+                setSelectedTerms(learner.terms || '');
+            } catch (error) {
+                console.error('Error fetching learner info:', error);
+            }
+        }
+        fetchLearnerInfo();
+    }, [user?.uid]);
+
+    const handleTermsChange = async (term: number) => {
+        if (!user?.uid) return;
+
+        setIsUpdatingTerms(true);
+        try {
+            const termsArray = selectedTerms.split(',').map(t => t.trim()).filter(Boolean);
+            let newTerms: string;
+
+            if (termsArray.includes(term.toString())) {
+                newTerms = termsArray.filter(t => t !== term.toString()).join(',');
+            } else {
+                newTerms = termsArray.concat(term.toString()).join(',');
+            }
+
+            // Update terms via API
+            const response = await fetch(`${HOST_URL}/api/learner/profile/terms/${user.uid}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    terms: newTerms
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setSelectedTerms(newTerms);
+                setLearnerInfo(prev => prev ? { ...prev, terms: newTerms } : null);
+
+                // Log terms change event
+                await logAnalyticsEvent('terms_change', {
+                    user_id: user.uid,
+                    terms: newTerms
+                });
+            } else {
+                throw new Error(data.message || 'Failed to update terms');
+            }
+        } catch (error) {
+            console.error('Error updating terms:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to update terms',
+                position: 'bottom'
+            });
+        } finally {
+            setIsUpdatingTerms(false);
+        }
+    };
+
+    function refreshTopicsAndPodcasts() {
+        setStudyKitKey(k => k + 1);
+    }
+
     if (isLoading) {
         return (
             <>
@@ -2752,7 +2858,7 @@ export default function QuizScreen() {
                     <ScrollView style={styles.container}>
                         <View style={styles.paperSelectionContainer}>
                             <TouchableOpacity
-                                onPress={() => router.back()}
+                                onPress={() => router.replace('/(tabs)')}
                                 style={styles.closeButton}
                             >
                                 <Ionicons name="close" size={24} color={colors.text} />
@@ -2796,15 +2902,7 @@ export default function QuizScreen() {
                                 ]}
                                 onSelectMode={(mode) => {
                                     if (mode.id === 'practice') {
-                                        console.log('Practice mode selected');
-                                        router.replace({
-                                            pathname: '/maths',
-                                            params: {
-                                                subjectName: subjectName,
-                                                learnerUid: user?.uid,
-                                                grade: grade
-                                            }
-                                        });
+                                        setSelectedMode('practice');
                                     } else {
                                         setSelectedMode(mode.id as 'quiz' | 'lessons' | 'practice');
                                     }
@@ -2815,8 +2913,30 @@ export default function QuizScreen() {
                             <QuizPaperButtons
                                 subjectName={subjectName as string}
                                 selectedMode={selectedMode}
-                                onSelectPaper={handlePaperSelect}
+                                onSelectPaper={(paper) => {
+                                    if (selectedMode === 'practice') {
+                                        router.replace({
+                                            pathname: '/maths',
+                                            params: {
+                                                subjectName: `${subjectName} ${paper}`,
+                                                learnerUid: user?.uid,
+                                                grade: grade
+                                            }
+                                        });
+                                    } else {
+                                        handlePaperSelect(paper);
+                                    }
+                                }}
                                 onLoadQuestion={loadQuestion}
+                            />
+
+                            <TermsSelector
+                                selectedTerms={selectedTerms}
+                                onTermsChange={handleTermsChange}
+                                isUpdatingTerms={isUpdatingTerms}
+                                isDark={isDark}
+                                colors={colors}
+                                onTermsUpdated={refreshTopicsAndPodcasts}
                             />
 
                             {/* Divider */}
@@ -2829,6 +2949,7 @@ export default function QuizScreen() {
                             {/* Favorites Section */}
                             <View style={[styles.favoritesSection]}>
                                 <NotesFavoritesRecordings
+                                    key={studyKitKey}
                                     subjectName={subjectName as string}
                                     currentQuestion={currentQuestion}
                                     favoriteQuestions={favoriteQuestions}
@@ -2859,6 +2980,8 @@ export default function QuizScreen() {
                                 />
                             </View>
 
+
+
                         </View>
                     </ScrollView>
                 </LinearGradient>
@@ -2885,6 +3008,24 @@ export default function QuizScreen() {
 
     return (
         <>
+            {showPaywall && (
+                <Paywall
+                    offerings={offerings}
+                    onSuccess={() => {
+                        setShowPaywall(false);
+                        // Refresh learner info after successful purchase
+                        if (user?.uid) {
+                            getLearner(user.uid).then(learner => {
+                                setLearnerInfo({
+                                    subscription: (learner as any).subscription || 'free',
+                                    terms: learner.terms || ''
+                                });
+                            });
+                        }
+                    }}
+                    onClose={() => setShowPaywall(false)}
+                />
+            )}
             <LinearGradient
                 colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
                 style={[styles.gradient, { paddingTop: insets.top }]}
@@ -2897,76 +3038,90 @@ export default function QuizScreen() {
                     testID="quiz-scroll-view"
                 >
                     <SubjectHeader />
-                    {selectedMode === 'quiz' && (
-                        <View>
-                            <PerformanceSummary
-                                stats={stats}
-                                onRestart={() => setIsRestartModalVisible(true)}
-                            />
-                        </View>
-                    )}
-                    <ThemedView style={styles.content}>
-                        {selectedMode === 'lessons' ? (
-                            remainingLessons !== 999 &&
-                            remainingLessons !== undefined &&
-                            remainingLessons !== 0 &&
-                            (
-                                <ThemedText style={{
-                                    textAlign: 'center',
-                                    color: colors.textSecondary,
-                                    fontSize: 16,
-                                    fontWeight: '600',
-                                    marginBottom: 16,
-                                }}>
-                                    ⚠️ {remainingLessons} lessons remaining for today
-                                </ThemedText>
-                            )
-                        ) : remainingQuizzes !== undefined &&
-                        remainingQuizzes !== 999 &&
-                        remainingQuizzes !== 0 &&
-                        (
-                            <ThemedText style={{
-                                textAlign: 'center',
-                                color: colors.textSecondary,
-                                fontSize: 16,
-                                fontWeight: '600',
-                                marginBottom: 16,
-                            }}>
-                                ⚠️ {remainingQuizzes} questions remaining for today
+
+
+
+                    {isLoading ? (
+                        <View style={styles.tabLoadingContainer}>
+                            <ActivityIndicator size="large" color={colors.primary} />
+                            <ThemedText style={styles.loadingText}>
+                                {getRandomLoadingMessage()}
                             </ThemedText>
-                        )}
-                        <QuestionCard
-                            question={currentQuestion}
-                            selectedAnswer={selectedAnswer}
-                            showFeedback={showFeedback}
-                            isAnswerLoading={isAnswerLoading}
-                            selectedMode={selectedMode}
-                            handleAnswer={handleAnswer}
-                            cleanAnswer={cleanAnswer}
-                            feedbackMessage={feedbackMessage}
-                            correctAnswer={correctAnswer}
-                            isDark={isDark}
-                            colors={colors}
-                            fetchAIExplanation={fetchAIExplanation}
-                            isLoadingExplanation={isLoadingExplanation}
-                            learnerRole={learnerRole}
-                            handleApproveQuestion={handleApproveQuestion}
-                            isApproving={isApproving}
-                            setZoomImageUrl={setZoomImageUrl}
-                            setIsZoomModalVisible={setIsZoomModalVisible}
-                            renderMixedContent={renderMixedContent}
-                            reportIssue={reportIssue}
-                            relatedQuestions={relatedQuestions}
-                            currentQuestionIndex={currentQuestionIndex}
-                            handleNextRelatedQuestion={handleNextRelatedQuestion}
-                            handleListenToLecture={handleListenToLecture}
-                            isLoadingLecture={isLoadingLecture}
-                            recordingFileName={recordingFileName}
-                            subjectName={subjectName}
-                            setShowFeedback={setShowFeedback}
-                            isCorrect={isCorrect ?? false}
-                        />
-                    </ThemedView>
+                        </View>
+                    ) : (
+                        <>
+                            {selectedMode === 'quiz' && (
+                                <View>
+                                    <PerformanceSummary
+                                        stats={stats}
+                                        onRestart={() => setIsRestartModalVisible(true)}
+                                    />
+                                </View>
+                            )}
+                            <ThemedView style={styles.content}>
+                                {selectedMode === 'lessons' ? (
+                                    remainingLessons !== 999 &&
+                                    remainingLessons !== undefined &&
+                                    remainingLessons !== 0 &&
+                                    (
+                                        <ThemedText style={{
+                                            textAlign: 'center',
+                                            color: colors.textSecondary,
+                                            fontSize: 16,
+                                            fontWeight: '600',
+                                            marginBottom: 16,
+                                        }}>
+                                            ⚠️ {remainingLessons} lessons remaining for today
+                                        </ThemedText>
+                                    )
+                                ) : remainingQuizzes !== undefined &&
+                                remainingQuizzes !== 999 &&
+                                remainingQuizzes !== 0 &&
+                                (
+                                    <ThemedText style={{
+                                        textAlign: 'center',
+                                        color: colors.textSecondary,
+                                        fontSize: 16,
+                                        fontWeight: '600',
+                                        marginBottom: 16,
+                                    }}>
+                                        ⚠️ {remainingQuizzes} questions remaining for today
+                                    </ThemedText>
+                                )}
+                                <QuestionCard
+                                    question={currentQuestion}
+                                    selectedAnswer={selectedAnswer}
+                                    showFeedback={showFeedback}
+                                    isAnswerLoading={isAnswerLoading}
+                                    selectedMode={selectedMode}
+                                    handleAnswer={handleAnswer}
+                                    cleanAnswer={cleanAnswer}
+                                    feedbackMessage={feedbackMessage}
+                                    correctAnswer={correctAnswer}
+                                    isDark={isDark}
+                                    colors={colors}
+                                    fetchAIExplanation={fetchAIExplanation}
+                                    isLoadingExplanation={isLoadingExplanation}
+                                    learnerRole={learnerRole}
+                                    handleApproveQuestion={handleApproveQuestion}
+                                    isApproving={isApproving}
+                                    setZoomImageUrl={setZoomImageUrl}
+                                    setIsZoomModalVisible={setIsZoomModalVisible}
+                                    renderMixedContent={renderMixedContent}
+                                    reportIssue={reportIssue}
+                                    relatedQuestions={relatedQuestions}
+                                    currentQuestionIndex={currentQuestionIndex}
+                                    handleNextRelatedQuestion={handleNextRelatedQuestion}
+                                    handleListenToLecture={handleListenToLecture}
+                                    isLoadingLecture={isLoadingLecture}
+                                    recordingFileName={recordingFileName}
+                                    subjectName={subjectName}
+                                    setShowFeedback={setShowFeedback}
+                                    isCorrect={isCorrect ?? false}
+                                />
+                            </ThemedView>
+                        </>
+                    )}
                 </ScrollView>
                 {selectedTopic && (
                     <TopicProgressBar
@@ -3196,10 +3351,11 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     sectionCard: {
-        borderRadius: 16,
+        borderRadius: 12,
         padding: 16,
+        marginBottom: 16,
         borderWidth: 1,
-        borderColor: '#444',
+        marginHorizontal: 16,
     },
     questionContainer: {
         borderRadius: 12,
@@ -3213,9 +3369,9 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     optionsContainer: {
-        gap: 12,
-        marginTop: 20,
-        borderColor: '#000000',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
     option: {
         padding: 16,
@@ -4284,7 +4440,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-        gap: 16,
     },
     tabLoadingText: {
         fontSize: 16,
@@ -4596,7 +4751,33 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         textAlign: 'center',
     },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    sectionSubtitle: {
+        fontSize: 14,
+        marginBottom: 16,
+    },
+    optionButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    optionButtonSelected: {
+        borderColor: 'transparent',
+    },
+    optionButtonText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    optionButtonTextSelected: {
+        color: '#FFFFFF',
+    },
 });
+
 
 
 

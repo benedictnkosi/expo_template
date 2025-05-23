@@ -218,23 +218,44 @@ export default function SubjectChatScreen() {
             }
 
             const threadsRef = collection(db, 'threads');
-            let q = query(
-                threadsRef,
-                where('subjectName', '==', subjectName),
-                where('grade', '==', grade),
-                orderBy('createdAt', 'desc'),
-                limit(THREADS_PER_PAGE)
-            );
+            let q;
 
-            if (loadMore && lastVisible) {
+            if (subjectName === "The Dimpo Chronicles") {
+                q = query(
+                    threadsRef,
+                    where('subjectName', '==', subjectName),
+                    orderBy('createdAt', 'desc'),
+                    limit(THREADS_PER_PAGE)
+                );
+            } else {
                 q = query(
                     threadsRef,
                     where('subjectName', '==', subjectName),
                     where('grade', '==', grade),
                     orderBy('createdAt', 'desc'),
-                    startAfter(lastVisible),
                     limit(THREADS_PER_PAGE)
                 );
+            }
+
+            if (loadMore && lastVisible) {
+                if (subjectName === "The Dimpo Chronicles") {
+                    q = query(
+                        threadsRef,
+                        where('subjectName', '==', subjectName),
+                        orderBy('createdAt', 'desc'),
+                        startAfter(lastVisible),
+                        limit(THREADS_PER_PAGE)
+                    );
+                } else {
+                    q = query(
+                        threadsRef,
+                        where('subjectName', '==', subjectName),
+                        where('grade', '==', grade),
+                        orderBy('createdAt', 'desc'),
+                        startAfter(lastVisible),
+                        limit(THREADS_PER_PAGE)
+                    );
+                }
             }
 
             const querySnapshot = await getDocs(q);

@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import Constants from 'expo-constants';
 
 export default function Login() {
   const [emailOrPhone, setEmailOrPhone] = useState('');
@@ -181,6 +182,11 @@ export default function Login() {
                   </TouchableOpacity>
                 </View>
 
+                <View style={styles.versionContainer}>
+                  <ThemedText style={styles.versionText}>
+                    v{Constants.expoConfig?.version || '1.0.0'}
+                  </ThemedText>
+                </View>
 
               </View>
             </View>

@@ -163,10 +163,13 @@ function getRandomSuperheroName(): string {
 WebBrowser.maybeCompleteAuthSession();
 
 const ILLUSTRATIONS = {
-  welcome: require('@/assets/images/illustrations/school.png'),
+  welcome: require('@/assets/images/dimpo/grad.png'),
   grade: require('@/assets/images/illustrations/stressed.png'),
   school: require('@/assets/images/illustrations/friends.png'),
   ready: require('@/assets/images/illustrations/exam.png'),
+  podcast: require('@/assets/images/dimpo/podcast.png'),
+  maths: require('@/assets/images/dimpo/maths.png'),
+  questions: require('@/assets/images/dimpo/subjects.png'),
 };
 
 type AvatarImages = {
@@ -188,7 +191,7 @@ const AVATAR_IMAGES: AvatarImages = {
 export interface OnboardingData {
   grade: string;
   curriculum: string;
-  difficultSubject: string;
+  difficultSubject?: string;
   avatar: string;
   school?: string;
   school_address?: string;
@@ -208,7 +211,6 @@ async function logAnalyticsEvent(eventName: string, eventParams?: Record<string,
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
-  const [difficultSubject, setDifficultSubject] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const [registrationMethod, setRegistrationMethod] = useState<'email' | 'phone'>('email');
   const insets = useSafeAreaInsets();
@@ -251,13 +253,11 @@ export default function OnboardingScreen() {
       step_number: step + 1,
       step_name: getStepName(step)
     });
-    if (step === 1 && !grade) {
+    if (step === 4 && !grade) {
       setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-    } else if (step === 2 && !difficultSubject) {
-      setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
-    } else if (step === 3 && !selectedAvatar) {
+    } else if (step === 5 && !selectedAvatar) {
       setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
-    } else if (step === 5) {
+    } else if (step === 7) {
       handleComplete();
     } else {
       setErrors({ grade: '', curriculum: '' });
@@ -270,16 +270,20 @@ export default function OnboardingScreen() {
       case 0:
         return 'welcome';
       case 1:
-        return 'grade_selection';
+        return 'audio_lesson';
       case 2:
-        return 'difficult_subject_selection';
+        return 'maths_practice';
       case 3:
-        return 'avatar_selection';
+        return 'questions';
       case 4:
-        return 'ratings';
+        return 'grade_selection';
       case 5:
-        return 'auth_options';
+        return 'avatar_selection';
       case 6:
+        return 'ratings';
+      case 7:
+        return 'auth_options';
+      case 8:
         return 'registration';
       default:
         return 'unknown';
@@ -292,7 +296,6 @@ export default function OnboardingScreen() {
       await AsyncStorage.setItem('onboardingData', JSON.stringify({
         grade,
         curriculum: 'CAPS',
-        difficultSubject,
         avatar: selectedAvatar,
         onboardingCompleted: true
       }));
@@ -301,7 +304,6 @@ export default function OnboardingScreen() {
       logAnalyticsEvent('onboarding_complete', {
         grade,
         curriculum: 'CAPS',
-        difficult_subject: difficultSubject,
         avatar: selectedAvatar
       });
 
@@ -311,7 +313,6 @@ export default function OnboardingScreen() {
         params: {
           grade,
           curriculum: 'CAPS',
-          difficultSubject,
           avatar: selectedAvatar,
         }
       });
@@ -332,7 +333,7 @@ export default function OnboardingScreen() {
       case 0:
         return (
           <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="welcome-step">
-            <View style={{ width: '100%', height: 200, marginBottom: 40 }}>
+            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
               <Image
                 source={ILLUSTRATIONS.welcome}
                 style={{ width: '100%', height: '100%' }}
@@ -341,113 +342,123 @@ export default function OnboardingScreen() {
               />
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="welcome-text-container">
-              <ThemedText style={[styles.welcomeTitle, { fontSize: 28, marginBottom: 24 }]} testID="welcome-title">
-                🎉 Welcome to Dimpo Learning App! 🚀
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 24, marginBottom: 24 }]} testID="welcome-title">
+                Dimpo Learning App
               </ThemedText>
               <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]} testID="welcome-description">
                 📝 Get ready to boost your brainpower and ace your exams! 🏆
               </ThemedText>
-              <ThemedText style={[styles.statsText, { fontSize: 18, lineHeight: 28 }]} testID="welcome-stats">
-                💡 Join 15,000+ students sharpening their skills with 24,000+ brain-boosting questions every day! 🧠🔥
+            </View>
+          </View>
+        );
+      case 1:
+        return (
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="audio-lesson-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
+              <Image
+                source={ILLUSTRATIONS.podcast}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+                testID="podcast-illustration"
+              />
+            </View>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="audio-lesson-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="audio-lesson-title">
+                Learn with our Audio Lessons 🎧
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="audio-lesson-description">
+                📚 Listen to engaging lessons and boost your learning anywhere, anytime. Tap next to get started!
               </ThemedText>
             </View>
           </View>
         );
-
-      case 1:
+      case 2:
+        return (
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="maths-practice-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
+              <Image
+                source={ILLUSTRATIONS.maths}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+                testID="maths-illustration"
+              />
+            </View>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="maths-practice-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="maths-practice-title">
+                Practice Mathematics 🧮
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="maths-practice-description">
+                Sharpen your math skills with fun and interactive practice questions. Ready to solve some problems?
+              </ThemedText>
+            </View>
+          </View>
+        );
+      case 3:
+        return (
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="questions-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
+              <Image
+                source={ILLUSTRATIONS.questions}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+                testID="questions-illustration"
+              />
+            </View>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="questions-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="questions-title">
+                ✨ Thousands of Questions ✨
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="questions-description">
+                ⭐️ Access thousands of practice questions to master every topic! 💡
+              </ThemedText>
+            </View>
+          </View>
+        );
+      case 4:
+        // Define a palette of bright, kid-friendly colors
+        const gradeColors = ['#FFD600', '#FF6F61', '#4DD0E1', '#81C784', '#BA68C8'];
         return (
           <View style={styles.step} testID="grade-selection-step">
-            <Image
-              source={ILLUSTRATIONS.grade}
-              style={styles.illustration}
-              resizeMode="contain"
-              testID="grade-illustration"
-            />
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle} testID="grade-step-title">What grade are you in?</ThemedText>
               <View style={styles.gradeButtons} testID="grade-buttons-container">
-                {[8, 9, 10, 11, 12].map((g) => (
-                  <TouchableOpacity
-                    key={g}
-                    style={[
-                      styles.gradeButton,
-                      grade === g.toString() && styles.gradeButtonSelected
-                    ]}
-                    onPress={() => {
-                      setGrade(g.toString());
-                      setErrors(prev => ({ ...prev, grade: '' }));
-                    }}
-                    testID={`grade-button-${g}`}
-                  >
-                    <ThemedText
+                {[8, 9, 10, 11, 12].map((g, i) => {
+                  const rotations = [-8, -5, -3, 0, 3, 5, 8];
+                  const rotate = rotations[i % rotations.length];
+                  const blockColor = grade === g.toString() ? undefined : { backgroundColor: gradeColors[i % gradeColors.length] };
+                  return (
+                    <TouchableOpacity
+                      key={g}
                       style={[
-                        styles.gradeButtonText,
-                        grade === g.toString() && styles.gradeButtonTextSelected
+                        styles.gradeBlock,
+                        blockColor,
+                        grade === g.toString() && styles.gradeBlockSelected,
+                        { transform: [{ rotate: `${rotate}deg` }] }
                       ]}
-                      testID={`grade-button-text-${g}`}
+                      onPress={() => {
+                        setGrade(g.toString());
+                        setErrors(prev => ({ ...prev, grade: '' }));
+                      }}
+                      testID={`grade-block-${g}`}
                     >
-                      Grade {g}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))}
+                      <ThemedText
+                        style={[
+                          styles.gradeBlockText,
+                          grade === g.toString() && styles.gradeBlockTextSelected
+                        ]}
+                        testID={`grade-block-text-${g}`}
+                      >
+                        {g}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
               {errors.grade ? <ThemedText style={styles.errorText} testID="grade-error">{errors.grade}</ThemedText> : null}
             </View>
           </View>
         );
-
-      case 2:
-        return (
-          <View style={styles.step}>
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>
-                🤔 Which subject challenges you the most?
-              </ThemedText>
-              <ThemedText style={styles.stepSubtitle}>
-                We'll give extra attention to this one! 💪
-              </ThemedText>
-            </View>
-            <ScrollView
-              style={styles.subjectsScrollView}
-              contentContainerStyle={styles.subjectsScrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.subjectButtons}>
-                {[
-                  { id: 'mathematics', label: 'Mathematics', emoji: '1️⃣' },
-                  { id: 'physics', label: 'Physical Sciences', emoji: '⚡' },
-                  { id: 'life_sciences', label: 'Life Sciences', emoji: '🧬' },
-                  { id: 'business_studies', label: 'Business Studies', emoji: '📊' },
-                  { id: 'other', label: 'Other', emoji: '📚' }
-                ].map((subject) => (
-                  <TouchableOpacity
-                    key={subject.id}
-                    style={[
-                      styles.subjectButton,
-                      difficultSubject === subject.id && styles.subjectButtonSelected
-                    ]}
-                    onPress={() => setDifficultSubject(subject.id)}
-                    testID={`subject-button-${subject.id}`}
-                  >
-                    <View style={styles.subjectContent}>
-                      <ThemedText style={styles.subjectEmoji}>{subject.emoji}</ThemedText>
-                      <ThemedText
-                        style={[
-                          styles.subjectButtonText,
-                          difficultSubject === subject.id && styles.subjectButtonTextSelected
-                        ]}
-                      >
-                        {subject.label}
-                      </ThemedText>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        );
-
-      case 3:
+      case 5:
         return (
           <View style={styles.step}>
             <View style={styles.textContainer}>
@@ -490,8 +501,7 @@ export default function OnboardingScreen() {
             </ScrollView>
           </View>
         );
-
-      case 4:
+      case 6:
         return (
           <View style={styles.step} testID="ratings-step">
             <View style={styles.textContainer}>
@@ -518,12 +528,12 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 5:
+      case 7:
         return (
           <View style={styles.step} testID="auth-options-step">
             <TouchableOpacity
               style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(4)}
+              onPress={() => setStep(5)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -554,7 +564,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'email' });
                   setRegistrationMethod('email');
-                  setStep(6);
+                  setStep(8);
                 }}
                 testID="email-auth-button"
               >
@@ -567,7 +577,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'phone' });
                   setRegistrationMethod('phone');
-                  setStep(6);
+                  setStep(8);
                 }}
                 testID="phone-auth-button"
               >
@@ -631,7 +641,6 @@ export default function OnboardingScreen() {
                     await AsyncStorage.setItem('onboardingData', JSON.stringify({
                       grade,
                       curriculum: 'CAPS',
-                      difficultSubject,
                       avatar: selectedAvatar,
                       onboardingCompleted: true,
                       isGuest: true
@@ -641,7 +650,6 @@ export default function OnboardingScreen() {
                     logAnalyticsEvent('register_success', {
                       grade,
                       curriculum: 'CAPS',
-                      difficult_subject: difficultSubject,
                       avatar: selectedAvatar,
                       is_guest: true
                     });
@@ -670,12 +678,12 @@ export default function OnboardingScreen() {
           </View>
         );
 
-      case 6:
+      case 8:
         return (
           <View style={styles.step}>
             <TouchableOpacity
               style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(5)}
+              onPress={() => setStep(7)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -692,7 +700,6 @@ export default function OnboardingScreen() {
                 onboardingData={{
                   grade,
                   curriculum: 'CAPS',
-                  difficultSubject,
                   avatar: selectedAvatar,
                 }}
                 defaultMethod={registrationMethod}
@@ -711,16 +718,20 @@ export default function OnboardingScreen() {
       case 0:
         return true;
       case 1:
-        return !!grade;
-      case 2:
-        return !!difficultSubject;
-      case 3:
-        return !!selectedAvatar;
-      case 4:
         return true;
+      case 2:
+        return !!selectedAvatar;
+      case 3:
+        return true;
+      case 4:
+        return !!grade;
       case 5:
         return true;
       case 6:
+        return true;
+      case 7:
+        return true;
+      case 8:
         return true;
       default:
         return false;
@@ -737,7 +748,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 5 && (
+        {step < 8 && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
@@ -917,29 +928,40 @@ const styles = StyleSheet.create({
   },
   gradeButtons: {
     width: '100%',
-    gap: 12,
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 24,
   },
-  gradeButton: {
-    width: '100%',
-    padding: 12,
-    borderRadius: 12,
+  gradeBlock: {
+    width: 120,
+    height: 120,
+    margin: 12,
+    borderRadius: 24,
+    backgroundColor: '#FFD600',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  gradeButtonSelected: {
-    borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  gradeBlockSelected: {
+    backgroundColor: '#4d5ad3',
+    borderWidth: 4,
+    borderColor: '#fff',
   },
-  gradeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  gradeBlockText: {
+    fontSize: 54,
+    fontWeight: 'bold',
+    color: '#222',
+    textAlign: 'center',
   },
-  gradeButtonTextSelected: {
-    color: '#FFFFFF',
+  gradeBlockTextSelected: {
+    color: '#fff',
   },
   debugText: {
     color: '#E2E8F0',

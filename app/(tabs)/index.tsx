@@ -1016,6 +1016,23 @@ export default function HomeScreen() {
           </View>
         )}
 
+        <TouchableOpacity
+          style={[styles.testButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            router.push({
+              pathname: '/maths',
+              params: {
+                subjectName: 'Mathematics P1', // test subject
+                learnerUid: user?.uid || 'test-uid', // use real uid if available
+                grade: learnerInfo?.grade?.number?.toString() || '12', // use real grade if available
+              }
+            });
+          }}
+        >
+          <Ionicons name="flask" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.testButtonText}>Test Maths Screen</ThemedText>
+        </TouchableOpacity>
+
         <View style={[styles.statsContainer, {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
@@ -1060,6 +1077,8 @@ export default function HomeScreen() {
             <ThemedText style={styles.reportButtonText}>📊 View My Report</ThemedText>
           </TouchableOpacity>
         </View>
+
+
 
         <View style={styles.shareContainer} testID="share-container">
           <TouchableOpacity
@@ -1147,19 +1166,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.testButton, { backgroundColor: '#6366F1', borderColor: '#6366F1' }]}
-          onPress={() => router.push({
-            pathname: '/maths',
-            params: {
-              subjectName: 'Mathemetics',
-              learnerUid: 'u65pX1a9KCbshI5VuprMcgVVfQl2',
-              grade: 12
-            }
-          })}
-        >
-          <ThemedText style={[styles.testButtonText, { color: '#fff' }]}>Open Maths Demo</ThemedText>
-        </TouchableOpacity>
+
 
         <ThemedText style={[styles.sectionTitle, { color: colors.text }]} testID="subjects-section-title">🤸‍♂️ Learn, Play, and Grow!</ThemedText>
         <ThemedText style={[styles.hintText, { color: colors.textSecondary }]}>Click on a subject to start learning</ThemedText>
@@ -1349,6 +1356,25 @@ export default function HomeScreen() {
           </View>
         </ScrollView>
 
+        {/* Add Grade 8-9 Message Card */}
+        {learnerInfo?.grade?.number === 8 || learnerInfo?.grade?.number === 9 ? (
+          <View style={[styles.sectionCard, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border
+          }]}>
+            <View style={styles.gradeMessageHeader}>
+
+              <ThemedText style={[styles.gradeMessageTitle, { color: colors.text }]}>
+                📚 More Subjects Coming Soon!
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.gradeMessageText, { color: colors.textSecondary }]}>
+              We're working hard behind the scenes 🛠️ to add more subjects just for you! 🎯
+              Stay tuned — your next favourite subject is on the way! 🚀✨
+            </ThemedText>
+          </View>
+        ) : null}
+
         {hiddenSubjects.length > 0 && (
           <TouchableOpacity
             style={[styles.showAllButton, { backgroundColor: colors.primary }]}
@@ -1378,29 +1404,6 @@ export default function HomeScreen() {
           </ThemedText>
         </TouchableOpacity>
 
-        {/* WhatsApp Feedback Section */}
-        <View style={[styles.whatsAppFeedbackContainer, {
-          backgroundColor: isDark ? colors.card : '#FFFFFF',
-          borderColor: colors.border
-        }]}>
-          <ThemedText style={[styles.whatsAppFeedbackTitle, { color: colors.text }]}>
-            💡 Have an Idea?
-          </ThemedText>
-          <ThemedText style={[styles.whatsAppFeedbackText, { color: colors.textSecondary }]}>
-            Got a brilliant idea for a new feature or improvement? We'd love to hear it!
-          </ThemedText>
-          <TouchableOpacity
-            style={[styles.whatsAppButton, { backgroundColor: '#25D366' }]}
-            onPress={() => {
-              const phoneNumber = '27786864479'; // Replace with your WhatsApp number
-              const message = 'Hello! I have an idea for the Dimpo Learning App: ';
-              Linking.openURL(`whatsapp://send?phone=${phoneNumber}&text=${encodeURIComponent(message)}`);
-            }}
-          >
-            <Ionicons name="logo-whatsapp" size={24} color="#FFFFFF" />
-            <ThemedText style={styles.whatsAppButtonText}>Send us a WhatsApp</ThemedText>
-          </TouchableOpacity>
-        </View>
 
 
       </ScrollView>
@@ -2373,5 +2376,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  gradeMessageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  gradeMessageTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  gradeMessageText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

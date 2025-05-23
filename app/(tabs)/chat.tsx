@@ -146,7 +146,7 @@ export default function ChatScreen() {
                         const threadsQuery = query(
                             threadsRef,
                             where('subjectName', '==', subject.name),
-                            where('grade', '==', grade),
+                            ...(subject.name !== 'The Dimpo Chronicles' ? [where('grade', '==', grade)] : []),
                             where('createdAt', '>', new Date(lastAccess))
                         );
                         const threadsSnapshot = await getDocs(threadsQuery);
@@ -289,7 +289,7 @@ export default function ChatScreen() {
                         <Text style={{ fontSize: 24 }}>📖</Text>
                     </View>
                     <View style={styles.subjectInfo}>
-                        <ThemedText style={styles.subjectName}>Tales of Dimpo</ThemedText>
+                        <ThemedText style={styles.subjectName}>The Dimpo Chronicles</ThemedText>
                         <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
                             Daily reading discussions and insights
                         </ThemedText>
@@ -300,6 +300,42 @@ export default function ChatScreen() {
                         color={colors.textSecondary}
                     />
                 </TouchableOpacity>
+
+
+                {/* Past Papers */}
+                <TouchableOpacity
+                    style={[
+                        styles.subjectCard,
+                        styles.pinnedCard,
+                        { backgroundColor: isDark ? colors.card : '#FFFFFF' }
+                    ]}
+                    onPress={() => router.push({
+                        pathname: '/threads/[id]',
+                        params: {
+                            id: 'past-papers',
+                            subjectName: 'Past Papers'
+                        }
+                    })}
+                >
+                    <View style={[styles.pinnedIconContainer, { backgroundColor: colors.primary }]}>
+                        <Text style={{ fontSize: 24 }}>📝</Text>
+                    </View>
+                    <View style={styles.subjectInfo}>
+                        <ThemedText style={styles.subjectName}>Past Papers</ThemedText>
+                        <ThemedText style={[styles.subjectMembers, { color: colors.textSecondary }]}>
+                            Share Past Papers here
+                        </ThemedText>
+                    </View>
+                    <Ionicons
+                        name="chevron-forward"
+                        size={24}
+                        color={colors.textSecondary}
+                    />
+                </TouchableOpacity>
+
+                <View style={styles.subjectInfo}>
+                    <ThemedText style={styles.subjectName}>Subjects</ThemedText>
+                </View>
 
                 {visibleSubjects.map((subject) => (
                     <TouchableOpacity
