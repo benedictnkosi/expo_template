@@ -1016,22 +1016,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.testButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            router.push({
-              pathname: '/maths',
-              params: {
-                subjectName: 'Mathematics P1', // test subject
-                learnerUid: user?.uid || 'test-uid', // use real uid if available
-                grade: learnerInfo?.grade?.number?.toString() || '12', // use real grade if available
-              }
-            });
-          }}
-        >
-          <Ionicons name="flask" size={20} color="#FFFFFF" />
-          <ThemedText style={styles.testButtonText}>Test Maths Screen</ThemedText>
-        </TouchableOpacity>
+
 
         <View style={[styles.statsContainer, {
           backgroundColor: isDark ? colors.card : '#FFFFFF',

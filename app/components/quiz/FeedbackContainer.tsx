@@ -4,6 +4,7 @@ import { ThemedView } from '../ThemedView';
 import { ThemedText } from '../../components/ThemedText';
 import { KaTeX } from './KaTeX'
 import { IMAGE_BASE_URL } from '../../../config/api';
+import { router } from 'expo-router';
 
 interface FeedbackContainerProps {
     feedbackMessage: string;
@@ -23,6 +24,9 @@ interface FeedbackContainerProps {
     handleListenToLecture: () => Promise<void>;
     isLoadingLecture: boolean;
     isLectureAvailable?: boolean;
+    subjectName: string;
+    learnerUid?: string;
+    grade?: string | number;
 }
 
 export function FeedbackContainer({
@@ -42,6 +46,9 @@ export function FeedbackContainer({
     renderMixedContent,
     handleListenToLecture,
     isLoadingLecture,
+    subjectName,
+    learnerUid,
+    grade,
     isLectureAvailable
 }: FeedbackContainerProps) {
     const [isImageLoading, setIsImageLoading] = useState(false);
@@ -51,6 +58,7 @@ export function FeedbackContainer({
 
 
     useEffect(() => {
+        console.log("subjectName", subjectName);
         if (isLoadingExplanation) {
             Animated.loop(
                 Animated.sequence([
@@ -242,6 +250,28 @@ export function FeedbackContainer({
                 </ThemedText>
             </TouchableOpacity>
 
+            {/* Go to Step-by-Step Solution for Mathematics */}
+            {subjectName?.includes('Mathematics') && currentQuestion?.id && currentQuestion?.steps && currentQuestion.steps.steps && currentQuestion.steps.steps.length > 0 && (
+                <TouchableOpacity
+                    style={[styles.stepSolutionButton]}
+                    onPress={() => {
+                        router.push({
+                            pathname: '/maths',
+                            params: {
+                                questionId: currentQuestion.id,
+                                subjectName,
+                                learnerUid,
+                                grade,
+                            }
+                        });
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Practice This Question"
+                >
+                    <ThemedText style={[styles.aiExplanationButtonText, { color: '#fff' }]}>Practice This Question</ThemedText>
+                </TouchableOpacity>
+            )}
+
             {isLectureAvailable && (
                 <TouchableOpacity
                     style={[styles.lectureButton, {
@@ -400,5 +430,13 @@ const createStyles = (colors: any, isDark: boolean) => StyleSheet.create({
     lectureButtonText: {
         color: '#FFFFFF',
         fontSize: 16,
+    },
+    stepSolutionButton: {
+        marginTop: 10,
+        padding: 12,
+        borderRadius: 8,
+        width: '100%',
+        alignItems: 'center',
+        backgroundColor: isDark ? '#8B5CF6' : '#A78BFA', // purple-500/400
     },
 }); 

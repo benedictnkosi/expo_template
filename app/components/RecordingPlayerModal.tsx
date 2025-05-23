@@ -76,7 +76,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
 
     const audioFileName = recording.recordingFileName.replace('.opus', '.m4a');
     const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}?subscriptionCheck=true&uid=${user?.uid}`;
-
+    console.log("audioUrl", audioUrl);
     const handleShare = async () => {
         try {
             const cleanSubjectName = subjectName.replace(/P[12]/g, '').trim();

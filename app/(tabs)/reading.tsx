@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -55,6 +55,7 @@ export default function ReadingScreen() {
         follow_me_code?: string;
     } | null>(null);
     const insets = useSafeAreaInsets();
+    const scrollViewRef = useRef<ScrollView>(null);
 
     // Fetch learner info
     const fetchLearnerInfo = useCallback(async () => {
@@ -228,6 +229,13 @@ export default function ReadingScreen() {
         }
     };
 
+    // Add effect to reset scroll position when starting to read
+    useEffect(() => {
+        if (hasStarted) {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+        }
+    }, [hasStarted]);
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
             {!hasStarted && <Header learnerInfo={learnerInfo} />}
@@ -283,6 +291,7 @@ export default function ReadingScreen() {
                 </View>
             )}
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
@@ -594,9 +603,14 @@ export default function ReadingScreen() {
                     ) : (
                         <ScrollView style={styles.pastChaptersList}>
                             {pastChapters.map((chapter, index) => (
-                                <View
+                                <Pressable
                                     key={`${chapter.id}-${index}`}
-                                    style={[styles.pastChapterItem, { backgroundColor: isDark ? '#23263A' : '#fff' }]}
+                                    style={({ pressed }) => [
+                                        styles.pastChapterItem,
+                                        { backgroundColor: isDark ? '#23263A' : '#fff' },
+                                        pressed && styles.buttonPressed
+                                    ]}
+                                    onPress={() => handleReadPastChapter(chapter)}
                                 >
                                     <View style={styles.pastChapterHeader}>
                                         <Text style={[styles.pastChapterTitle, { color: colors.text }]}>
@@ -610,30 +624,11 @@ export default function ReadingScreen() {
                                         {chapter.summary}
                                     </Text>
                                     <View style={styles.pastChapterFooter}>
-
                                         <Text style={[styles.pastChapterMeta, { color: colors.textSecondary }]}>
                                             {chapter.wordCount} words
                                         </Text>
                                     </View>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.readAgainButton,
-                                            pressed && styles.buttonPressed
-                                        ]}
-                                        onPress={() => handleReadPastChapter(chapter)}
-                                    >
-                                        <LinearGradient
-                                            colors={['#4F46E5', '#7C3AED']}
-                                            start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 1 }}
-                                            style={styles.readAgainGradient}
-                                        >
-                                            <Text style={styles.readAgainButtonText}>
-                                                Read Again
-                                            </Text>
-                                        </LinearGradient>
-                                    </Pressable>
-                                </View>
+                                </Pressable>
                             ))}
                         </ScrollView>
                     )}
@@ -652,8 +647,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
         padding: 16,
         gap: 16,
     },
@@ -1007,11 +1000,11 @@ const styles = StyleSheet.create({
     },
     graphContainer: {
         width: '100%',
-        maxWidth: 400,
-        height: 200,
+        alignSelf: 'center',
+        height: 280,
         marginBottom: 24,
         borderRadius: 20,
-        overflow: 'hidden',
+        paddingBottom: 16,
         backgroundColor: 'rgba(30, 41, 59, 0.35)',
     },
     wpmProgressContainer: {

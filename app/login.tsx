@@ -159,15 +159,7 @@ export default function Login() {
                   </TouchableOpacity>
                 </View>
 
-                <View style={styles.deleteAccountContainer}>
-                  <TouchableOpacity
-                    style={styles.deleteAccountButton}
-                    onPress={() => router.push('https://examquiz.co.za/info/delete-account')}
-                    testID="delete-account-button"
-                  >
-                    <ThemedText style={styles.deleteAccountText}>Delete Account</ThemedText>
-                  </TouchableOpacity>
-                </View>
+
 
                 <View style={styles.forgotPasswordContainer}>
                   <ThemedText style={styles.helperText}>
@@ -182,11 +174,17 @@ export default function Login() {
                   </TouchableOpacity>
                 </View>
 
-                <View style={styles.versionContainer}>
-                  <ThemedText style={styles.versionText}>
-                    v{Constants.expoConfig?.version || '1.0.0'}
-                  </ThemedText>
+                <View style={styles.deleteAccountContainer}>
+                  <TouchableOpacity
+                    style={styles.deleteAccountButton}
+                    onPress={() => router.push('https://examquiz.co.za/info/delete-account')}
+                    testID="delete-account-button"
+                  >
+                    <ThemedText style={styles.deleteAccountText}>Delete Account</ThemedText>
+                  </TouchableOpacity>
                 </View>
+
+
 
               </View>
             </View>

@@ -35,7 +35,7 @@ export function TermsSelector({
         }]}>
 
             <ThemedText style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                Only questions from the selected terms will appear in the quiz.
+                Only questions from the selected terms will appear.
             </ThemedText>
 
             <View style={styles.termsRow}>

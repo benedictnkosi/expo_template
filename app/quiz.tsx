@@ -607,6 +607,8 @@ interface QuestionCardProps {
     subjectName: string;
     setShowFeedback: (show: boolean) => void;
     isCorrect: boolean;
+    learnerUid: string | null;
+    grade: string;
 }
 
 // Then define the QuestionCard component
@@ -639,7 +641,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     recordingFileName,
     subjectName,
     setShowFeedback,
-    isCorrect
+    isCorrect,
+    learnerUid,
+    grade
 }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -991,6 +995,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     handleListenToLecture={handleListenToLecture}
                     isLoadingLecture={isLoadingLecture}
                     isLectureAvailable={recordingFileName !== ''}
+                    subjectName={subjectName}
+                    learnerUid={learnerUid ?? undefined}
+                    grade={grade}
                 />
             )}
         </ThemedView>
@@ -1780,6 +1787,20 @@ export default function QuizScreen() {
 
     const handleTopicSelect = async (topic?: string) => {
         console.log('Topic selected:', topic);
+
+        if (selectedMode === 'practice') {
+            // For practice mode, navigate to maths page with the topic
+            router.push({
+                pathname: '/maths',
+                params: {
+                    topic,
+                    subjectName: subjectName,
+                    learnerUid: user?.uid,
+                    grade
+                }
+            });
+            return;
+        }
 
         // Initialize local stats for topic quiz with zeros
         setStats({
@@ -2858,7 +2879,7 @@ export default function QuizScreen() {
                     <ScrollView style={styles.container}>
                         <View style={styles.paperSelectionContainer}>
                             <TouchableOpacity
-                                onPress={() => router.replace('/(tabs)')}
+                                onPress={() => router.back()}
                                 style={styles.closeButton}
                             >
                                 <Ionicons name="close" size={24} color={colors.text} />
@@ -2870,7 +2891,9 @@ export default function QuizScreen() {
                             <ThemedText style={[styles.subjectTitle, { color: colors.text }]}>{subjectName}</ThemedText>
 
                             {/* Add QuickBite before ExamDateDisplay */}
-                            <QuickBite />
+                            {subjectName?.includes('Mathematics') && (
+                                <QuickBite />
+                            )}
 
                             {/* Add ExamDateDisplay before the paper selection text */}
                             <ExamDateDisplay />
@@ -2915,7 +2938,7 @@ export default function QuizScreen() {
                                 selectedMode={selectedMode}
                                 onSelectPaper={(paper) => {
                                     if (selectedMode === 'practice') {
-                                        router.replace({
+                                        router.push({
                                             pathname: '/maths',
                                             params: {
                                                 subjectName: `${subjectName} ${paper}`,
@@ -3118,6 +3141,8 @@ export default function QuizScreen() {
                                     subjectName={subjectName}
                                     setShowFeedback={setShowFeedback}
                                     isCorrect={isCorrect ?? false}
+                                    learnerUid={user?.uid || ''}
+                                    grade={grade || ''}
                                 />
                             </ThemedView>
                         </>

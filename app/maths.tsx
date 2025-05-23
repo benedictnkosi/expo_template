@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemedText } from '@/components/ThemedText';
-import { Header } from '@/components/Header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalSearchParams } from 'expo-router';
 import { HOST_URL } from '@/config/api';
@@ -16,6 +15,7 @@ import { getLearner } from '@/services/api';
 import { PerformanceSummary } from './components/quiz/PerformanceSummary';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { ZoomModal } from './components/quiz/quiz-modals';
 
 interface LearnerInfo {
     name: string;
@@ -108,16 +108,6 @@ function getTopicEmoji(topic: string) {
     return found ? found.emoji : '📚';
 }
 
-// Helper to shuffle an array
-function shuffleArray<T>(array: T[]): T[] {
-    const arr = [...array];
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
 // Helper to shuffle options and track correct answer index
 function shuffleOptionsWithAnswer(options: string[], answer: string) {
     const arr = [...options];
@@ -129,14 +119,61 @@ function shuffleOptionsWithAnswer(options: string[], answer: string) {
     return { shuffled: arr, correctIndex };
 }
 
+function LocalHeader({ learnerInfo }: { learnerInfo: any }) {
+    const insets = useSafeAreaInsets();
+    return (
+        <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+
+            paddingBottom: 12,
+            backgroundColor: 'transparent',
+        }}>
+            <View style={{ flex: 1 }}>
+                <ThemedText style={{ fontSize: 16, fontWeight: 'bold' }}>
+                    <ThemedText style={{ fontSize: 18, fontWeight: 'bold', color: '#8B5CF6' }}>📚 Dimpo Learning App </ThemedText>
+                    <ThemedText style={{ fontSize: 18 }}>✨</ThemedText>
+                </ThemedText>
+                <ThemedText style={{ fontSize: 14, color: '#64748B', marginTop: 2 }}>Explore the Joy of Learning! 🎓</ThemedText>
+            </View>
+            <TouchableOpacity
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                style={{
+                    backgroundColor: '#F3F4F6',
+                    borderRadius: 20,
+                    width: 40,
+                    height: 40,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: 12,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.10,
+                    shadowRadius: 6,
+                    elevation: 2,
+                }}
+            >
+                <Ionicons name="close" size={28} color={'#1E293B'} />
+            </TouchableOpacity>
+        </View>
+    );
+}
+
 export default function MathsScreen() {
     const insets = useSafeAreaInsets();
     const { colors, isDark } = useTheme();
     const { user } = useAuth();
     const params = useLocalSearchParams();
-    const { subjectName, learnerUid, grade } = params;
+    const { subjectName, learnerUid, grade, topic, questionId } = params;
     const scrollViewRef = React.useRef<ScrollView>(null);
     const progressRef = React.useRef<View>(null);
+    const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+    const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+    const [imageRotation, setImageRotation] = useState(0);
 
     const [topics, setTopics] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -146,7 +183,7 @@ export default function MathsScreen() {
     const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
     const [viewMode, setViewMode] = useState<'topics' | 'steps'>('topics');
-    const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+    const [selectedTopic, setSelectedTopic] = useState<string | null>(topic as string | null);
     const [questionIds, setQuestionIds] = useState<number[]>([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [correctAnswersCount, setCorrectAnswersCount] = useState(0);
@@ -173,9 +210,22 @@ export default function MathsScreen() {
 
     useEffect(() => {
         if (learnerUid) {
-            fetchMathTopics();
+            if (questionId) {
+                // If questionId is provided, load that question directly
+                setQuestionIds([Number(questionId)]); // Set the questionIds array with the single question
+                setCurrentQuestionIndex(0);
+                fetchQuestionDetails(Number(questionId));
+                setViewMode('steps');
+            } else if (topic) {
+                // If topic is provided, directly fetch questions for that topic
+                fetchQuestionsForTopic(topic as string);
+                setViewMode('steps');
+            } else {
+                // Otherwise fetch all topics
+                fetchMathTopics();
+            }
         }
-    }, [learnerUid]);
+    }, [learnerUid, topic, questionId]);
 
     useEffect(() => {
         async function fetchLearnerInfo() {
@@ -240,10 +290,20 @@ export default function MathsScreen() {
     const fetchQuestionsForTopic = async (topic: string) => {
         try {
             setIsLoadingQuestion(true);
+            let $url = `${HOST_URL}/api/maths/questions-with-steps?topic=${encodeURIComponent(topic)}&grade=${grade}&subject_name=${encodeURIComponent(subjectName as string)}&uid=${learnerUid}`
+            console.log("fetchQuestionsForTopic", $url);
             const response = await fetch(
-                `${HOST_URL}/api/maths/questions-with-steps?topic=${encodeURIComponent(topic)}&grade=${grade}`
+                $url,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                }
             );
             const data: QuestionIdsResponse = await response.json();
+
+            console.log("data.question_ids", data.question_ids);
 
             if (data.status === 'OK' && data.question_ids.length > 0) {
                 setQuestionIds(data.question_ids);
@@ -276,11 +336,11 @@ export default function MathsScreen() {
             const data: QuestionResponse = await response.json();
 
             //some cleaning of latex. replace =\frac with =\\frac
-            console.log("data.steps", data.steps)
+
             data.steps?.steps.forEach(step => {
                 step.answer = step.answer.replace(/\=\frac/g, '=\\frac');
             });
-            console.log("data.steps after cleaning", data.steps)
+
 
             setSelectedQuestion(data);
             console.log("data.question_image_path", data.question_image_path)
@@ -575,9 +635,7 @@ export default function MathsScreen() {
                 style={styles.container}
                 contentContainerStyle={styles.contentContainer}
             >
-                <Header
-                    learnerInfo={learnerInfo}
-                />
+                <LocalHeader learnerInfo={learnerInfo} />
 
                 <View style={[styles.content, {
                     backgroundColor: isDark ? colors.card : '#FFFFFF',
@@ -595,37 +653,6 @@ export default function MathsScreen() {
 
                     {viewMode === 'topics' && (
                         <View style={styles.topicsGridContainer}>
-                            <View style={{ position: 'absolute', top: insets.top - 48, right: 16, zIndex: 100 }}>
-                                <TouchableOpacity
-                                    onPress={() => router.push({
-                                        pathname: '/quiz',
-                                        params: {
-                                            subjectName: typeof subjectName === 'string' ? subjectName.replace(' P1', '').replace(' P2', '') : subjectName,
-                                            learnerName: learnerInfo?.name,
-                                            learnerGrade: learnerInfo?.grade,
-                                            learnerSchool: learnerInfo?.school_name,
-                                            learnerRole: learnerInfo?.role
-                                        }
-                                    })}
-                                    accessibilityRole="button"
-                                    accessibilityLabel="Close"
-                                    style={{
-                                        backgroundColor: isDark ? '#23272F' : '#F3F4F6',
-                                        borderRadius: 20,
-                                        width: 40,
-                                        height: 40,
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.10,
-                                        shadowRadius: 6,
-                                        elevation: 2,
-                                    }}
-                                >
-                                    <Ionicons name="close" size={28} color={isDark ? '#A7F3D0' : '#1E293B'} />
-                                </TouchableOpacity>
-                            </View>
                             <ThemedText style={styles.topicsHeader}>🧠 What Do You Want to Practice Today?</ThemedText>
                             {topics.length === 0 ? (
                                 <View style={styles.emptyStateContainer}>
@@ -673,23 +700,58 @@ export default function MathsScreen() {
                         </View>
                     )}
 
+                    {viewMode === 'steps' && topic && (
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginLeft: 8, marginBottom: 24 }}
+                            onPress={() => router.back()}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back"
+                        >
+                            <Text style={{ fontSize: 18, marginRight: 4 }}>⬅️</Text>
+                            <ThemedText style={{ fontSize: 16, color: colors.textSecondary }}>Back</ThemedText>
+                        </TouchableOpacity>
+                    )}
+                    {viewMode === 'steps' && !topic && !questionId && (
+                        <TouchableOpacity
+                            style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginLeft: 8, marginBottom: 24 }}
+                            onPress={() => {
+                                setViewMode('topics');
+                                setSelectedTopic(null);
+                                setSelectedOptionIndex(null);
+                                setCurrentStepIndex(0);
+                                setShowHint(false);
+                                fetchMathTopics();
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Back to Topics"
+                        >
+                            <Text style={{ fontSize: 18, marginRight: 4 }}>⬅️</Text>
+                            <ThemedText style={{ fontSize: 16, color: colors.textSecondary }}>Back to Topics</ThemedText>
+                        </TouchableOpacity>
+                    )}
+
+                    {viewMode === 'steps' && !isLoadingQuestion && questionIds.length === 0 && (
+                        <View style={styles.emptyStateContainer}>
+                            <Text style={{ fontSize: 64, marginBottom: 24 }}>🔍</Text>
+                            <ThemedText style={styles.emptyStateTitle}>No Questions Found</ThemedText>
+                            <ThemedText style={styles.emptyStateText}>
+                                We couldn't find any questions for the topic "{topic}". Please try another topic or contact support if you believe this is an error.
+                            </ThemedText>
+                            <TouchableOpacity
+                                style={[styles.modernButton, { marginTop: 24, width: '100%' }]}
+                                onPress={() => router.back()}
+                                accessibilityRole="button"
+                                accessibilityLabel="Go back"
+                            >
+                                <ThemedText style={styles.modernButtonText}>Go Back</ThemedText>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+
                     {viewMode === 'steps' && (
                         <>
-                            <TouchableOpacity
-                                style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginLeft: 8, marginBottom: 24 }}
-                                onPress={() => {
-                                    setViewMode('topics');
-                                    setSelectedTopic(null);
-                                    setSelectedOptionIndex(null);
-                                    setCurrentStepIndex(0);
-                                    setShowHint(false);
-                                }}
-                                accessibilityRole="button"
-                                accessibilityLabel="Back to Topics"
-                            >
-                                <Text style={{ fontSize: 18, marginRight: 4 }}>⬅️</Text>
-                                <ThemedText style={{ fontSize: 16, color: colors.textSecondary }}>Back to Topics</ThemedText>
-                            </TouchableOpacity>
+
                             {selectedTopic && (
                                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', marginBottom: 8 }}>
                                     <Text style={{ fontSize: 18, marginRight: 6 }}>📚</Text>
@@ -765,8 +827,9 @@ export default function MathsScreen() {
                         </>
                     )}
 
-                    {viewMode === 'steps' && selectedQuestion && !isLoadingQuestion && (
+                    {viewMode === 'steps' && selectedQuestion && !isLoadingQuestion && questionIds.length > 0 && (
                         <View style={styles.stepsViewContainer}>
+
                             <View style={[styles.stepsCard, { paddingTop: 8, paddingBottom: 96 }]}>
 
                                 {selectedQuestion?.context && (
@@ -783,7 +846,10 @@ export default function MathsScreen() {
                                     <View style={{ alignItems: 'center', marginVertical: 8 }}>
                                         <QuizAdditionalImage
                                             imagePath={selectedQuestion.image_path}
-                                            onZoom={() => { }}
+                                            onZoom={(url) => {
+                                                setZoomImageUrl(url);
+                                                setIsZoomModalVisible(true);
+                                            }}
                                         />
                                     </View>
                                 )}
@@ -804,7 +870,10 @@ export default function MathsScreen() {
                                     <View style={{ alignItems: 'center', marginVertical: 8 }}>
                                         <QuizAdditionalImage
                                             imagePath={selectedQuestion.question_image_path}
-                                            onZoom={() => { }}
+                                            onZoom={(url) => {
+                                                setZoomImageUrl(url);
+                                                setIsZoomModalVisible(true);
+                                            }}
                                         />
                                     </View>
                                 )}
@@ -812,6 +881,14 @@ export default function MathsScreen() {
                                 {/* Add Progress Indicator */}
                                 {selectedQuestion.steps && sortedSteps.length > 0 && (
                                     <View ref={progressRef} style={styles.progressContainer}>
+                                        <View style={{ marginBottom: 16, alignItems: 'center' }}>
+                                            <ThemedText style={[styles.progressText, { fontSize: 18, marginBottom: 8 }]}>
+                                                🎯 Let's solve this step by step! 🚀
+                                            </ThemedText>
+                                            <ThemedText style={[styles.progressText, { fontSize: 16, color: colors.textSecondary }]}>
+                                                Follow along and learn the solution process 📝
+                                            </ThemedText>
+                                        </View>
                                         <View style={styles.progressBar}>
                                             <View
                                                 style={[
@@ -1075,7 +1152,14 @@ export default function MathsScreen() {
 
                 </View>
             </ScrollView>
-        </LinearGradient >
+            <ZoomModal
+                isVisible={isZoomModalVisible}
+                onClose={() => setIsZoomModalVisible(false)}
+                zoomImageUrl={zoomImageUrl}
+                imageRotation={imageRotation}
+                setImageRotation={setImageRotation}
+            />
+        </LinearGradient>
     );
 }
 
@@ -1130,7 +1214,7 @@ function getStyles(isDark: boolean, colors: any) {
             fontWeight: '700',
             marginBottom: 5,
             color: isDark ? '#A7F3D0' : '#1E293B',
-            marginTop: 48,
+            marginTop: 8,
         },
         topicsGrid: {
             width: '100%',

@@ -208,9 +208,12 @@ async function logAnalyticsEvent(eventName: string, eventParams?: Record<string,
   }
 }
 
+const EARLY_GRADE_INFO_STEP = 4.5;
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [grade, setGrade] = useState('');
+  const [isEarlyGradeSelected, setIsEarlyGradeSelected] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const [registrationMethod, setRegistrationMethod] = useState<'email' | 'phone'>('email');
   const insets = useSafeAreaInsets();
@@ -255,14 +258,11 @@ export default function OnboardingScreen() {
     });
     if (step === 4 && !grade) {
       setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-    } else if (step === 5 && !selectedAvatar) {
-      setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
-    } else if (step === 7) {
-      handleComplete();
-    } else {
-      setErrors({ grade: '', curriculum: '' });
-      setStep(step + 1);
+      return;
     }
+    setErrors({ grade: '', curriculum: '' });
+    setStep(step + 1);
+    setIsEarlyGradeSelected(false);
   };
 
   const getStepName = (step: number): string => {
@@ -285,6 +285,8 @@ export default function OnboardingScreen() {
         return 'auth_options';
       case 8:
         return 'registration';
+      case EARLY_GRADE_INFO_STEP:
+        return 'early_grade_info';
       default:
         return 'unknown';
     }
@@ -421,40 +423,121 @@ export default function OnboardingScreen() {
           <View style={styles.step} testID="grade-selection-step">
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle} testID="grade-step-title">What grade are you in?</ThemedText>
-              <View style={styles.gradeButtons} testID="grade-buttons-container">
-                {[8, 9, 10, 11, 12].map((g, i) => {
-                  const rotations = [-8, -5, -3, 0, 3, 5, 8];
-                  const rotate = rotations[i % rotations.length];
-                  const blockColor = grade === g.toString() ? undefined : { backgroundColor: gradeColors[i % gradeColors.length] };
-                  return (
-                    <TouchableOpacity
-                      key={g}
-                      style={[
-                        styles.gradeBlock,
-                        blockColor,
-                        grade === g.toString() && styles.gradeBlockSelected,
-                        { transform: [{ rotate: `${rotate}deg` }] }
-                      ]}
-                      onPress={() => {
-                        setGrade(g.toString());
-                        setErrors(prev => ({ ...prev, grade: '' }));
-                      }}
-                      testID={`grade-block-${g}`}
-                    >
-                      <ThemedText
+              {!isEarlyGradeSelected ? (
+                <View style={styles.gradeButtons} testID="grade-buttons-container">
+                  {[8, 9, 10, 11, 12].map((g, i) => {
+                    const rotations = [-8, -5, -3, 0, 3, 5, 8];
+                    const rotate = rotations[i % rotations.length];
+                    const blockColor = grade === g.toString() ? undefined : { backgroundColor: gradeColors[i % gradeColors.length] };
+                    return (
+                      <TouchableOpacity
+                        key={g}
                         style={[
-                          styles.gradeBlockText,
-                          grade === g.toString() && styles.gradeBlockTextSelected
+                          styles.gradeBlock,
+                          blockColor,
+                          grade === g.toString() && styles.gradeBlockSelected,
+                          { transform: [{ rotate: `${rotate}deg` }] }
                         ]}
-                        testID={`grade-block-text-${g}`}
+                        onPress={() => {
+                          setGrade(g.toString());
+                          setErrors(prev => ({ ...prev, grade: '' }));
+                          if (g === 8 || g === 9) setIsEarlyGradeSelected(true);
+                        }}
+                        testID={`grade-block-${g}`}
                       >
-                        {g}
+                        <ThemedText
+                          style={[
+                            styles.gradeBlockText,
+                            grade === g.toString() && styles.gradeBlockTextSelected
+                          ]}
+                          testID={`grade-block-text-${g}`}
+                        >
+                          {g}
+                        </ThemedText>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={styles.earlyGradeContainer}>
+                  <View style={styles.earlyGradeHeader}>
+                    <ThemedText style={styles.earlyGradeTitle}>
+                      Coming Soon to Grade {grade}! 🚀
+                    </ThemedText>
+                    <ThemedText style={styles.earlyGradeSubtitle}>
+                      While we prepare your grade's content, here's what you can do:
+                    </ThemedText>
+                  </View>
+                  <View style={styles.featuresList}>
+                    <View style={styles.featureItem}>
+                      <ThemedText style={styles.featureEmoji}>📚</ThemedText>
+                      <ThemedText style={styles.featureText}>
+                        Read Dimpo's daily story and learn something new every day
                       </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <ThemedText style={styles.featureEmoji}>💬</ThemedText>
+                      <ThemedText style={styles.featureText}>
+                        Chat with peers and share your learning journey
+                      </ThemedText>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <ThemedText style={styles.featureEmoji}>📅</ThemedText>
+                      <ThemedText style={styles.featureText}>
+                        Use the study planning calendar to organize your time
+                      </ThemedText>
+                    </View>
+                  </View>
+                  <View style={styles.earlyGradeFooter}>
+                    <ThemedText style={styles.earlyGradeFooterText}>
+                      We're working hard to bring you the best learning experience! 🌟
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
               {errors.grade ? <ThemedText style={styles.errorText} testID="grade-error">{errors.grade}</ThemedText> : null}
+            </View>
+          </View>
+        );
+      case EARLY_GRADE_INFO_STEP:
+        return (
+          <View style={styles.step} testID="early-grade-info-step">
+            <View style={styles.textContainer}>
+              <View style={styles.earlyGradeContainer}>
+                <View style={styles.earlyGradeHeader}>
+                  <ThemedText style={styles.earlyGradeTitle}>
+                    Coming Soon to Grade {grade}! 🚀
+                  </ThemedText>
+                  <ThemedText style={styles.earlyGradeSubtitle}>
+                    While we prepare your grade's content, here's what you can do:
+                  </ThemedText>
+                </View>
+                <View style={styles.featuresList}>
+                  <View style={styles.featureItem}>
+                    <ThemedText style={styles.featureEmoji}>📚</ThemedText>
+                    <ThemedText style={styles.featureText}>
+                      Read Dimpo's daily story and learn something new every day
+                    </ThemedText>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <ThemedText style={styles.featureEmoji}>💬</ThemedText>
+                    <ThemedText style={styles.featureText}>
+                      Chat with peers and share your learning journey
+                    </ThemedText>
+                  </View>
+                  <View style={styles.featureItem}>
+                    <ThemedText style={styles.featureEmoji}>📅</ThemedText>
+                    <ThemedText style={styles.featureText}>
+                      Use the study planning calendar to organize your time
+                    </ThemedText>
+                  </View>
+                </View>
+                <View style={styles.earlyGradeFooter}>
+                  <ThemedText style={styles.earlyGradeFooterText}>
+                    We're working hard to bring you the best learning experience! 🌟
+                  </ThemedText>
+                </View>
+              </View>
             </View>
           </View>
         );
@@ -545,19 +628,7 @@ export default function OnboardingScreen() {
                 Choose your preferred way to sign up
               </ThemedText>
             </View>
-            <View style={styles.disclaimerContainer}>
-              <View style={styles.disclaimerInner}>
-                <View style={styles.disclaimerTextWrapper}>
-                  <View style={styles.disclaimerIconRow}>
-                    <ThemedText style={styles.disclaimerIcon} accessibilityElementsHidden>⚠️</ThemedText>
-                    <ThemedText style={styles.disclaimerTitle}>Disclaimer</ThemedText>
-                  </View>
-                  <ThemedText style={styles.disclaimerText}>
-                    Heads up! Our quiz questions come from real past exam papers, but they haven't been officially checked or endorsed by any school or the Department of Education. We're here to help you learn and have fun—so enjoy, and let's get quizzing! 🎉
-                  </ThemedText>
-                </View>
-              </View>
-            </View>
+
             <View style={styles.authOptionsContainer}>
               <TouchableOpacity
                 style={[styles.authButton, styles.emailButton]}
@@ -733,6 +804,8 @@ export default function OnboardingScreen() {
         return true;
       case 8:
         return true;
+      case EARLY_GRADE_INFO_STEP:
+        return true;
       default:
         return false;
     }
@@ -748,7 +821,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 8 && (
+        {(step < 8 && step !== 7 || step === EARLY_GRADE_INFO_STEP) && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
@@ -773,7 +846,10 @@ export default function OnboardingScreen() {
               <>
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
-                  onPress={() => setStep(step - 1)}
+                  onPress={() => {
+                    setStep(step - 1);
+                    setIsEarlyGradeSelected(false);
+                  }}
                   testID="previous-step-button"
                 >
                   <ThemedText style={styles.buttonText}>Back</ThemedText>
@@ -1651,5 +1727,76 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#E2E8F0',
     lineHeight: 24,
+  },
+  gradeWarningContainer: {
+    backgroundColor: 'rgba(255, 193, 7, 0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 193, 7, 0.3)',
+  },
+  gradeWarningText: {
+    fontSize: 15,
+    color: '#FFD700',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  earlyGradeContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
+    padding: 24,
+    marginTop: 24,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  earlyGradeHeader: {
+    marginBottom: 24,
+  },
+  earlyGradeTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  earlyGradeSubtitle: {
+    fontSize: 16,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  featuresList: {
+    gap: 20,
+    marginBottom: 24,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  featureEmoji: {
+    fontSize: 24,
+    width: 40,
+    textAlign: 'center',
+  },
+  featureText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    flex: 1,
+    lineHeight: 22,
+  },
+  earlyGradeFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    paddingTop: 20,
+  },
+  earlyGradeFooterText: {
+    fontSize: 15,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
