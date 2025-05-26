@@ -17,6 +17,11 @@ export function getSubjectIcon(subjectName: string) {
         'Consumer Studies': require('@/assets/images/subjects/consumer-studies.png'),
         'Religion Studies': require('@/assets/images/subjects/religion-studies.png'),
         'Agricultural Management Practices': require('@/assets/images/subjects/agricultural-management-practices.png'),
+        'Computer Applications Tech': require('@/assets/images/subjects/computer-applications-tech.png'),
+        'Hospitality Studies': require('@/assets/images/subjects/hospitality-studies.png'),
+        'Information Technology': require('@/assets/images/subjects/information-technology.png'),
+        'Technical Mathematics': require('@/assets/images/subjects/technical-mathematics.png'),
+        'Technical Sciences': require('@/assets/images/subjects/technical-sciences.png'),
         'default': require('@/assets/images/subjects/mathematics.png')
     };
     return icons[subjectName as keyof typeof icons] || icons.default;

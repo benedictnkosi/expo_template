@@ -24,7 +24,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
 import { NotesFavoritesRecordings, TabType } from '@/app/components/NotesFavoritesRecordings';
-import { StreakModal, ReportModal, ExplanationModal, ZoomModal, RestartModal, ThankYouModal } from '@/app/components/quiz/quiz-modals';
+import { StreakModal, ReportModal, ExplanationModal, ZoomModal, RestartModal, ThankYouModal, FirstTimeModal, UpgradeNudgeModal } from '@/app/components/quiz/quiz-modals';
 import { FeedbackContainer } from './components/quiz/FeedbackContainer';
 import { PerformanceSummary, SubjectStats as ImportedSubjectStats } from './components/quiz/PerformanceSummary';
 import { QuizModeSelection } from './components/quiz/QuizModeSelection';
@@ -45,7 +45,6 @@ import { getSubjectIcon } from '@/utils/subjectIcons';
 import { RecordingPlayerModal } from './components/RecordingPlayerModal';
 import { TopicProgressBar } from './components/quiz/TopicProgressBar';
 import { FirstAnswerPointsModal } from './components/quiz/FirstAnswerPointsModal';
-import { FirstTimeModal } from './components/quiz/quiz-modals';
 import { Paywall } from './components/Paywall';
 import { getLearner } from '../services/api';
 import { TermsSelector } from './components/quiz/TermsSelector';
@@ -1139,7 +1138,7 @@ export default function QuizScreen() {
     const [showRelatedQuestions, setShowRelatedQuestions] = useState(false);
     const [totalRelatedQuestions, setTotalRelatedQuestions] = useState(0);
     const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-    const [remainingQuizzes, setRemainingQuizzes] = useState<number | undefined>(undefined);
+    const [remainingQuizzes, setRemainingQuizzes] = useState<number | null>(null);
     const [topicProgress, setTopicProgress] = useState<{
         total_questions: number;
         viewed_questions: number;
@@ -1166,7 +1165,6 @@ export default function QuizScreen() {
     const [offerings, setOfferings] = useState<any>(null);
     const [questionsAnswered, setQuestionsAnswered] = useState(0);
     const [showPaywall, setShowPaywall] = useState(false);
-    const [hasShownPaywall, setHasShownPaywall] = useState(false);
     const [learnerInfo, setLearnerInfo] = useState<{
         subscription: string;
         terms: string;
@@ -1174,6 +1172,7 @@ export default function QuizScreen() {
     const [selectedTerms, setSelectedTerms] = useState<string>('');
     const [isUpdatingTerms, setIsUpdatingTerms] = useState(false);
     const [studyKitKey, setStudyKitKey] = useState(0);
+    const [showUpgradeNudgeModal, setShowUpgradeNudgeModal] = useState(false);
 
     // Available terms
     const TERMS = [1, 2, 3, 4];
@@ -1214,12 +1213,7 @@ export default function QuizScreen() {
             } else if (response.status === "NOK" && response.message === "Daily limit reached") {
                 setQuizLimitReached(true);
                 setRandomLesson(null);
-                Toast.show({
-                    type: 'error',
-                    text1: 'Quiz Limit Reached',
-                    text2: 'You have reached your daily quiz limit. Please try again tomorrow.',
-                    position: 'bottom'
-                });
+
             } else {
                 console.log('No random lesson available');
                 setRandomLesson(null);
@@ -1429,8 +1423,6 @@ export default function QuizScreen() {
                 url.searchParams.append('topic', currentTopic);
             }
 
-
-
             const response = await fetch(url.toString());
 
             if (response.status === 403) {
@@ -1447,15 +1439,7 @@ export default function QuizScreen() {
             // If in lessons mode, fetch daily usage first
             if (selectedMode === 'lessons') {
                 try {
-                    const usageResponse = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user.uid}`);
-                    const usageData = await usageResponse.json();
-                    if (usageData.status === "OK") {
-                        setRemainingLessons(usageData.data.lesson);
-                        if (usageData.data.lesson <= 0) {
-                            setQuizLimitReached(true);
-                            return;
-                        }
-                    }
+                    fetchDailyUsage();
                 } catch (error) {
                     setQuizLimitReached(true);
                     console.error('Error fetching daily usage:', error);
@@ -1602,13 +1586,6 @@ export default function QuizScreen() {
     const handleAnswer = async (answer: string, options?: { sheet_cell: string }) => {
         if (!user?.uid || !currentQuestion) return;
 
-        // Check if user has reached the question limit and hasn't seen the paywall yet
-        if (learnerInfo?.subscription === 'free' && questionsAnswered >= 5 && !hasShownPaywall) {
-            setShowPaywall(true);
-            setHasShownPaywall(true);
-            return;
-        }
-
         // Set flag to indicate answers were submitted
         await AsyncStorage.setItem('hasNewAnswers', 'true');
 
@@ -1629,14 +1606,6 @@ export default function QuizScreen() {
             // Increment questions answered counter
             setQuestionsAnswered(prev => prev + 1);
 
-            // Check if we need to show paywall after this answer (only if we haven't shown it before)
-            if (learnerInfo?.subscription === 'free' && questionsAnswered + 1 === 5 && !hasShownPaywall) {
-                setTimeout(() => {
-                    setShowPaywall(true);
-                    setHasShownPaywall(true);
-                }, 3000);
-            }
-
             // Always award 1 point for correct answers
             const points = response.correct ? 1 : 0;
 
@@ -1645,7 +1614,6 @@ export default function QuizScreen() {
             setFeedbackMessage(response.correct ? getRandomSuccessMessage() : getRandomWrongMessage());
             setCorrectAnswer(response.correctAnswer);
             setRecordingFileName(response.recordingFileName || '');
-            // setRemainingQuizzes(response.remaining_quizzes); // Removed as per requirement
             fetchDailyUsage(); // Fetch updated daily usage after an answer
 
             // Show first answer bonus modal for first-time correct answers
@@ -2514,6 +2482,20 @@ export default function QuizScreen() {
             }
         };
 
+        // Check if both dates are in the past
+        const isDateInPast = (dateString: string | null): boolean => {
+            if (!dateString) return false;
+            try {
+                const date = new Date(dateString);
+                return date < new Date();
+            } catch (error) {
+                return false;
+            }
+        };
+
+        // If both dates are in the past, don't show the component
+        if (isDateInPast(examDates.p1) && isDateInPast(examDates.p2)) return null;
+
         return (
             <ThemedView style={[styles.examDateContainer, {
                 backgroundColor: isDark ? colors.card : '#FFFFFF',
@@ -2667,12 +2649,26 @@ export default function QuizScreen() {
         try {
             const response = await fetch(`${HOST_URL}/api/learner/daily-usage?uid=${user.uid}`);
             const data = await response.json();
+            console.log('[Question13Modal] Daily usage response:', data);
             if (data.status === "OK") {
                 setRemainingLessons(data.data.lesson);
                 if (data.data.quiz !== undefined) {
+                    console.log('[Question13Modal] Setting remaining quizzes:', data.data.quiz);
                     setRemainingQuizzes(data.data.quiz);
-                    if (data.data.quiz <= 0 && selectedMode === 'quiz') {
+
+                    // Handle quiz limits
+                    if (selectedMode === 'quiz' && learnerInfo?.subscription === 'free' && data.data.quiz <= 0) {
+                        setTimeout(() => {
+                            setShowPaywall(true);
+                        }, 3000);
+                    }
+
+                    // Handle lesson limits
+                    if (selectedMode === 'lessons' && learnerInfo?.subscription === 'free' && data.data.lesson <= 0) {
                         setQuizLimitReached(true);
+                        setTimeout(() => {
+                            setShowPaywall(true);
+                        }, 3000);
                     }
                 }
             } else {
@@ -2843,6 +2839,34 @@ export default function QuizScreen() {
         setStudyKitKey(k => k + 1);
     }
 
+    // Add this effect to show the modal at question 13
+    useEffect(() => {
+        console.log('[UpgradeNudgeModal] Debug:', {
+            remainingQuizzes,
+            remainingLessons,
+            subscription: learnerInfo?.subscription,
+            shouldShow: remainingQuizzes !== null && remainingQuizzes == 5 && learnerInfo?.subscription === 'free'
+        });
+
+        if (selectedMode === 'quiz' && remainingQuizzes !== null && remainingQuizzes == 5 && learnerInfo?.subscription === 'free') {
+            console.log('[UpgradeNudgeModal] Showing modal for quizzes');
+            setShowUpgradeNudgeModal(true);
+        }
+
+        if (selectedMode === 'lessons' && remainingLessons !== null && remainingLessons == 5 && learnerInfo?.subscription === 'free') {
+            console.log('[UpgradeNudgeModal] Showing modal for lessons');
+            setShowUpgradeNudgeModal(true);
+        } else {
+            console.log('[UpgradeNudgeModal] Not showing modal ', remainingLessons);
+        }
+    }, [remainingQuizzes, remainingLessons, learnerInfo?.subscription]);
+
+    // Add this function to handle upgrade
+    const handleUpgrade = () => {
+        setShowUpgradeNudgeModal(false);
+        setShowPaywall(true);
+    };
+
     if (isLoading) {
         return (
             <>
@@ -2929,6 +2953,8 @@ export default function QuizScreen() {
                                     } else {
                                         setSelectedMode(mode.id as 'quiz' | 'lessons' | 'practice');
                                     }
+                                    // Reset paywall state when changing modes
+                                    setShowPaywall(false);
                                 }}
                                 selectedModeId={selectedMode}
                             />
@@ -3039,9 +3065,12 @@ export default function QuizScreen() {
                         // Refresh learner info after successful purchase
                         if (user?.uid) {
                             getLearner(user.uid).then(learner => {
-                                setLearnerInfo({
-                                    subscription: (learner as any).subscription || 'free',
-                                    terms: learner.terms || ''
+                                setLearnerInfo(prev => {
+                                    if (!prev) return null;
+                                    return {
+                                        ...prev,
+                                        subscription: (learner as any).subscription || 'free'
+                                    };
                                 });
                             });
                         }
@@ -3322,6 +3351,13 @@ export default function QuizScreen() {
 
             </LinearGradient>
             {renderRecordingPlayerModal()}
+            <UpgradeNudgeModal
+                isVisible={showUpgradeNudgeModal}
+                onClose={() => setShowUpgradeNudgeModal(false)}
+                onUpgrade={handleUpgrade}
+                isDark={isDark}
+                selectedMode={selectedMode}
+            />
         </>
     );
 }// Add helper function to get subject icons
@@ -3377,10 +3413,10 @@ const styles = StyleSheet.create({
     },
     sectionCard: {
         borderRadius: 12,
-        padding: 16,
+        padding: 8,
         marginBottom: 16,
         borderWidth: 1,
-        marginHorizontal: 16,
+        marginHorizontal: 4,
     },
     questionContainer: {
         borderRadius: 12,
@@ -3471,6 +3507,8 @@ const styles = StyleSheet.create({
         marginTop: 12,
         padding: 16,
         width: '100%',
+        maxWidth: 700,
+        alignSelf: 'center',
         flexShrink: 1,
     },
     answerImage: {
@@ -4257,8 +4295,8 @@ const styles = StyleSheet.create({
     bulletListContainer: {
         flexDirection: 'column',
         width: '100%',
-        paddingLeft: 16,
-        paddingRight: 16,
+        paddingLeft: 4,
+        paddingRight: 4,
         marginVertical: 8,
     },
     bulletPointContainer: {
@@ -4270,7 +4308,7 @@ const styles = StyleSheet.create({
     bulletPoint: {
         fontSize: 24,
         lineHeight: 24,
-        marginRight: 8,
+        marginRight: 4,
         marginTop: 0,
     },
     bulletTextWrapper: {

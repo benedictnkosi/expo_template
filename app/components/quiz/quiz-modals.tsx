@@ -6,6 +6,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
 import ZoomableImageNew from '@/components/ZoomableImageNew';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface StreakModalProps {
     isVisible: boolean;
@@ -575,6 +576,141 @@ export const FirstTimeModal = ({
     );
 };
 
+interface UpgradeNudgeModalProps {
+    isVisible: boolean;
+    onClose: () => void;
+    onUpgrade: () => void;
+    isDark: boolean;
+    selectedMode: 'quiz' | 'lessons' | 'practice' | 'podcast';
+}
+
+export const UpgradeNudgeModal = ({
+    isVisible,
+    onClose,
+    onUpgrade,
+    isDark,
+    selectedMode
+}: UpgradeNudgeModalProps) => {
+    const content = {
+        quiz: {
+            title: "🎯 You're on a roll!",
+            message: `You've got just 5 questions left today.${'\n\n'}Want to finish strong without waiting for tomorrow?${'\n\n'}👉 Upgrade to Dimpo Pro for unlimited access — no stops, no limits.`,
+            primaryButton: "Upgrade to Pro",
+            secondaryButton: "⏳ I'll wait for tomorrow",
+            primaryAccessibilityLabel: "Upgrade to Pro for unlimited questions",
+            secondaryAccessibilityLabel: "Continue with remaining questions"
+        },
+        lessons: {
+            title: "📚 Learning Streak!",
+            message: `You've got just 5 lessons left today.${'\n\n'}Want to keep your learning momentum going?${'\n\n'}👉 Upgrade to Dimpo Pro for unlimited lessons — learn at your own pace.`,
+            primaryButton: "Upgrade to Pro",
+            secondaryButton: "⏳ I'll wait for tomorrow",
+            primaryAccessibilityLabel: "Upgrade to Pro for unlimited lessons",
+            secondaryAccessibilityLabel: "Continue with remaining lessons"
+        },
+        practice: {
+            title: "🎯 Keep Practicing!",
+            message: `You've got just 1 practice questions left today.${'\n\n'}Want to keep improving without limits?${'\n\n'}👉 Upgrade to Dimpo Pro for unlimited practice — master at your own pace.`,
+            primaryButton: "Upgrade to Pro",
+            secondaryButton: "⏳ I'll wait for tomorrow",
+            primaryAccessibilityLabel: "Upgrade to Pro for unlimited practice",
+            secondaryAccessibilityLabel: "Continue with remaining practice"
+        },
+        podcast: {
+            title: "🎧 Keep Listening!",
+            message: `You've got just 1 podcasts left today.${'\n\n'}Want to keep learning on the go?${'\n\n'}👉 Upgrade to Dimpo Pro for unlimited podcasts — learn anywhere, anytime.`,
+            primaryButton: "Upgrade to Pro",
+            secondaryButton: "⏳ I'll wait for tomorrow",
+            primaryAccessibilityLabel: "Upgrade to Pro for unlimited podcasts",
+            secondaryAccessibilityLabel: "Continue with remaining podcasts"
+        }
+    };
+
+    const currentContent = content[selectedMode];
+
+    return (
+        <Modal
+            isVisible={isVisible}
+            onBackdropPress={onClose}
+            animationIn="fadeIn"
+            animationOut="fadeOut"
+            backdropOpacity={0.5}
+            style={styles.modal}
+            useNativeDriver={true}
+            hideModalContentWhileAnimating={true}
+            animationInTiming={300}
+            animationOutTiming={300}
+        >
+            <View style={[styles.modalContent, {
+                backgroundColor: isDark ? Colors.dark.card : Colors.light.card,
+                alignItems: 'center',
+                paddingVertical: 36,
+                paddingHorizontal: 24,
+                borderRadius: 28,
+                shadowColor: isDark ? '#000' : '#222',
+                shadowOpacity: 0.25,
+                shadowRadius: 16,
+                elevation: 8,
+            }]}>
+                <View style={styles.starCircleWrapper}>
+                    <View style={[styles.starCircle, { backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.10)' }]}>
+                        <MaterialCommunityIcons
+                            name="rocket-launch"
+                            size={72}
+                            color={Colors.primary}
+                            style={{ alignSelf: 'center' }}
+                        />
+                    </View>
+                </View>
+                <ThemedText style={[styles.welcomeTitle, {
+                    color: isDark ? Colors.dark.text : Colors.light.text,
+                    fontSize: 28,
+                    fontWeight: 'bold',
+                    marginTop: 24,
+                    marginBottom: 8,
+                    textAlign: 'center',
+                }]}>{currentContent.title}</ThemedText>
+                <ThemedText style={[styles.welcomeMessage, {
+                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary,
+                    fontSize: 17,
+                    marginBottom: 32,
+                    textAlign: 'center',
+                    lineHeight: 24,
+                }]}>
+                    {currentContent.message}
+                </ThemedText>
+                <View style={styles.ctaColumn}>
+                    <TouchableOpacity
+                        onPress={onUpgrade}
+                        accessibilityRole="button"
+                        accessibilityLabel={currentContent.primaryAccessibilityLabel}
+                        activeOpacity={0.85}
+                        style={{ width: '100%' }}
+                    >
+                        <LinearGradient
+                            colors={["#a18fff", "#6f5cff"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.gradientButton}
+                        >
+                            <Text style={styles.gradientButtonText}>✨ Upgrade to Pro</Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.outlineButton}
+                        onPress={onClose}
+                        accessibilityRole="button"
+                        accessibilityLabel={currentContent.secondaryAccessibilityLabel}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.outlineButtonText}>⏳ I'll wait for tomorrow</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
@@ -902,5 +1038,72 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    starCircleWrapper: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 0,
+    },
+    starCircle: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.10,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 16,
+        width: '100%',
+    },
+    gradientButton: {
+        width: '100%',
+        borderRadius: 18,
+        paddingVertical: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.18,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    gradientButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 22,
+        letterSpacing: 0.2,
+    },
+    outlineButton: {
+        width: '100%',
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    outlineButtonText: {
+        color: '#4f46e5',
+        fontWeight: '600',
+        fontSize: 16,
+        letterSpacing: 0.2,
+    },
+    ctaColumn: {
+        width: '100%',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 16,
+        marginTop: 16,
     },
 }); 

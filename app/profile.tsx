@@ -92,7 +92,6 @@ export default function ProfileScreen() {
   const [learnerInfo, setLearnerInfo] = useState<LearnerInfo | null>(null);
   const [editName, setEditName] = useState('');
   const [editGrade, setEditGrade] = useState('');
-  const [editCurriculum, setEditCurriculum] = useState<string>('');
   const [editTerms, setEditTerms] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -115,7 +114,6 @@ export default function ProfileScreen() {
 
   // Available options
   const TERMS = [1, 2, 3, 4];
-  const CURRICULA = ['CAPS', 'IEB'];
 
   // Add AVATAR_IMAGES constant after the CURRICULA constant
   const AVATAR_IMAGES: Record<string, any> = {
@@ -142,7 +140,6 @@ export default function ProfileScreen() {
         setLearnerInfo({
           name,
           grade: gradeNumber,
-          curriculum: learner.curriculum || '',
           terms: learner.terms || '',
           imagePath: user.photoURL || "",
           avatar: learner.avatar || "",
@@ -151,7 +148,6 @@ export default function ProfileScreen() {
 
         setEditName(name);
         setEditGrade(gradeNumber);
-        setEditCurriculum(learner.curriculum || '');
         setEditTerms(learner.terms || '');
         setSelectedAvatar(learner.avatar || '1');
 
@@ -196,15 +192,14 @@ export default function ProfileScreen() {
   }, []);
 
   const handleSave = async () => {
-    // Validate curriculum and terms selection
-    const selectedCurricula = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
+    // Validate terms selection
     const selectedTerms = editTerms.split(',').map(t => t.trim()).filter(Boolean);
 
-    if (selectedCurricula.length === 0 || selectedTerms.length === 0) {
+    if (selectedTerms.length === 0) {
       Toast.show({
         type: 'error',
         text1: 'Missing Selection',
-        text2: 'Please select at least one curriculum and one term',
+        text2: 'Please select at least one term',
         position: 'bottom'
       });
       return;
@@ -224,23 +219,17 @@ export default function ProfileScreen() {
 
     setIsSaving(true);
     try {
-      // Clean up and format the terms and curriculum strings
+      // Clean up and format the terms string
       const cleanTerms = editTerms.split(',')
         .map(t => t.trim())
         .filter(Boolean)
         .join(', ');
 
-      const cleanCurriculum = editCurriculum.split(',')
-        .map(c => c.trim())
-        .filter(Boolean)
-        .join(', ');
-
-
       const response = await createLearner(user.uid, {
         name: editName.trim(),
         grade: parseInt(editGrade),
         terms: cleanTerms,
-        curriculum: cleanCurriculum,
+        curriculum: 'CAPS', // Set default curriculum
         email: user.email || '',
         avatar: selectedAvatar,
         school: '',
@@ -254,7 +243,6 @@ export default function ProfileScreen() {
           ...prev,
           name: editName.trim(),
           grade: editGrade,
-          curriculum: cleanCurriculum,
           terms: cleanTerms,
           avatar: selectedAvatar
         }));
@@ -659,55 +647,6 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <ThemedText style={[styles.label, { color: colors.text }]}>📖 Choose Your Curriculums</ThemedText>
-                <ThemedText style={[styles.smallLabel, { color: colors.textSecondary }]}>Only questions from the selected curriculum\s will appear in the quiz.</ThemedText>
-
-                <View style={styles.optionsContainer}>
-                  {CURRICULA.map((curr) => (
-                    <TouchableOpacity
-                      key={curr}
-                      style={[
-                        styles.optionButton,
-                        {
-                          backgroundColor: isDark ? colors.surface : 'rgba(226, 232, 240, 0.3)',
-                          borderColor: colors.border
-                        },
-                        editCurriculum.split(',').map(c => c.trim()).includes(curr) && [
-                          styles.optionButtonSelected,
-                          { backgroundColor: colors.primary }
-                        ]
-                      ]}
-                      onPress={() => {
-                        const currArray = editCurriculum.split(',').map(c => c.trim()).filter(Boolean);
-                        if (currArray.includes(curr)) {
-                          setEditCurriculum(currArray.filter(c => c !== curr).join(','));
-                        } else {
-                          setEditCurriculum(currArray.concat(curr).join(','));
-                        }
-
-                        // Log curriculum change event
-                        logAnalyticsEvent('curriculum_change', {
-                          user_id: user?.uid,
-                          curriculum: currArray.includes(curr) ?
-                            currArray.filter(c => c !== curr).join(',') :
-                            currArray.concat(curr).join(',')
-                        });
-                      }}
-                    >
-                      <ThemedText style={[
-                        styles.optionButtonText,
-                        { color: colors.text },
-                        editCurriculum.split(',').map(c => c.trim()).includes(curr) &&
-                        styles.optionButtonTextSelected
-                      ]}>
-                        {curr}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
                 <ThemedText style={[styles.label, { color: colors.text }]}>🔹 Which terms are you mastering today? Choose wisely! 💡</ThemedText>
                 <ThemedText style={[styles.smallLabel, { color: colors.textSecondary }]}>Only questions from the selected terms will appear in the quiz.</ThemedText>
 
@@ -761,11 +700,11 @@ export default function ProfileScreen() {
                   styles.button,
                   styles.saveButton,
                   { backgroundColor: colors.primary },
-                  (!editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length) &&
+                  !editTerms.split(',').filter(Boolean).length &&
                   styles.buttonDisabled
                 ]}
                 onPress={handleSave}
-                disabled={isSaving || !editCurriculum.split(',').filter(Boolean).length || !editTerms.split(',').filter(Boolean).length}
+                disabled={isSaving || !editTerms.split(',').filter(Boolean).length}
                 testID='profile-save-button'
               >
                 <ThemedText style={styles.buttonText}>
@@ -904,23 +843,15 @@ export default function ProfileScreen() {
           <View style={styles.subscriptionContainer}>
             <View style={styles.subscriptionInfo}>
               <ThemedText style={[styles.subscriptionType, { color: colors.text }]}>
-                {learnerInfo?.subscription === 'dimpo_gold_annual'
-                  ? '✨ Gold Plan'
-                  : learnerInfo?.subscription === 'dimpo_silver_annual'
-                    ? '✨ Silver Plan'
-                    : 'Free Plan'
-                }
+                {learnerInfo?.subscription === 'free' ? 'Free Plan' : '✨ Premium Plan'}
               </ThemedText>
               <ThemedText style={[styles.subscriptionDescription, { color: colors.textSecondary }]}>
-                {learnerInfo?.subscription === 'dimpo_gold_annual'
-                  ? 'You have access to all premium features with Gold benefits'
-                  : learnerInfo?.subscription === 'dimpo_silver_annual'
-                    ? 'You have access to premium features. Upgrade to Gold for even more benefits!'
-                    : 'Upgrade to Gold for unlimited access to all premium features'
-                }
+                {learnerInfo?.subscription === 'free'
+                  ? 'Upgrade to Pro for unlimited access to all features'
+                  : 'You have access to all premium features'}
               </ThemedText>
             </View>
-            {learnerInfo?.subscription !== 'dimpo_gold_annual' && (
+            {learnerInfo?.subscription === 'free' && (
               <TouchableOpacity
                 style={[styles.upgradeButton]}
                 onPress={() => setShowPaywall(true)}
@@ -930,10 +861,7 @@ export default function ProfileScreen() {
                   style={styles.upgradeButtonGradient}
                 >
                   <ThemedText style={styles.upgradeButtonText}>
-                    {learnerInfo?.subscription === 'dimpo_silver_annual'
-                      ? '✨ Upgrade to Gold'
-                      : '✨ Upgrade to Gold'
-                    }
+                    ✨ Upgrade to Pro
                   </ThemedText>
                 </LinearGradient>
               </TouchableOpacity>

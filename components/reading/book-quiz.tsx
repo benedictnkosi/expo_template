@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 interface BookQuizProps {
     chapterId: number;
     startTime: number; // Unix timestamp when reading started
-    onClose?: () => void;
+    onClose?: (shouldRetry?: boolean) => void;
     wordCount?: number; // Add wordCount prop
 }
 
@@ -312,23 +312,36 @@ export function BookQuiz({ chapterId, startTime, onClose, wordCount }: BookQuizP
                     colors={gradientColors}
                     style={styles.gradientBackground}
                 />
-                <Text style={styles.resultEmoji}>{resultEmoji}</Text>
-                <Text style={[styles.quizTitle, { color: colors.primary }]}>
-                    {resultEmoji} Quiz Results
+                <Image
+                    source={require('../../assets/images/dimpo/reading.png')}
+                    style={{ width: 160, height: 240, marginBottom: 8 }}
+                    resizeMode="contain"
+                    accessibilityLabel="Dimpo reading a book"
+                />
+                <Text style={[styles.quizTitle, { color: colors.primary, marginBottom: 4, fontSize: 22 }]}>
+                    {resultMessage}
                 </Text>
-                <View style={styles.scoreContainer}>
-                    <Text style={[styles.scoreText, { color: resultColor }]}>
-                        {score} / {quiz.quiz.length}
-                    </Text>
+                <Text style={[styles.resultMessage, { color: colors.textSecondary, marginBottom: 12, fontSize: 15 }]}>
+                    {resultSubText}
+                </Text>
+                <View style={{ width: '100%', height: 1, backgroundColor: isDark ? '#23242A' : '#E0E7FF', marginVertical: 12 }} />
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 8, gap: 24 }}>
+                    {/* Only show reading speed if wpm <= 200 */}
+                    {wpm <= 200 && (
+                        <View style={{ alignItems: 'center' }}>
+                            <Text style={{ fontSize: 15, color: colors.textSecondary }}>Reading Speed</Text>
+                            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.primary }}>
+                                <Ionicons name="speedometer-outline" size={18} color={colors.primary} /> {wpm} <Text style={{ fontSize: 13, fontWeight: '600' }}>WPM</Text>
+                            </Text>
+                        </View>
+                    )}
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={{ fontSize: 15, color: colors.textSecondary }}>Comprehension</Text>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: resultColor }}>
+                            <Ionicons name="book-outline" size={18} color={resultColor} /> {percentage.toFixed(0)}%
+                        </Text>
+                    </View>
                 </View>
-                <Text style={[styles.resultMessage, { color: isDark ? '#E5E7EB' : '#374151' }]}>
-                    {resultEmoji} {resultMessage}
-                </Text>
-                {shouldRetry && (
-                    <Text style={[styles.retryMessage, { color: colors.textSecondary }]}>
-                        We recommend reading the chapter again to better understand the content.
-                    </Text>
-                )}
                 <Pressable
                     style={[styles.quizButton, { backgroundColor: colors.primary }]}
                     onPress={() => {
@@ -340,14 +353,10 @@ export function BookQuiz({ chapterId, startTime, onClose, wordCount }: BookQuizP
                             setScore(0);
                             setShowFeedback(false);
                             // Close quiz and return to reading
-                            if (onClose) {
-                                onClose();
-                            }
+                            onClose?.(true);
                         } else {
                             // Just close the quiz for good scores
-                            if (onClose) {
-                                onClose();
-                            }
+                            onClose?.(false);
                         }
                     }}
                     disabled={isCompleting}
@@ -372,7 +381,7 @@ export function BookQuiz({ chapterId, startTime, onClose, wordCount }: BookQuizP
             />
             <Pressable
                 style={styles.closeButton}
-                onPress={onClose}
+                onPress={() => onClose?.(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Close quiz"
             >

@@ -354,10 +354,13 @@ export default function ReadingScreen() {
                                 chapterId={selectedPastChapter?.id || chapterData.chapter.id}
                                 startTime={readingStartTime}
                                 wordCount={wordCount}
-                                onClose={() => {
+                                onClose={(shouldRetry) => {
                                     setShowQuiz(false);
-                                    setHasStarted(false);
-                                    setSelectedPastChapter(null);
+                                    // Only reset everything if we're not retrying
+                                    if (!shouldRetry) {
+                                        setHasStarted(false);
+                                        setSelectedPastChapter(null);
+                                    }
                                 }}
                             />
                         ) : (
@@ -425,7 +428,7 @@ export default function ReadingScreen() {
                                         />
                                     ))}
                                 </View>
-                                {chapterData?.promotionProgress && (
+                                {chapterData?.promotionProgress && chapterData.promotionProgress.chaptersCompleted > 0 && (
                                     <View style={styles.promotionProgressContainer}>
                                         <Text style={[styles.promotionProgressText, { color: colors.textSecondary }]}>
                                             {chapterData.promotionProgress.chaptersRemaining} chapter{chapterData.promotionProgress.chaptersRemaining !== 1 ? 's' : ''} until Level {chapterData.nextLevelNumber}

@@ -15,6 +15,8 @@ import { getLearnerBadges, LearnerBadge } from '@/services/api';
 import { analytics } from '@/services/analytics';
 import subjectEmojisJson from '../../assets/subject-emojis.json';
 import { Share } from 'react-native';
+import { Paywall } from '../components/Paywall';
+import Purchases from 'react-native-purchases';
 const subjectEmojis = subjectEmojisJson as Record<string, string>;
 
 function getGradeColor(grade: number): string {
@@ -77,6 +79,7 @@ interface MainTopic {
     successRate: number;
     grade: number;
     gradeDescription: string;
+    isLocked?: boolean;
 }
 
 interface SubjectTopicReport {
@@ -241,30 +244,54 @@ const SubjectReportModal = ({
     const [topicReport, setTopicReport] = useState<MainTopic[]>([]);
     const [isTopicLoading, setIsTopicLoading] = useState(false);
     const [expandedTopics, setExpandedTopics] = useState<{ [key: string]: boolean }>({});
+    const [showPaywall, setShowPaywall] = useState(false);
+    const [offerings, setOfferings] = useState<any>(null);
+    const isFreeUser = !user?.isPremium;
+
+    useEffect(() => {
+        async function fetchOfferings() {
+            try {
+                const offerings = await Purchases.getOfferings();
+                setOfferings(offerings.current);
+            } catch (error) {
+                console.error('Error fetching offerings:', error);
+            }
+        }
+        fetchOfferings();
+    }, []);
 
     const toggleTopic = (topicName: string) => {
+        if (isFreeUser && topicReport.find(t => t.mainTopic === topicName)?.isLocked) {
+            return;
+        }
         setExpandedTopics(prev => ({
             ...prev,
             [topicName]: !prev[topicName]
         }));
     };
 
-    useEffect(() => {
-        async function fetchTopicReport() {
-            if (isVisible && subject) {
-                setIsTopicLoading(true);
-                try {
-                    const report = await getLearnerTopicReport(uid, subject.subject);
-                    setTopicReport(report.report);
-                } catch (error) {
-                    console.error('Error fetching topic report:', error);
-                } finally {
-                    setIsTopicLoading(false);
-                }
+    const fetchTopicReport = async () => {
+        if (isVisible && subject) {
+            setIsTopicLoading(true);
+            try {
+                const report = await getLearnerTopicReport(uid, subject.subject);
+                // Add isLocked property to topics for free users
+                const processedReport = report.report.map((topic, index) => ({
+                    ...topic,
+                    isLocked: isFreeUser && index > 0
+                }));
+                setTopicReport(processedReport);
+            } catch (error) {
+                console.error('Error fetching topic report:', error);
+            } finally {
+                setIsTopicLoading(false);
             }
         }
+    };
+
+    useEffect(() => {
         fetchTopicReport();
-    }, [isVisible, subject, uid]);
+    }, [isVisible, subject, uid, isFreeUser]);
 
     const subjectDailyChartData = {
         labels: dailyActivity.map(item => {
@@ -485,161 +512,194 @@ const SubjectReportModal = ({
                                                             : '#FFFFFF',
                                                         borderColor: isDark
                                                             ? 'rgba(255, 255, 255, 0.1)'
-                                                            : 'rgba(0, 0, 0, 0.04)'
+                                                            : 'rgba(0, 0, 0, 0.04)',
+                                                        opacity: mainTopic.isLocked ? 0.7 : 1
                                                     }
                                                 ]}>
                                                     <TouchableOpacity
                                                         style={styles.topicHeader}
                                                         onPress={() => toggleTopic(mainTopic.mainTopic)}
-                                                        activeOpacity={0.7}
+                                                        activeOpacity={mainTopic.isLocked ? 1 : 0.7}
                                                     >
                                                         <View style={styles.topicHeaderContent}>
                                                             <ThemedText style={styles.mainTopicName}>
                                                                 {mainTopic.mainTopic}
+
                                                             </ThemedText>
                                                             <View style={styles.topicActions}>
-                                                                <Ionicons
-                                                                    name={expandedTopics[mainTopic.mainTopic] ? "chevron-up" : "chevron-down"}
-                                                                    size={24}
-                                                                    color={isDark ? '#FFFFFF' : '#000000'}
-                                                                />
+                                                                {!mainTopic.isLocked && (
+                                                                    <Ionicons
+                                                                        name={expandedTopics[mainTopic.mainTopic] ? "chevron-up" : "chevron-down"}
+                                                                        size={24}
+                                                                        color={isDark ? '#FFFFFF' : '#000000'}
+                                                                    />
+                                                                )}
                                                             </View>
                                                         </View>
                                                     </TouchableOpacity>
 
-                                                    <View style={styles.topicStats}>
-                                                        <View style={styles.statGroup}>
-                                                            <ThemedText style={styles.topicStatLabel}>Total Answers</ThemedText>
-                                                            <ThemedText style={styles.topicStatValue}>{mainTopic.totalAttempts}</ThemedText>
-                                                        </View>
-                                                        <View style={styles.statGroup}>
-                                                            <ThemedText style={styles.topicStatLabel}>Correct</ThemedText>
-                                                            <ThemedText style={[
-                                                                styles.topicStatValue,
-                                                                { color: '#10B981' }
-                                                            ]}>
-                                                                {mainTopic.correctAnswers}
-                                                            </ThemedText>
-                                                        </View>
-                                                        <View style={styles.statGroup}>
-                                                            <ThemedText style={styles.topicStatLabel}>Incorrect</ThemedText>
-                                                            <ThemedText style={[
-                                                                styles.topicStatValue,
-                                                                { color: '#EF4444' }
-                                                            ]}>
-                                                                {mainTopic.incorrectAnswers}
-                                                            </ThemedText>
-                                                        </View>
-                                                    </View>
+                                                    {!mainTopic.isLocked && (
+                                                        <>
+                                                            <View style={styles.topicStats}>
+                                                                <View style={styles.statGroup}>
+                                                                    <ThemedText style={styles.topicStatLabel}>Total Answers</ThemedText>
+                                                                    <ThemedText style={styles.topicStatValue}>{mainTopic.totalAttempts}</ThemedText>
+                                                                </View>
+                                                                <View style={styles.statGroup}>
+                                                                    <ThemedText style={styles.topicStatLabel}>Correct</ThemedText>
+                                                                    <ThemedText style={[
+                                                                        styles.topicStatValue,
+                                                                        { color: '#10B981' }
+                                                                    ]}>
+                                                                        {mainTopic.correctAnswers}
+                                                                    </ThemedText>
+                                                                </View>
+                                                                <View style={styles.statGroup}>
+                                                                    <ThemedText style={styles.topicStatLabel}>Incorrect</ThemedText>
+                                                                    <ThemedText style={[
+                                                                        styles.topicStatValue,
+                                                                        { color: '#EF4444' }
+                                                                    ]}>
+                                                                        {mainTopic.incorrectAnswers}
+                                                                    </ThemedText>
+                                                                </View>
+                                                            </View>
 
-                                                    <View style={styles.gradeContainer}>
-                                                        <View style={styles.successRate}>
-                                                            <ThemedText style={styles.successRateLabel}>Success Rate</ThemedText>
-                                                            <ThemedText style={[
-                                                                styles.successRateValue,
-                                                                { color: mainTopic.successRate === 0 ? '#EF4444' : '#3B82F6' }
-                                                            ]}>
-                                                                {mainTopic.successRate.toFixed(2)}%
-                                                            </ThemedText>
-                                                        </View>
-                                                        <View style={[
-                                                            styles.levelBadge,
-                                                            { backgroundColor: getGradeColor(mainTopic.grade) }
-                                                        ]}>
-                                                            <ThemedText style={styles.levelText}>Level {mainTopic.grade}</ThemedText>
-                                                            <ThemedText style={styles.levelDescription}>
-                                                                {mainTopic.gradeDescription}
-                                                            </ThemedText>
-                                                        </View>
-                                                    </View>
+                                                            <View style={styles.gradeContainer}>
+                                                                <View style={styles.successRate}>
+                                                                    <ThemedText style={styles.successRateLabel}>Success Rate</ThemedText>
+                                                                    <ThemedText style={[
+                                                                        styles.successRateValue,
+                                                                        { color: mainTopic.successRate === 0 ? '#EF4444' : '#3B82F6' }
+                                                                    ]}>
+                                                                        {mainTopic.successRate.toFixed(2)}%
+                                                                    </ThemedText>
+                                                                </View>
+                                                                <View style={[
+                                                                    styles.levelBadge,
+                                                                    { backgroundColor: getGradeColor(mainTopic.grade) }
+                                                                ]}>
+                                                                    <ThemedText style={styles.levelText}>Level {mainTopic.grade}</ThemedText>
+                                                                    <ThemedText style={styles.levelDescription}>
+                                                                        {mainTopic.gradeDescription}
+                                                                    </ThemedText>
+                                                                </View>
+                                                            </View>
 
-                                                    {user?.uid === uid && (
-                                                        <TouchableOpacity
-                                                            style={[
-                                                                styles.quizButton,
-                                                                {
-                                                                    backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#6366F1',
-                                                                    borderColor: isDark ? 'rgba(99,102,241,0.4)' : '#6366F1',
-                                                                }
-                                                            ]}
-                                                            onPress={() => {
-                                                                router.push({
-                                                                    pathname: '/quiz',
-                                                                    params: {
-                                                                        subjectName: getCleanSubjectName(subject.subject),
-                                                                        topic: mainTopic.mainTopic
-                                                                    }
-                                                                });
-                                                            }}
-                                                        >
-                                                            <Ionicons
-                                                                name="play-circle"
-                                                                size={20}
-                                                                color={isDark ? '#FFFFFF' : '#FFFFFF'}
-                                                            />
-                                                            <ThemedText style={[styles.quizButtonText, { color: '#FFFFFF' }]}>
-                                                                Start Quiz for this topic
-                                                            </ThemedText>
-                                                        </TouchableOpacity>
+                                                            {user?.uid === uid && (
+                                                                <TouchableOpacity
+                                                                    style={[
+                                                                        styles.quizButton,
+                                                                        {
+                                                                            backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#6366F1',
+                                                                            borderColor: isDark ? 'rgba(99,102,241,0.4)' : '#6366F1',
+                                                                        }
+                                                                    ]}
+                                                                    onPress={() => {
+                                                                        router.push({
+                                                                            pathname: '/quiz',
+                                                                            params: {
+                                                                                subjectName: getCleanSubjectName(subject.subject),
+                                                                                topic: mainTopic.mainTopic
+                                                                            }
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <Ionicons
+                                                                        name="play-circle"
+                                                                        size={20}
+                                                                        color={isDark ? '#FFFFFF' : '#FFFFFF'}
+                                                                    />
+                                                                    <ThemedText style={[styles.quizButtonText, { color: '#FFFFFF' }]}>
+                                                                        Start Quiz for this topic
+                                                                    </ThemedText>
+                                                                </TouchableOpacity>
+                                                            )}
+
+                                                            {expandedTopics[mainTopic.mainTopic] && (
+                                                                <View style={styles.subTopicsContainer}>
+                                                                    {mainTopic.subTopics.map((subTopic, subIndex) => (
+                                                                        <View key={subIndex} style={[
+                                                                            styles.subTopicItem,
+                                                                            {
+                                                                                backgroundColor: isDark
+                                                                                    ? 'rgba(255, 255, 255, 0.02)'
+                                                                                    : 'rgba(0, 0, 0, 0.02)',
+                                                                                borderColor: isDark
+                                                                                    ? 'rgba(255, 255, 255, 0.05)'
+                                                                                    : 'rgba(0, 0, 0, 0.05)'
+                                                                            }
+                                                                        ]}>
+                                                                            <ThemedText style={styles.subTopicName}>
+                                                                                {subTopic.name}
+                                                                            </ThemedText>
+                                                                            <View style={styles.subTopicStats}>
+                                                                                <View style={styles.subTopicStat}>
+                                                                                    <ThemedText style={styles.subTopicStatLabel}>Total</ThemedText>
+                                                                                    <ThemedText style={styles.subTopicStatValue}>{subTopic.totalAttempts}</ThemedText>
+                                                                                </View>
+                                                                                <View style={styles.subTopicStat}>
+                                                                                    <ThemedText style={styles.subTopicStatLabel}>Correct</ThemedText>
+                                                                                    <ThemedText style={[styles.subTopicStatValue, { color: '#10B981' }]}>
+                                                                                        {subTopic.correctAnswers}
+                                                                                    </ThemedText>
+                                                                                </View>
+                                                                                <View style={styles.subTopicStat}>
+                                                                                    <ThemedText style={styles.subTopicStatLabel}>Incorrect</ThemedText>
+                                                                                    <ThemedText style={[styles.subTopicStatValue, { color: '#EF4444' }]}>
+                                                                                        {subTopic.incorrectAnswers}
+                                                                                    </ThemedText>
+                                                                                </View>
+                                                                            </View>
+                                                                            <View style={styles.subTopicGradeContainer}>
+                                                                                <View style={styles.subTopicSuccessRate}>
+                                                                                    <ThemedText style={styles.subTopicStatLabel}>Success Rate</ThemedText>
+                                                                                    <ThemedText style={[
+                                                                                        styles.subTopicGradeValue,
+                                                                                        { color: subTopic.successRate === 0 ? '#EF4444' : '#3B82F6' }
+                                                                                    ]}>
+                                                                                        {subTopic.successRate.toFixed(2)}%
+                                                                                    </ThemedText>
+                                                                                </View>
+                                                                                <View style={[
+                                                                                    styles.subTopicLevelBadge,
+                                                                                    { backgroundColor: getGradeColor(subTopic.grade) }
+                                                                                ]}>
+                                                                                    <ThemedText style={styles.subTopicLevelText}>Level {subTopic.grade}</ThemedText>
+                                                                                    <ThemedText style={styles.subTopicLevelDescription}>
+                                                                                        {subTopic.gradeDescription}
+                                                                                    </ThemedText>
+                                                                                </View>
+                                                                            </View>
+                                                                        </View>
+                                                                    ))}
+                                                                </View>
+                                                            )}
+                                                        </>
                                                     )}
 
-                                                    {expandedTopics[mainTopic.mainTopic] && (
-                                                        <View style={styles.subTopicsContainer}>
-                                                            {mainTopic.subTopics.map((subTopic, subIndex) => (
-                                                                <View key={subIndex} style={[
-                                                                    styles.subTopicItem,
-                                                                    {
-                                                                        backgroundColor: isDark
-                                                                            ? 'rgba(255, 255, 255, 0.02)'
-                                                                            : 'rgba(0, 0, 0, 0.02)',
-                                                                        borderColor: isDark
-                                                                            ? 'rgba(255, 255, 255, 0.05)'
-                                                                            : 'rgba(0, 0, 0, 0.05)'
-                                                                    }
-                                                                ]}>
-                                                                    <ThemedText style={styles.subTopicName}>
-                                                                        {subTopic.name}
-                                                                    </ThemedText>
-                                                                    <View style={styles.subTopicStats}>
-                                                                        <View style={styles.subTopicStat}>
-                                                                            <ThemedText style={styles.subTopicStatLabel}>Total</ThemedText>
-                                                                            <ThemedText style={styles.subTopicStatValue}>{subTopic.totalAttempts}</ThemedText>
-                                                                        </View>
-                                                                        <View style={styles.subTopicStat}>
-                                                                            <ThemedText style={styles.subTopicStatLabel}>Correct</ThemedText>
-                                                                            <ThemedText style={[styles.subTopicStatValue, { color: '#10B981' }]}>
-                                                                                {subTopic.correctAnswers}
-                                                                            </ThemedText>
-                                                                        </View>
-                                                                        <View style={styles.subTopicStat}>
-                                                                            <ThemedText style={styles.subTopicStatLabel}>Incorrect</ThemedText>
-                                                                            <ThemedText style={[styles.subTopicStatValue, { color: '#EF4444' }]}>
-                                                                                {subTopic.incorrectAnswers}
-                                                                            </ThemedText>
-                                                                        </View>
-                                                                    </View>
-                                                                    <View style={styles.subTopicGradeContainer}>
-                                                                        <View style={styles.subTopicSuccessRate}>
-                                                                            <ThemedText style={styles.subTopicStatLabel}>Success Rate</ThemedText>
-                                                                            <ThemedText style={[
-                                                                                styles.subTopicGradeValue,
-                                                                                { color: subTopic.successRate === 0 ? '#EF4444' : '#3B82F6' }
-                                                                            ]}>
-                                                                                {subTopic.successRate.toFixed(2)}%
-                                                                            </ThemedText>
-                                                                        </View>
-                                                                        <View style={[
-                                                                            styles.subTopicLevelBadge,
-                                                                            { backgroundColor: getGradeColor(subTopic.grade) }
-                                                                        ]}>
-                                                                            <ThemedText style={styles.subTopicLevelText}>Level {subTopic.grade}</ThemedText>
-                                                                            <ThemedText style={styles.subTopicLevelDescription}>
-                                                                                {subTopic.gradeDescription}
-                                                                            </ThemedText>
-                                                                        </View>
-                                                                    </View>
-                                                                </View>
-                                                            ))}
+                                                    {mainTopic.isLocked && (
+                                                        <View style={styles.lockedTopicContainer}>
+                                                            <Ionicons
+                                                                name="lock-closed"
+                                                                size={32}
+                                                                color={isDark ? '#FFFFFF' : '#000000'}
+                                                                style={{ marginBottom: 8 }}
+                                                            />
+                                                            <ThemedText style={styles.lockedTopicText}>
+                                                                Upgrade to Pro to unlock detailed topic analysis
+                                                            </ThemedText>
+                                                            <TouchableOpacity
+                                                                style={[styles.upgradeButton, { backgroundColor: colors.primary }]}
+                                                                onPress={() => setShowPaywall(true)}
+                                                            >
+                                                                <LinearGradient
+                                                                    colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                                                                    style={styles.upgradeButtonGradient}
+                                                                >
+                                                                    <ThemedText style={styles.upgradeButtonText}>✨ Upgrade to Pro</ThemedText>
+                                                                </LinearGradient>
+                                                            </TouchableOpacity>
                                                         </View>
                                                     )}
                                                 </View>
@@ -657,6 +717,19 @@ const SubjectReportModal = ({
                     </ScrollView>
                 </View>
             </View>
+            {showPaywall && (
+                <Paywall
+                    offerings={offerings}
+                    onSuccess={() => {
+                        setShowPaywall(false);
+                        // Refresh topic report after successful purchase
+                        if (user?.uid) {
+                            fetchTopicReport();
+                        }
+                    }}
+                    onClose={() => setShowPaywall(false)}
+                />
+            )}
         </Modal>
     );
 };
@@ -776,11 +849,13 @@ export default function LearnerPerformanceScreen() {
             subjectGroups.set(cleanSubject, currentTotal + subject.totalAnswers);
         });
 
-        // Check if there are at least 4 subjects with 25+ questions
-        const subjectsWithEnoughQuestions = Array.from(subjectGroups.values())
-            .filter(total => total >= 10).length;
+        // Count subjects that have at least 10 questions
+        const subjectsWithEnoughQuestions = Array.from(subjectGroups.entries())
+            .filter(([_, total]) => total >= 10)
+            .map(([subject]) => subject);
 
-        return subjectsWithEnoughQuestions >= 3;
+        // Return true only if there are 3 or more subjects with enough questions
+        return subjectsWithEnoughQuestions.length >= 3;
     };
 
     const checkFollowingStatus = async () => {
@@ -1134,7 +1209,7 @@ export default function LearnerPerformanceScreen() {
                                     }
                                 ]}
                                 onPress={() => {
-                                    if (user?.uid === uid || shouldShowCareerAdvice()) {
+                                    if (shouldShowCareerAdvice()) {
                                         showCareerAdvice();
                                     } else {
                                         setIsCareerAdviceRulesModalVisible(true);
@@ -2030,5 +2105,40 @@ const styles = StyleSheet.create({
     legendText: {
         fontSize: 14,
         opacity: 0.9,
+    },
+    lockedTopicContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        backgroundColor: 'rgba(0, 0, 0, 0.02)',
+        borderRadius: 12,
+        marginTop: 16,
+    },
+    lockedTopicText: {
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: 16,
+        opacity: 0.8,
+    },
+    upgradeButton: {
+        marginHorizontal: 16,
+        marginVertical: 8,
+        borderRadius: 12,
+        overflow: 'hidden',
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    upgradeButtonGradient: {
+        padding: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    upgradeButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 }); 

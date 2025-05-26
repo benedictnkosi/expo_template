@@ -22,15 +22,15 @@ const faqs: FAQItem[] = [
   },
   {
     question: "What are the daily limits?",
-    answer: "To ensure balanced learning and prevent burnout, we have set daily limits for different activities:\n\n• Quizzes: 15 attempts per day\n• Lessons: 10 lessons per day\n• Podcasts: 5 episodes per day\n\nThese limits reset at midnight each day, helping you maintain a consistent study routine."
+    answer: "To ensure balanced learning and prevent burnout, we have set daily limits for different activities:\n\n• Quizzes: 15 attempts per day\n• Lessons: 5 lessons per day (free users)\n• Podcasts: 5 episodes per day\n\nThese limits reset at midnight each day, helping you maintain a consistent study routine. Upgrade to Pro for unlimited access!"
   },
   {
     question: "What are the subscription options?",
-    answer: "We offer flexible subscription options to suit your needs:\n\n• Annual Plan: R299 per year\n  - Save over R160 compared to monthly payments\n\n• Monthly Plan: R39 per month\n\nBoth plans include:\n• Unlimited access to all features\n• Quizzes\n• Lessons\n• Podcasts\n\nChoose the plan that works best for your study schedule and budget."
+    answer: "We offer a Pro subscription with unlimited access to all features:\n\n• Annual Plan: R299 per year\n  - Save over R160 compared to monthly payments\n\n• Monthly Plan: R49 per month\n\nPro subscription includes:\n• Unlimited access to all features\n• Quizzes\n• Lessons\n• Podcasts\n\nChoose the plan that works best for your study schedule and budget."
   },
   {
     question: "Which subjects are not available?",
-    answer: "• Currently working on adding Accounting\n\n• Not available due to practical exam requirements:\n  - Computer Applications Technology (CAT)\n  - Information Technology (IT)\n\n• Engineering Graphics and Design is not available due to its drawing-based format\n\n• Other subjects are being considered for future addition to expand our curriculum coverage"
+    answer: "• Currently working on adding Accounting\n\n• Not available due to practical exam requirements:\n\n• Engineering Graphics and Design is not available due to its drawing-based format\n\n• Other subjects are being considered for future addition to expand our curriculum coverage"
   },
 ];
 
@@ -139,7 +139,7 @@ export default function InfoScreen() {
         </TouchableOpacity>
 
         <ThemedText style={[styles.versionText, { color: colors.textSecondary }]}>
-          Version 2.8.7
+          Version v1
         </ThemedText>
 
       </ScrollView>

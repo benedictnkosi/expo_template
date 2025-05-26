@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -69,6 +69,7 @@ type SortType = 'weight' | 'alphabetical';
 
 export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: TopicsListProps) {
     const { user } = useAuth();
+    const scrollViewRef = useRef<ScrollView>(null);
     const [topics, setTopics] = useState<TopicResponse['topics']>({});
     const [isLoading, setIsLoading] = useState(true);
     const [totalQuestions, setTotalQuestions] = useState(0);
@@ -156,6 +157,11 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
         );
     };
 
+    const handleTopicPress = (topic: string) => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        handleTopicSelect(topic);
+    };
+
     if (isLoading) {
         return (
             <View style={styles.loadingContainer}>
@@ -173,7 +179,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
     }
 
     return (
-        <ScrollView style={styles.container}>
+        <ScrollView ref={scrollViewRef} style={styles.container}>
             <View style={[
                 styles.hintContainer,
                 {
@@ -275,7 +281,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                             <ThemedText style={styles.categoryEmoji}>{getTopicEmoji(category)}</ThemedText>
                             <ThemedText
                                 style={[styles.categoryTitle, styles.clickableCategory]}
-                                onPress={() => handleTopicSelect(category)}
+                                onPress={() => handleTopicPress(category)}
                             >
                                 {category}
                             </ThemedText>
@@ -290,7 +296,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                                 />
                                 <ThemedText
                                     style={[styles.startQuizText, { color: colors.primary }]}
-                                    onPress={() => handleTopicSelect(category)}
+                                    onPress={() => handleTopicPress(category)}
                                 >
                                     Start
                                 </ThemedText>
@@ -298,7 +304,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                         </View>
                     )}
                     {getFilteredSubtopics(subtopics).map((topic, index) => (
-                        <View
+                        <TouchableOpacity
                             key={index}
                             style={[
                                 styles.topicItem,
@@ -307,6 +313,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                                     borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.04)'
                                 }
                             ]}
+                            onPress={() => handleTopicPress(topic.name)}
                         >
                             <View style={styles.topicContent}>
                                 <ThemedText style={styles.topicText}>
@@ -318,7 +325,7 @@ export function TopicsList({ subjectName, isDark, colors, handleTopicSelect }: T
                                     {topic.questionCount} {topic.questionCount === 1 ? 'question' : 'questions'}
                                 </ThemedText>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))}
                 </View>
             ))}

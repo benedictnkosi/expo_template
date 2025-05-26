@@ -38,7 +38,7 @@ echo "Updated version from $CURRENT_CODE ($CURRENT_NAME) to $NEW_CODE ($NEW_NAME
 
 # Update version in app/info.tsx
 echo "Updating version in app/info.tsx..."
-sed -i '' "s/Version [0-9]\+\.[0-9]\+\.[0-9]\+/Version $NEW_NAME/" app/info.tsx
+sed -i '' 's/Version [0-9]\.[0-9]\.[0-9]/Version $NEW_NAME/' app/info.tsx
 
 #copy build.gradle to android directory
 echo "Copying build.gradle to android directory..."

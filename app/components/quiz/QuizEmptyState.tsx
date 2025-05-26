@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, Modal, Share, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../ThemedView';
@@ -8,9 +8,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Paywall } from '../Paywall';
 import { useAuth } from '@/contexts/AuthContext';
+import { AskParentModal } from '../AskParentModal';
 
 const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
-const QUIZ_LIMIT_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png'); // You might want to use a different illustration
+const QUIZ_LIMIT_ILLUSTRATION = require('@/assets/images/dimpo/limit.png'); // You might want to use a different illustration
 
 interface QuizEmptyStateProps {
     onGoToProfile: () => void;
@@ -33,7 +34,32 @@ export function QuizEmptyState({
     const insets = useSafeAreaInsets();
     const [isLoading, setIsLoading] = useState(true);
     const [showPaywall, setShowPaywall] = useState(false);
+    const [showParentModal, setShowParentModal] = useState(false);
     const { user } = useAuth();
+
+    const storeLink = Platform.select({
+        ios: 'https://apps.apple.com/za/app/dimpo-learning-app/id6742684696',
+        android: 'https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+        default: 'https://play.google.com/store/apps/details?id=za.co.examquizafrica'
+    });
+
+    const parentMessage = `Hi! I've been using the Dimpo learning app to study for school and I just reached my daily limit.
+It really helps me with subjects and past papers — can you please help me upgrade to Pro so I can keep learning every day? 🙏
+
+It's only R29/month or R199/year. You can check it out here:
+👉 ${storeLink}`;
+
+    const handleShareWithParent = async () => {
+        try {
+            await Share.share({
+                message: parentMessage,
+                url: storeLink,
+                title: 'Dimpo Pro Upgrade'
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -73,6 +99,14 @@ export function QuizEmptyState({
                     onClose={() => setShowPaywall(false)}
                 />
             )}
+            <AskParentModal
+                isVisible={showParentModal}
+                onClose={() => setShowParentModal(false)}
+                parentMessage={parentMessage}
+                onShare={handleShareWithParent}
+                isDark={isDark}
+                colors={colors}
+            />
             <LinearGradient
                 colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
                 style={[styles.gradient, { paddingTop: insets.top }]}
@@ -80,6 +114,17 @@ export function QuizEmptyState({
                 end={{ x: 0, y: 1 }}
                 testID="quiz-empty-state"
             >
+                <TouchableOpacity
+                    style={[styles.closeButton, { top: insets.top + 16 }]}
+                    onPress={onGoBack}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                    <Ionicons
+                        name="close"
+                        size={24}
+                        color={isDark ? colors.text : '#64748B'}
+                    />
+                </TouchableOpacity>
                 <ScrollView style={styles.container}>
                     <ThemedView style={[styles.noQuestionsContainer, {
                         backgroundColor: isDark ? colors.card : '#FFFFFF'
@@ -91,17 +136,17 @@ export function QuizEmptyState({
                         />
                         <ThemedText style={[styles.noQuestionsTitle, { color: colors.text }]}>
                             {isQuizLimitReached
-                                ? mode === 'quiz'
-                                    ? "⏰ That's all the brain power we can handle for today! Come back tomorrow for more quizzes with Dimpo!"
-                                    : "⏰ You've soaked up today's lesson! Dimpo says it's time to stretch and come back refreshed tomorrow!"
+                                ? mode === 'lessons'
+                                    ? "🧠 You've reached today's free lesson limit!\n\nUpgrade to keep learning — no waiting till tomorrow."
+                                    : "🧠 You've reached today's free limit!\n\nUpgrade to keep going — no waiting till tomorrow."
                                 : "🚨 Whoa! Looks like the quiz bank is empty! Dimpo's off to fetch some new questions! 🏃‍♂️📚"
                             }
                         </ThemedText>
                         <ThemedText style={[styles.noQuestionsSubtitle, { color: colors.textSecondary }]}>
                             {isQuizLimitReached
-                                ? mode === 'quiz'
-                                    ? "Don't worry — your progress is safe! 📘 Why not dive into a lesson or enjoy a quick podcast with Dimpo while you recharge?"
-                                    : "Don't worry — your progress is safe! 🎧 Try a fun quiz or tune into an episode of our learning podcast while you wait!"
+                                ? mode === 'lessons'
+                                    ? "🚀 Go unlimited with Pro to unlock unlimited lessons, step-by-step maths, and audio lessons — anytime."
+                                    : "🚀 Go unlimited with Pro to unlock unlimited quizzes, step-by-step maths, and audio lessons — anytime."
                                 : "Check your profile settings and make sure you've selected the right subjects and school terms so Dimpo can fetch the right quizzes! 🎯"
                             }
                         </ThemedText>
@@ -136,34 +181,47 @@ export function QuizEmptyState({
                             )}
 
                             {isQuizLimitReached && (
-                                <TouchableOpacity
-                                    style={[styles.upgradeButton]}
-                                    onPress={() => setShowPaywall(true)}
-                                >
-                                    <LinearGradient
-                                        colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                                        style={styles.upgradeButtonGradient}
+                                <>
+                                    <TouchableOpacity
+                                        style={[styles.upgradeButton]}
+                                        onPress={() => setShowPaywall(true)}
+                                    >
+                                        <LinearGradient
+                                            colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                                            style={styles.upgradeButtonGradient}
+                                        >
+                                            <View style={styles.buttonContent}>
+                                                <Ionicons name="star-outline" size={20} color="#FFFFFF" />
+                                                <ThemedText style={styles.buttonText}>✨ Upgrade to Pro</ThemedText>
+                                            </View>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.askParentButton, {
+                                            backgroundColor: isDark ? colors.surface : '#64748B',
+                                        }]}
+                                        onPress={() => setShowParentModal(true)}
                                     >
                                         <View style={styles.buttonContent}>
-                                            <Ionicons name="star-outline" size={20} color="#FFFFFF" />
-                                            <ThemedText style={styles.buttonText}>✨ Upgrade to Pro</ThemedText>
+                                            <Ionicons name="people-outline" size={20} color="#FFFFFF" />
+                                            <ThemedText style={styles.buttonText}>Ask a Parent</ThemedText>
                                         </View>
-                                    </LinearGradient>
-                                </TouchableOpacity>
-                            )}
+                                    </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.goHomeButton, {
-                                    backgroundColor: isDark ? colors.surface : '#64748B',
-                                    flex: isQuizLimitReached ? 1 : undefined
-                                }]}
-                                onPress={onGoBack}
-                            >
-                                <View style={styles.buttonContent}>
-                                    <Ionicons name="menu-outline" size={20} color="#FFFFFF" />
-                                    <ThemedText style={styles.buttonText}>Go Back</ThemedText>
-                                </View>
-                            </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.goHomeButton, {
+                                            backgroundColor: isDark ? colors.surface : '#64748B',
+                                        }]}
+                                        onPress={onGoBack}
+                                    >
+                                        <View style={styles.buttonContent}>
+                                            <Ionicons name="time-outline" size={20} color="#FFFFFF" />
+                                            <ThemedText style={styles.buttonText}>Come back tomorrow</ThemedText>
+                                        </View>
+                                    </TouchableOpacity>
+                                </>
+                            )}
                         </View>
                     </ThemedView>
                 </ScrollView>
@@ -237,6 +295,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    askParentButton: {
+        width: '100%',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        marginBottom: 12,
+    },
     goHomeButton: {
         width: '100%',
         borderRadius: 16,
@@ -258,5 +323,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    closeButton: {
+        position: 'absolute',
+        right: 16,
+        zIndex: 10,
+        padding: 8,
     },
 }); 

@@ -9,6 +9,7 @@ export interface QuizMode {
     title: string;
     description: string;
     icon: string;
+    isPremium?: boolean;
 }
 
 export interface QuizModeSelectionProps {
@@ -48,9 +49,16 @@ export const QuizModeSelection = ({ modes, onSelectMode, selectedModeId }: QuizM
                         <View style={styles.modeContent}>
                             <ThemedText style={styles.modeIcon}>{mode.icon}</ThemedText>
                             <View style={styles.modeTextContainer}>
-                                <ThemedText style={[styles.modeTitle, { color: themeColors.text }]}>
-                                    {mode.title}
-                                </ThemedText>
+                                <View style={styles.titleContainer}>
+                                    <ThemedText style={[styles.modeTitle, { color: themeColors.text }]}>
+                                        {mode.title}
+                                    </ThemedText>
+                                    {mode.isPremium && (
+                                        <View style={[styles.premiumBadge, { backgroundColor: isDark ? '#7C3AED' : '#9333EA' }]}>
+                                            <ThemedText style={styles.premiumText}>PRO</ThemedText>
+                                        </View>
+                                    )}
+                                </View>
                                 <ThemedText style={[styles.modeDescription, { color: themeColors.textSecondary }]}>
                                     {mode.description}
                                 </ThemedText>
@@ -100,6 +108,11 @@ const styles = StyleSheet.create({
     modeTextContainer: {
         flex: 1,
     },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     modeTitle: {
         fontSize: 16,
         fontWeight: '600',
@@ -107,5 +120,15 @@ const styles = StyleSheet.create({
     },
     modeDescription: {
         fontSize: 14,
+    },
+    premiumBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    premiumText: {
+        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: 'bold',
     },
 }); 

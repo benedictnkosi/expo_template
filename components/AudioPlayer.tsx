@@ -15,6 +15,7 @@ interface AudioPlayerProps {
 
 export interface AudioPlayerRef {
     playSound: () => Promise<void>;
+    stopSound: () => Promise<void>;
 }
 
 export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(({ audioUrl, imageUrl, title, disabled }, ref) => {
@@ -33,6 +34,9 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(({ audio
             if (!disabled) {
                 await playSound();
             }
+        },
+        stopSound: async () => {
+            await stopSound();
         }
     }));
 
@@ -76,7 +80,6 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(({ audio
     }
 
     async function playSound() {
-        console.log('[AudioPlayer] Attempting to play sound:', audioUrl);
         try {
             setIsLoading(true);
             setHasDuration(false);

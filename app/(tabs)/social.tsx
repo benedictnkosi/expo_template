@@ -69,6 +69,7 @@ interface LeaderboardEntry {
     avatar: string;
     publicProfile: boolean;
     followMeCode: string;
+    subscription: string;
 }
 
 interface WeeklyScoreboardEntry {
@@ -80,6 +81,7 @@ interface WeeklyScoreboardEntry {
     avatar: string;
     publicProfile: boolean;
     followMeCode: string;
+    subscription: string;
 }
 
 interface WeeklyScoreboardResponse {
@@ -295,6 +297,7 @@ interface ScoreboardProps {
         totalAnswers?: number;
         publicProfile: boolean;
         followMeCode: string;
+        subscription: string;
     }>;
     showTotalAnswers?: boolean;
 }
@@ -302,6 +305,12 @@ interface ScoreboardProps {
 function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
     const { colors, isDark } = useTheme();
     const { user } = useAuth();
+
+    const renderProBadge = () => (
+        <View style={[styles.proBadge, { backgroundColor: isDark ? '#FFD700' : '#FFD700' }]}>
+            <ThemedText style={styles.proBadgeText}>PRO</ThemedText>
+        </View>
+    );
 
     const handleLearnerPress = async (entry: ScoreboardProps['entries'][0]) => {
         if (entry.publicProfile && entry.followMeCode) {
@@ -338,9 +347,14 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                     <View style={styles.topThreeMedal}>
                         <ThemedText style={styles.topThreeMedalText}>🥈</ThemedText>
                     </View>
-                    <ThemedText style={styles.topThreeName}>
-                        {rankings[1].name}
-                    </ThemedText>
+                    <View style={{ alignItems: 'center' }}>
+                        <ThemedText style={styles.topThreeName}>
+                            {rankings[1].name}
+                        </ThemedText>
+                        {rankings[1].subscription !== 'free' && (
+                            <View style={{ marginTop: 4 }}>{renderProBadge()}</View>
+                        )}
+                    </View>
                     <View style={styles.topThreePoints}>
                         <Image
                             source={require('@/assets/images/points.png')}
@@ -372,9 +386,14 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                             style={styles.topThreeAvatar}
                         />
                     </View>
-                    <ThemedText style={[styles.topThreeName, styles.firstPlaceName]}>
-                        {rankings[0].name}
-                    </ThemedText>
+                    <View style={{ alignItems: 'center' }}>
+                        <ThemedText style={[styles.topThreeName, styles.firstPlaceName]}>
+                            {rankings[0].name}
+                        </ThemedText>
+                        {rankings[0].subscription !== 'free' && (
+                            <View style={{ marginTop: 4 }}>{renderProBadge()}</View>
+                        )}
+                    </View>
                     <View style={styles.topThreePoints}>
                         <Image
                             source={require('@/assets/images/points.png')}
@@ -406,9 +425,14 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                     <View style={styles.topThreeMedal}>
                         <ThemedText style={styles.topThreeMedalText}>🥉</ThemedText>
                     </View>
-                    <ThemedText style={styles.topThreeName}>
-                        {rankings[2].name}
-                    </ThemedText>
+                    <View style={{ alignItems: 'center' }}>
+                        <ThemedText style={styles.topThreeName}>
+                            {rankings[2].name}
+                        </ThemedText>
+                        {rankings[2].subscription !== 'free' && (
+                            <View style={{ marginTop: 4 }}>{renderProBadge()}</View>
+                        )}
+                    </View>
                     <View style={styles.topThreePoints}>
                         <Image
                             source={require('@/assets/images/points.png')}
@@ -461,7 +485,10 @@ function Scoreboard({ entries, showTotalAnswers = false }: ScoreboardProps) {
                             />
                         </View>
                         <View style={styles.nameContainer}>
-                            <ThemedText style={styles.name}>{entry.isCurrentLearner ? 'You' : entry.name}</ThemedText>
+                            <View style={styles.nameWithBadge}>
+                                <ThemedText style={styles.name}>{entry.isCurrentLearner ? 'You' : entry.name}</ThemedText>
+                                {entry.subscription !== 'free' && renderProBadge()}
+                            </View>
                             {showTotalAnswers && (
                                 <ThemedText style={styles.scoreboardAnswers}>
                                     {entry.totalAnswers} answers
@@ -1157,6 +1184,7 @@ export default function AchievementsScreen() {
                                         avatar: entry.avatar,
                                         publicProfile: entry.publicProfile,
                                         followMeCode: entry.followMeCode,
+                                        subscription: entry.subscription || 'free'
                                     })) || []}
                                 />
                             )
@@ -1176,6 +1204,7 @@ export default function AchievementsScreen() {
                                         avatar: entry.avatar,
                                         publicProfile: entry.publicProfile,
                                         followMeCode: entry.followMeCode,
+                                        subscription: entry.subscription || 'free'
                                     })) || []}
                                 />
                             )
@@ -1195,6 +1224,7 @@ export default function AchievementsScreen() {
                                         avatar: entry.avatar,
                                         publicProfile: entry.publicProfile,
                                         followMeCode: entry.followMeCode,
+                                        subscription: entry.subscription || 'free'
                                     })) || []}
                                 />
                             )
@@ -2141,5 +2171,21 @@ const styles = StyleSheet.create({
     },
     socialIcon: {
         marginRight: 8,
+    },
+    nameWithBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    proBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        backgroundColor: '#FFD700',
+    },
+    proBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#000000',
     },
 }); 

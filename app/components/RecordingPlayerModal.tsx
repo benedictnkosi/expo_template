@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions, Platform, Share, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform, Share, TouchableOpacity, Image, ScrollView } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from '@/components/ThemedText';
 import { AudioPlayer } from '@/components/AudioPlayer';
@@ -8,6 +8,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { Paywall } from '../components/Paywall';
+import { LinearGradient } from 'expo-linear-gradient';
+import { AskParentModal } from './AskParentModal';
 
 interface LectureRecording {
     id: string;
@@ -36,10 +38,17 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     const { colors, isDark } = useTheme();
     const { user } = useAuth();
     const styles = createStyles(isDark);
-    const audioPlayerRef = useRef<{ playSound: () => Promise<void> }>(null);
+    const audioPlayerRef = useRef<{ playSound: () => Promise<void>; stopSound: () => Promise<void> }>(null);
     const [remainingPodcasts, setRemainingPodcasts] = useState<number | null>(null);
     const [isLoadingUsage, setIsLoadingUsage] = useState(false);
     const [showPaywall, setShowPaywall] = useState(false);
+    const [showParentModal, setShowParentModal] = useState(false);
+    const storeLink = Platform.select({
+        ios: 'https://apps.apple.com/za/app/dimpo-learning-app/id6742684696',
+        android: 'https://play.google.com/store/apps/details?id=za.co.examquizafrica',
+        default: 'https://play.google.com/store/apps/details?id=za.co.examquizafrica'
+    });
+    const parentMessage = `Hi! I've been using the Dimpo learning app to study for school and I just reached my daily limit.\nIt really helps me with subjects and past papers — can you please help me upgrade to Pro so I can keep learning every day? 🙏\n\nIt's only R29/month or R199/year. You can check it out here:\n👉 ${storeLink}`;
 
     useEffect(() => {
         if (isVisible && user?.uid) {
@@ -55,7 +64,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
             const data = await response.json();
             if (data.status === "OK") {
                 setRemainingPodcasts(data.data.podcast);
-                if (data.data.podcast === 0) {
+                if (data.data.podcast <= 0) {
                     setShowPaywall(true);
                 }
             }
@@ -67,16 +76,24 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
     };
 
     useEffect(() => {
-        if (isVisible && audioPlayerRef.current && recording && remainingPodcasts !== 0) {
+        if (isVisible && audioPlayerRef.current && recording && remainingPodcasts !== null && remainingPodcasts > 0) {
             audioPlayerRef.current.playSound();
         }
     }, [isVisible, recording, remainingPodcasts]);
+
+    // Add cleanup effect to stop audio when modal closes
+    useEffect(() => {
+        return () => {
+            if (audioPlayerRef.current) {
+                audioPlayerRef.current.stopSound();
+            }
+        };
+    }, []);
 
     if (!recording) return null;
 
     const audioFileName = recording.recordingFileName.replace('.opus', '.m4a');
     const audioUrl = `${HOST_URL}/api/lecture-recording/${audioFileName}?subscriptionCheck=true&uid=${user?.uid}`;
-    console.log("audioUrl", audioUrl);
     const handleShare = async () => {
         try {
             const cleanSubjectName = subjectName.replace(/P[12]/g, '').trim();
@@ -90,13 +107,25 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
         }
     };
 
+    const handleShareWithParent = async () => {
+        try {
+            await Share.share({
+                message: parentMessage,
+                url: storeLink,
+                title: 'Dimpo Pro Upgrade'
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
+
     return (
         <>
             {showPaywall && (
                 <Paywall
                     onSuccess={() => {
                         setShowPaywall(false);
-                        fetchDailyUsage(); // Refresh usage after successful purchase
+                        fetchDailyUsage();
                     }}
                     onClose={() => setShowPaywall(false)}
                 />
@@ -121,58 +150,134 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
                     </View>
 
                     <View style={styles.content}>
-                        {remainingPodcasts !== null && remainingPodcasts !== 999 && (
-                            <View style={[styles.usageContainer, {
-                                backgroundColor: remainingPodcasts === 0
-                                    ? (isDark ? 'rgba(234, 179, 8, 0.1)' : '#FEF3C7')
-                                    : (isDark ? 'rgba(255, 255, 255, 0.05)' : '#F3F4F6'),
-                                borderColor: remainingPodcasts === 0
-                                    ? (isDark ? 'rgba(234, 179, 8, 0.3)' : '#FCD34D')
-                                    : (isDark ? 'rgba(255, 255, 255, 0.1)' : '#E5E7EB'),
-                            }]}>
 
-                                <ThemedText style={[styles.usageText, {
-                                    color: remainingPodcasts === 0
-                                        ? (isDark ? '#FCD34D' : '#D97706')
-                                        : (isDark ? colors.text : '#4B5563')
-                                }]}>
-                                    {remainingPodcasts === 0
-                                        ? "⚠️ You've reached your daily podcast limit. Try our quizzes and lessons to continue learning!"
-                                        : `⚠️ ${remainingPodcasts} podcasts remaining today`}
+                        {remainingPodcasts !== null && remainingPodcasts > 0 && (
+                            <TouchableOpacity
+                                style={[styles.shareButton, {
+                                    backgroundColor: isDark ? colors.surface : '#F3F4F6',
+                                    borderColor: isDark ? colors.border : '#E5E7EB',
+                                    marginTop: 16,
+                                    marginBottom: 16,
+                                }]}
+                                onPress={handleShare}
+                            >
+                                <Ionicons
+                                    name="share-outline"
+                                    size={20}
+                                    color={isDark ? colors.text : '#4B5563'}
+                                />
+                                <ThemedText style={[styles.shareButtonText, { color: isDark ? colors.text : '#4B5563' }]}>
+                                    Share this lecture
                                 </ThemedText>
-                            </View>
+                            </TouchableOpacity>
                         )}
 
-                        <TouchableOpacity
-                            style={[styles.shareButton, {
-                                backgroundColor: isDark ? colors.surface : '#F3F4F6',
-                                borderColor: isDark ? colors.border : '#E5E7EB',
-                                marginTop: 16,
-                                marginBottom: 16,
-                            }]}
-                            onPress={handleShare}
-                        >
-                            <Ionicons
-                                name="share-outline"
-                                size={20}
-                                color={isDark ? colors.text : '#4B5563'}
-                            />
-                            <ThemedText style={[styles.shareButtonText, { color: isDark ? colors.text : '#4B5563' }]}>
-                                Share this lecture
-                            </ThemedText>
-                        </TouchableOpacity>
-
-                        <View style={styles.playerContainer}>
-                            <AudioPlayer
-                                ref={audioPlayerRef}
-                                audioUrl={audioUrl}
-                                title={recording.lecture_name}
-                                disabled={remainingPodcasts === 0}
-                            />
-                        </View>
+                        {/* Upgrade to Pro button for users at/over the limit */}
+                        {remainingPodcasts !== null && remainingPodcasts !== 999 && remainingPodcasts <= 0 && (
+                            <ScrollView
+                                style={{ width: '100%' }}
+                                contentContainerStyle={{ paddingBottom: 16 }}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                <View style={{ alignItems: 'center', marginTop: 8 }}>
+                                    {/* Illustration - replace with your illustration asset */}
+                                    <Image
+                                        source={require('@/assets/images/dimpo/limit.png')}
+                                        style={{ width: 180, height: 180, marginBottom: 16 }}
+                                        resizeMode="contain"
+                                    />
+                                    <ThemedText style={{ fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+                                        🧠 You've reached today's free podcast limit!
+                                    </ThemedText>
+                                    <ThemedText style={{ fontSize: 20, fontWeight: '600', textAlign: 'center', marginBottom: 12 }}>
+                                        Upgrade to keep going — no waiting till tomorrow.
+                                    </ThemedText>
+                                    <ThemedText style={{ fontSize: 16, textAlign: 'center', color: isDark ? '#CBD5E1' : '#64748B', marginBottom: 24 }}>
+                                        🚀 Go unlimited with Pro to unlock unlimited podcasts, step-by-step maths, and audio lessons — anytime.
+                                    </ThemedText>
+                                    <TouchableOpacity
+                                        style={{
+                                            width: '100%',
+                                            borderRadius: 16,
+                                            overflow: 'hidden',
+                                            marginBottom: 16,
+                                            backgroundColor: 'transparent',
+                                        }}
+                                        onPress={() => setShowPaywall(true)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Upgrade to Pro"
+                                    >
+                                        <LinearGradient
+                                            colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                                            style={{ padding: 18, alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <Ionicons name="star-outline" size={22} color="#fff" />
+                                                <ThemedText style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>✨ Upgrade to Pro</ThemedText>
+                                            </View>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={{
+                                            width: '100%',
+                                            borderRadius: 16,
+                                            paddingVertical: 16,
+                                            paddingHorizontal: 20,
+                                            marginBottom: 12,
+                                            backgroundColor: isDark ? colors.surface : '#64748B',
+                                            alignItems: 'center',
+                                        }}
+                                        onPress={() => setShowParentModal(true)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Ask a Parent"
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Ionicons name="people-outline" size={20} color="#fff" />
+                                            <ThemedText style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Ask a Parent</ThemedText>
+                                        </View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={{
+                                            width: '100%',
+                                            borderRadius: 16,
+                                            paddingVertical: 16,
+                                            paddingHorizontal: 20,
+                                            backgroundColor: isDark ? colors.surface : '#64748B',
+                                            alignItems: 'center',
+                                        }}
+                                        onPress={onClose}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Come back tomorrow"
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            <Ionicons name="time-outline" size={20} color="#fff" />
+                                            <ThemedText style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Come back tomorrow</ThemedText>
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+                            </ScrollView>
+                        )}
+                        {remainingPodcasts !== null && remainingPodcasts !== 999 && remainingPodcasts > 0 && (
+                            <View style={styles.playerContainer}>
+                                <AudioPlayer
+                                    ref={audioPlayerRef}
+                                    audioUrl={audioUrl}
+                                    title={recording.lecture_name}
+                                    disabled={remainingPodcasts === null || remainingPodcasts <= 0}
+                                />
+                            </View>
+                        )}
                     </View>
                 </View>
             </Modal>
+            <AskParentModal
+                isVisible={showParentModal}
+                onClose={() => setShowParentModal(false)}
+                parentMessage={parentMessage}
+                onShare={handleShareWithParent}
+                isDark={isDark}
+                colors={colors}
+            />
         </>
     );
 }
