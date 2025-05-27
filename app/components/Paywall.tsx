@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import Purchases from 'react-native-purchases';
 import { useAuth } from '@/contexts/AuthContext';
 import { analytics } from '@/services/analytics';
+import { ATMPaymentModal } from './ATMPaymentModal';
 
 interface PaywallProps {
     onSuccess?: () => void;
@@ -12,6 +13,7 @@ interface PaywallProps {
 
 export function Paywall({ onSuccess, onClose, offerings }: PaywallProps) {
     const { user } = useAuth();
+    const [showATMModal, setShowATMModal] = useState(false);
 
     const showPaywall = async () => {
         if (!user?.uid) return;
@@ -54,7 +56,7 @@ export function Paywall({ onSuccess, onClose, offerings }: PaywallProps) {
                     userId: user.uid,
                     timestamp: new Date().toISOString()
                 });
-                onClose?.();
+                setShowATMModal(true);
             }
         } catch (error) {
             // Track paywall error
@@ -64,8 +66,13 @@ export function Paywall({ onSuccess, onClose, offerings }: PaywallProps) {
                 timestamp: new Date().toISOString()
             });
             console.error('Failed to show paywall:', error);
-            onClose?.();
+            setShowATMModal(true);
         }
+    };
+
+    const handleATMModalClose = () => {
+        setShowATMModal(false);
+        onClose?.();
     };
 
     // Show paywall immediately when component mounts
@@ -73,5 +80,12 @@ export function Paywall({ onSuccess, onClose, offerings }: PaywallProps) {
         showPaywall();
     }, []);
 
-    return null;
+    return (
+        <>
+            <ATMPaymentModal
+                isVisible={showATMModal}
+                onClose={handleATMModalClose}
+            />
+        </>
+    );
 } 

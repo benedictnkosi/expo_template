@@ -22,6 +22,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Paywall } from './components/Paywall';
 import { UpgradeToProButton } from './components/UpgradeToProButton';
+import { ATMPaymentModal } from './components/ATMPaymentModal';
 
 
 // Helper function for safe analytics logging
@@ -112,6 +113,7 @@ export default function ProfileScreen() {
   const [newThreadNotification, setNewThreadNotification] = useState(true);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showATMModal, setShowATMModal] = useState(false);
 
   // Available options
   const TERMS = [1, 2, 3, 4];
@@ -853,7 +855,31 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
             {learnerInfo?.subscription === 'free' && (
-              <UpgradeToProButton />
+              <View style={styles.subscriptionButtons}>
+                <TouchableOpacity
+                  style={[styles.upgradeButton]}
+                  onPress={() => setShowPaywall(true)}
+                >
+                  <LinearGradient
+                    colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
+                    style={styles.upgradeButtonGradient}
+                  >
+                    <ThemedText style={styles.upgradeButtonText}>✨ Upgrade to Pro</ThemedText>
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.atmButton, {
+                    backgroundColor: isDark ? colors.surface : '#64748B',
+                  }]}
+                  onPress={() => setShowATMModal(true)}
+                >
+                  <View style={styles.buttonContent}>
+                    <Ionicons name="card-outline" size={20} color="#FFFFFF" />
+                    <ThemedText style={styles.buttonText}>Pay at ATM/EFT</ThemedText>
+                  </View>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         </ThemedView>
@@ -947,6 +973,11 @@ export default function ProfileScreen() {
           onClose={() => setShowPaywall(false)}
         />
       )}
+
+      <ATMPaymentModal
+        isVisible={showATMModal}
+        onClose={() => setShowATMModal(false)}
+      />
 
       <Modal
         isVisible={showGradeChangeModal}
@@ -1720,5 +1751,23 @@ const styles = StyleSheet.create({
   subscriptionDescription: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  subscriptionButtons: {
+    gap: 12,
+  },
+  atmButton: {
+    width: '100%',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
 }); 

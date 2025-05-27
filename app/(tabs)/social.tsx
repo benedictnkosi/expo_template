@@ -738,7 +738,8 @@ export default function AchievementsScreen() {
                         !badge.image.includes('day-streak') &&
                         badge.image !== 'reading-level-2.png' &&
                         badge.image !== 'reading-level-3.png' &&
-                        badge.image !== 'reading-level-4.png'
+                        badge.image !== 'reading-level-4.png' &&
+                        badge.earned
                     )
                 }
             ];
@@ -778,7 +779,8 @@ export default function AchievementsScreen() {
                         !badge.image.includes('day-streak') &&
                         badge.image !== 'reading-level-2.png' &&
                         badge.image !== 'reading-level-3.png' &&
-                        badge.image !== 'reading-level-4.png'
+                        badge.image !== 'reading-level-4.png' &&
+                        badge.earned
                     )
                 }
             ];
@@ -1585,7 +1587,7 @@ const styles = StyleSheet.create({
     },
     categoryContainer: {
         marginBottom: 32,
-        marginTop: 16,
+        marginTop: 32,
     },
     categoryTitle: {
         fontSize: 20,

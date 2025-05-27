@@ -1070,6 +1070,20 @@ export default function HomeScreen() {
 
 
 
+        <TouchableOpacity
+          style={[styles.testButton, {
+            backgroundColor: isDark ? colors.card : '#FFFFFF',
+            borderColor: colors.border
+          }]}
+          onPress={() => router.push('/accounting')}
+          testID="accounting-test-button"
+        >
+          <Ionicons name="calculator-outline" size={24} color={colors.primary} />
+          <ThemedText style={[styles.testButtonText, { color: colors.text }]}>
+            Test Accounting Statement
+          </ThemedText>
+        </TouchableOpacity>
+
         <View style={styles.shareContainer} testID="share-container">
           <TouchableOpacity
             style={[styles.shareButton, { backgroundColor: colors.primary }]}

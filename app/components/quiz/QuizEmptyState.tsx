@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Paywall } from '../Paywall';
 import { useAuth } from '@/contexts/AuthContext';
 import { AskParentModal } from '../AskParentModal';
+import { ATMPaymentModal } from '../ATMPaymentModal';
 
 const NO_QUESTIONS_ILLUSTRATION = require('@/assets/images/illustrations/stressed.png');
 const QUIZ_LIMIT_ILLUSTRATION = require('@/assets/images/dimpo/limit.png'); // You might want to use a different illustration
@@ -35,6 +36,7 @@ export function QuizEmptyState({
     const [isLoading, setIsLoading] = useState(true);
     const [showPaywall, setShowPaywall] = useState(false);
     const [showParentModal, setShowParentModal] = useState(false);
+    const [showATMModal, setShowATMModal] = useState(false);
     const { user } = useAuth();
 
     const storeLink = Platform.select({
@@ -99,6 +101,10 @@ It's only R29/month or R199/year. You can check it out here:
                     onClose={() => setShowPaywall(false)}
                 />
             )}
+            <ATMPaymentModal
+                isVisible={showATMModal}
+                onClose={() => setShowATMModal(false)}
+            />
             <AskParentModal
                 isVisible={showParentModal}
                 onClose={() => setShowParentModal(false)}
@@ -198,6 +204,18 @@ It's only R29/month or R199/year. You can check it out here:
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
+                                        style={[styles.atmButton, {
+                                            backgroundColor: isDark ? colors.surface : '#64748B',
+                                        }]}
+                                        onPress={() => setShowATMModal(true)}
+                                    >
+                                        <View style={styles.buttonContent}>
+                                            <Ionicons name="card-outline" size={20} color="#FFFFFF" />
+                                            <ThemedText style={styles.buttonText}>Pay at ATM/EFT</ThemedText>
+                                        </View>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
                                         style={[styles.askParentButton, {
                                             backgroundColor: isDark ? colors.surface : '#64748B',
                                         }]}
@@ -294,6 +312,13 @@ const styles = StyleSheet.create({
         padding: 16,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    atmButton: {
+        width: '100%',
+        borderRadius: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        marginBottom: 12,
     },
     askParentButton: {
         width: '100%',
