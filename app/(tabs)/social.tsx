@@ -41,7 +41,10 @@ const badgeImages: Record<string, ImageSourcePropType> = {
     'accounting.png': require('@/assets/images/badges/accounting.png'),
     'daily-goat.png': require('@/assets/images/badges/daily-goat.png'),
     'weekly-goat.png': require('@/assets/images/badges/weekly-goat.png'),
-    'all-time-goat.png': require('@/assets/images/badges/all-time-goat.png')
+    'all-time-goat.png': require('@/assets/images/badges/all-time-goat.png'),
+    'reading-level-2.png': require('@/assets/images/badges/reading-level-2.png'),
+    'reading-level-3.png': require('@/assets/images/badges/reading-level-3.png'),
+    'reading-level-4.png': require('@/assets/images/badges/reading-level-4.png'),
 };
 
 const AVATAR_IMAGES: Record<string, ImageSourcePropType> = {
@@ -721,10 +724,21 @@ export default function AchievementsScreen() {
                     )
                 },
                 {
+                    title: 'Reading Champion 📖',
+                    badges: badgesWithStatus.filter(badge =>
+                        badge.image === 'reading-level-2.png' ||
+                        badge.image === 'reading-level-3.png' ||
+                        badge.image === 'reading-level-4.png'
+                    )
+                },
+                {
                     title: 'Quiz Master 🎓',
                     badges: badgesWithStatus.filter(badge =>
                         !badge.image.includes('in-a-row') &&
-                        !badge.image.includes('day-streak')
+                        !badge.image.includes('day-streak') &&
+                        badge.image !== 'reading-level-2.png' &&
+                        badge.image !== 'reading-level-3.png' &&
+                        badge.image !== 'reading-level-4.png'
                     )
                 }
             ];
@@ -750,10 +764,21 @@ export default function AchievementsScreen() {
                     )
                 },
                 {
+                    title: 'Reading Champion 📖',
+                    badges: badgesWithStatus.filter(badge =>
+                        badge.image === 'reading-level-2.png' ||
+                        badge.image === 'reading-level-3.png' ||
+                        badge.image === 'reading-level-4.png'
+                    )
+                },
+                {
                     title: 'Quiz Master 🎓',
                     badges: badgesWithStatus.filter(badge =>
                         !badge.image.includes('in-a-row') &&
-                        !badge.image.includes('day-streak')
+                        !badge.image.includes('day-streak') &&
+                        badge.image !== 'reading-level-2.png' &&
+                        badge.image !== 'reading-level-3.png' &&
+                        badge.image !== 'reading-level-4.png'
                     )
                 }
             ];
