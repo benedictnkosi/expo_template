@@ -24,7 +24,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BadgeCelebrationModal } from '@/components/BadgeCelebrationModal';
 import { NotesFavoritesRecordings, TabType } from '@/app/components/NotesFavoritesRecordings';
-import { StreakModal, ReportModal, ExplanationModal, ZoomModal, RestartModal, ThankYouModal, FirstTimeModal, UpgradeNudgeModal } from '@/app/components/quiz/quiz-modals';
+import { StreakModal, ReportModal, ExplanationModal, ZoomModal, RestartModal, ThankYouModal, UpgradeNudgeModal } from '@/app/components/quiz/quiz-modals';
 import { FeedbackContainer } from './components/quiz/FeedbackContainer';
 import { PerformanceSummary, SubjectStats as ImportedSubjectStats } from './components/quiz/PerformanceSummary';
 import { QuizModeSelection } from './components/quiz/QuizModeSelection';
@@ -1120,7 +1120,6 @@ export default function QuizScreen() {
     const [isFromFavorites, setIsFromFavorites] = useState(false);
     const [isFirstAnswer, setIsFirstAnswer] = useState(false);
     const [showFirstAnswerModal, setShowFirstAnswerModal] = useState(false);
-    const [showFirstTimeModal, setShowFirstTimeModal] = useState(false);
     // Add new state for streak modal
     const [showStreakModal, setShowStreakModal] = useState(false);
     const [currentStreak, setCurrentStreak] = useState(0);
@@ -1184,24 +1183,6 @@ export default function QuizScreen() {
         }
     }, [topic]);
 
-    // Add useEffect to check first time loading
-    useEffect(() => {
-        async function checkFirstTimeLoading() {
-            try {
-                const hasSeenFirstTimeModal = await AsyncStorage.getItem('hasSeenQuizFirstTimeModal');
-                if (!hasSeenFirstTimeModal) {
-                    setTimeout(() => {
-                        setShowFirstTimeModal(true);
-                        setIsFirstAnswer(true);
-                        AsyncStorage.setItem('hasSeenQuizFirstTimeModal', 'true');
-                    }, 3000);
-                }
-            } catch (error) {
-                console.error('Error checking first time loading:', error);
-            }
-        }
-        checkFirstTimeLoading();
-    }, []);
 
     // Add fetchRandomLesson function
     const fetchRandomLesson = async () => {
@@ -2895,11 +2876,7 @@ export default function QuizScreen() {
                     end={{ x: 0, y: 1 }}
                     testID="quiz-mode-selection"
                 >
-                    <FirstTimeModal
-                        isVisible={showFirstTimeModal}
-                        onClose={() => setShowFirstTimeModal(false)}
-                        isDark={isDark}
-                    />
+
                     <ScrollView style={styles.container}>
                         <View style={styles.paperSelectionContainer}>
                             <TouchableOpacity

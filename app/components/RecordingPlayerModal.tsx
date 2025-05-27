@@ -257,7 +257,7 @@ export function RecordingPlayerModal({ isVisible, onClose, recording, subjectNam
                                 </View>
                             </ScrollView>
                         )}
-                        {remainingPodcasts !== null && remainingPodcasts !== 999 && remainingPodcasts > 0 && (
+                        {remainingPodcasts !== null && remainingPodcasts > 0 && (
                             <View style={styles.playerContainer}>
                                 <AudioPlayer
                                     ref={audioPlayerRef}

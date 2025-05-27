@@ -29,6 +29,9 @@ import { WelcomeModal } from '../components/WelcomeModal';
 import subjectEmojis from '@/assets/subject-emojis.json';
 import { SubjectPicker } from '@/components/SubjectPicker';
 import { NextChapterCard } from '@/components/reading/next-chapter-card';
+import { UpgradeToProButton } from '../components/UpgradeToProButton';
+import { Paywall } from '../components/Paywall';
+import { ProPromoCard } from '@/components/ProPromoCard';
 
 // Temporary mock data
 
@@ -134,6 +137,7 @@ interface LearnerInfo {
   avatar: string;
   timetable?: Record<string, { subject: string; startTime: string; endTime: string }[]>;
   events?: Record<string, { title: string; startTime: string; endTime: string }[]>;
+  subscription?: string;
 }
 
 interface RandomAIQuestionResponse {
@@ -404,6 +408,7 @@ export default function HomeScreen() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Check for saved notification preferences on mount
   useEffect(() => {
@@ -1188,7 +1193,7 @@ export default function HomeScreen() {
         >
           <View style={styles.subjectsGrid} testID="subjects-grid">
             {(() => {
-              return mySubjects
+              const subjects = mySubjects
                 .filter(subject => showAllSubjects || !hiddenSubjects.includes(subject.id))
                 .map((subject) => {
                   const isDisabled = subject.total_questions === 0;
@@ -1337,6 +1342,31 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   );
                 });
+
+              // Insert promo card after the second subject and at the end
+              if (subjects.length >= 2 && learnerInfo?.subscription === 'free') {
+                // Add after second subject
+                subjects.splice(2, 0, (
+                  <ProPromoCard
+                    key="pro-promo-1"
+                    testID="pro-promo-card-1"
+                    onPress={() => router.push('/pro' as any)}
+                    showCrown={true}
+                  />
+                ));
+
+                // Add at the end of the list
+                subjects.push(
+                  <ProPromoCard
+                    key="pro-promo-2"
+                    testID="pro-promo-card-2"
+                    onPress={() => router.push('/pro' as any)}
+                    showCrown={true}
+                  />
+                );
+              }
+
+              return subjects;
             })()}
           </View>
         </ScrollView>
@@ -1445,6 +1475,13 @@ export default function HomeScreen() {
         isVisible={showWelcomeModal}
         onClose={handleCloseWelcomeModal}
       />
+
+      {showPaywall && (
+        <Paywall
+          onSuccess={() => setShowPaywall(false)}
+          onClose={() => setShowPaywall(false)}
+        />
+      )}
     </LinearGradient>
   );
 }
@@ -2375,5 +2412,61 @@ const styles = StyleSheet.create({
   gradeMessageText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  proPromoCard: {
+    borderWidth: 2,
+    borderColor: '#FCD34D',
+    backgroundColor: '#1E1E1E',
+  },
+  proIconContainer: {
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    padding: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proCrownCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FDE68A', // yellow-200
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  crownIcon: {
+    fontSize: 32,
+  },
+  proFeaturesContainer: {
+    marginTop: 16,
+    gap: 8,
+  },
+  proFeature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  proFeatureIcon: {
+    fontSize: 18,
+  },
+  proFeatureText: {
+    fontSize: 14,
+  },
+  proButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -9,6 +9,7 @@ export interface AuthUser {
   email: string | null;
   displayName?: string | null;
   photoURL?: string | null;
+  isPremium?: boolean;
 }
 
 interface AuthContextType {

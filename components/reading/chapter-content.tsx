@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, ScrollView, NativeSyntheticEvent, NativeScrollE
 import { useTheme } from '@/contexts/ThemeContext';
 import { HOST_URL } from '@/config/api';
 import { analytics } from '@/services/analytics';
+import { ProPromoCard } from '../ProPromoCard';
+import { useAuth } from '@/contexts/AuthContext';
+import { getLearner } from '@/services/api';
 
 interface ChapterContentProps {
     chapterName: string;
@@ -28,12 +31,23 @@ async function logAnalyticsEvent(eventName: string, eventParams?: Record<string,
 
 export function ChapterContent({ chapterName, chapterNumber, content, fontSize = 18, onProgress, onStartQuiz }: ChapterContentProps) {
     const { colors } = useTheme();
+    const { user } = useAuth();
     const [localProgress, setLocalProgress] = useState(0);
     const [chapterImageUrl, setChapterImageUrl] = useState<string | null>(null);
     const [hasStartedReading, setHasStartedReading] = useState(false);
+    const [isFreeUser, setIsFreeUser] = useState(true);
 
     // Calculate word count from content
     const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
+
+    useEffect(() => {
+        if (!user?.uid) return;
+        getLearner(user.uid).then(learner => {
+            setIsFreeUser((learner as any).subscription === 'free');
+        }).catch(error => {
+            console.error('Error fetching learner info:', error);
+        });
+    }, [user?.uid]);
 
     useEffect(() => {
         if (!chapterNumber) return;
@@ -84,6 +98,54 @@ export function ChapterContent({ chapterName, chapterNumber, content, fontSize =
         onStartQuiz?.(wordCount);
     };
 
+    // Split content into paragraphs and find a natural break point
+    const paragraphs = content.split('\n').filter(line => line.trim().length > 0);
+    const totalParagraphs = paragraphs.length;
+
+    // Find a natural break point (around 40% of the content)
+    const breakPoint = Math.floor(totalParagraphs * 0.4);
+
+    // Ensure we don't break in the middle of a sentence or too close to the start/end
+    const safeBreakPoint = Math.max(2, Math.min(breakPoint, totalParagraphs - 2));
+
+    // Create the content with promo card at the natural break point
+    const contentWithPromo = isFreeUser
+        ? [
+            ...paragraphs.slice(0, safeBreakPoint).map((line, idx) => (
+                <Text
+                    key={`p-${idx}`}
+                    style={[styles.content, { color: colors.text, fontSize }]}
+                    accessibilityLabel={removeDoubleAsteriskText(line)}
+                >
+                    {removeDoubleAsteriskText(line)}
+                </Text>
+            )),
+            <ProPromoCard
+                key="promo-card"
+                testID="reading-promo-card"
+                onPress={() => { }}
+                showCrown={false}
+            />,
+            ...paragraphs.slice(safeBreakPoint).map((line, idx) => (
+                <Text
+                    key={`p-${safeBreakPoint + idx}`}
+                    style={[styles.content, { color: colors.text, fontSize }]}
+                    accessibilityLabel={removeDoubleAsteriskText(line)}
+                >
+                    {removeDoubleAsteriskText(line)}
+                </Text>
+            ))
+        ]
+        : paragraphs.map((line, idx) => (
+            <Text
+                key={`p-${idx}`}
+                style={[styles.content, { color: colors.text, fontSize }]}
+                accessibilityLabel={removeDoubleAsteriskText(line)}
+            >
+                {removeDoubleAsteriskText(line)}
+            </Text>
+        ));
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
@@ -109,18 +171,7 @@ export function ChapterContent({ chapterName, chapterNumber, content, fontSize =
                         resizeMode="cover"
                     />
                 )}
-                {content.split('\n').map((line, idx) => {
-                    const cleanedLine = removeDoubleAsteriskText(line);
-                    return (
-                        <Text
-                            key={idx}
-                            style={[styles.content, { color: colors.text, fontSize }]}
-                            accessibilityLabel={cleanedLine}
-                        >
-                            {cleanedLine || ' '}
-                        </Text>
-                    );
-                })}
+                {contentWithPromo}
             </ScrollView>
             {onStartQuiz && (
                 <View style={styles.buttonContainer}>
@@ -163,6 +214,7 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         textAlign: 'left',
         fontWeight: '400',
+        marginBottom: 12,
     },
     buttonContainer: {
         padding: 16,

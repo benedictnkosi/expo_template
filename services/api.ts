@@ -145,6 +145,7 @@ export async function getLearner(uid: string): Promise<{
   avatar: string;
   follow_me_code: string;
   public_profile: boolean;
+  subscription?: string;
 }> {
   const response = await fetch(
     `${API_BASE_URL}/learner?uid=${uid}`
@@ -156,7 +157,7 @@ export async function getLearner(uid: string): Promise<{
 
   const data = await response.json();
   // Set default role to 'learner' if not provided by the API
-  return { ...data, role: data.role || 'learner', points: data.points || 0 };
+  return { ...data, role: data.role || 'learner', points: data.points || 0, subscription: data.subscription || 'free' };
 }
 
 export async function createLearner(uid: string, data: {

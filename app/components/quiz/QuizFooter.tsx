@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '../ThemedView';
@@ -26,6 +26,27 @@ export function QuizFooter({
     colors
 }: QuizFooterProps) {
     const { isDark: themeIsDark } = useTheme();
+    const [showNudge, setShowNudge] = React.useState(false);
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+        if (remainingQuizzes === 5) {
+            setShowNudge(true);
+            Animated.sequence([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                }),
+                Animated.delay(3000),
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 500,
+                    useNativeDriver: true,
+                })
+            ]).start(() => setShowNudge(false));
+        }
+    }, [remainingQuizzes]);
 
     return (
         <ThemedView
@@ -34,6 +55,22 @@ export function QuizFooter({
             }]}
             testID="quiz-footer"
         >
+            {showNudge && (
+                <Animated.View
+                    style={[
+                        styles.nudgeContainer,
+                        {
+                            opacity: fadeAnim,
+                            backgroundColor: isDark ? '#1E1E1E' : '#F8FAFC',
+                            borderColor: isDark ? '#333' : '#E2E8F0'
+                        }
+                    ]}
+                >
+                    <ThemedText style={[styles.nudgeText, { color: isDark ? '#FFFFFF' : '#1E293B' }]}>
+                        ⚡️ Only 5 {selectedMode === 'lessons' ? 'lessons' : 'questions'} remaining! Upgrade to continue learning.
+                    </ThemedText>
+                </Animated.View>
+            )}
             <View style={styles.footerRow}>
                 <LinearGradient
                     colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
@@ -112,20 +149,24 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-    remainingQuizzesOverlay: {
+    nudgeContainer: {
         position: 'absolute',
-        left: 0,
-        right: 0,
+        top: -60,
+        left: 16,
+        right: 16,
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    nudgeText: {
+        fontSize: 16,
+        fontWeight: '600',
         textAlign: 'center',
-        color: '#fff',
-        fontSize: 14,
-        top: '50%',
-        transform: [{ translateY: -12 }],
-        zIndex: 2,
-        fontWeight: '500',
-        opacity: 0.95,
-        textShadowColor: 'rgba(0,0,0,0.3)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 2,
     },
 }); 

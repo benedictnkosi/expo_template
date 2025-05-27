@@ -521,60 +521,7 @@ export const BadgeModal = ({
     );
 };
 
-interface FirstTimeModalProps {
-    isVisible: boolean;
-    onClose: () => void;
-    isDark: boolean;
-}
 
-export const FirstTimeModal = ({
-    isVisible,
-    onClose,
-    isDark
-}: FirstTimeModalProps) => {
-    return (
-        <Modal
-            isVisible={isVisible}
-            onBackdropPress={onClose}
-            animationIn="fadeIn"
-            animationOut="fadeOut"
-            backdropOpacity={0.5}
-            style={styles.modal}
-        >
-            <View style={[styles.modalContent, {
-                backgroundColor: isDark ? Colors.dark.card : Colors.light.card
-            }]}>
-                <View style={styles.welcomeIconContainer}>
-                    <MaterialCommunityIcons
-                        name="school"
-                        size={60}
-                        color={Colors.primary}
-                    />
-                </View>
-                <ThemedText style={[styles.welcomeTitle, {
-                    color: isDark ? Colors.dark.text : Colors.light.text
-                }]}>
-                    Look who made it here! 🎓
-                </ThemedText>
-                <ThemedText style={[styles.welcomeMessage, {
-                    color: isDark ? Colors.dark.textSecondary : Colors.light.textSecondary
-                }]}>
-                    To get started, select a paper. Choose Paper 1 or Paper 2. The learning mode is already selected for you.  🚀
-                </ThemedText>
-                <TouchableOpacity
-                    style={[styles.paperButton, {
-                        backgroundColor: Colors.primary
-                    }]}
-                    onPress={onClose}
-                >
-                    <ThemedText style={styles.paperButtonText}>
-                        Let's Begin! 🚀
-                    </ThemedText>
-                </TouchableOpacity>
-            </View>
-        </Modal>
-    );
-};
 
 interface UpgradeNudgeModalProps {
     isVisible: boolean;

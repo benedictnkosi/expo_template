@@ -23,6 +23,8 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { Header } from '@/components/Header';
 import subjectEmojis from '@/assets/subject-emojis.json';
+import grade89SubjectsEmojis from '@/assets/subject-emojis-grade89.json';
+import { ProPromoCard } from '@/components/ProPromoCard';
 
 interface Subject {
     id: string;
@@ -79,6 +81,7 @@ export default function ChatScreen() {
         grade: string;
         school?: string;
         avatar?: string;
+        subscription?: string;
     } | null>(null);
     const [learnerGrade, setLearnerGrade] = useState<string>('');
     const [lastAccessTimes, setLastAccessTimes] = useState<Record<string, number>>({});
@@ -124,11 +127,17 @@ export default function ChatScreen() {
                     name: learner.name || '',
                     grade: learner.grade?.number?.toString() || '',
                     school: learner.school_name || '',
-                    avatar: learner.avatar || ''
+                    avatar: learner.avatar || '',
+                    subscription: learner.subscription || 'free'
                 });
 
-                // Create subjects from emojis
-                const subjectsList = Object.entries(subjectEmojis).map(([name, emoji]) => ({
+                // Create subjects from emojis based on grade
+                const currentGrade = learner.grade?.number?.toString() || '';
+                const subjectsList = Object.entries(
+                    (currentGrade === '8' || currentGrade === '9')
+                        ? grade89SubjectsEmojis
+                        : subjectEmojis
+                ).map(([name, emoji]) => ({
                     id: name.toLowerCase().replace(/\s+/g, '-'),
                     name,
                     emoji,
@@ -137,8 +146,7 @@ export default function ChatScreen() {
 
                 // Get new thread counts for each subject
                 const threadsRef = collection(db, 'threads');
-                const learnerGrade = await AsyncStorage.getItem('learnerGrade');
-                const grade = parseInt(learnerGrade || '0');
+                const grade = parseInt(currentGrade || '0');
 
                 if (grade > 0) {
                     const updatedSubjects = await Promise.all(subjectsList.map(async (subject) => {
@@ -301,7 +309,6 @@ export default function ChatScreen() {
                     />
                 </TouchableOpacity>
 
-
                 {/* Past Papers */}
                 <TouchableOpacity
                     style={[
@@ -332,6 +339,15 @@ export default function ChatScreen() {
                         color={colors.textSecondary}
                     />
                 </TouchableOpacity>
+
+                {/* Pro Promo Card - Only show if subscription is free */}
+                {learnerInfo?.subscription === 'free' && (
+                    <ProPromoCard
+                        onPress={() => router.push('/pro' as any)}
+                        testID="pro-promo-card"
+                        showCrown={false}
+                    />
+                )}
 
                 <View style={styles.subjectInfo}>
                     <ThemedText style={styles.subjectName}>Subjects</ThemedText>
@@ -644,5 +660,20 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
+    },
+    proFeaturesContainer: {
+        marginTop: 8,
+        gap: 4,
+    },
+    proFeature: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    proFeatureIcon: {
+        fontSize: 16,
+    },
+    proFeatureText: {
+        fontSize: 14,
     },
 }); 

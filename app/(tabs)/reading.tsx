@@ -617,7 +617,7 @@ export default function ReadingScreen() {
                                 >
                                     <View style={styles.pastChapterHeader}>
                                         <Text style={[styles.pastChapterTitle, { color: colors.text }]}>
-                                            {chapter.chapterName}
+                                            ch.{chapter.chapterNumber} {chapter.chapterName}
                                         </Text>
                                         <Text style={[styles.pastChapterLevel, { color: colors.textSecondary }]}>
                                             Level {chapter.level}
@@ -901,8 +901,8 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     pastChapterTitle: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: '500',
         flex: 1,
     },
     pastChapterLevel: {

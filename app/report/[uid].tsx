@@ -17,6 +17,7 @@ import subjectEmojisJson from '../../assets/subject-emojis.json';
 import { Share } from 'react-native';
 import { Paywall } from '../components/Paywall';
 import Purchases from 'react-native-purchases';
+import { ProPromoCard } from '@/components/ProPromoCard';
 const subjectEmojis = subjectEmojisJson as Record<string, string>;
 
 function getGradeColor(grade: number): string {
@@ -759,6 +760,31 @@ export default function LearnerPerformanceScreen() {
     const [isFollowing, setIsFollowing] = useState(false);
     const [isFollowingLoading, setIsFollowingLoading] = useState(true);
     const [isCareerAdviceModalVisible, setIsCareerAdviceModalVisible] = useState(false);
+    const [showPaywall, setShowPaywall] = useState(false);
+    const [offerings, setOfferings] = useState<any>(null);
+    const [learnerInfo, setLearnerInfo] = useState<any>(null);
+
+    // Add useEffect to fetch learner info
+    useEffect(() => {
+        async function fetchLearnerInfo() {
+            if (!uid) return;
+            try {
+                const response = await fetch(`${HOST_URL}/public/learn/learner?uid=${uid}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch learner info');
+                }
+
+                const data = await response.json();
+                console.log('data', data);
+                console.log('subscription', data.subscription);
+                setLearnerInfo(data); // Set the entire data object, not data.data
+            } catch (error) {
+                console.error('Error fetching learner info:', error);
+            }
+        }
+        fetchLearnerInfo();
+    }, [uid]);
 
     // Reset modal state when component mounts or uid changes
     useEffect(() => {
@@ -1059,6 +1085,15 @@ export default function LearnerPerformanceScreen() {
                 style={styles.container}
                 contentContainerStyle={styles.contentContainer}
             >
+                {/* Update ProPromoCard condition */}
+                {learnerInfo?.subscription === 'free' && (
+                    <ProPromoCard
+                        testID="performance-pro-promo"
+                        onPress={() => setShowPaywall(true)}
+                        showCrown={false}
+                    />
+                )}
+
                 {/* Study Plan for Today */}
                 {todayEvents.length > 0 && (
                     <ThemedView style={[

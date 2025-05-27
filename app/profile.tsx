@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Paywall } from './components/Paywall';
+import { UpgradeToProButton } from './components/UpgradeToProButton';
 
 
 // Helper function for safe analytics logging
@@ -852,19 +853,7 @@ export default function ProfileScreen() {
               </ThemedText>
             </View>
             {learnerInfo?.subscription === 'free' && (
-              <TouchableOpacity
-                style={[styles.upgradeButton]}
-                onPress={() => setShowPaywall(true)}
-              >
-                <LinearGradient
-                  colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                  style={styles.upgradeButtonGradient}
-                >
-                  <ThemedText style={styles.upgradeButtonText}>
-                    ✨ Upgrade to Pro
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
+              <UpgradeToProButton />
             )}
           </View>
         </ThemedView>
