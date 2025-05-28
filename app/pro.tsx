@@ -40,7 +40,7 @@ export default function ProScreen() {
                     </View>
 
                     <ThemedText style={[styles.title, { color: colors.text }]}>
-                        Unlock Premium Features
+                        Unlock Pro Features
                     </ThemedText>
 
                     <View style={styles.featuresList}>

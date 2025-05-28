@@ -10,7 +10,7 @@ import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
 import { Header } from '@/components/Header';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch, Image } from 'react-native';
+import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch, Image, Linking } from 'react-native';
 import React from 'react';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { analytics } from '@/services/analytics';
@@ -530,6 +530,18 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleWhatsAppPress = async () => {
+    const whatsappNumber = '27786864479';
+    const message = 'Hi, I just paid via ATM/EFT. My reference is AFJK. Please activate my Dimpo Pro.';
+    const whatsappUrl = `whatsapp://send?phone=${whatsappNumber}&text=${encodeURIComponent(message)}`;
+
+    try {
+      await Linking.openURL(whatsappUrl);
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error);
+    }
+  };
+
   return (
     <LinearGradient
       colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -846,12 +858,12 @@ export default function ProfileScreen() {
           <View style={styles.subscriptionContainer}>
             <View style={styles.subscriptionInfo}>
               <ThemedText style={[styles.subscriptionType, { color: colors.text }]}>
-                {learnerInfo?.subscription === 'free' ? 'Free Plan' : '✨ Premium Plan'}
+                {learnerInfo?.subscription === 'free' ? 'Free Plan' : '✨ Pro Plan'}
               </ThemedText>
               <ThemedText style={[styles.subscriptionDescription, { color: colors.textSecondary }]}>
                 {learnerInfo?.subscription === 'free'
                   ? 'Upgrade to Pro for unlimited access to all features'
-                  : 'You have access to all premium features'}
+                  : 'You have access to all pro features'}
               </ThemedText>
             </View>
             {learnerInfo?.subscription === 'free' && (
@@ -877,6 +889,18 @@ export default function ProfileScreen() {
                   <View style={styles.buttonContent}>
                     <Ionicons name="card-outline" size={20} color="#FFFFFF" />
                     <ThemedText style={styles.buttonText}>Pay at ATM/EFT</ThemedText>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.whatsappButton, {
+                    backgroundColor: isDark ? colors.surface : '#25D366',
+                  }]}
+                  onPress={handleWhatsAppPress}
+                >
+                  <View style={styles.buttonContent}>
+                    <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+                    <ThemedText style={styles.buttonText}>Send Payment Proof</ThemedText>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -1769,5 +1793,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+  },
+  whatsappButton: {
+    width: '100%',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 }); 

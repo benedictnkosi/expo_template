@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, Linking, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Share } from 'react-native';
 import Modal from 'react-native-modal';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -55,15 +55,27 @@ export function ATMPaymentModal({ isVisible, onClose }: ATMPaymentModalProps) {
         }
     };
 
-    const handleWhatsAppPress = async () => {
-        const whatsappNumber = '27786864479';
-        const message = 'Hi, I just paid via ATM/EFT. My reference is AFJK. Please activate my Dimpo Pro.';
-        const whatsappUrl = `whatsapp://send?phone=${whatsappNumber}&text=${encodeURIComponent(message)}`;
+    const handleShareBankingDetails = async () => {
+        if (!paymentDetails || !learnerDetails) return;
+
+        const shareMessage = `Dimpo Pro Payment Details:
+
+Amount: R${paymentDetails.price} (Annual Plan)
+Reference: ${learnerDetails.follow_me_code}
+
+Bank: ${paymentDetails.bankName}
+Account Number: ${paymentDetails.accountNumber}
+Branch Code: ${paymentDetails.branchCode}
+
+Please use the reference code when making the payment.`;
 
         try {
-            await Linking.openURL(whatsappUrl);
+            await Share.share({
+                message: shareMessage,
+                title: 'Dimpo Pro Payment Details'
+            });
         } catch (error) {
-            console.error('Error opening WhatsApp:', error);
+            console.error('Error sharing banking details:', error);
         }
     };
 
@@ -156,18 +168,18 @@ export function ATMPaymentModal({ isVisible, onClose }: ATMPaymentModalProps) {
 
                 <View style={styles.buttonsContainer}>
                     <TouchableOpacity
-                        style={[styles.button, styles.primaryButton, { backgroundColor: colors.primary }]}
-                        onPress={handleWhatsAppPress}
+                        style={[styles.button, styles.shareButton, { backgroundColor: isDark ? colors.surface : '#64748B' }]}
+                        onPress={handleShareBankingDetails}
                     >
-                        <Ionicons name="logo-whatsapp" size={20} color="#fff" style={styles.buttonIcon} />
-                        <ThemedText style={styles.buttonText}>Send Proof on WhatsApp</ThemedText>
+                        <Ionicons name="share-outline" size={20} color="#fff" style={styles.buttonIcon} />
+                        <ThemedText style={styles.buttonText}>Share Banking Details</ThemedText>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                         style={[styles.button, styles.secondaryButton, { backgroundColor: isDark ? colors.surface : '#f3f4f6' }]}
                         onPress={onClose}
                     >
-                        <ThemedText style={[styles.buttonText, { color: colors.text }]}>Maybe Later</ThemedText>
+                        <ThemedText style={[styles.buttonText, { color: colors.text }]}>Close</ThemedText>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -282,5 +294,8 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
         flex: 1,
+    },
+    shareButton: {
+        backgroundColor: '#64748B',
     },
 }); 

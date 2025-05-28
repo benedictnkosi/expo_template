@@ -1070,7 +1070,7 @@ export default function HomeScreen() {
 
 
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.testButton, {
             backgroundColor: isDark ? colors.card : '#FFFFFF',
             borderColor: colors.border
@@ -1082,7 +1082,7 @@ export default function HomeScreen() {
           <ThemedText style={[styles.testButtonText, { color: colors.text }]}>
             Test Accounting Statement
           </ThemedText>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <View style={styles.shareContainer} testID="share-container">
           <TouchableOpacity

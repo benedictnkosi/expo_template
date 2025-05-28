@@ -102,12 +102,51 @@ function cleanAnswer(answer: string): string {
     return answer.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
+// Add helper variables
+let isOpeningDollarSign = false;
+let isClosingDollarSignNextLine = false;
 
-// Add helper function
-let isOpeningDollarSign = false
-let isClosingDollarSignNextLine = false
+// Add Table component before renderMixedContent
+const Table = ({ html, isDark, colors }: { html: string; isDark: boolean; colors: any }) => {
+    // Parse the HTML table
+    const rows = html.match(/<tr>.*?<\/tr>/gs) || [];
+    const tableData = rows.map(row => {
+        const cells = row.match(/<(?:th|td)>(.*?)<\/(?:th|td)>/gs) || [];
+        return cells.map(cell => {
+            const content = cell.replace(/<(?:th|td)>(.*?)<\/(?:th|td)>/, '$1');
+            const isHeader = cell.startsWith('<th>');
+            return { content, isHeader };
+        });
+    });
+
+    return (
+        <View style={[styles.tableContainer, { borderColor: isDark ? colors.border : '#E5E7EB' }]}>
+            {tableData.map((row, rowIndex) => (
+                <View key={rowIndex} style={[styles.tableRow, { borderBottomColor: isDark ? colors.border : '#E5E7EB' }]}>
+                    {row.map((cell, cellIndex) => (
+                        <View key={cellIndex} style={[styles.tableCell, { borderRightColor: isDark ? colors.border : '#E5E7EB' }]}>
+                            <ThemedText style={[
+                                styles.tableCellText,
+                                cell.isHeader && styles.tableHeaderText,
+                                { color: colors.text }
+                            ]}>
+                                {cell.content}
+                            </ThemedText>
+                        </View>
+                    ))}
+                </View>
+            ))}
+        </View>
+    );
+};
+
 function renderMixedContent(text: string, isDark: boolean, colors: any) {
     if (!text) return null;
+
+    // Check if the text contains a table
+    if (text.includes('<table>')) {
+        return <Table html={text} isDark={isDark} colors={colors} />;
+    }
 
     if (text.includes('$') && text.trim().length < 3 && !isOpeningDollarSign && !isClosingDollarSignNextLine) {
         isOpeningDollarSign = true
@@ -1515,6 +1554,7 @@ export default function QuizScreen() {
 
                 // If this question has related questions, load them
                 if (data.related_question_ids && data.related_question_ids.length > 0) {
+                    console.log('data.related_question_ids', data.related_question_ids)
                     const relatedQuestionsPromises = data.related_question_ids.map(async (id: number) => {
                         const relatedUrl = new URL(`${API_BASE_URL}/question/${endpoint}`);
                         relatedUrl.searchParams.append('subject_name', encodedSubjectName);
@@ -4815,6 +4855,28 @@ const styles = StyleSheet.create({
     },
     optionButtonTextSelected: {
         color: '#FFFFFF',
+    },
+    tableContainer: {
+        marginVertical: 16,
+        borderWidth: 1,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        borderBottomWidth: 1,
+    },
+    tableCell: {
+        flex: 1,
+        padding: 12,
+        borderRightWidth: 1,
+    },
+    tableCellText: {
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    tableHeaderText: {
+        fontWeight: 'bold',
     },
 });
 
