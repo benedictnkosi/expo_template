@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { HOST_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { getLearner } from '@/services/api';
+import { analytics } from '@/services/analytics';
 
 interface PaymentDetails {
     id: number;
@@ -74,8 +75,22 @@ Please use the reference code when making the payment.`;
                 message: shareMessage,
                 title: 'Dimpo Pro Payment Details'
             });
+
+            // Track successful share event
+            await analytics.track('share_banking_details', {
+                userId: user?.uid,
+                price: paymentDetails.price,
+                bankName: paymentDetails.bankName,
+                referenceCode: learnerDetails.follow_me_code
+            });
         } catch (error) {
             console.error('Error sharing banking details:', error);
+
+            // Track failed share event
+            await analytics.track('share_banking_details_error', {
+                userId: user?.uid,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
         }
     };
 
@@ -108,7 +123,7 @@ Please use the reference code when making the payment.`;
             style={styles.modal}
             animationIn="slideInUp"
             animationOut="slideOutDown"
-        >
+            a>
             <View style={[styles.container, { backgroundColor: isDark ? colors.card : '#fff' }]}>
                 <View style={styles.header}>
                     <ThemedText style={[styles.title, { color: colors.text }]}>

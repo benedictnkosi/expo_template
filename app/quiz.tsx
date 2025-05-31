@@ -1437,6 +1437,7 @@ export default function QuizScreen() {
             url.searchParams.append('uid', user.uid);
             url.searchParams.append('question_id', (questionId || 0).toString());
             url.searchParams.append('subscriptionCheck', 'true');
+            url.searchParams.append('version', '1');
 
             // Add topic parameter if currentTopic is set
             if (currentTopic) {

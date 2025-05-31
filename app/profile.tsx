@@ -865,6 +865,15 @@ export default function ProfileScreen() {
                   ? 'Upgrade to Pro for unlimited access to all features'
                   : 'You have access to all pro features'}
               </ThemedText>
+              <View style={styles.legalLinks}>
+                <TouchableOpacity onPress={() => Linking.openURL('https://examquiz.co.za/privacy')}>
+                  <ThemedText style={[styles.legalLink, { color: colors.primary }]}>Privacy Policy</ThemedText>
+                </TouchableOpacity>
+                <ThemedText style={{ color: colors.textSecondary }}> • </ThemedText>
+                <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                  <ThemedText style={[styles.legalLink, { color: colors.primary }]}>Terms of Use</ThemedText>
+                </TouchableOpacity>
+              </View>
             </View>
             {learnerInfo?.subscription === 'free' && (
               <View style={styles.subscriptionButtons}>
@@ -906,6 +915,39 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
+        </ThemedView>
+
+        <ThemedView style={[styles.sectionCard, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}>
+          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Legal</ThemedText>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => Linking.openURL('https://examquiz.co.za/privacy')}
+          >
+            <View style={styles.settingInfo}>
+              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Privacy Policy</ThemedText>
+              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Read our privacy policy
+              </ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+          >
+            <View style={styles.settingInfo}>
+              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Terms of Use</ThemedText>
+              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Read Apple's Standard EULA
+              </ThemedText>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
         </ThemedView>
 
         <ThemedView style={[styles.sectionCard, {
@@ -1802,5 +1844,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  legalLink: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 }); 
