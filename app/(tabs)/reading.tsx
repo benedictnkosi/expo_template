@@ -476,10 +476,7 @@ export default function ReadingScreen() {
                             )}
                             {chapterData?.stats?.speeds && chapterData.stats.speeds.length >= 3 && (
                                 <View style={styles.graphContainer}>
-                                    <ReadingSpeedGraph speeds={chapterData.stats.speeds.map(speed => ({
-                                        ...speed,
-                                        score: speed.speed
-                                    }))} />
+                                    <ReadingSpeedGraph speeds={chapterData.stats.speeds} />
                                 </View>
                             )}
 

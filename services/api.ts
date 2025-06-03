@@ -597,4 +597,23 @@ export async function getLearnerStats(learnerUid: string): Promise<ReadingStats>
     throw new Error('Failed to fetch learner stats');
   }
   return response.json();
+}
+
+export async function checkVersionSupport(version: string): Promise<{ supported: boolean; message: string; version: string; deprecatedAt?: string }> {
+  console.log('version', version);
+  const response = await fetch(
+    `${HOST_URL}/api/version/check?version=${version}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to check version support');
+  }
+
+  return response.json();
 } 

@@ -15,9 +15,10 @@ export const WelcomeModal = ({ isVisible, onClose }: WelcomeModalProps) => {
     if (!isVisible) return null;
 
     const quests = [
-        { icon: 'book-outline', text: 'Read one chapter', completed: false },
+
         { icon: 'help-circle-outline', text: 'Answer 3 quiz questions correctly', completed: false },
         { icon: 'headset-outline', text: 'Listen to one podcast', completed: false },
+        { icon: 'book-outline', text: 'Read one chapter', completed: false },
     ];
 
     return (

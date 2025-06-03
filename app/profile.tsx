@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Paywall } from './components/Paywall';
 import { UpgradeToProButton } from './components/UpgradeToProButton';
 import { ATMPaymentModal } from './components/ATMPaymentModal';
+import { PaymentProofUpload } from './components/PaymentProofUpload';
 
 
 // Helper function for safe analytics logging
@@ -154,7 +155,6 @@ export default function ProfileScreen() {
         setEditTerms(learner.terms || '');
         setSelectedAvatar(learner.avatar || '1');
 
-        console.log('Learner info:', learner);
       } catch (error) {
         console.log('Failed to fetch learner info:', error);
       }
@@ -898,18 +898,6 @@ export default function ProfileScreen() {
                   <View style={styles.buttonContent}>
                     <Ionicons name="card-outline" size={20} color="#FFFFFF" />
                     <ThemedText style={styles.buttonText}>Pay at ATM/EFT</ThemedText>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.whatsappButton, {
-                    backgroundColor: isDark ? colors.surface : '#25D366',
-                  }]}
-                  onPress={handleWhatsAppPress}
-                >
-                  <View style={styles.buttonContent}>
-                    <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
-                    <ThemedText style={styles.buttonText}>Send Payment Proof</ThemedText>
                   </View>
                 </TouchableOpacity>
               </View>

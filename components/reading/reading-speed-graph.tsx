@@ -6,7 +6,6 @@ import { LineChart } from 'react-native-chart-kit';
 interface SpeedData {
     date: string;
     speed: number;
-    score?: number;
     chapterNumber: number;
 }
 
@@ -19,24 +18,21 @@ export function ReadingSpeedGraph({ speeds }: ReadingSpeedGraphProps) {
     const { width } = Dimensions.get('window');
     const chartWidth = Math.min(width - 32, 400);
 
+    // Get the last 14 data points
+    const recentSpeeds = speeds.slice(-14);
+
     // Prepare data for LineChart
     const data = {
-        labels: speeds.map(s => `Ch${s.chapterNumber}`),
+        labels: recentSpeeds.map(s => `Ch${s.chapterNumber}`),
         datasets: [
             {
-                data: speeds.map(s => s.speed),
+                data: recentSpeeds.map(s => s.speed),
                 color: () => '#7C3AED', // Speed line color
                 strokeWidth: 2,
                 withDots: true,
-            },
-            {
-                data: speeds.map(s => s.score || s.speed), // Use speed as fallback if score is not available
-                color: () => '#22C55E', // Comprehension line color (emerald)
-                strokeWidth: 2,
-                withDots: true,
-            },
+            }
         ],
-        legend: ['Speed (wpm)', 'Comprehension (%)'],
+        legend: ['Speed (wpm)'],
     };
 
     return (
@@ -52,7 +48,7 @@ export function ReadingSpeedGraph({ speeds }: ReadingSpeedGraphProps) {
                 shadowRadius: 8,
             }
         ]}>
-            <Text style={[styles.title, { color: colors.text }]}>Reading Speed & Comprehension</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Reading Speed</Text>
             <LineChart
                 data={data}
                 width={chartWidth}

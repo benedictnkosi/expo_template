@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState, Alert } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState, Alert, Dimensions } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +17,7 @@ import Constants from 'expo-constants';
 import { HOST_URL } from '@/config/api';
 
 import { ThemedText } from '../../components/ThemedText';
-import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos } from '../../services/api';
+import { fetchMySubjects, getLearner, getRandomAIQuestion, getTodos, checkVersionSupport } from '../../services/api';
 import { Subject, RandomAIQuestion } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Header } from '../../components/Header';
@@ -32,6 +32,7 @@ import { NextChapterCard } from '@/components/reading/next-chapter-card';
 import { UpgradeToProButton } from '../components/UpgradeToProButton';
 import { Paywall } from '../components/Paywall';
 import { ProPromoCard } from '@/components/ProPromoCard';
+import { Tutorial, useTutorial } from '../components/Tutorial';
 
 // Temporary mock data
 
@@ -409,6 +410,7 @@ export default function HomeScreen() {
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const { step, incrementStep } = useTutorial();
 
   // Check for saved notification preferences on mount
   useEffect(() => {
@@ -469,6 +471,35 @@ export default function HomeScreen() {
   // Add version check function
   const checkVersion = useCallback(async () => {
     try {
+      // Get current version
+      const currentVersion = Constants.expoConfig?.version || '1.0.0';
+      console.log('Current version:', currentVersion);
+
+      // Check if version is supported
+      const versionCheck = await checkVersionSupport(currentVersion);
+
+      if (!versionCheck.supported) {
+        // Show unsupported version modal
+        Alert.alert(
+          'App Update Required',
+          `Your current version (${currentVersion}) is no longer supported. Please update to continue using the app.`,
+          [
+            {
+              text: 'Update Now',
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  Linking.openURL('https://apps.apple.com/app/6742684696');
+                } else {
+                  Linking.openURL('https://play.google.com/store/apps/details?id=za.co.examquizafrica');
+                }
+              }
+            }
+          ],
+          { cancelable: false }
+        );
+        return;
+      }
+
       if (!user?.uid) return;
 
       // Get last check time from storage
@@ -484,9 +515,6 @@ export default function HomeScreen() {
         }
       }
 
-      // Get current version and OS info
-      const currentVersion = Constants.expoConfig?.version || '1.0.0';
-      console.log('Current version:', currentVersion);
       const currentOS = Platform.OS === 'ios' ? 'iOS' : 'Android';
       console.log('Current OS:', currentOS);
       // Get stored version and OS
@@ -778,7 +806,7 @@ export default function HomeScreen() {
   // Update the router.push call in the subject card
   const handleSubjectPress = useCallback((subject: Subject) => {
     if (user?.uid && learnerInfo) {
-
+      if (step === 1) incrementStep();
       router.push({
         pathname: '/quiz',
         params: {
@@ -790,7 +818,7 @@ export default function HomeScreen() {
         }
       });
     }
-  }, [user?.uid, learnerInfo]);
+  }, [user?.uid, learnerInfo, step, incrementStep]);
 
   useEffect(() => {
     // Request notification permissions when the home screen loads
@@ -956,6 +984,44 @@ export default function HomeScreen() {
     } catch (error) {
       console.error('Error dismissing notifications:', error);
     }
+  };
+
+  const handleClearData = async () => {
+    Alert.alert(
+      'Clear App Data',
+      'Are you sure you want to clear all app data? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Clear Data',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              Toast.show({
+                type: 'success',
+                text1: 'Data Cleared',
+                text2: 'All app data has been cleared successfully',
+                position: 'bottom'
+              });
+              // Reload the app data
+              fetchLearnerData();
+            } catch (error) {
+              console.error('Error clearing data:', error);
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to clear app data',
+                position: 'bottom'
+              });
+            }
+          }
+        }
+      ]
+    );
   };
 
   if (isLoading) {
@@ -1437,6 +1503,10 @@ export default function HomeScreen() {
 
       </ScrollView>
 
+      {step === 1 && (
+        <Tutorial colors={colors} isDark={isDark} step={1} />
+      )}
+
       <RatingModal
         visible={showRatingModal}
         rating={rating}
@@ -1496,6 +1566,21 @@ export default function HomeScreen() {
           onClose={() => setShowPaywall(false)}
         />
       )}
+
+      {/* Add Clear Data Test Button */}
+      <TouchableOpacity
+        style={[styles.testButton, {
+          backgroundColor: isDark ? colors.card : '#FFFFFF',
+          borderColor: colors.border
+        }]}
+        onPress={handleClearData}
+        testID="clear-data-test-button"
+      >
+        <Ionicons name="trash-outline" size={24} color={colors.primary} />
+        <ThemedText style={[styles.testButtonText, { color: colors.text }]}>
+          Clear App Data
+        </ThemedText>
+      </TouchableOpacity>
     </LinearGradient>
   );
 }
@@ -2482,5 +2567,62 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  floatingTooltip: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+  },
+  tooltipContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  tooltipImage: {
+    width: 48,
+    height: 48,
+    marginRight: 12,
+    borderRadius: 24,
+    backgroundColor: 'transparent',
+  },
+  tooltipTextContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  tooltipText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  progressBarContainerTooltip: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'transparent',
+    marginBottom: 4,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    position: 'relative',
+  },
+  progressBarTooltip: {
+    height: 6,
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 0,
   },
 });

@@ -48,6 +48,8 @@ import { FirstAnswerPointsModal } from './components/quiz/FirstAnswerPointsModal
 import { Paywall } from './components/Paywall';
 import { getLearner } from '../services/api';
 import { TermsSelector } from './components/quiz/TermsSelector';
+import { Tutorial, useTutorial } from './components/Tutorial';
+import { VideoNudge } from '@/app/components/quiz/VideoNudge';
 
 // Helper function for safe analytics logging
 async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
@@ -1210,7 +1212,9 @@ export default function QuizScreen() {
     const [selectedTerms, setSelectedTerms] = useState<string>('');
     const [isUpdatingTerms, setIsUpdatingTerms] = useState(false);
     const [studyKitKey, setStudyKitKey] = useState(0);
-    const [showUpgradeNudgeModal, setShowUpgradeNudgeModal] = useState(false);
+    const [showVideoNudge, setShowVideoNudge] = useState(false);
+    const [hasPlayedVideoInSession, setHasPlayedVideoInSession] = useState(false);
+    const { step, incrementStep } = useTutorial();
 
     // Available terms
     const TERMS = [1, 2, 3, 4];
@@ -1763,6 +1767,10 @@ export default function QuizScreen() {
     const handleNext = () => {
         if (!selectedPaper) return;
 
+        // Reset video nudge state when moving to next question
+        setShowVideoNudge(false);
+
+
         if (selectedTopic) {
             // For topic quizzes, load next question and update progress
             loadQuestion(selectedPaper, selectedTopic).then(() => {
@@ -1808,6 +1816,12 @@ export default function QuizScreen() {
 
         // Set the topic first
         setSelectedTopic(topic || null);
+
+        // Increment tutorial step if we're in tutorial mode
+        if (step === 4) {
+            console.log('Incrementing tutorial step to 5');
+            incrementStep();
+        }
 
         // Reset topic progress if topic is selected
         if (topic && user?.uid) {
@@ -2861,33 +2875,56 @@ export default function QuizScreen() {
         setStudyKitKey(k => k + 1);
     }
 
-    // Add this effect to show the modal at question 13
+    // Add effect to track state changes
     useEffect(() => {
-        console.log('[UpgradeNudgeModal] Debug:', {
-            remainingQuizzes,
-            remainingLessons,
-            subscription: learnerInfo?.subscription,
-            shouldShow: remainingQuizzes !== null && remainingQuizzes == 5 && learnerInfo?.subscription === 'free'
+        console.log('hasPlayedVideoInSession changed to:', hasPlayedVideoInSession);
+    }, [hasPlayedVideoInSession]);
+
+    // Replace the useEffect for showing the modal with this one
+    useEffect(() => {
+        console.log('Video Nudge Debug:');
+        console.log('selectedMode:', selectedMode);
+        console.log('remainingQuizzes:', remainingQuizzes);
+        console.log('remainingLessons:', remainingLessons);
+        console.log('learnerInfo?.subscription:', learnerInfo?.subscription);
+        console.log('hasPlayedVideoInSession:', hasPlayedVideoInSession);
+
+        // Log each condition separately
+        const quizModeCondition = selectedMode === 'quiz';
+        const lessonsModeCondition = selectedMode === 'lessons';
+        const remainingQuizzesCondition = remainingQuizzes !== null && remainingQuizzes === 5;
+        const remainingLessonsCondition = remainingLessons !== null && remainingLessons === 5;
+        const freeSubscriptionCondition = learnerInfo?.subscription === 'free';
+        const notPlayedInSessionCondition = !hasPlayedVideoInSession;
+
+        console.log('Individual conditions:', {
+            quizModeCondition,
+            lessonsModeCondition,
+            remainingQuizzesCondition,
+            remainingLessonsCondition,
+            freeSubscriptionCondition,
+            notPlayedInSessionCondition
         });
 
-        if (selectedMode === 'quiz' && remainingQuizzes !== null && remainingQuizzes == 5 && learnerInfo?.subscription === 'free') {
-            console.log('[UpgradeNudgeModal] Showing modal for quizzes');
-            setShowUpgradeNudgeModal(true);
-        }
+        console.log('Combined conditions:', {
+            quizCondition: quizModeCondition && remainingQuizzesCondition && freeSubscriptionCondition,
+            lessonsCondition: lessonsModeCondition && remainingLessonsCondition && freeSubscriptionCondition,
+            finalCondition: notPlayedInSessionCondition &&
+                ((quizModeCondition && remainingQuizzesCondition && freeSubscriptionCondition) ||
+                    (lessonsModeCondition && remainingLessonsCondition && freeSubscriptionCondition))
+        });
 
-        if (selectedMode === 'lessons' && remainingLessons !== null && remainingLessons == 5 && learnerInfo?.subscription === 'free') {
-            console.log('[UpgradeNudgeModal] Showing modal for lessons');
-            setShowUpgradeNudgeModal(true);
-        } else {
-            console.log('[UpgradeNudgeModal] Not showing modal ', remainingLessons);
-        }
-    }, [remainingQuizzes, remainingLessons, learnerInfo?.subscription]);
+        // Only show video nudge if conditions are met AND we haven't played the video in this session
+        if (!hasPlayedVideoInSession &&
+            ((selectedMode === 'quiz' && remainingQuizzes !== null && remainingQuizzes === 5 && learnerInfo?.subscription === 'free') ||
+                (selectedMode === 'lessons' && remainingLessons !== null && remainingLessons === 5 && learnerInfo?.subscription === 'free'))) {
 
-    // Add this function to handle upgrade
-    const handleUpgrade = () => {
-        setShowUpgradeNudgeModal(false);
-        setShowPaywall(true);
-    };
+            console.log('Showing video nudge');
+            setHasPlayedVideoInSession(true);
+            setShowVideoNudge(true);
+        }
+    }, [remainingQuizzes, remainingLessons, learnerInfo?.subscription, selectedMode, hasPlayedVideoInSession]);
+
 
     if (isLoading) {
         return (
@@ -2917,7 +2954,6 @@ export default function QuizScreen() {
                     end={{ x: 0, y: 1 }}
                     testID="quiz-mode-selection"
                 >
-
                     <ScrollView style={styles.container}>
                         <View style={styles.paperSelectionContainer}>
                             <TouchableOpacity
@@ -2992,6 +3028,8 @@ export default function QuizScreen() {
                                         });
                                     } else {
                                         handlePaperSelect(paper);
+                                        if (selectedMode === 'quiz' && step === 2) incrementStep();
+                                        if (selectedMode === 'lessons' && step === 3) incrementStep();
                                     }
                                 }}
                                 onLoadQuestion={loadQuestion}
@@ -3051,6 +3089,15 @@ export default function QuizScreen() {
 
                         </View>
                     </ScrollView>
+                    {step === 2 && (
+                        <Tutorial colors={colors} isDark={isDark} step={2} />
+                    )}
+                    {step === 3 && (
+                        <Tutorial colors={colors} isDark={isDark} step={3} />
+                    )}
+                    {step === 4 && (
+                        <Tutorial colors={colors} isDark={isDark} step={4} />
+                    )}
                 </LinearGradient>
                 {renderRecordingPlayerModal()}
             </>
@@ -3369,13 +3416,14 @@ export default function QuizScreen() {
 
             </LinearGradient>
             {renderRecordingPlayerModal()}
-            <UpgradeNudgeModal
-                isVisible={showUpgradeNudgeModal}
-                onClose={() => setShowUpgradeNudgeModal(false)}
-                onUpgrade={handleUpgrade}
-                isDark={isDark}
-                selectedMode={selectedMode}
-            />
+            {showVideoNudge && (
+                <VideoNudge
+                    remainingItems={selectedMode === 'lessons' ? remainingLessons : (remainingQuizzes ?? 0)}
+                    isVisible={showVideoNudge}
+                    isDark={isDark}
+                />
+            )}
+
         </>
     );
 }// Add helper function to get subject icons

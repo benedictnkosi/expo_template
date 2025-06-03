@@ -42,12 +42,8 @@ export default function PostsScreen() {
     const loadPosts = async () => {
         try {
             setIsLoading(true);
-            const fetchedPosts = await getPosts({
-                tag: subjectName as string,
-                orderBy: 'createdAt',
-                orderDirection: 'desc'
-            });
-            setPosts(fetchedPosts);
+            const fetchedPosts = await getPosts(10);
+            setPosts(fetchedPosts.posts);
         } catch (error) {
             console.error('Error loading posts:', error);
             Toast.show({
