@@ -3,7 +3,7 @@ import RevenueCatUI, { PAYWALL_RESULT } from 'react-native-purchases-ui';
 import Purchases from 'react-native-purchases';
 import { useAuth } from '@/contexts/AuthContext';
 import { analytics } from '@/services/analytics';
-import { ATMPaymentModal } from './ATMPaymentModal';
+import { ThemedText } from './ThemedText';
 
 interface PaywallProps {
     onSuccess?: () => void;
@@ -78,10 +78,7 @@ export function Paywall({ onSuccess, onClose, offerings }: PaywallProps) {
 
     return (
         <>
-            <ATMPaymentModal
-                isVisible={showATMModal}
-                onClose={handleATMModalClose}
-            />
+            <ThemedText>Paywall</ThemedText>
         </>
     );
 } 

@@ -17,7 +17,6 @@ import { registerForPushNotificationsAsync, handleNotificationDeepLink } from '@
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { styles } from '@/styles/global';
-import { TutorialProvider } from './components/Tutorial';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -84,46 +83,46 @@ function RootLayoutNav() {
   const { colors } = useTheme();
 
   return (
-    <TutorialProvider>
-      <AuthProvider>
-        <RevenueCatProvider>
-          <AuthLayout />
-          <Stack
-            screenOptions={{
+
+    <AuthProvider>
+      <RevenueCatProvider>
+        <AuthLayout />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background }
+          }}
+        >
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="register" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="quiz"
+            options={{
               headerShown: false,
-              contentStyle: { backgroundColor: colors.background }
+              presentation: 'fullScreenModal'
             }}
-          >
-            <Stack.Screen name="login" options={{ headerShown: false }} />
-            <Stack.Screen name="register" options={{ headerShown: false }} />
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="quiz"
-              options={{
-                headerShown: false,
-                presentation: 'fullScreenModal'
-              }}
-            />
-            <Stack.Screen
-              name="maths"
-              options={{
-                headerShown: false,
-                presentation: 'fullScreenModal'
-              }}
-            />
-            <Stack.Screen
-              name="profile"
-              options={{
-                headerShown: false,
-                presentation: 'modal'
-              }}
-            />
-          </Stack>
-          <Toast config={toastConfig} />
-        </RevenueCatProvider>
-      </AuthProvider>
-    </TutorialProvider>
+          />
+          <Stack.Screen
+            name="maths"
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal'
+            }}
+          />
+          <Stack.Screen
+            name="profile"
+            options={{
+              headerShown: false,
+              presentation: 'modal'
+            }}
+          />
+        </Stack>
+        <Toast config={toastConfig} />
+      </RevenueCatProvider>
+    </AuthProvider>
+
   );
 }
 

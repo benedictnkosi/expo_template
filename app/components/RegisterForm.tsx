@@ -5,7 +5,6 @@ import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemedText } from '@/components/ThemedText';
 import Toast from 'react-native-toast-message';
-import { createLearner } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { OnboardingData } from '../onboarding';
 import { analytics } from '@/services/analytics';
@@ -140,25 +139,6 @@ export default function RegisterForm({ onboardingData, defaultMethod = 'email' }
                     avatar: onboardingData.avatar,
                 };
 
-                const learner = await createLearner(user.uid, learnerData);
-                if (learner.status !== 'OK') {
-                    Toast.show({
-                        type: 'error',
-                        text1: 'Warning',
-                        text2: 'Account created but failed to save preferences',
-                        position: 'bottom',
-                        visibilityTime: 3000,
-                        autoHide: true,
-                        topOffset: 30,
-                        bottomOffset: 40
-                    });
-
-                    await logAnalyticsEvent('register_failed', {
-                        user_id: user.uid,
-                        email: userEmail,
-                        error: learner.status
-                    });
-                }
             }
 
             // Store auth token

@@ -9,11 +9,9 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
-import RegisterForm from './components/RegisterForm';
 import { analytics } from '../services/analytics';
-import { API_BASE_URL } from '@/config/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { createLearner } from '@/services/api';
+import RegisterForm from './components/RegisterForm';
 
 const SUPERHERO_NAMES = [
   'Spider-Man',
@@ -162,14 +160,14 @@ function getRandomSuperheroName(): string {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const ILLUSTRATIONS = {
-  welcome: require('@/assets/images/dimpo/grad.png'),
-  grade: require('@/assets/images/illustrations/stressed.png'),
-  school: require('@/assets/images/illustrations/friends.png'),
-  ready: require('@/assets/images/illustrations/exam.png'),
-  podcast: require('@/assets/images/dimpo/podcast.png'),
-  maths: require('@/assets/images/dimpo/maths.png'),
-  questions: require('@/assets/images/dimpo/subjects.png'),
+const EMOJIS = {
+  welcome: '🚀',
+  grade: '📚',
+  school: '👥',
+  ready: '✍️',
+  podcast: '🎧',
+  maths: '🧮',
+  questions: '❓',
 };
 
 type AvatarImages = {
@@ -209,6 +207,105 @@ async function logAnalyticsEvent(eventName: string, eventParams?: Record<string,
 }
 
 const EARLY_GRADE_INFO_STEP = 4.5;
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+interface GuestAccountParams {
+  grade: string;
+  selectedAvatar: string;
+  signUp: (email: string, password: string) => Promise<any>;
+}
+
+interface FirebaseError extends Error {
+  code?: string;
+  name: string;
+  message: string;
+  stack?: string;
+}
+
+async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccountParams, retryCount = 0): Promise<any> {
+  try {
+    console.log(`[Guest Account] Attempt ${retryCount + 1}/${MAX_RETRIES} - Starting guest account creation`);
+
+    // Generate a 16-character UID
+    const guestUid = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .slice(0, 16);
+
+    const guestEmail = `${guestUid}@guest.com`;
+    const defaultPassword = 'password';
+
+    console.log('[Guest Account] Generated credentials:', { guestEmail });
+
+    // Register the guest user
+    console.log('[Guest Account] Attempting to sign up with Firebase...');
+    const user = await signUp(guestEmail, defaultPassword);
+    console.log('[Guest Account] Firebase signup successful:', { uid: user?.uid });
+
+    // Create learner profile for guest
+    const learnerData = {
+      name: getRandomSuperheroName(),
+      grade: parseInt(grade),
+      school: 'Not specified',
+      school_address: '',
+      school_latitude: 0,
+      school_longitude: 0,
+      curriculum: 'CAPS',
+      terms: "1,2,3,4",
+      email: guestEmail,
+      avatar: selectedAvatar,
+    };
+
+    console.log('[Guest Account] Created learner data:', learnerData);
+
+    // Store onboarding data
+    console.log('[Guest Account] Storing onboarding data...');
+    await AsyncStorage.setItem('onboardingData', JSON.stringify({
+      grade,
+      curriculum: 'CAPS',
+      avatar: selectedAvatar,
+      onboardingCompleted: true,
+      isGuest: true
+    }));
+
+    // Log onboarding completion event
+    console.log('[Guest Account] Logging analytics event...');
+    logAnalyticsEvent('register_success', {
+      grade,
+      curriculum: 'CAPS',
+      avatar: selectedAvatar,
+      is_guest: true
+    });
+
+    // Store auth token
+    console.log('[Guest Account] Storing auth token...');
+    await SecureStore.setItemAsync('auth', JSON.stringify({ user }));
+
+    console.log('[Guest Account] Guest account creation completed successfully');
+    return user;
+  } catch (error: unknown) {
+    const firebaseError = error as FirebaseError;
+    console.error('[Guest Account] Error details:', {
+      error: firebaseError,
+      errorName: firebaseError.name,
+      errorMessage: firebaseError.message,
+      errorCode: firebaseError.code,
+      errorStack: firebaseError.stack,
+      retryCount,
+      timestamp: new Date().toISOString()
+    });
+
+    if (retryCount < MAX_RETRIES) {
+      console.log(`[Guest Account] Retrying in ${RETRY_DELAY}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return createGuestAccount({ grade, selectedAvatar, signUp }, retryCount + 1);
+    }
+    throw error;
+  }
+}
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
@@ -331,13 +428,10 @@ export default function OnboardingScreen() {
       case 0:
         return (
           <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="welcome-step">
-            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
-              <Image
-                source={ILLUSTRATIONS.welcome}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
-                testID="welcome-illustration"
-              />
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="welcome-emoji">
+                {EMOJIS.welcome}
+              </ThemedText>
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="welcome-text-container">
               <ThemedText style={[styles.welcomeTitle, { fontSize: 24, marginBottom: 24 }]} testID="welcome-title">
@@ -352,13 +446,10 @@ export default function OnboardingScreen() {
       case 1:
         return (
           <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="audio-lesson-step">
-            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
-              <Image
-                source={ILLUSTRATIONS.podcast}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
-                testID="podcast-illustration"
-              />
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="podcast-emoji">
+                {EMOJIS.podcast}
+              </ThemedText>
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="audio-lesson-text-container">
               <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="audio-lesson-title">
@@ -373,13 +464,10 @@ export default function OnboardingScreen() {
       case 2:
         return (
           <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="maths-practice-step">
-            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
-              <Image
-                source={ILLUSTRATIONS.maths}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
-                testID="maths-illustration"
-              />
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="maths-emoji">
+                {EMOJIS.maths}
+              </ThemedText>
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="maths-practice-text-container">
               <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="maths-practice-title">
@@ -394,13 +482,10 @@ export default function OnboardingScreen() {
       case 3:
         return (
           <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="questions-step">
-            <View style={{ width: '100%', height: 300, marginBottom: 40 }}>
-              <Image
-                source={ILLUSTRATIONS.questions}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
-                testID="questions-illustration"
-              />
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="questions-emoji">
+                {EMOJIS.questions}
+              </ThemedText>
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="questions-text-container">
               <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="questions-title">
@@ -578,80 +663,45 @@ export default function OnboardingScreen() {
               <TouchableOpacity
                 style={[styles.authButton, styles.guestButton]}
                 onPress={async () => {
-                  logAnalyticsEvent('auth_option_selected', { option: 'guest' });
-
-                  // Generate a 16-character UID
-                  const guestUid = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-                    .map(b => b.toString(16).padStart(2, '0'))
-                    .join('')
-                    .slice(0, 16);
-
-                  const guestEmail = `${guestUid}@guest.com`;
-                  const defaultPassword = 'password';
-
                   try {
-                    // Register the guest user
-                    const user = await signUp(guestEmail, defaultPassword);
+                    console.log('[Guest Button] Starting guest account creation process');
+                    logAnalyticsEvent('auth_option_selected', { option: 'guest' });
 
-                    // Create learner profile for guest
-                    const learnerData = {
-                      name: getRandomSuperheroName(),
-                      grade: parseInt(grade),
-                      school: 'Not specified',
-                      school_address: '',
-                      school_latitude: 0,
-                      school_longitude: 0,
-                      curriculum: 'CAPS',
-                      terms: "1,2,3,4",
-                      email: guestEmail,
-                      avatar: selectedAvatar,
-                    };
-
-                    const learner = await createLearner(user.uid, learnerData);
-                    if (learner.status !== 'OK') {
-                      Toast.show({
-                        type: 'error',
-                        text1: 'Warning',
-                        text2: 'Account created but failed to save preferences',
-                        position: 'bottom'
-                      });
-
-                      await logAnalyticsEvent('register_failed', {
-                        user_id: user.uid,
-                        email: guestEmail,
-                        error: learner.status
-                      });
-                    }
-
-                    // Store onboarding data
-                    await AsyncStorage.setItem('onboardingData', JSON.stringify({
-                      grade,
-                      curriculum: 'CAPS',
-                      avatar: selectedAvatar,
-                      onboardingCompleted: true,
-                      isGuest: true
-                    }));
-
-                    // Log onboarding completion event
-                    logAnalyticsEvent('register_success', {
-                      grade,
-                      curriculum: 'CAPS',
-                      avatar: selectedAvatar,
-                      is_guest: true
+                    // Show loading state
+                    Toast.show({
+                      type: 'info',
+                      text1: 'Creating guest account...',
+                      position: 'bottom',
+                      visibilityTime: 2000,
                     });
 
-                    // Store auth token
-                    await SecureStore.setItemAsync('auth', JSON.stringify({ user }));
+                    const user = await createGuestAccount({
+                      grade,
+                      selectedAvatar,
+                      signUp
+                    });
 
+                    console.log('[Guest Button] Guest account created successfully, navigating to tabs');
                     // Navigate to tabs
                     router.replace('/(tabs)');
-                  } catch (error) {
-                    console.error('Failed to create guest account:', error);
+                  } catch (error: unknown) {
+                    const firebaseError = error as FirebaseError;
+                    console.error('[Guest Button] Fatal error in guest account creation:', {
+                      error: firebaseError,
+                      errorName: firebaseError.name,
+                      errorMessage: firebaseError.message,
+                      errorCode: firebaseError.code,
+                      errorStack: firebaseError.stack,
+                      timestamp: new Date().toISOString()
+                    });
+
+                    // Show user-friendly error message
                     Toast.show({
                       type: 'error',
-                      text1: 'Error',
-                      text2: 'Failed to create guest account',
-                      position: 'bottom'
+                      text1: 'Connection Error',
+                      text2: 'Please check your internet connection and try again',
+                      position: 'bottom',
+                      visibilityTime: 4000,
                     });
                   }
                 }}

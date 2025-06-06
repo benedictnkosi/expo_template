@@ -41,20 +41,11 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
-        name="reading"
+        name="profile"
         options={{
-          title: 'Reading',
+          title: 'Profile',
           tabBarIcon: ({ color }) => (
             <Text style={{ fontSize: 24 }}>📖</Text>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="timetable"
-        options={{
-          title: 'Calendar',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>📅</Text>
           ),
         }}
       />
@@ -86,24 +77,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chats',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>💬</Text>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="social"
-        options={{
-          title: 'Social',
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 24 }}>👥</Text>
-          ),
-        }}
-      />
+
     </Tabs>
   );
 }
