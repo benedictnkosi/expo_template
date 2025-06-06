@@ -1214,7 +1214,7 @@ export default function QuizScreen() {
     const [studyKitKey, setStudyKitKey] = useState(0);
     const [showVideoNudge, setShowVideoNudge] = useState(false);
     const [hasPlayedVideoInSession, setHasPlayedVideoInSession] = useState(false);
-    const { step, incrementStep } = useTutorial();
+    const { step, incrementStep, setStep } = useTutorial();
 
     // Available terms
     const TERMS = [1, 2, 3, 4];
@@ -1471,14 +1471,6 @@ export default function QuizScreen() {
                 }
             }
 
-            if (selectedMode === 'lessons') {
-                logAnalyticsEvent('lesson_view', {
-                    user_id: user.uid,
-                    subject_name: subjectName,
-                    paper_name: paper
-                });
-            }
-
             // Only fetch stats from API for regular quiz (not topic quiz)
             if (!currentTopic) {
                 console.log('Fetching regular quiz stats');
@@ -1653,10 +1645,12 @@ export default function QuizScreen() {
             if (response.streakUpdated && response.correct) {
                 setCurrentStreak(response.streak);
                 setShowStreakModal(true);
-                // Prompt for rating after streak achievement
-                setTimeout(() => {
-                    handleRating();
-                }, 2000);
+                // Only prompt for rating after significant streak milestones (e.g., 5, 10, 25, 50)
+                if (response.streak % 5 === 0) {
+                    setTimeout(() => {
+                        handleRating();
+                    }, 2000);
+                }
             } else if (response.streakUpdated) {
                 setCurrentStreak(response.streak);
                 setShowStreakModal(true);
@@ -1711,7 +1705,7 @@ export default function QuizScreen() {
             await playSound(response.correct);
 
 
-            // Check if we should show rating prompt after correct answer
+            // Remove the rating prompt after correct answer
             if (response.correct) {
                 try {
                     const hasRated = await SecureStore.getItemAsync('has_reviewed_app');
@@ -1724,17 +1718,10 @@ export default function QuizScreen() {
 
                             // Only show if we've passed the next prompt date
                             if (now >= nextPromptDate) {
-                                setTimeout(() => {
-                                    handleRating();
-                                    setHasShownRating(true);
-                                }, 2000);
+                                // Removed rating prompt after correct answer
                             }
                         } else {
-                            // First time showing the prompt
-                            setTimeout(() => {
-                                handleRating();
-                                setHasShownRating(true);
-                            }, 2000);
+                            // Removed first time rating prompt
                         }
                     }
                 } catch (error) {
@@ -2660,6 +2647,15 @@ export default function QuizScreen() {
         setSelectedPaper(paper);
         setSelectedTopic(null); // Reset the selected topic
         loadQuestion(paper);
+
+        // Handle tutorial step progression
+        if (selectedMode === 'quiz') {
+            if (step === 2) {
+                incrementStep();
+                // Set step to 4 to show topic selection tutorial
+                setStep(4);
+            }
+        }
     };
 
     const fetchTopicProgress = async (topic: string) => {

@@ -3,6 +3,7 @@ import { View, Image, StyleSheet } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { analytics } from '@/services/analytics';
 
 interface TutorialContextType {
     step: number;
@@ -22,7 +23,9 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         (async () => {
             const stored = await AsyncStorage.getItem('tutorialStep');
+            const isCompleted = await AsyncStorage.getItem('tutorialCompleted');
             if (stored) setStepState(Number(stored));
+            if (isCompleted === 'true') setIsVisible(false);
         })();
     }, []);
 
@@ -31,26 +34,49 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
         AsyncStorage.setItem('tutorialStep', newStep.toString());
     };
 
-    const incrementStep = () => {
+    const incrementStep = async () => {
         setStepState(prev => {
             const next = Math.min(prev + 1, 4);
             AsyncStorage.setItem('tutorialStep', next.toString());
+
+            // Log analytics event for tutorial step
+            analytics.track('tutorial_step_completed', {
+                step_number: prev,
+                step_label: tutorialSteps[prev - 1].label,
+                next_step: next,
+                next_step_label: tutorialSteps[next - 1].label,
+                progress: tutorialSteps[next - 1].progress
+            }).catch(error => {
+                console.error('[Analytics] Error logging tutorial step:', error);
+            });
+
             if (next === 4) {
-                // Close tutorial after step 4
+                // Log tutorial completion event
+                analytics.track('tutorial_completed', {
+                    total_steps: 4,
+                    final_progress: 80
+                }).catch(error => {
+                    console.error('[Analytics] Error logging tutorial completion:', error);
+                });
+
+                // Close tutorial after step 4 and persist completion state
                 setIsVisible(false);
+                AsyncStorage.setItem('tutorialCompleted', 'true');
             }
             return next;
         });
     };
 
-    const resetTutorial = () => {
+    const resetTutorial = async () => {
         setStepState(1);
         setIsVisible(true);
         AsyncStorage.setItem('tutorialStep', '1');
+        AsyncStorage.setItem('tutorialCompleted', 'false');
     };
 
-    const closeTutorial = () => {
+    const closeTutorial = async () => {
         setIsVisible(false);
+        AsyncStorage.setItem('tutorialCompleted', 'true');
     };
 
     return (

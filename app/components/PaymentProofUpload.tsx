@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, ScrollView } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { ThemedText } from './ThemedText';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,9 +28,21 @@ export function PaymentProofUpload() {
     const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(null);
     const [showPickerModal, setShowPickerModal] = useState(false);
     const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const errorRef = useRef<View>(null);
+    const scrollViewRef = useRef<ScrollView>(null);
+
+    useEffect(() => {
+        if (error) {
+            setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        }
+    }, [error]);
 
     async function pickFileAndUpload() {
         try {
+            setError(null);
             const result = await DocumentPicker.getDocumentAsync({
                 type: ['image/*', 'application/pdf'],
                 copyToCacheDirectory: true,
@@ -40,12 +52,7 @@ export function PaymentProofUpload() {
                 if (!asset.size) throw new Error('Could not determine file size');
                 const fileSizeInMB = asset.size / (1024 * 1024);
                 if (fileSizeInMB > MAX_FILE_SIZE_MB) {
-                    Toast.show({
-                        type: 'error',
-                        text1: 'File Too Large',
-                        text2: `Please select a file under ${MAX_FILE_SIZE_MB}MB`,
-                        position: 'bottom'
-                    });
+                    setError(`Please select a file under ${MAX_FILE_SIZE_MB}MB`);
                     return;
                 }
                 setSelectedFile({
@@ -54,7 +61,6 @@ export function PaymentProofUpload() {
                     mimeType: asset.mimeType || 'application/octet-stream',
                 });
                 setFileName(asset.name);
-                // Immediately upload after selection
                 handleFileUpload({
                     uri: asset.uri,
                     name: asset.name,
@@ -63,12 +69,7 @@ export function PaymentProofUpload() {
             }
         } catch (error) {
             console.error('Error picking file:', error);
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Failed to pick file. Please try again.',
-                position: 'bottom'
-            });
+            setError('Failed to pick file. Please try again.');
         } finally {
             setShowPickerModal(false);
         }
@@ -77,28 +78,18 @@ export function PaymentProofUpload() {
     async function handleFileUpload(file?: SelectedFile) {
         const fileToUpload = file || selectedFile;
         if (!fileToUpload || !user?.uid) {
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: 'Please select a file first',
-                position: 'bottom'
-            });
+            setError('Please select a file first');
             return;
         }
         setIsUploading(true);
+        setError(null);
         try {
-            // Double check file size before upload
             const fileInfo = await FileSystem.getInfoAsync(fileToUpload.uri);
             if (!fileInfo.exists || !fileInfo.size) {
                 throw new Error('File not found or could not determine size');
             }
             if (fileInfo.size > MAX_FILE_SIZE_BYTES) {
-                Toast.show({
-                    type: 'error',
-                    text1: 'File Too Large',
-                    text2: `Please select a file under ${MAX_FILE_SIZE_MB}MB`,
-                    position: 'bottom'
-                });
+                setError(`Please select a file under ${MAX_FILE_SIZE_MB}MB`);
                 return;
             }
             const formData = new FormData();
@@ -108,7 +99,6 @@ export function PaymentProofUpload() {
                 type: fileToUpload.mimeType,
             } as any);
             formData.append('learner_id', user.uid);
-            console.log('[PaymentProofUpload] Uploading proof of payment:', formData);
             const response = await fetch(`${HOST_URL}/api/payment-proof/upload`, {
                 method: 'POST',
                 headers: {
@@ -116,10 +106,9 @@ export function PaymentProofUpload() {
                 },
                 body: formData,
             });
-            console.log('[PaymentProofUpload] Upload API response:', response);
             const data = await response.json();
-            console.log('[PaymentProofUpload] Upload API response:', data);
             if (data.status === 'OK' && data.subscription) {
+                console.log('PaymentProofUpload data', data);
                 setUploadResult(data);
                 setSubscriptionEndDate(data.subscription.end_date);
                 setShowConfetti(true);
@@ -127,40 +116,20 @@ export function PaymentProofUpload() {
                 setSelectedFile(null);
                 setFileName(null);
             } else if (data.status === 'ERROR' && data.message) {
+                console.log('PaymentProofUpload data', data);
                 let userMessage = data.message;
                 if (userMessage.includes('already been processed') || userMessage.includes('Duplicate payment')) {
                     userMessage = 'This payment has already been processed. Please do not upload the same proof again.';
                 }
-                Toast.show({
-                    type: 'error',
-                    text1: 'Upload Failed',
-                    text2: userMessage,
-                    position: 'bottom',
-                    visibilityTime: 5000
-                });
-                return;
+                setError(userMessage);
             } else if (data.status === 'NOK' && data.message) {
                 let userMessage = data.message;
                 if (userMessage.includes('already been processed') || userMessage.includes('Duplicate payment')) {
                     userMessage = 'This payment has already been processed. Please do not upload the same proof again.';
                 }
-                Toast.show({
-                    type: 'error',
-                    text1: 'Upload Failed',
-                    text2: userMessage,
-                    position: 'bottom',
-                    visibilityTime: 5000
-                });
-                return;
+                setError(userMessage);
             } else {
-                Toast.show({
-                    type: 'error',
-                    text1: 'Upload Failed',
-                    text2: data.message || 'Upload failed',
-                    position: 'bottom',
-                    visibilityTime: 5000
-                });
-                return;
+                setError(data.message || 'Upload failed');
             }
         } catch (error) {
             console.error('[PaymentProofUpload] Upload error:', error);
@@ -172,21 +141,18 @@ export function PaymentProofUpload() {
                     errorMessage = error.message;
                 }
             }
-            Toast.show({
-                type: 'error',
-                text1: 'Error',
-                text2: errorMessage,
-                position: 'bottom',
-                visibilityTime: 5000
-            });
-            return;
+            setError(errorMessage);
         } finally {
             setIsUploading(false);
         }
     }
 
     return (
-        <View style={styles.container}>
+        <ScrollView
+            ref={scrollViewRef}
+            style={styles.container}
+            contentContainerStyle={styles.contentContainer}
+        >
             <TouchableOpacity
                 style={styles.button}
                 onPress={() => setShowPickerModal(true)}
@@ -231,6 +197,12 @@ export function PaymentProofUpload() {
             )}
 
             {!selectedFile && isUploading && <ActivityIndicator style={{ marginTop: 12 }} />}
+
+            {error && (
+                <View style={styles.errorContainer}>
+                    <ThemedText style={styles.errorText}>{error}</ThemedText>
+                </View>
+            )}
 
             {uploadResult && uploadResult.status === 'OK' && (
                 <View style={styles.resultBox}>
@@ -278,13 +250,19 @@ export function PaymentProofUpload() {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+        flex: 1,
+        width: '100%',
+    },
+    contentContainer: {
+        flexGrow: 1,
         alignItems: 'center',
+        paddingBottom: 20,
     },
     button: {
         backgroundColor: '#4F46E5',
@@ -395,5 +373,17 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: '600',
         fontSize: 14,
+    },
+    errorContainer: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 8,
+        width: '100%',
+    },
+    errorText: {
+        color: '#DC2626',
+        fontSize: 14,
+        textAlign: 'center',
     },
 }); 

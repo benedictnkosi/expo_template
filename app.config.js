@@ -1,7 +1,7 @@
 export default {
   name: 'Dimpo',
   slug: 'exam-quiz',
-  version: '2.8.7',
+  version: '3.0.38',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'examquiz',

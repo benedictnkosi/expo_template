@@ -139,7 +139,7 @@ export default function InfoScreen() {
         </TouchableOpacity>
 
         <ThemedText style={[styles.versionText, { color: colors.textSecondary }]}>
-          Version 3.0.2876543210
+          Version 3.0.38765432109876543210
         </ThemedText>
 
       </ScrollView>

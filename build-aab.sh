@@ -42,7 +42,12 @@ sed -i '' "s/Version [0-9]\.[0-9]\.[0-9]/Version $NEW_NAME/" app/info.tsx
 
 # Update version in app.config.js
 echo "Updating version in app.config.js..."
-sed -i '' "s/version: '[0-9]\+\.[0-9]\+\.[0-9]\+'/version: '$NEW_NAME'/" app.config.js
+echo "Current version in app.config.js:"
+grep "version:" app.config.js
+echo "Attempting to update to version: $NEW_NAME"
+awk -v new_version="$NEW_NAME" '/version:/ { print "  version: '\''" new_version "'\'',"; next } 1' app.config.js > app.config.js.tmp && mv app.config.js.tmp app.config.js
+echo "Version after update in app.config.js:"
+grep "version:" app.config.js
 
 #copy build.gradle to android directory
 echo "Copying build.gradle to android directory..."

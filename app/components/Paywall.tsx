@@ -51,11 +51,7 @@ export function Paywall({ onSuccess, onClose, offerings }: PaywallProps) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 onSuccess?.();
             } else {
-                // Track paywall closed without purchase
-                await analytics.track('paywall_closed', {
-                    userId: user.uid,
-                    timestamp: new Date().toISOString()
-                });
+
                 setShowATMModal(true);
             }
         } catch (error) {

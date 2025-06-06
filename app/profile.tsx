@@ -688,13 +688,6 @@ export default function ProfileScreen() {
                           setEditTerms(termsArray.concat(term.toString()).join(','));
                         }
 
-                        // Log terms change event
-                        logAnalyticsEvent('terms_change', {
-                          user_id: user?.uid,
-                          terms: termsArray.includes(term.toString()) ?
-                            termsArray.filter(t => t !== term.toString()).join(',') :
-                            termsArray.concat(term.toString()).join(',')
-                        });
                       }}
                     >
                       <ThemedText style={[

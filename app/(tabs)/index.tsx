@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, TouchableOpacity, View, ScrollView, Image, Platform, Modal, Linking, Share, ActivityIndicator, Switch, AppState, Alert, Dimensions } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,10 +26,7 @@ import { RandomLessonPreview } from '@/components/RandomLessonPreview';
 import { getSubjectIcon } from '@/utils/subjectIcons';
 import { WelcomeModal } from '../components/WelcomeModal';
 import subjectEmojis from '@/assets/subject-emojis.json';
-import { SubjectPicker } from '@/components/SubjectPicker';
 import { NextChapterCard } from '@/components/reading/next-chapter-card';
-import { UpgradeToProButton } from '../components/UpgradeToProButton';
-import { Paywall } from '../components/Paywall';
 import { ProPromoCard } from '@/components/ProPromoCard';
 import { Tutorial, useTutorial } from '../components/Tutorial';
 
@@ -409,7 +405,6 @@ export default function HomeScreen() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [notificationsDismissed, setNotificationsDismissed] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
   const { step, incrementStep } = useTutorial();
 
   // Check for saved notification preferences on mount
@@ -1560,15 +1555,9 @@ export default function HomeScreen() {
         onClose={handleCloseWelcomeModal}
       />
 
-      {showPaywall && (
-        <Paywall
-          onSuccess={() => setShowPaywall(false)}
-          onClose={() => setShowPaywall(false)}
-        />
-      )}
 
       {/* Add Clear Data Test Button */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={[styles.testButton, {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderColor: colors.border
@@ -1580,7 +1569,7 @@ export default function HomeScreen() {
         <ThemedText style={[styles.testButtonText, { color: colors.text }]}>
           Clear App Data
         </ThemedText>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </LinearGradient>
   );
 }
