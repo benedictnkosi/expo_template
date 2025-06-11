@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { StyleSheet, Pressable, ActivityIndicator, ScrollView, View, Animated } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { HOST_URL } from '@/config/api';
-import { ProfileHeader } from '@/components/ProfileHeader';
+import { LessonHeader } from '@/components/LessonHeader';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system';
+import type { DownloadProgressData } from 'expo-file-system';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Lesson {
     id: number;
@@ -17,11 +21,13 @@ interface Lesson {
     unitName: string;
     hasLanguageWords: boolean;
     unitOrder: number;
+    unitDescription?: string;
 }
 
 interface Unit {
     id: number;
     name: string;
+    description?: string;
     lessons: Lesson[];
     unitOrder: number;
 }
@@ -40,6 +46,21 @@ interface UnitResources {
     images: string[];
 }
 
+interface DownloadProgress {
+    total: number;
+    completed: number;
+    currentFile?: {
+        name: string;
+        progress: number;
+    };
+}
+
+const LESSON_STATUS = {
+    completed: { icon: '⭐️', color: '#22c55e', label: 'Perfect!' },
+    started: { icon: '✅', color: '#fbbf24', label: 'In Progress' },
+    not_started: { icon: '🎯', color: '#38bdf8', label: 'Locked' },
+};
+
 export default function LessonsScreen() {
     const { languageCode, languageName } = useLocalSearchParams();
     const [units, setUnits] = useState<Unit[]>([]);
@@ -47,7 +68,11 @@ export default function LessonsScreen() {
     const [error, setError] = useState<string | null>(null);
     const [learnerProgress, setLearnerProgress] = useState<LessonProgress[]>([]);
     const [downloadedResources, setDownloadedResources] = useState<Set<string>>(new Set());
+    const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
     const router = useRouter();
+    const [showScrollTop, setShowScrollTop] = useState(false);
+    const scrollViewRef = useRef<ScrollView>(null);
+    const fadeAnim = useRef(new Animated.Value(0)).current;
 
     // Function to determine if a unit is locked
     const isUnitLocked = (unitId: number): boolean => {
@@ -103,42 +128,17 @@ export default function LessonsScreen() {
         const currentLesson = unitLessons.find(l => l.id === lessonId);
         const currentLessonOrder = currentLesson?.lessonOrder || 0;
 
+        // If the previous lesson is completed, unlock this lesson
+        const previousLesson = unitLessons.find(l => l.lessonOrder === currentLessonOrder - 1);
+        if (previousLesson) {
+            const previousLessonProgress = learnerProgress.find(p => p.lessonId === previousLesson.id);
+            if (previousLessonProgress?.status === 'completed') {
+                return false;
+            }
+        }
+
         // Lock if this lesson's order is higher than the highest started/completed lesson
         return currentLessonOrder > highestLessonOrder;
-    };
-
-    // Function to check if resources are already downloaded
-    const areResourcesDownloaded = async (unitId: number): Promise<boolean> => {
-        const key = `unit_${unitId}_${languageCode}_resources`;
-        const downloaded = await SecureStore.getItemAsync(key);
-
-        if (downloaded === 'true') {
-            // Log the paths of downloaded resources
-            const audioDir = `${FileSystem.documentDirectory}audio`;
-            const imageDir = `${FileSystem.documentDirectory}image`;
-
-            try {
-                const audioFiles = await FileSystem.readDirectoryAsync(audioDir);
-                const imageFiles = await FileSystem.readDirectoryAsync(imageDir);
-
-                console.log(`[Unit ${unitId}] Resources already downloaded at:`);
-                console.log(`[Unit ${unitId}] Audio directory: ${audioDir}`);
-                console.log(`[Unit ${unitId}] Audio files:`, audioFiles);
-                console.log(`[Unit ${unitId}] Image directory: ${imageDir}`);
-                console.log(`[Unit ${unitId}] Image files:`, imageFiles);
-            } catch (error) {
-                console.error(`[Unit ${unitId}] Error reading resource directories:`, error);
-            }
-
-            return true;
-        }
-        return false;
-    };
-
-    // Function to mark resources as downloaded
-    const markResourcesAsDownloaded = async (unitId: number) => {
-        const key = `unit_${unitId}_${languageCode}_resources`;
-        await SecureStore.setItemAsync(key, 'true');
     };
 
     // Function to download a single resource
@@ -154,16 +154,58 @@ export default function LessonsScreen() {
 
         const fileUri = `${FileSystem.documentDirectory}${type}/${resourceName}`;
 
+        // Check if file already exists
+        try {
+            const fileInfo = await FileSystem.getInfoAsync(fileUri);
+            if (fileInfo.exists) {
+                console.log(`[Resource] ${type} ${resourceName} already exists on disk`);
+                setDownloadedResources(prev => new Set([...prev, resourceName]));
+                setDownloadProgress(prev => prev ? {
+                    ...prev,
+                    completed: prev.completed + 1,
+                    currentFile: undefined
+                } : null);
+                return;
+            }
+        } catch (error) {
+            console.error(`[Resource] Error checking file existence for ${type} ${resourceName}:`, error);
+        }
+
         console.log(`[Resource] Starting download of ${type} ${resourceName}`);
         console.log(`[Resource] From: ${endpoint}`);
         console.log(`[Resource] To: ${fileUri}`);
 
         try {
-            const downloadResult = await FileSystem.downloadAsync(endpoint, fileUri);
+            const downloadResumable = FileSystem.createDownloadResumable(
+                endpoint,
+                fileUri,
+                {},
+                (progress) => {
+                    setDownloadProgress(prev => prev ? {
+                        ...prev,
+                        currentFile: {
+                            name: resourceName,
+                            progress: progress.totalBytesWritten / progress.totalBytesExpectedToWrite
+                        }
+                    } : null);
+                }
+            );
+
+            const downloadResult = await downloadResumable.downloadAsync();
+
+            if (!downloadResult) {
+                throw new Error('Download failed - no result returned');
+            }
+
             if (downloadResult.status === 200) {
                 console.log(`[Resource] Successfully downloaded ${type} ${resourceName}`);
                 console.log(`[Resource] File size: ${downloadResult.headers['content-length'] || 'unknown'} bytes`);
                 setDownloadedResources(prev => new Set([...prev, resourceName]));
+                setDownloadProgress(prev => prev ? {
+                    ...prev,
+                    completed: prev.completed + 1,
+                    currentFile: undefined
+                } : null);
             } else {
                 console.error(`[Resource] Failed to download ${type} ${resourceName} - Status: ${downloadResult.status}`);
             }
@@ -175,12 +217,6 @@ export default function LessonsScreen() {
     // Function to download all resources for a unit
     const downloadUnitResources = async (unitId: number) => {
         try {
-            // Check if already downloaded
-            if (await areResourcesDownloaded(unitId)) {
-                console.log(`[Unit ${unitId}] Resources already downloaded`);
-                return;
-            }
-
             console.log(`[Unit ${unitId}] Starting resource download process`);
 
             // Fetch resource list
@@ -191,9 +227,17 @@ export default function LessonsScreen() {
             }
 
             const resources: UnitResources = await response.json();
+            const totalResources = resources.audio.length + resources.images.length;
+
             console.log(`[Unit ${unitId}] Found resources:`, {
                 audioCount: resources.audio.length,
                 imageCount: resources.images.length
+            });
+
+            // Initialize download progress
+            setDownloadProgress({
+                total: totalResources,
+                completed: 0
             });
 
             // Create directories if they don't exist
@@ -209,12 +253,49 @@ export default function LessonsScreen() {
             ];
 
             await Promise.all(downloadPromises);
-            await markResourcesAsDownloaded(unitId);
+            setDownloadProgress(null);
             console.log(`[Unit ${unitId}] Successfully completed all resource downloads`);
         } catch (error) {
             console.error(`[Unit ${unitId}] Error in resource download process:`, error);
+            setDownloadProgress(null);
         }
     };
+
+    // Function to fetch learner progress
+    const fetchProgress = useCallback(async () => {
+        try {
+            const authData = await SecureStore.getItemAsync('auth');
+            if (!authData) {
+                throw new Error('No auth data found');
+            }
+            const { user } = JSON.parse(authData);
+
+            const progressResponse = await fetch(`${HOST_URL}/api/language-learners/${user.uid}/progress/${languageCode}`);
+            if (progressResponse.ok) {
+                const progress: LessonProgress[] = await progressResponse.json();
+                console.log(`[App] Fetched progress for ${progress.length} lessons`);
+                setLearnerProgress(progress);
+                return progress;
+            } else if (progressResponse.status !== 404) {
+                throw new Error('Failed to fetch progress');
+            } else {
+                console.log('[App] No progress found for this language');
+                setLearnerProgress([]);
+                return [];
+            }
+        } catch (error) {
+            console.error('[App] Error fetching progress:', error);
+            return [];
+        }
+    }, [languageCode]);
+
+    // Use focus effect to fetch progress when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            console.log('[App] Screen focused - fetching latest progress');
+            fetchProgress();
+        }, [fetchProgress])
+    );
 
     useEffect(() => {
         async function fetchData() {
@@ -237,21 +318,8 @@ export default function LessonsScreen() {
                 const lessons: Lesson[] = await lessonsResponse.json();
                 console.log(`[App] Fetched ${lessons.length} lessons`);
 
-                // Fetch progress separately to handle 404 case
-                let progress: LessonProgress[] = [];
-                try {
-                    const progressResponse = await fetch(`${HOST_URL}/api/language-learners/${user.uid}/progress/${languageCode}`);
-                    if (progressResponse.ok) {
-                        progress = await progressResponse.json();
-                        console.log(`[App] Fetched progress for ${progress.length} lessons`);
-                    } else if (progressResponse.status !== 404) {
-                        throw new Error('Failed to fetch progress');
-                    } else {
-                        console.log('[App] No progress found for this language');
-                    }
-                } catch (progressError) {
-                    console.error('[App] Error fetching progress:', progressError);
-                }
+                // Fetch initial progress
+                const progress: LessonProgress[] = await fetchProgress();
 
                 // Group lessons by unit
                 const unitMap = new Map<number, Unit>();
@@ -260,6 +328,7 @@ export default function LessonsScreen() {
                         unitMap.set(lesson.unitId, {
                             id: lesson.unitId,
                             name: lesson.unitName,
+                            description: lesson.unitDescription,
                             lessons: [],
                             unitOrder: lesson.unitOrder
                         });
@@ -277,13 +346,12 @@ export default function LessonsScreen() {
                 });
 
                 setUnits(sortedUnits);
-                setLearnerProgress(progress);
 
                 // Download resources for started units or the lowest order unit if no progress
                 if (progress.length > 0) {
                     const startedUnits = new Set(progress
-                        .filter(p => p.status === 'started')
-                        .map(p => p.unitId));
+                        .filter((p: LessonProgress) => p.status === 'started')
+                        .map((p: LessonProgress) => p.unitId));
 
                     console.log(`[App] Found ${startedUnits.size} units with started lessons`);
                     for (const unitId of startedUnits) {
@@ -320,6 +388,50 @@ export default function LessonsScreen() {
             }
         }
 
+        // Update learner progress
+        try {
+            const authData = await SecureStore.getItemAsync('auth');
+            if (!authData) {
+                throw new Error('No auth data found');
+            }
+            const { user } = JSON.parse(authData);
+
+            const progressResponse = await fetch(`${HOST_URL}/api/language-learners/${user.uid}/progress`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    lessonId: lesson.id,
+                    language: languageCode,
+                    status: 'started'
+                })
+            });
+
+            if (!progressResponse.ok) {
+                throw new Error('Failed to update progress');
+            }
+
+            const updatedProgress = await progressResponse.json();
+            console.log('[App] Updated learner progress:', updatedProgress);
+
+            // Update local progress state
+            setLearnerProgress(prev => {
+                const existingProgress = prev.find(p => p.lessonId === lesson.id);
+                if (existingProgress) {
+                    // Do not downgrade from completed to started
+                    if (existingProgress.status === 'completed') {
+                        return prev;
+                    }
+                    return prev.map(p => p.lessonId === lesson.id ? updatedProgress : p);
+                }
+                return [...prev, updatedProgress];
+            });
+        } catch (error) {
+            console.error('[App] Error updating learner progress:', error);
+            // Continue with navigation even if progress update fails
+        }
+
         console.log('[App] Navigating to lesson:', lesson.title);
 
         router.push({
@@ -338,82 +450,217 @@ export default function LessonsScreen() {
         return learnerProgress.find(p => p.lessonId === lessonId);
     };
 
+    const handleScroll = (event: any) => {
+        const offsetY = event.nativeEvent.contentOffset.y;
+        const shouldShow = offsetY > 300;
+
+        if (shouldShow !== showScrollTop) {
+            setShowScrollTop(shouldShow);
+            Animated.timing(fadeAnim, {
+                toValue: shouldShow ? 1 : 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
+        }
+    };
+
+    const scrollToTop = () => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    };
+
+    function LessonCard({
+        lesson,
+        progress,
+        locked,
+        onPress,
+    }: {
+        lesson: Lesson;
+        progress?: LessonProgress;
+        locked: boolean;
+        onPress: () => void;
+    }) {
+        let status: keyof typeof LESSON_STATUS = 'not_started';
+        if (progress?.status === 'completed') status = 'completed';
+        else if (progress?.status === 'started') status = 'started';
+
+        const { icon, color, label } = LESSON_STATUS[status];
+
+        return (
+            <Pressable
+                onPress={onPress}
+                disabled={locked}
+                style={[
+                    styles.lessonCard,
+                    { backgroundColor: locked ? '#f1f5f9' : '#fff', borderColor: locked ? '#e5e7eb' : color },
+                    locked && styles.lessonCardLocked,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={locked ? 'Locked lesson' : 'Lesson'}
+            >
+                <View style={styles.lessonIconContainer}>
+                    <ThemedText style={[styles.lessonIcon, { color: locked ? '#a1a1aa' : color }]}>{icon}</ThemedText>
+                </View>
+                <ThemedText style={[styles.lessonLevel, locked && styles.lessonTitleLocked]}>
+                    Level {lesson.lessonOrder}
+                </ThemedText>
+                <ThemedText style={[styles.lessonStatus, { color: locked ? '#a1a1aa' : color }]}>
+                    {locked ? 'Locked' : (status === 'not_started' ? 'Continue' : label)}
+                </ThemedText>
+            </Pressable>
+        );
+    }
+
+    function ProgressCard({
+        completed,
+        total,
+        level,
+    }: {
+        completed: number;
+        total: number;
+        level: number;
+    }) {
+        const percent = total > 0 ? completed / total : 0;
+        return (
+            <View style={styles.progressCard}>
+                <View style={styles.progressCardHeader}>
+                    <ThemedText style={styles.progressCardTitle}>Your Progress</ThemedText>
+                    <View style={styles.progressLevelBadge}>
+                        <Ionicons name="trophy" size={16} color="#22c55e" />
+                        <ThemedText style={styles.progressLevelText}>Level {level}</ThemedText>
+                    </View>
+                </View>
+                <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${percent * 100}%` }]} />
+                </View>
+                <ThemedText style={styles.progressCardSubtext}>
+                    {completed} of {total} levels completed
+                </ThemedText>
+            </View>
+        );
+    }
+
+    function UnitCard({ unit }: { unit: Unit }) {
+        return (
+            <LinearGradient
+                colors={['#2563EB', '#3B82F6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.unitCard}
+            >
+                <View style={styles.unitCardIconContainer}>
+                    <Ionicons name="cube-outline" size={32} color="#fff" style={{ opacity: 0.85 }} />
+                </View>
+                <View style={styles.unitCardTextContainer}>
+                    <ThemedText style={styles.unitCardTitle}>{unit.name}</ThemedText>
+                    {unit.description && (
+                        <ThemedText style={styles.unitCardDescription}>{unit.description}</ThemedText>
+                    )}
+                    <ThemedText style={styles.unitCardLessonCount}>
+                        {unit.lessons.length} lessons
+                    </ThemedText>
+                </View>
+            </LinearGradient>
+        );
+    }
+
+    // Calculate overall progress above the return statement
+    const allLessons = units.flatMap(u => u.lessons);
+    const completedLessons = allLessons.filter(l => {
+        const progress = getLessonProgress(l.id);
+        return progress?.status === 'completed';
+    }).length;
+    const currentLevel = completedLessons + 1;
+
     return (
         <ThemedView style={[styles.container, { backgroundColor: '#F8FAFC' }]}>
-            <ProfileHeader title={languageName as string} languageName={languageName as string} />
+            <LessonHeader title={languageName as string} languageName={languageName as string} />
 
             {isLoading ? (
                 <ActivityIndicator size="large" />
             ) : error ? (
                 <ThemedText>{error}</ThemedText>
             ) : (
-                <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 32 }}>
-                    {units.map((unit) => {
-                        const unitLocked = isUnitLocked(unit.id);
-
-                        return (
-                            <ThemedView key={unit.id} style={styles.unitContainer}>
-                                <ThemedView style={[
-                                    styles.unitHeader,
-                                    unitLocked && styles.unitHeaderLocked
-                                ]}>
-                                    <ThemedText style={styles.unitName}>
-                                        📦 {unit.name}
+                <>
+                    {downloadProgress && (
+                        <ThemedView style={styles.downloadProgressContainer}>
+                            <ThemedText style={styles.downloadProgressText}>
+                                Downloading resources: {downloadProgress.completed}/{downloadProgress.total}
+                            </ThemedText>
+                            {downloadProgress.currentFile && (
+                                <ThemedView style={styles.currentFileProgress}>
+                                    <ThemedText style={styles.currentFileName} numberOfLines={1}>
+                                        {downloadProgress.currentFile.name}
                                     </ThemedText>
-                                    {unitLocked && (
-                                        <ThemedText style={styles.lockedText}>🔒</ThemedText>
-                                    )}
+                                    <View style={styles.progressBarContainer}>
+                                        <View
+                                            style={[
+                                                styles.progressBar,
+                                                { width: `${downloadProgress.currentFile.progress * 100}%` }
+                                            ]}
+                                        />
+                                    </View>
                                 </ThemedView>
-                                <ThemedView style={styles.lessonsContainer}>
-                                    {unit.lessons.map((lesson) => {
-                                        const progress = getLessonProgress(lesson.id);
-                                        const isCompleted = progress?.status === 'completed';
-                                        const isStarted = progress?.status === 'started';
-                                        const lessonLocked = isLessonLocked(unit.id, lesson.id);
+                            )}
+                        </ThemedView>
+                    )}
+                    <ProgressCard completed={completedLessons} total={allLessons.length} level={currentLevel} />
+                    <ScrollView
+                        ref={scrollViewRef}
+                        style={styles.scrollView}
+                        contentContainerStyle={{ paddingBottom: 32 }}
+                        onScroll={handleScroll}
+                        scrollEventThrottle={16}
+                    >
 
-                                        // Always use globe emoji for lesson
-                                        let lessonEmoji = '🌍';
-                                        const emojiStyle = [
-                                            { fontSize: 48 },
-                                            lessonLocked && { color: '#A1A1AA' } // greyed out if locked
-                                        ];
+                        {units.map((unit) => {
+                            const unitLocked = isUnitLocked(unit.id);
+                            // Calculate progress for this unit
+                            const totalLessons = unit.lessons.length;
+                            const completedLessons = unit.lessons.filter(l => {
+                                const progress = getLessonProgress(l.id);
+                                return progress?.status === 'completed';
+                            }).length;
+                            const progressPercent = totalLessons > 0 ? completedLessons / totalLessons : 0;
 
-                                        return (
-                                            <Pressable
-                                                key={lesson.id}
-                                                style={({ pressed }) => [
-                                                    styles.lessonButton,
-                                                    pressed && !lessonLocked && styles.lessonButtonPressed,
-                                                    isCompleted && styles.lessonCompleted,
-                                                    isStarted && styles.lessonStarted,
-                                                    lessonLocked && styles.lessonLocked
-                                                ]}
-                                                onPress={() => !lessonLocked && handleLessonPress(lesson)}
-                                                disabled={lessonLocked}
-                                                accessibilityRole="button"
-                                                accessibilityLabel={lessonLocked ? 'Locked lesson' : 'Lesson'}
-                                            >
-                                                <ThemedView style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
-                                                    <ThemedText style={emojiStyle}>{lessonEmoji}</ThemedText>
-                                                    {lessonLocked && (
-                                                        <ThemedText style={{
-                                                            position: 'absolute',
-                                                            top: 16,
-                                                            right: 16,
-                                                            fontSize: 18,
-                                                            color: '#A1A1AA',
-                                                            backgroundColor: 'transparent',
-                                                        }}>🔒</ThemedText>
-                                                    )}
-                                                </ThemedView>
-                                            </Pressable>
-                                        );
-                                    })}
+                            return (
+                                <ThemedView key={unit.id} style={styles.unitContainer}>
+                                    <UnitCard unit={unit} />
+                                    <ThemedView style={styles.lessonsGrid}>
+                                        {unit.lessons.map((lesson) => {
+                                            const progress = getLessonProgress(lesson.id);
+                                            const lessonLocked = isLessonLocked(unit.id, lesson.id);
+                                            return (
+                                                <LessonCard
+                                                    key={lesson.id}
+                                                    lesson={lesson}
+                                                    progress={progress}
+                                                    locked={lessonLocked}
+                                                    onPress={() => !lessonLocked && handleLessonPress(lesson)}
+                                                />
+                                            );
+                                        })}
+                                    </ThemedView>
                                 </ThemedView>
-                            </ThemedView>
-                        );
-                    })}
-                </ScrollView>
+                            );
+                        })}
+                    </ScrollView>
+                    <Animated.View
+                        style={[
+                            styles.scrollTopButton,
+                            { opacity: fadeAnim }
+                        ]}
+                    >
+                        <Pressable
+                            onPress={scrollToTop}
+                            style={({ pressed }) => [
+                                styles.scrollTopPressable,
+                                pressed && styles.scrollTopPressed
+                            ]}
+                        >
+                            <ThemedText style={styles.scrollTopText}>↑</ThemedText>
+                        </Pressable>
+                    </Animated.View>
+                </>
             )}
         </ThemedView>
     );
@@ -454,56 +701,52 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         flex: 1,
     },
-    lessonsContainer: {
+    lessonsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        padding: 12,
-        gap: 16,
         justifyContent: 'flex-start',
+        paddingHorizontal: 8,
+        paddingBottom: 8,
     },
-    lessonButton: {
-        // Remove all background, border, and shadow styles for a plain emoji
+    lessonCard: {
+        width: '31%',
+        margin: '1%',
+        borderRadius: 16,
+        borderWidth: 2,
         alignItems: 'center',
-        justifyContent: 'center',
-        width: 60, // Make the touch area a reasonable size for accessibility
-        height: 60,
-        marginBottom: 0,
-        backgroundColor: 'transparent',
-        shadowColor: 'transparent',
-        borderRadius: 0,
-        paddingVertical: 0,
-        paddingHorizontal: 0,
-        elevation: 0,
+        paddingVertical: 18,
+        paddingHorizontal: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+        backgroundColor: '#fff',
+        minWidth: 100,
+        maxWidth: 140,
     },
-    lessonButtonPressed: {
-        opacity: 0.85,
-        transform: [{ scale: 0.97 }],
+    lessonCardLocked: {
+        opacity: 0.5,
     },
-    lessonCompleted: {
-        backgroundColor: '#D1FAE5',
+    lessonIconContainer: {
+        marginBottom: 8,
     },
-    lessonStarted: {
-        backgroundColor: '#FEF9C3',
+    lessonIcon: {
+        fontSize: 36,
     },
-    lessonTitle: {
-        fontSize: 18,
+    lessonLevel: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        marginBottom: 2,
+        color: '#0f172a',
+    },
+    lessonStatus: {
+        fontSize: 13,
         fontWeight: '600',
-        color: '#0F172A',
+        marginTop: 2,
     },
     lessonTitleLocked: {
         color: '#A1A1AA',
-    },
-    completionText: {
-        fontSize: 15,
-        color: '#059669',
-        marginLeft: 12,
-        fontWeight: '500',
-    },
-    startedText: {
-        fontSize: 15,
-        color: '#B45309',
-        marginLeft: 12,
-        fontWeight: '500',
     },
     lockedText: {
         fontSize: 16,
@@ -511,8 +754,188 @@ const styles = StyleSheet.create({
         color: '#A1A1AA',
         fontWeight: '500',
     },
-    lessonLocked: {
-        opacity: 0.6,
-        backgroundColor: '#F1F5F9',
+    downloadProgressContainer: {
+        padding: 16,
+        backgroundColor: '#EFF6FF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#DBEAFE',
+    },
+    downloadProgressText: {
+        fontSize: 14,
+        color: '#1E40AF',
+        marginBottom: 8,
+    },
+    currentFileProgress: {
+        marginTop: 4,
+    },
+    currentFileName: {
+        fontSize: 12,
+        color: '#3B82F6',
+        marginBottom: 4,
+    },
+    progressBarContainer: {
+        height: 4,
+        backgroundColor: '#DBEAFE',
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: '#3B82F6',
+        borderRadius: 2,
+    },
+    scrollTopButton: {
+        position: 'absolute',
+        right: 20,
+        bottom: 20,
+        zIndex: 1000,
+    },
+    scrollTopPressable: {
+        backgroundColor: '#2563EB',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    scrollTopPressed: {
+        transform: [{ scale: 0.95 }],
+        backgroundColor: '#1D4ED8',
+    },
+    scrollTopText: {
+        fontSize: 24,
+        color: '#FFFFFF',
+        fontWeight: 'bold',
+    },
+    unitProgressBarContainer: {
+        marginHorizontal: 16,
+        marginTop: 8,
+        marginBottom: 4,
+        alignItems: 'flex-start',
+    },
+    unitProgressBarBg: {
+        width: '100%',
+        height: 8,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    unitProgressBarFill: {
+        height: '100%',
+        backgroundColor: '#2563EB',
+        borderRadius: 4,
+    },
+    unitProgressText: {
+        fontSize: 12,
+        color: '#2563EB',
+        marginTop: 4,
+        fontWeight: '500',
+    },
+    progressCard: {
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        padding: 20,
+        margin: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    progressCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    progressCardTitle: {
+        fontSize: 17,
+        fontWeight: 'bold',
+        color: '#0f172a',
+    },
+    progressLevelBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e0fbe3',
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
+    },
+    progressLevelText: {
+        color: '#22c55e',
+        fontWeight: 'bold',
+        marginLeft: 4,
+        fontSize: 14,
+    },
+    progressBarBg: {
+        width: '100%',
+        height: 10,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 5,
+        overflow: 'hidden',
+        marginBottom: 8,
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#22c55e',
+        borderRadius: 5,
+    },
+    progressCardSubtext: {
+        fontSize: 13,
+        color: '#64748B',
+        marginTop: 2,
+        fontWeight: '500',
+    },
+    unitCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 20,
+        padding: 24,
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
+        justifyContent: 'space-between',
+    },
+    unitCardIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 16,
+    },
+    unitCardTextContainer: {
+        flex: 1,
+        marginLeft: 16,
+    },
+    unitCardTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    unitCardDescription: {
+        color: '#e0e7ef',
+        fontSize: 14,
+        marginBottom: 0,
+    },
+    unitCardLessonCount: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '500',
+        marginTop: 8,
+        textAlign: 'right',
+        alignSelf: 'flex-end',
     },
 }); 

@@ -161,12 +161,12 @@ function getRandomSuperheroName(): string {
 WebBrowser.maybeCompleteAuthSession();
 
 const EMOJIS = {
-  welcome: '🚀',
-  school: '👥',
-  ready: '✍️',
-  podcast: '🎧',
-  maths: '🧮',
-  questions: '❓',
+  welcome: '🇿🇦',
+  languages: '🗣️',
+  practice: '✍️',
+  audio: '🎧',
+  culture: '🌍',
+  community: '👥',
 };
 
 type AvatarImages = {
@@ -353,19 +353,15 @@ export default function OnboardingScreen() {
       case 0:
         return 'welcome';
       case 1:
-        return 'audio_lesson';
+        return 'languages';
       case 2:
-        return 'maths_practice';
+        return 'practice';
       case 3:
-        return 'questions';
+        return 'audio';
       case 4:
-        return 'avatar_selection';
+        return 'culture';
       case 5:
-        return 'ratings';
-      case 6:
-        return 'auth_options';
-      case 7:
-        return 'registration';
+        return 'community';
       default:
         return 'unknown';
     }
@@ -418,263 +414,110 @@ export default function OnboardingScreen() {
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="welcome-text-container">
               <ThemedText style={[styles.welcomeTitle, { fontSize: 24, marginBottom: 24 }]} testID="welcome-title">
-                Dimpo Learning App
+                Welcome to Dimpo Languages
               </ThemedText>
               <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]} testID="welcome-description">
-                📝 Get ready to boost your brainpower and ace your exams! 🏆
+                🌟 Master South African languages with fun, interactive lessons! From Zulu to Afrikaans, we've got you covered.
               </ThemedText>
             </View>
           </View>
         );
       case 1:
         return (
-          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="audio-lesson-step">
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="languages-step">
             <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 120 }} testID="podcast-emoji">
-                {EMOJIS.podcast}
+              <ThemedText style={{ fontSize: 120 }} testID="languages-emoji">
+                {EMOJIS.languages}
               </ThemedText>
             </View>
-            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="audio-lesson-text-container">
-              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="audio-lesson-title">
-                Learn with our Audio Lessons 🎧
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="languages-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="languages-title">
+                Learn 11 Official Languages
               </ThemedText>
-              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="audio-lesson-description">
-                📚 Listen to engaging lessons and boost your learning anywhere, anytime. Tap next to get started!
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="languages-description">
+                🇿🇦 Master Zulu, Xhosa, Afrikaans, and more! Our app makes learning South African languages fun and easy.
               </ThemedText>
             </View>
           </View>
         );
       case 2:
         return (
-          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="maths-practice-step">
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="practice-step">
             <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 120 }} testID="maths-emoji">
-                {EMOJIS.maths}
+              <ThemedText style={{ fontSize: 120 }} testID="practice-emoji">
+                {EMOJIS.practice}
               </ThemedText>
             </View>
-            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="maths-practice-text-container">
-              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="maths-practice-title">
-                Practice Mathematics 🧮
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="practice-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="practice-title">
+                Interactive Practice
               </ThemedText>
-              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="maths-practice-description">
-                Sharpen your math skills with fun and interactive practice questions. Ready to solve some problems?
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="practice-description">
+                ✍️ Practice writing, speaking, and understanding with our interactive exercises. Perfect your pronunciation and grammar!
               </ThemedText>
             </View>
           </View>
         );
       case 3:
         return (
-          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="questions-step">
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="audio-step">
             <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 120 }} testID="questions-emoji">
-                {EMOJIS.questions}
+              <ThemedText style={{ fontSize: 120 }} testID="audio-emoji">
+                {EMOJIS.audio}
               </ThemedText>
             </View>
-            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="questions-text-container">
-              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="questions-title">
-                ✨ Thousands of Questions ✨
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="audio-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="audio-title">
+                Native Speaker Audio
               </ThemedText>
-              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="questions-description">
-                ⭐️ Access thousands of practice questions to master every topic! 💡
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="audio-description">
+                🎧 Listen to native speakers and perfect your pronunciation. Learn authentic accents and expressions!
               </ThemedText>
             </View>
           </View>
         );
       case 4:
         return (
-          <View style={styles.step}>
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>
-                🎨 Choose Your Avatar
-              </ThemedText>
-              <ThemedText style={styles.stepSubtitle}>
-                Pick a cool avatar to represent you! ✨
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="culture-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="culture-emoji">
+                {EMOJIS.culture}
               </ThemedText>
             </View>
-            <ScrollView
-              style={styles.avatarsScrollView}
-              contentContainerStyle={styles.avatarsScrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.avatarsGrid}>
-                {Object.keys(AVATAR_IMAGES).map((num) => (
-                  <TouchableOpacity
-                    key={num}
-                    style={[
-                      styles.avatarButton,
-                      selectedAvatar === num && styles.avatarButtonSelected
-                    ]}
-                    onPress={() => setSelectedAvatar(num)}
-                    testID={`avatar-button-${num}`}
-                  >
-                    <Image
-                      source={AVATAR_IMAGES[num]}
-                      style={styles.avatarImage}
-                      resizeMode="cover"
-                    />
-                    {selectedAvatar === num && (
-                      <View style={styles.avatarCheckmark}>
-                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="culture-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="culture-title">
+                Cultural Insights
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="culture-description">
+                🌍 Learn about South African culture, traditions, and customs while mastering the languages!
+              </ThemedText>
+            </View>
           </View>
         );
       case 5:
         return (
-          <View style={styles.step} testID="ratings-step">
+          <View style={styles.step} testID="community-step">
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>
-                ⭐️ Quick Rating Guide
+                Join Our Community
               </ThemedText>
               <ThemedText style={styles.stepSubtitle}>
-                Help other students find Dimpo!
+                Connect with fellow language learners across South Africa!
               </ThemedText>
             </View>
 
             <View style={styles.ratingsContainer}>
               <View style={styles.ratingInfoCard}>
                 <ThemedText style={styles.ratingInfoText}>
-                  • 5 stars = I love it and would recommend it!{'\n'}
-                  • 1 star = I don't like it and would not recommend it
+                  • Practice with native speakers{'\n'}
+                  • Share your progress{'\n'}
+                  • Get help from the community{'\n'}
+                  • Join language exchange groups
                 </ThemedText>
               </View>
             </View>
           </View>
         );
-      case 6:
-        return (
-          <View style={styles.step} testID="auth-options-step">
-            <TouchableOpacity
-              style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(5)}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle} testID="auth-options-title">
-                How would you like to continue?
-              </ThemedText>
-              <ThemedText style={styles.stepSubtitle} testID="auth-options-subtitle">
-                Choose your preferred way to sign up
-              </ThemedText>
-            </View>
-
-            <View style={styles.authOptionsContainer}>
-              <TouchableOpacity
-                style={[styles.authButton, styles.emailButton]}
-                onPress={() => {
-                  logAnalyticsEvent('auth_option_selected', { option: 'email' });
-                  setRegistrationMethod('email');
-                  setStep(7);
-                }}
-                testID="email-auth-button"
-              >
-                <Ionicons name="mail-outline" size={24} color="#FFFFFF" />
-                <ThemedText style={styles.authButtonText}>Register with Email</ThemedText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.authButton, styles.phoneButton]}
-                onPress={() => {
-                  logAnalyticsEvent('auth_option_selected', { option: 'phone' });
-                  setRegistrationMethod('phone');
-                  setStep(7);
-                }}
-                testID="phone-auth-button"
-              >
-                <Ionicons name="call-outline" size={24} color="#FFFFFF" />
-                <ThemedText style={styles.authButtonText}>Register with Phone</ThemedText>
-              </TouchableOpacity>
-
-              <ThemedText style={styles.guestPromptText}>
-                Not ready to register? Try Dimpo as a guest!
-              </ThemedText>
-
-              <TouchableOpacity
-                style={[styles.authButton, styles.guestButton]}
-                onPress={async () => {
-                  try {
-                    console.log('[Guest Button] Starting guest account creation process');
-                    logAnalyticsEvent('auth_option_selected', { option: 'guest' });
-
-                    // Show loading state
-                    Toast.show({
-                      type: 'info',
-                      text1: 'Creating guest account...',
-                      position: 'bottom',
-                      visibilityTime: 2000,
-                    });
-
-                    const user = await createGuestAccount({
-                      selectedAvatar,
-                      signUp
-                    });
-
-                    console.log('[Guest Button] Guest account created successfully, navigating to tabs');
-                    // Navigate to tabs
-                    router.replace('/(tabs)');
-                  } catch (error: unknown) {
-                    const firebaseError = error as FirebaseError;
-                    console.error('[Guest Button] Fatal error in guest account creation:', {
-                      error: firebaseError,
-                      errorName: firebaseError.name,
-                      errorMessage: firebaseError.message,
-                      errorCode: firebaseError.code,
-                      errorStack: firebaseError.stack,
-                      timestamp: new Date().toISOString()
-                    });
-
-                    // Show user-friendly error message
-                    Toast.show({
-                      type: 'error',
-                      text1: 'Connection Error',
-                      text2: 'Please check your internet connection and try again',
-                      position: 'bottom',
-                      visibilityTime: 4000,
-                    });
-                  }
-                }}
-                testID="guest-auth-button"
-              >
-                <Ionicons name="person-outline" size={24} color="#FFFFFF" />
-                <ThemedText style={styles.authButtonText}>Try Dimpo as Guest</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-      case 7:
-        return (
-          <View style={styles.step}>
-            <TouchableOpacity
-              style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(6)}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <ScrollView style={styles.registrationContainer}>
-              <View style={styles.registrationHeader}>
-                <ThemedText style={styles.registrationTitle}>Create Your Account</ThemedText>
-                <ThemedText style={styles.registrationSubtitle}>
-                  🎯 Almost there! Set up your account to start your learning journey.
-                </ThemedText>
-              </View>
-
-              <RegisterForm
-                onboardingData={{
-                  curriculum: 'CAPS',
-                  avatar: selectedAvatar,
-                }}
-                defaultMethod={registrationMethod}
-              />
-            </ScrollView>
-          </View>
-        );
-
       default:
         return null;
     }
@@ -694,10 +537,6 @@ export default function OnboardingScreen() {
         return true;
       case 5:
         return true;
-      case 6:
-        return true;
-      case 7:
-        return true;
       default:
         return false;
     }
@@ -713,7 +552,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {(step < 8 && step !== 7) && (
+        {(step < 6 && step !== 5) && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>

@@ -6,14 +6,15 @@ import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LANGUAGE_EMOJIS } from './language-emojis';
 
-interface ProfileHeaderProps {
+interface LessonHeaderProps {
     title: string;
     showBackButton?: boolean;
     languageName?: string;
     subText?: string;
+    onBackPress?: () => void;
 }
 
-export function ProfileHeader({ title, showBackButton = true, languageName, subText }: ProfileHeaderProps) {
+export function LessonHeader({ title, showBackButton = true, languageName, subText, onBackPress }: LessonHeaderProps) {
     const { isDark } = useTheme();
     const emoji = languageName && LANGUAGE_EMOJIS[languageName] ? LANGUAGE_EMOJIS[languageName] : '🏳️‍🌈';
 
@@ -23,12 +24,12 @@ export function ProfileHeader({ title, showBackButton = true, languageName, subT
                 {showBackButton && (
                     <TouchableOpacity
                         style={styles.backButton}
-                        onPress={() => router.back()}
+                        onPress={onBackPress || (() => router.back())}
                         accessibilityRole="button"
-                        accessibilityLabel="Go back"
+                        accessibilityLabel="Close"
                     >
                         <Ionicons
-                            name="arrow-back"
+                            name="close"
                             size={28}
                             color={isDark ? '#FFFFFF' : '#1E293B'}
                         />

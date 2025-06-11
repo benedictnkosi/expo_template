@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
+import { useFeedback } from '../contexts/FeedbackContext';
 
 interface Word {
     id: number;
@@ -15,18 +15,18 @@ interface FillInBlankQuestionProps {
     options: (string | number)[];
     blankIndex: number;
     selectedLanguage: string;
-    onContinue: () => void;
     questionId: string | number;
+    setOnCheck?: (fn: () => void) => void;
+    setOnContinue?: (fn: () => void) => void;
 }
 
 function getWordById(words: Word[], id: string | number) {
     return words.find(w => w.id === Number(id));
 }
 
-export function FillInBlankQuestion({ words, sentenceWords, options, blankIndex, selectedLanguage, onContinue, questionId }: FillInBlankQuestionProps) {
+export function FillInBlankQuestion({ words, sentenceWords, options, blankIndex, selectedLanguage, questionId, setOnCheck, setOnContinue }: FillInBlankQuestionProps) {
     const [selectedOption, setSelectedOption] = useState<number | null>(null);
-    const [isChecked, setIsChecked] = useState(false);
-    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+    const { setFeedback, resetFeedback } = useFeedback();
 
     // Build the sentence with a blank
     const sentenceWithBlank = sentenceWords.map((id, idx) => {
@@ -56,37 +56,39 @@ export function FillInBlankQuestion({ words, sentenceWords, options, blankIndex,
     const availableOptions = options.filter(id => selectedOption === null || Number(id) !== selectedOption);
 
     function handleSelectOption(id: string | number) {
-        if (selectedOption === null) setSelectedOption(Number(id));
+        setSelectedOption(Number(id));
     }
 
     function handleCheck() {
         if (selectedOption === null) return;
-        const correctId = sentenceWords[blankIndex];
-        setIsCorrect(Number(selectedOption) === Number(correctId));
-        setIsChecked(true);
+        const isAnswerCorrect = selectedOption === Number(sentenceWords[blankIndex]);
+
+        setFeedback({
+            isChecked: true,
+            isCorrect: isAnswerCorrect,
+            feedbackText: isAnswerCorrect ? 'Correct!' : "That's not quite right",
+            correctAnswer: !isAnswerCorrect ? correctWord?.translations[selectedLanguage] : undefined,
+            questionId,
+        });
     }
 
-    function handleContinue() {
-        setIsChecked(false);
-        setIsCorrect(null);
+    function resetQuestion() {
+        resetFeedback();
         setSelectedOption(null);
-        onContinue();
     }
 
     const correctWord = getWordById(words, sentenceWords[blankIndex]);
     const correctAnswer = correctWord?.translations[selectedLanguage] || '';
 
+    useEffect(() => {
+        setOnCheck?.(handleCheck);
+        setOnContinue?.(resetQuestion);
+    }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
+
     return (
         <ThemedView style={styles.container}>
             <ThemedText style={styles.title}>Fill in the blank</ThemedText>
             <View style={styles.sentenceRow}>{sentenceWithBlank}</View>
-            <FeedbackMessage
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                feedbackText={isChecked ? (isCorrect ? 'Correct!' : "That's not quite right") : undefined}
-                correctAnswer={!isCorrect ? correctAnswer : undefined}
-                questionId={questionId}
-            />
             <View style={styles.optionsGrid}>
                 {availableOptions.map((id) => {
                     const word = getWordById(words, id);
@@ -107,14 +109,6 @@ export function FillInBlankQuestion({ words, sentenceWords, options, blankIndex,
                     );
                 })}
             </View>
-            <FeedbackButton
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                isDisabled={selectedOption === null}
-                onCheck={handleCheck}
-                onContinue={handleContinue}
-                questionId={questionId}
-            />
         </ThemedView>
     );
 }
@@ -123,7 +117,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-        flex: 1,
         backgroundColor: '#fff',
     },
     title: {

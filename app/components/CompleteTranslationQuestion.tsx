@@ -4,6 +4,7 @@ import { Audio } from 'expo-av';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
+import { useFeedback } from '../contexts/FeedbackContext';
 
 interface Word {
     id: number;
@@ -17,8 +18,9 @@ interface CompleteTranslationQuestionProps {
     options: string[];
     selectedLanguage: string;
     blankIndex: number;
-    onContinue: () => void;
     questionId: string;
+    setOnCheck?: (fn: () => void) => void;
+    setOnContinue?: (fn: () => void) => void;
 }
 
 export function CompleteTranslationQuestion({
@@ -26,16 +28,16 @@ export function CompleteTranslationQuestion({
     options,
     selectedLanguage,
     blankIndex,
-    onContinue,
-    questionId
+    questionId,
+    setOnCheck,
+    setOnContinue
 }: CompleteTranslationQuestionProps) {
     const [userInput, setUserInput] = useState('');
-    const [isChecked, setIsChecked] = useState(false);
-    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const soundRef = useRef<Audio.Sound | null>(null);
     const audioQueueRef = useRef<string[]>([]);
     const currentAudioIndexRef = useRef(0);
+    const { setFeedback, resetFeedback, isChecked } = useFeedback();
 
     // Get all words and their translations
     const correctWords = options
@@ -60,6 +62,16 @@ export function CompleteTranslationQuestion({
             handlePlayAudio();
         }
     }, [audioUris]);
+
+    function resetQuestion() {
+        resetFeedback();
+        setUserInput('');
+    }
+
+    useEffect(() => {
+        setOnCheck?.(handleCheck);
+        setOnContinue?.(resetQuestion);
+    }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     async function playNextAudio() {
         if (currentAudioIndexRef.current >= audioQueueRef.current.length) {
@@ -108,15 +120,23 @@ export function CompleteTranslationQuestion({
     function handleCheck() {
         Keyboard.dismiss();
         if (!userInput.trim()) return;
-        setIsCorrect(userInput.trim().toLowerCase() === correctAnswer.trim().toLowerCase());
-        setIsChecked(true);
-    }
+        const isAnswerCorrect = userInput.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
 
-    function handleContinue() {
-        setIsChecked(false);
-        setIsCorrect(null);
-        setUserInput('');
-        onContinue();
+        // Create the correct sentence by replacing the blank with the correct answer
+        const correctSentence = correctWords.map((word, index) => {
+            if (index === blankIndex) {
+                return correctAnswer;
+            }
+            return word.translations[selectedLanguage];
+        }).join(' ');
+
+        setFeedback({
+            isChecked: true,
+            isCorrect: isAnswerCorrect,
+            feedbackText: isAnswerCorrect ? 'Correct!' : "That's not quite right",
+            correctAnswer: !isAnswerCorrect ? correctSentence : undefined,
+            questionId,
+        });
     }
 
     return (
@@ -130,7 +150,7 @@ export function CompleteTranslationQuestion({
                 disabled={isPlaying || !audioUris.length}
             >
                 <ThemedText style={styles.audioButtonText}>
-                    {isPlaying ? 'Playing...' : '🔊 Play'}
+                    🔊
                 </ThemedText>
             </Pressable>
 
@@ -149,21 +169,7 @@ export function CompleteTranslationQuestion({
                 onSubmitEditing={handleCheck}
             />
 
-            <FeedbackMessage
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                feedbackText={isChecked ? (isCorrect ? 'Correct!' : "That's not quite right") : undefined}
-                correctAnswer={!isCorrect ? correctAnswer : undefined}
-                questionId={questionId}
-            />
-            <FeedbackButton
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                isDisabled={!userInput.trim()}
-                onCheck={handleCheck}
-                onContinue={handleContinue}
-                questionId={questionId}
-            />
+
         </ThemedView>
     );
 }
@@ -172,7 +178,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-        flex: 1,
         backgroundColor: '#fff',
     },
     title: {
@@ -192,9 +197,11 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     audioButtonText: {
-        fontSize: 18,
+        fontSize: 32,
         color: '#00796B',
         fontWeight: '600',
+        marginBottom: 16,
+        alignSelf: 'center',
     },
     sentence: {
         fontSize: 20,

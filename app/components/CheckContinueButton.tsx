@@ -4,25 +4,17 @@ import { ThemedText } from '@/components/ThemedText';
 import { useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFeedback } from '../contexts/FeedbackContext';
+import { HOST_URL } from '@/config/api';
 
-interface FeedbackProps {
-    isChecked: boolean;
-    isCorrect: boolean | null;
+interface FeedbackButtonProps {
     isDisabled: boolean;
     onCheck: () => void;
     onContinue: () => void;
-    feedbackText?: string;
-    correctAnswer?: string;
-    questionId: string | number;
 }
 
-export function FeedbackMessage({
-    isChecked,
-    isCorrect,
-    feedbackText,
-    correctAnswer,
-    questionId,
-}: Pick<FeedbackProps, 'isChecked' | 'isCorrect' | 'feedbackText' | 'correctAnswer' | 'questionId'>) {
+export function FeedbackMessage({ onContinue }: { onContinue: () => void }) {
+    const { isChecked, isCorrect, feedbackText, correctAnswer, questionId } = useFeedback();
     const feedbackColor = isChecked && !isCorrect ? '#EF4444' : '#10B981';
     const [isReporting, setIsReporting] = React.useState(false);
     const [reportStatus, setReportStatus] = React.useState<string | null>(null);
@@ -33,12 +25,18 @@ export function FeedbackMessage({
         setIsReporting(true);
         setReportStatus(null);
         try {
-            const res = await fetch(`${process.env.EXPO_PUBLIC_API_HOST || ''}/api/questions/${questionId}/report`, {
+            const url = `${HOST_URL}/api/language-questions/${questionId}/report`;
+            console.log('Reporting question', url);
+            const res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
-            if (res.ok) setReportStatus('Reported!');
-            else setReportStatus('Failed to report');
+            if (res.ok) {
+                setReportStatus('Reported!');
+                onContinue();
+            } else {
+                setReportStatus('Failed to report');
+            }
         } catch (e) {
             setReportStatus('Failed to report');
         } finally {
@@ -74,14 +72,8 @@ export function FeedbackMessage({
     );
 }
 
-export function FeedbackButton({
-    isChecked,
-    isCorrect,
-    isDisabled,
-    onCheck,
-    onContinue,
-    questionId,
-}: Pick<FeedbackProps, 'isChecked' | 'isCorrect' | 'isDisabled' | 'onCheck' | 'onContinue' | 'questionId'>) {
+export function FeedbackButton({ isDisabled, onCheck, onContinue }: FeedbackButtonProps) {
+    const { isChecked, isCorrect } = useFeedback();
     const { width } = useWindowDimensions();
     const scale = React.useRef(new Animated.Value(1)).current;
     const insets = useSafeAreaInsets();
@@ -180,7 +172,7 @@ const styles = StyleSheet.create({
     feedbackContainerRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        marginBottom: 16,
+        marginBottom: 84,
         width: '100%',
     },
     feedbackContainerText: {

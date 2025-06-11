@@ -12,6 +12,64 @@ import { HOST_URL } from '@/config/api';
 import { LANGUAGE_EMOJIS } from '@/components/language-emojis';
 import { Header } from '@/components/Header';
 
+// Speaker data for South African languages
+const SPEAKERS_DATA: Record<string, { speakers: number; percentage: number }> = {
+  Zulu: { speakers: 15130000, percentage: 24.4 },
+  Xhosa: { speakers: 10110000, percentage: 16.3 },
+  Afrikaans: { speakers: 6570000, percentage: 10.6 },
+  Sepedi: { speakers: 6200000, percentage: 10.0 },
+  English: { speakers: 5390000, percentage: 8.7 },
+  Tswana: { speakers: 5150000, percentage: 8.3 },
+  Sesotho: { speakers: 4840000, percentage: 7.8 },
+  Xitsonga: { speakers: 2910000, percentage: 4.7 },
+  Swati: { speakers: 1740000, percentage: 2.8 },
+  Venda: { speakers: 1150000, percentage: 2.5 },
+  Ndebele: { speakers: 1050000, percentage: 1.7 },
+  'Sign Language': { speakers: 12400, percentage: 0.02 },
+  Other: { speakers: 1300000, percentage: 2.1 },
+};
+
+// Unique color for each language card
+const LANGUAGE_COLORS: Record<string, string> = {
+  Zulu: '#FDE68A',
+  Xhosa: '#E0E7FF',
+  Afrikaans: '#FEF3C7',
+  English: '#DBEAFE',
+  Sepedi: '#FDE68A',
+  Tswana: '#F3F4F6',
+  Sesotho: '#E0F2FE',
+  Xitsonga: '#DCFCE7',
+  Swati: '#FCE7F3',
+  Venda: '#F3E8FF',
+  Ndebele: '#F3F4F6',
+  'Sign Language': '#E5E7EB',
+  Other: '#F1F5F9',
+};
+
+// Helper to map API language names to speakers data keys
+function getSpeakersKey(languageName: string): string {
+  switch (languageName) {
+    case 'Zulu': return 'Zulu';
+    case 'Xhosa': return 'Xhosa';
+    case 'Afrikaans': return 'Afrikaans';
+    case 'English': return 'English';
+    case 'Sepedi': return 'Sepedi';
+    case 'Tswana': return 'Tswana';
+    case 'Sesotho': return 'Sesotho';
+    case 'Xitsonga': return 'Xitsonga';
+    case 'Swati': return 'Swati';
+    case 'Venda': return 'Venda';
+    case 'Ndebele': return 'Ndebele';
+    default: return languageName;
+  }
+}
+
+function formatSpeakers(num: number): string {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M speakers`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K speakers`;
+  return `${num} speakers`;
+}
+
 export default function HomeScreen() {
   const [languages, setLanguages] = useState<Language[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,7 +105,7 @@ export default function HomeScreen() {
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: 'transparent', dark: 'transparent' }}
-      headerImage={<Header learnerInfo={null} />}
+      headerImage={<Header />}
     >
       <ThemedView style={styles.container}>
 
@@ -58,21 +116,48 @@ export default function HomeScreen() {
           <ThemedText>{error}</ThemedText>
         ) : (
           <ThemedView style={styles.languagesContainer}>
-            {languages.map((language) => (
-              <Pressable
-                key={language.id}
-                style={({ pressed }) => [
-                  styles.languageButton,
-                  pressed && styles.languageButtonPressed,
-                ]}
-                onPress={() => handleLanguagePress(language)}
-              >
-                <ThemedText style={styles.languageName}>
-                  {LANGUAGE_EMOJIS[language.name] ? `${LANGUAGE_EMOJIS[language.name]} ` : ''}{language.name}
-                </ThemedText>
-                <ThemedText style={styles.languageNativeName}>{language.nativeName}</ThemedText>
-              </Pressable>
-            ))}
+            {languages
+              .filter(l => l.name !== 'English')
+              .sort((a, b) => {
+                const speakersA = SPEAKERS_DATA[getSpeakersKey(a.name)]?.speakers || 0;
+                const speakersB = SPEAKERS_DATA[getSpeakersKey(b.name)]?.speakers || 0;
+                return speakersB - speakersA; // Sort in descending order
+              })
+              .map((language) => (
+                <Pressable
+                  key={language.id}
+                  style={({ pressed }) => [
+                    [
+                      styles.languageCard,
+                      { backgroundColor: LANGUAGE_COLORS[language.name] || '#fff' },
+                    ],
+                    pressed && styles.languageCardPressed,
+                  ]}
+                  onPress={() => handleLanguagePress(language)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select ${language.name}`}
+                >
+                  <ThemedText style={styles.languageEmoji}>
+                    {LANGUAGE_EMOJIS[language.name] || '🌍'}
+                  </ThemedText>
+                  <ThemedText style={styles.languageName}>
+                    {language.name}
+                  </ThemedText>
+                  <ThemedText style={styles.languageNativeName}>
+                    {language.nativeName}
+                  </ThemedText>
+                  {/* Speakers count */}
+                  {(() => {
+                    const key = getSpeakersKey(language.name);
+                    const speakers = SPEAKERS_DATA[key]?.speakers;
+                    return speakers ? (
+                      <ThemedText style={styles.languageSpeakers}>
+                        {formatSpeakers(speakers)}
+                      </ThemedText>
+                    ) : null;
+                  })()}
+                </Pressable>
+              ))}
           </ThemedView>
         )}
       </ThemedView>
@@ -83,8 +168,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    paddingTop: 4,
+    paddingTop: 20,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -95,36 +179,49 @@ const styles = StyleSheet.create({
   languagesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
     justifyContent: 'center',
+    paddingBottom: 24,
   },
-  languageButton: {
-    backgroundColor: '#A1CEDC',
-    padding: 16,
-    borderRadius: 12,
-    minWidth: 150,
+  languageCard: {
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+    minWidth: 180,
     alignItems: 'center',
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
   },
-  languageButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
+  languageCardPressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
+  },
+  languageEmoji: {
+    fontSize: 40,
+    marginBottom: 10,
   },
   languageName: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 2,
+    color: '#222',
   },
   languageNativeName: {
     fontSize: 14,
-    opacity: 0.8,
+    opacity: 0.7,
+    color: '#666',
+    marginBottom: 2,
+  },
+  languageSpeakers: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
   },
   headerImage: {
     height: 200,

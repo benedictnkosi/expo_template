@@ -3,7 +3,7 @@ import { View, StyleSheet, Pressable, Image } from 'react-native';
 import { Audio } from 'expo-av';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
+import { useFeedback } from '../contexts/FeedbackContext';
 
 interface Word {
     id: number;
@@ -20,8 +20,9 @@ interface TranslateQuestionProps {
     sentenceWords?: (string | number)[] | null;
     onSelect?: (optionIds: number[]) => void;
     selectedOption?: number | null;
-    onContinue: () => void;
     questionId: string | number;
+    setOnCheck?: (fn: () => void) => void;
+    setOnContinue?: (fn: () => void) => void;
 }
 
 function useAudioUri(audioFile: string | undefined) {
@@ -99,10 +100,9 @@ function AudioButton({ audioUrls }: { audioUrls: string[] }) {
     );
 }
 
-export function TranslateQuestion({ words, options, selectedLanguage, direction, sentenceWords, onContinue, questionId }: TranslateQuestionProps) {
+export function TranslateQuestion({ words, options, selectedLanguage, direction, sentenceWords, onSelect, selectedOption, questionId, setOnCheck, setOnContinue }: TranslateQuestionProps) {
     const [selectedWordIds, setSelectedWordIds] = React.useState<number[]>([]);
-    const [isChecked, setIsChecked] = React.useState(false);
-    const [isCorrect, setIsCorrect] = React.useState<boolean | null>(null);
+    const { setFeedback, resetFeedback } = useFeedback();
 
     // Helper: get word by id
     function getWordById(id: string | number) {
@@ -191,15 +191,19 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
         const isAnswerCorrect =
             selected.length === correct.length &&
             selected.every((id, idx) => id === correct[idx]);
-        setIsCorrect(isAnswerCorrect);
-        setIsChecked(true);
+
+        setFeedback({
+            isChecked: true,
+            isCorrect: isAnswerCorrect,
+            feedbackText: isAnswerCorrect ? 'Correct!' : "That's not quite right",
+            correctAnswer: !isAnswerCorrect ? correctAnswer : undefined,
+            questionId,
+        });
     }
 
-    function handleContinue() {
-        setIsChecked(false);
-        setIsCorrect(null);
+    function resetQuestion() {
+        resetFeedback();
         setSelectedWordIds([]);
-        onContinue();
     }
 
     // Auto-play on mount
@@ -228,6 +232,11 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
             playAll();
         }
     }, [direction, audioUrls]);
+
+    useEffect(() => {
+        setOnCheck?.(handleCheck);
+        setOnContinue?.(resetQuestion);
+    }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     return (
         <ThemedView style={styles.container}>
@@ -261,24 +270,6 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
                     );
                 })}
             </View>
-            {/* Check/Continue Button */}
-            <FeedbackMessage
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                feedbackText={isChecked ? (isCorrect ? 'Correct!' : "That's not quite right") : undefined}
-                correctAnswer={!isCorrect ? correctAnswer : undefined}
-                questionId={questionId}
-            />
-            <View style={styles.feedbackContainer}>
-                <FeedbackButton
-                    isChecked={isChecked}
-                    isCorrect={isCorrect}
-                    isDisabled={selectedWordIds.length === 0}
-                    onCheck={handleCheck}
-                    onContinue={handleContinue}
-                    questionId={questionId}
-                />
-            </View>
         </ThemedView>
     );
 }
@@ -287,7 +278,7 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-        flex: 1,
+
         backgroundColor: '#fff',
         position: 'relative',
         paddingBottom: 96,
@@ -409,17 +400,5 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         marginHorizontal: 8,
         alignSelf: 'stretch',
-    },
-    feedbackContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 16,
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        zIndex: 10,
-        alignItems: 'center',
     },
 }); 

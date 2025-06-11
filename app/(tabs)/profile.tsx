@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
-import { ProfileHeader } from '@/components/ProfileHeader';
+import { LessonHeader } from '@/components/LessonHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch, Linking } from 'react-native';
 import React from 'react';
@@ -254,7 +254,7 @@ export default function ProfileScreen() {
         nestedScrollEnabled={true}
         keyboardShouldPersistTaps="handled"
       >
-        <ProfileHeader title="Profile" />
+        <LessonHeader title="Profile" />
 
         <ThemedView style={styles.content}>
           <ThemedView style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFFFFF' }]}>

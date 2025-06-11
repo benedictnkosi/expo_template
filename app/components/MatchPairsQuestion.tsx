@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Pressable, Text, Dimensions, Animated } from 'react-native';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { HOST_URL } from '@/config/api';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
+import { useFeedback } from '../contexts/FeedbackContext';
 
 interface Word {
     id: number;
@@ -21,6 +21,8 @@ interface MatchPairsQuestionProps {
     onCheck: () => void;
     matchType?: 'audio' | 'text';
     questionId: string | number;
+    setOnCheck?: (callback: () => void) => void;
+    setOnContinue?: (callback: () => void) => void;
 }
 
 function useAudioUri(audioFile: string | undefined, areResourcesDownloaded: boolean) {
@@ -97,7 +99,9 @@ export function MatchPairsQuestion({
     areResourcesDownloaded,
     onCheck,
     matchType = 'audio',
-    questionId
+    questionId,
+    setOnCheck,
+    setOnContinue
 }: MatchPairsQuestionProps) {
     const screenWidth = Dimensions.get('window').width;
     const cardWidth = (screenWidth - 48) / 2;
@@ -108,9 +112,7 @@ export function MatchPairsQuestion({
     const [showFeedback, setShowFeedback] = React.useState(false);
     const [justMatchedId, setJustMatchedId] = React.useState<number | null>(null);
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
-    const [isChecked, setIsChecked] = React.useState(false);
-    const [isCorrect, setIsCorrect] = React.useState<boolean | null>(null);
-    const [correctAnswer, setCorrectAnswer] = React.useState<string | undefined>(undefined);
+    const { setFeedback, resetFeedback } = useFeedback();
 
     // Shuffle array using Fisher-Yates algorithm
     const shuffledWords = React.useMemo(() => {
@@ -210,21 +212,29 @@ export function MatchPairsQuestion({
 
     function handleCheck() {
         const allMatched = disabledLeftIds.size === words.length && disabledRightIds.size === words.length;
-        setIsChecked(true);
-        setIsCorrect(allMatched);
-        if (!allMatched) {
-            setCorrectAnswer(words.map(w => w.translations['en']).join(', '));
-        } else {
-            setCorrectAnswer(undefined);
-        }
+        setFeedback({
+            isChecked: true,
+            isCorrect: allMatched,
+            feedbackText: allMatched ? 'All pairs matched!' : 'Some pairs are not matched yet.',
+            correctAnswer: !allMatched ? words.map(w => w.translations['en']).join(', ') : undefined,
+            questionId,
+        });
     }
 
-    function handleContinue() {
-        setIsChecked(false);
-        setIsCorrect(null);
-        setCorrectAnswer(undefined);
-        onCheck();
+    function resetQuestion() {
+        resetFeedback();
+        setSelectedAudioId(null);
+        setDisabledLeftIds(new Set());
+        setDisabledRightIds(new Set());
+        setWrongTranslationId(null);
+        setShowFeedback(false);
+        setJustMatchedId(null);
     }
+
+    React.useEffect(() => {
+        setOnCheck?.(handleCheck);
+        setOnContinue?.(resetQuestion);
+    }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     return (
         <ThemedView style={styles.container}>
@@ -268,30 +278,13 @@ export function MatchPairsQuestion({
                     );
                 })}
             </View>
-            <FeedbackMessage
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                feedbackText={isCorrect ? 'All pairs matched!' : 'Some pairs are not matched yet.'}
-                correctAnswer={correctAnswer}
-                questionId={questionId}
-            />
-            <FeedbackButton
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                isDisabled={disabledLeftIds.size + disabledRightIds.size < words.length * 2}
-                onCheck={handleCheck}
-                onContinue={handleContinue}
-                questionId={questionId}
-            />
         </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        padding: 16,
-        gap: 16,
-        flex: 1,
+
         backgroundColor: '#fff',
     },
     title: {

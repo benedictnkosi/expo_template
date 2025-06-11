@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, Pressable, TextInput, Keyboard } from 'react-native';
-import { Audio } from 'expo-av';
+import { View, StyleSheet, TextInput, Keyboard } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
+import { useFeedback } from '../contexts/FeedbackContext';
+import { AudioOnly } from './AudioOnly';
 
 interface Word {
     id: number;
@@ -15,18 +15,14 @@ interface TypeWhatYouHearQuestionProps {
     words: Word[];
     options: (string | number)[];
     selectedLanguage: string;
-    onContinue: () => void;
     questionId: string | number;
+    setOnCheck?: (fn: () => void) => void;
+    setOnContinue?: (fn: () => void) => void;
 }
 
-export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, onContinue, questionId }: TypeWhatYouHearQuestionProps) {
+export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, questionId, setOnCheck, setOnContinue }: TypeWhatYouHearQuestionProps) {
     const [userInput, setUserInput] = useState('');
-    const [isChecked, setIsChecked] = useState(false);
-    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const soundRef = useRef<Audio.Sound | null>(null);
-    const audioQueueRef = useRef<string[]>([]);
-    const currentAudioIndexRef = useRef(0);
+    const { setFeedback, resetFeedback } = useFeedback();
 
     // Get all correct words and concatenate their translations
     const correctWords = options
@@ -37,92 +33,36 @@ export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, onCo
         .join(' ');
     const audioUris = correctWords.map(word => word.audio[selectedLanguage]).filter(Boolean);
 
-    console.log('correctWords', correctWords);
-    console.log('correctAnswer', correctAnswer);
-    console.log('audioUris', audioUris);
+    // Combine all audio URIs into a single string for the AudioOnly component
+    const combinedAudioUrl = audioUris.length > 0 ? audioUris[0] : undefined;
 
-    useEffect(() => {
-        if (audioUris.length > 0) {
-            handlePlayAudio();
-        }
-    }, [audioUris]); // Re-run when audioUris changes (i.e., when words or language changes)
-
-    async function playNextAudio() {
-        if (currentAudioIndexRef.current >= audioQueueRef.current.length) {
-            setIsPlaying(false);
-            currentAudioIndexRef.current = 0;
-            return;
-        }
-
-        try {
-            const currentAudioUri = audioQueueRef.current[currentAudioIndexRef.current];
-            if (soundRef.current) {
-                await soundRef.current.unloadAsync();
-                soundRef.current = null;
-            }
-
-            const { sound } = await Audio.Sound.createAsync(
-                { uri: currentAudioUri },
-                { shouldPlay: true },
-                (status) => {
-                    if (status.isLoaded && status.didJustFinish) {
-                        currentAudioIndexRef.current++;
-                        playNextAudio();
-                    }
-                }
-            );
-            soundRef.current = sound;
-            await sound.playAsync();
-        } catch (e) {
-            setIsPlaying(false);
-            currentAudioIndexRef.current = 0;
-        }
-    }
-
-    async function handlePlayAudio() {
-        if (!audioUris.length) return;
-        try {
-            setIsPlaying(true);
-            audioQueueRef.current = audioUris;
-            currentAudioIndexRef.current = 0;
-            await playNextAudio();
-        } catch (e) {
-            setIsPlaying(false);
-        }
+    function resetQuestion() {
+        resetFeedback();
+        setUserInput('');
     }
 
     function handleCheck() {
         Keyboard.dismiss();
         if (!userInput.trim()) return;
-        setIsCorrect(userInput.trim().toLowerCase() === correctAnswer.trim().toLowerCase());
-        setIsChecked(true);
+        const isAnswerCorrect = userInput.trim().toLowerCase() === correctAnswer.trim().toLowerCase();
+        setFeedback({
+            isChecked: true,
+            isCorrect: isAnswerCorrect,
+            feedbackText: isAnswerCorrect ? 'Correct!' : "That's not quite right",
+            correctAnswer: !isAnswerCorrect ? correctAnswer : undefined,
+            questionId,
+        });
     }
 
-    function handleContinue() {
-        setIsChecked(false);
-        setIsCorrect(null);
-        setUserInput('');
-        onContinue();
-    }
+    useEffect(() => {
+        setOnCheck?.(handleCheck);
+        setOnContinue?.(resetQuestion);
+    }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     return (
         <ThemedView style={styles.container}>
             <ThemedText style={styles.title}>Type what you hear</ThemedText>
-            <Pressable
-                style={styles.audioButton}
-                onPress={handlePlayAudio}
-                accessibilityLabel="Play audio"
-                disabled={isPlaying || !audioUris.length}
-            >
-                <ThemedText style={styles.audioButtonText}>{isPlaying ? 'Playing...' : '🔊 Play'}</ThemedText>
-            </Pressable>
-            <FeedbackMessage
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                feedbackText={isChecked ? (isCorrect ? 'Correct!' : "That's not quite right") : undefined}
-                correctAnswer={!isCorrect ? correctAnswer : undefined}
-                questionId={questionId}
-            />
+            <AudioOnly audioUrl={combinedAudioUrl} />
             <TextInput
                 style={styles.input}
                 value={userInput}
@@ -130,18 +70,9 @@ export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, onCo
                 placeholder="Type your answer"
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isChecked}
                 accessibilityLabel="Type what you hear"
                 returnKeyType="done"
                 onSubmitEditing={handleCheck}
-            />
-            <FeedbackButton
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                isDisabled={!userInput.trim()}
-                onCheck={handleCheck}
-                onContinue={handleContinue}
-                questionId={questionId}
             />
         </ThemedView>
     );
@@ -151,7 +82,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-        flex: 1,
         backgroundColor: '#fff',
     },
     title: {
@@ -159,21 +89,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 16,
         textAlign: 'left',
-    },
-    audioButton: {
-        backgroundColor: '#E0F7FA',
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-        alignSelf: 'center',
-    },
-    audioButtonText: {
-        fontSize: 18,
-        color: '#00796B',
-        fontWeight: '600',
     },
     input: {
         borderWidth: 1.5,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Pressable, View, Dimensions, Text, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/ThemedText';
@@ -7,7 +7,7 @@ import { HOST_URL } from '@/config/api';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
+import { useFeedback } from '../contexts/FeedbackContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Word {
@@ -24,8 +24,9 @@ interface SelectImageQuestionProps {
     onSelect?: (index: number) => void;
     selectedLanguage: string;
     areResourcesDownloaded: boolean;
-    onContinue: () => void;
     questionId: string;
+    setOnCheck?: (fn: () => void) => void;
+    setOnContinue?: (fn: () => void) => void;
 }
 
 function useAudioUri(audioFile: string | undefined, areResourcesDownloaded: boolean) {
@@ -114,138 +115,119 @@ export function SelectImageQuestion({
     correctOption,
     selectedLanguage,
     areResourcesDownloaded,
-    onContinue,
     questionId,
+    setOnCheck,
+    setOnContinue,
 }: SelectImageQuestionProps) {
-    const screenWidth = Dimensions.get('window').width;
-    const imageSize = (screenWidth - 48) / 2;
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
-    const [isChecked, setIsChecked] = React.useState(false);
-    const [isCorrect, setIsCorrect] = React.useState(false);
+    const { setFeedback, resetFeedback } = useFeedback();
     const insets = useSafeAreaInsets();
 
-    React.useEffect(() => {
+    console.log('SelectImageQuestion options:', options);
+    console.log('SelectImageQuestion words:', words);
+
+    function handleSelectOption(index: number) {
+        setSelectedIndex(index);
+    }
+
+    function handleCheckOrContinue() {
+        if (selectedIndex === null) return;
+        const isAnswerCorrect = selectedIndex === correctOption;
+        const correctLabel = correctOption !== null ? words[correctOption]?.translations['en'] || '' : '';
+        setFeedback({
+            isChecked: true,
+            isCorrect: isAnswerCorrect,
+            feedbackText: isAnswerCorrect ? 'Correct!' : "That's not quite right",
+            correctAnswer: !isAnswerCorrect ? correctLabel : undefined,
+            questionId,
+        });
+    }
+
+    function resetQuestion() {
+        resetFeedback();
         setSelectedIndex(null);
-        setIsChecked(false);
-        setIsCorrect(false);
-    }, [words, options, correctOption]);
+    }
 
     // Find the correct word and its audio/label
     let audioPrompt: React.ReactNode = null;
-    let correctLabel = '';
     let correctIndex: number | null = null;
     if (
+        words.length > 0 &&
+        options.length > 0 &&
         correctOption !== null &&
-        correctOption >= 0 &&
         correctOption < options.length
     ) {
         const correctWord = words.find(
             (word) => String(word.id) === String(options[correctOption])
         );
-        correctLabel = correctWord?.translations['en'] || '';
         correctIndex = words.findIndex((word) => String(word.id) === String(options[correctOption]));
         const audioFile = correctWord?.audio[selectedLanguage];
         const audioUrl = useAudioUri(audioFile, areResourcesDownloaded);
-        if (audioUrl && correctLabel) {
-            audioPrompt = <AudioPrompt word={correctLabel} audioUrl={audioUrl} autoPlay={true} />;
+        if (audioUrl && correctWord?.translations[selectedLanguage]) {
+            audioPrompt = <AudioPrompt word={correctWord.translations[selectedLanguage]} audioUrl={audioUrl} autoPlay={true} />;
         }
     }
 
-    const handleSelect = (index: number) => {
-        if (!isChecked) setSelectedIndex(index);
-    };
-
-    const handleCheckOrContinue = () => {
-        if (!isChecked && selectedIndex !== null) {
-            setIsCorrect(selectedIndex === correctIndex);
-            setIsChecked(true);
-        } else if (isChecked) {
-            onContinue();
-        }
-    };
+    React.useEffect(() => {
+        setOnCheck?.(handleCheckOrContinue);
+        setOnContinue?.(resetQuestion);
+    }, [setOnCheck, setOnContinue, handleCheckOrContinue, resetQuestion]);
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
-            <ScrollView
-                contentContainerStyle={{
-                    padding: 16,
-                    paddingBottom: 120 + insets.bottom, // enough space for sticky button
-                    gap: 16,
-                }}
-                keyboardShouldPersistTaps="handled"
-            >
+        <View style={styles.container}>
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
                 <ThemedText style={styles.title}>Select the correct image</ThemedText>
                 {audioPrompt}
-                <View style={styles.grid}>
-                    {words.map((word, index) => {
-                        const englishTranslation = word.translations['en'];
-                        const localImageUri = `${FileSystem.documentDirectory}image/${word.image}`;
-                        let borderStyle = {};
-                        if (isChecked) {
-                            if (index === correctIndex) borderStyle = styles.imageContainerCorrect;
-                            if (!isCorrect && selectedIndex === index && selectedIndex !== correctIndex) borderStyle = styles.imageContainerIncorrect;
-                        } else if (selectedIndex === index) {
-                            borderStyle = styles.imageContainerSelected;
-                        }
+                <View style={styles.optionsGrid}>
+                    {options.map((optionId, index) => {
+                        const word = words.find(w => String(w.id) === String(optionId));
+                        console.log(`Option index ${index}: optionId=${optionId}, word=`, word);
+                        if (!word) return null;
+                        const selectedLanguageWord = word.translations[selectedLanguage];
+                        const isSelected = selectedIndex === index;
+                        const isCorrect = index === correctIndex;
+
                         return (
                             <Pressable
-                                key={index}
-                                style={({ pressed }) => [
-                                    styles.imageContainer,
-                                    { width: imageSize },
-                                    pressed && styles.imageContainerPressed,
-                                    borderStyle,
+                                key={`option-${optionId}-${index}`}
+                                style={[
+                                    styles.optionCard,
+                                    isSelected && styles.selectedOptionCard,
+                                    isSelected && !isCorrect && styles.incorrectOptionCard,
                                 ]}
-                                onPress={() => handleSelect(index)}
-                                accessibilityLabel={englishTranslation}
+                                onPress={() => handleSelectOption(index)}
+                                disabled={selectedIndex !== null}
+                                accessibilityLabel={`Select ${selectedLanguageWord}`}
                             >
-                                <View style={styles.imageWrapper}>
-                                    <Image
-                                        source={{ uri: localImageUri }}
-                                        style={styles.image}
-                                        contentFit="cover"
-                                        onError={(error) => {
-                                            console.error(`[SelectImageQuestion] Error loading image ${word.image}:`, error);
-                                            return (
-                                                <Image
-                                                    source={{ uri: `${HOST_URL}/api/images/${word.image}` }}
-                                                    style={styles.image}
-                                                    contentFit="cover"
-                                                />
-                                            );
-                                        }}
-                                    />
+                                <Image
+                                    source={{ uri: `${HOST_URL}/api/word/image/get/${word.image}` }}
+                                    style={styles.optionImage}
+                                    contentFit="contain"
+                                    transition={200}
+                                />
+                                <View style={styles.optionTextContainer}>
+                                    <ThemedText style={styles.englishTranslation}>{word.translations['en']}</ThemedText>
                                 </View>
-                                <ThemedView style={styles.translationContainer}>
-                                    <ThemedText style={styles.englishTranslation}>{englishTranslation}</ThemedText>
-                                </ThemedView>
                             </Pressable>
                         );
                     })}
                 </View>
-                <FeedbackMessage
-                    isChecked={isChecked}
-                    isCorrect={isCorrect}
-                    feedbackText={isChecked ? (isCorrect ? 'Correct!' : "That's not quite right") : undefined}
-                    correctAnswer={!isCorrect ? correctLabel : undefined}
-                    questionId={questionId}
-                />
             </ScrollView>
-            <FeedbackButton
-                isChecked={isChecked}
-                isCorrect={isCorrect}
-                isDisabled={selectedIndex === null}
-                onCheck={handleCheckOrContinue}
-                onContinue={handleCheckOrContinue}
-                questionId={questionId}
-            />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
+
+        backgroundColor: '#fff',
+    },
+    scrollView: {
+        // flex: 1, // Removed for debugging
+    },
+    scrollContent: {
         padding: 16,
+        paddingBottom: 120,
         gap: 16,
     },
     title: {
@@ -284,76 +266,47 @@ const styles = StyleSheet.create({
         textDecorationColor: '#22A9F5',
         marginLeft: 2,
     },
-    grid: {
+    optionsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 16,
         justifyContent: 'center',
     },
-    imageContainer: {
+    optionCard: {
         borderRadius: 18,
         overflow: 'hidden',
         backgroundColor: '#fff',
-        borderWidth: 1.5,
+        borderWidth: 2,
         borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
-        marginBottom: 8,
-        alignItems: 'center',
-        paddingBottom: 8,
+        width: '45%',
+        aspectRatio: 1,
     },
-    imageContainerPressed: {
-        opacity: 0.8,
-        transform: [{ scale: 0.98 }],
-    },
-    imageContainerSelected: {
+    selectedOptionCard: {
         borderColor: '#22A9F5',
         borderWidth: 3,
     },
-    imageContainerCorrect: {
-        borderColor: '#4CAF50',
+    incorrectOptionCard: {
+        borderColor: '#EF4444',
         borderWidth: 3,
     },
-    imageContainerIncorrect: {
-        borderColor: '#F44336',
-        borderWidth: 3,
-    },
-    imageWrapper: {
+    optionImage: {
         width: '100%',
+        height: undefined,
         aspectRatio: 1,
-        backgroundColor: '#F3F4F6',
     },
-    image: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: '#F3F4F6',
+    optionText: {
+        fontSize: 16,
+        fontWeight: '600',
+        textAlign: 'center',
+        color: '#222',
     },
-    translationContainer: {
-        paddingVertical: 4,
-        alignItems: 'center',
-        backgroundColor: 'transparent',
-        minHeight: 24,
-        justifyContent: 'center',
+    optionTextContainer: {
+        padding: 8,
+        gap: 4,
     },
     englishTranslation: {
-        fontSize: 13,
-        color: '#888',
+        fontSize: 14,
+        color: '#666',
         textAlign: 'center',
-        marginTop: 2,
-        fontWeight: '500',
-    },
-    stickyFooter: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'transparent',
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
     },
 }); 
