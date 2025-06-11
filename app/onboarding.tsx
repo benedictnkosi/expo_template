@@ -162,7 +162,6 @@ WebBrowser.maybeCompleteAuthSession();
 
 const EMOJIS = {
   welcome: '🚀',
-  grade: '📚',
   school: '👥',
   ready: '✍️',
   podcast: '🎧',
@@ -187,7 +186,6 @@ const AVATAR_IMAGES: AvatarImages = {
 };
 
 export interface OnboardingData {
-  grade: string;
   curriculum: string;
   difficultSubject?: string;
   avatar: string;
@@ -212,7 +210,6 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 interface GuestAccountParams {
-  grade: string;
   selectedAvatar: string;
   signUp: (email: string, password: string) => Promise<any>;
 }
@@ -224,7 +221,7 @@ interface FirebaseError extends Error {
   stack?: string;
 }
 
-async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccountParams, retryCount = 0): Promise<any> {
+async function createGuestAccount({ selectedAvatar, signUp }: GuestAccountParams, retryCount = 0): Promise<any> {
   try {
     console.log(`[Guest Account] Attempt ${retryCount + 1}/${MAX_RETRIES} - Starting guest account creation`);
 
@@ -247,7 +244,6 @@ async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccoun
     // Create learner profile for guest
     const learnerData = {
       name: getRandomSuperheroName(),
-      grade: parseInt(grade),
       school: 'Not specified',
       school_address: '',
       school_latitude: 0,
@@ -263,7 +259,6 @@ async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccoun
     // Store onboarding data
     console.log('[Guest Account] Storing onboarding data...');
     await AsyncStorage.setItem('onboardingData', JSON.stringify({
-      grade,
       curriculum: 'CAPS',
       avatar: selectedAvatar,
       onboardingCompleted: true,
@@ -273,7 +268,6 @@ async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccoun
     // Log onboarding completion event
     console.log('[Guest Account] Logging analytics event...');
     logAnalyticsEvent('register_success', {
-      grade,
       curriculum: 'CAPS',
       avatar: selectedAvatar,
       is_guest: true
@@ -301,7 +295,7 @@ async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccoun
       console.log(`[Guest Account] Retrying in ${RETRY_DELAY}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      return createGuestAccount({ grade, selectedAvatar, signUp }, retryCount + 1);
+      return createGuestAccount({ selectedAvatar, signUp }, retryCount + 1);
     }
     throw error;
   }
@@ -309,14 +303,12 @@ async function createGuestAccount({ grade, selectedAvatar, signUp }: GuestAccoun
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
-  const [grade, setGrade] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
   const [registrationMethod, setRegistrationMethod] = useState<'email' | 'phone'>('email');
   const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
 
   const [errors, setErrors] = useState({
-    grade: '',
     curriculum: ''
   });
 
@@ -352,11 +344,7 @@ export default function OnboardingScreen() {
       step_number: step + 1,
       step_name: getStepName(step)
     });
-    if (step === 4 && !grade) {
-      setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-      return;
-    }
-    setErrors({ grade: '', curriculum: '' });
+    setErrors({ curriculum: '' });
     setStep(step + 1);
   };
 
@@ -371,14 +359,12 @@ export default function OnboardingScreen() {
       case 3:
         return 'questions';
       case 4:
-        return 'grade_selection';
-      case 5:
         return 'avatar_selection';
-      case 6:
+      case 5:
         return 'ratings';
-      case 7:
+      case 6:
         return 'auth_options';
-      case 8:
+      case 7:
         return 'registration';
       default:
         return 'unknown';
@@ -389,7 +375,6 @@ export default function OnboardingScreen() {
     try {
       // Store onboarding data
       await AsyncStorage.setItem('onboardingData', JSON.stringify({
-        grade,
         curriculum: 'CAPS',
         avatar: selectedAvatar,
         onboardingCompleted: true
@@ -397,7 +382,6 @@ export default function OnboardingScreen() {
 
       // Log onboarding completion event
       logAnalyticsEvent('onboarding_complete', {
-        grade,
         curriculum: 'CAPS',
         avatar: selectedAvatar
       });
@@ -406,7 +390,6 @@ export default function OnboardingScreen() {
       router.push({
         pathname: '/register',
         params: {
-          grade,
           curriculum: 'CAPS',
           avatar: selectedAvatar,
         }
@@ -498,50 +481,6 @@ export default function OnboardingScreen() {
           </View>
         );
       case 4:
-        // Define a palette of bright, kid-friendly colors
-        const gradeColors = ['#FFD600', '#FF6F61', '#4DD0E1', '#81C784', '#BA68C8'];
-        return (
-          <View style={styles.step} testID="grade-selection-step">
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle} testID="grade-step-title">What grade are you in?</ThemedText>
-              <View style={styles.gradeButtons} testID="grade-buttons-container">
-                {[8, 9, 10, 11, 12].map((g, i) => {
-                  const rotations = [-8, -5, -3, 0, 3, 5, 8];
-                  const rotate = rotations[i % rotations.length];
-                  const blockColor = grade === g.toString() ? undefined : { backgroundColor: gradeColors[i % gradeColors.length] };
-                  return (
-                    <TouchableOpacity
-                      key={g}
-                      style={[
-                        styles.gradeBlock,
-                        blockColor,
-                        grade === g.toString() && styles.gradeBlockSelected,
-                        { transform: [{ rotate: `${rotate}deg` }] }
-                      ]}
-                      onPress={() => {
-                        setGrade(g.toString());
-                        setErrors(prev => ({ ...prev, grade: '' }));
-                      }}
-                      testID={`grade-block-${g}`}
-                    >
-                      <ThemedText
-                        style={[
-                          styles.gradeBlockText,
-                          grade === g.toString() && styles.gradeBlockTextSelected
-                        ]}
-                        testID={`grade-block-text-${g}`}
-                      >
-                        {g}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-              {errors.grade ? <ThemedText style={styles.errorText} testID="grade-error">{errors.grade}</ThemedText> : null}
-            </View>
-          </View>
-        );
-      case 5:
         return (
           <View style={styles.step}>
             <View style={styles.textContainer}>
@@ -584,7 +523,7 @@ export default function OnboardingScreen() {
             </ScrollView>
           </View>
         );
-      case 6:
+      case 5:
         return (
           <View style={styles.step} testID="ratings-step">
             <View style={styles.textContainer}>
@@ -603,15 +542,10 @@ export default function OnboardingScreen() {
                   • 1 star = I don't like it and would not recommend it
                 </ThemedText>
               </View>
-
-
-
-
             </View>
           </View>
         );
-
-      case 7:
+      case 6:
         return (
           <View style={styles.step} testID="auth-options-step">
             <TouchableOpacity
@@ -635,7 +569,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'email' });
                   setRegistrationMethod('email');
-                  setStep(8);
+                  setStep(7);
                 }}
                 testID="email-auth-button"
               >
@@ -648,7 +582,7 @@ export default function OnboardingScreen() {
                 onPress={() => {
                   logAnalyticsEvent('auth_option_selected', { option: 'phone' });
                   setRegistrationMethod('phone');
-                  setStep(8);
+                  setStep(7);
                 }}
                 testID="phone-auth-button"
               >
@@ -676,7 +610,6 @@ export default function OnboardingScreen() {
                     });
 
                     const user = await createGuestAccount({
-                      grade,
                       selectedAvatar,
                       signUp
                     });
@@ -713,13 +646,12 @@ export default function OnboardingScreen() {
             </View>
           </View>
         );
-
-      case 8:
+      case 7:
         return (
           <View style={styles.step}>
             <TouchableOpacity
               style={[styles.closeButton, { left: insets.left + 8 }]}
-              onPress={() => setStep(7)}
+              onPress={() => setStep(6)}
             >
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
@@ -734,7 +666,6 @@ export default function OnboardingScreen() {
 
               <RegisterForm
                 onboardingData={{
-                  grade,
                   curriculum: 'CAPS',
                   avatar: selectedAvatar,
                 }}
@@ -760,14 +691,12 @@ export default function OnboardingScreen() {
       case 3:
         return true;
       case 4:
-        return !!grade;
+        return true;
       case 5:
         return true;
       case 6:
         return true;
       case 7:
-        return true;
-      case 8:
         return true;
       default:
         return false;
@@ -884,7 +813,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.5,
   },
-
   boastingText: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -894,7 +822,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 24,
   },
-
   welcomeText: {
     fontSize: 18,
     color: '#E2E8F0',
@@ -963,43 +890,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#4d5ad3',
-  },
-  gradeButtons: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 24,
-  },
-  gradeBlock: {
-    width: 120,
-    height: 120,
-    margin: 12,
-    borderRadius: 24,
-    backgroundColor: '#FFD600',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  gradeBlockSelected: {
-    backgroundColor: '#4d5ad3',
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  gradeBlockText: {
-    fontSize: 54,
-    fontWeight: 'bold',
-    color: '#222',
-    textAlign: 'center',
-  },
-  gradeBlockTextSelected: {
-    color: '#fff',
   },
   debugText: {
     color: '#E2E8F0',
@@ -1570,7 +1460,6 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 16,
   },
-
   checkbox: {
     width: 24,
     height: 24,
@@ -1689,76 +1578,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#E2E8F0',
     lineHeight: 24,
-  },
-  gradeWarningContainer: {
-    backgroundColor: 'rgba(255, 193, 7, 0.15)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 193, 7, 0.3)',
-  },
-  gradeWarningText: {
-    fontSize: 15,
-    color: '#FFD700',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  earlyGradeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
-    padding: 24,
-    marginTop: 24,
-    marginHorizontal: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  earlyGradeHeader: {
-    marginBottom: 24,
-  },
-  earlyGradeTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  earlyGradeSubtitle: {
-    fontSize: 16,
-    color: '#E2E8F0',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  featuresList: {
-    gap: 20,
-    marginBottom: 24,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  featureEmoji: {
-    fontSize: 24,
-    width: 40,
-    textAlign: 'center',
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    flex: 1,
-    lineHeight: 22,
-  },
-  earlyGradeFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    paddingTop: 20,
-  },
-  earlyGradeFooterText: {
-    fontSize: 15,
-    color: '#E2E8F0',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
+  }
 });

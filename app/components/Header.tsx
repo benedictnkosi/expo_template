@@ -5,18 +5,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 
-export interface HeaderProps {
+interface HeaderProps {
     learnerInfo?: {
         name: string;
         grade: string;
         school?: string;
         avatar?: string;
     } | null;
-    title?: string;
+    title: string;
     showBackButton?: boolean;
 }
 
-export function Header({ learnerInfo, title, showBackButton }: HeaderProps) {
+export const Header: React.FC<HeaderProps> = ({ learnerInfo, title, showBackButton }) => {
     const { isDark } = useTheme();
 
     return (

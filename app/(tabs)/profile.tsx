@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
-import { ProfileHeader } from '@/app/components/ProfileHeader';
+import { ProfileHeader } from '@/components/ProfileHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch, Linking } from 'react-native';
 import React from 'react';

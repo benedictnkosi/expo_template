@@ -1,52 +1,26 @@
 {
   "project_info": {
-    "project_number": "619089624841",
-    "project_id": "exam-quiz-b615e",
-    "storage_bucket": "exam-quiz-b615e.firebasestorage.app"
+    "project_number": "528892435856",
+    "project_id": "southafricanlanguages",
+    "storage_bucket": "southafricanlanguages.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:619089624841:android:4b6900cf68bc0193681dd8",
+        "mobilesdk_app_id": "1:528892435856:android:a656fc9a0d0d1189b56715",
         "android_client_info": {
-          "package_name": "za.co.examquizafrica"
+          "package_name": "com.dimpolanguages"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "619089624841-5n8um3cvgabqlgiq7s303n6obmc87ekq.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "za.co.examquizafrica",
-            "certificate_hash": "ddb1b8d24495cc355f6030c77bb99c9dfced75f2"
-          }
-        },
-        {
-          "client_id": "619089624841-tpefccn4puvsmlk14mvk4eeqn1e2036e.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyByCggGOKgD-STXUohFPRg6c1YRsT_C2jo"
+          "current_key": "AIzaSyBcwBF12SCgbqo2XnY5B5adKO7ZxjKaJlg"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "619089624841-tpefccn4puvsmlk14mvk4eeqn1e2036e.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "619089624841-umbfiea5u6tginahq6u85kk018ekpaai.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "za.co.examquizafrica",
-                "app_store_id": "6742684696"
-              }
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }

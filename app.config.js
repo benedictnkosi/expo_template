@@ -1,15 +1,15 @@
 export default {
-  name: 'Dimpo',
+  name: 'Dimpo Languages',
   slug: 'exam-quiz',
   version: '3.0.38',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'examquiz',
+  scheme: 'dimpolanguages',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'za.co.examquizafrica',
+    bundleIdentifier: 'com.dimpolanguages',
     buildNumber: '1.0.2',
     googleServicesFile: './GoogleService-Info.plist',
     infoPlist: {
@@ -19,7 +19,7 @@ export default {
     "associatedDomains": ["applinks:examquiz.co.za"]
   },
   android: {
-    package: 'za.co.examquizafrica',
+    package: 'com.dimpolanguages',
     "intentFilters": [
       {
         "action": "VIEW",

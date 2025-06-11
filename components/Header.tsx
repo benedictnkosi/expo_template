@@ -35,9 +35,9 @@ export function Header({ learnerInfo }: HeaderProps) {
     <View style={styles.header}>
       <View style={styles.greeting}>
         <ThemedText style={styles.welcomeText} testID='welcome-text'>
-          <ThemedText style={styles.appName}>📚 Dimpo Learning App </ThemedText> <ThemedText style={styles.emoji}>✨</ThemedText>
+          <ThemedText style={styles.appName}>🏳️‍🌈 Dimpo languages </ThemedText> <ThemedText style={styles.emoji}>✨</ThemedText>
         </ThemedText>
-        <ThemedText style={styles.subtitle}>Explore the Joy of Learning! 🎓</ThemedText>
+        <ThemedText style={styles.subtitle}>Don't be that Zulu guy. 🌍</ThemedText>
       </View>
 
       {learnerInfo && (
@@ -61,7 +61,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 4,
+    marginTop: 24,
   },
   greeting: {
     flex: 1,
