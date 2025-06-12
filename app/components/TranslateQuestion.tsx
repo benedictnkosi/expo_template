@@ -4,6 +4,9 @@ import { Audio } from 'expo-av';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useFeedback } from '../contexts/FeedbackContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { AudioPlayer } from './AudioPlayer';
+import { HOST_URL } from '@/config/api';
 
 interface Word {
     id: number;
@@ -23,6 +26,7 @@ interface TranslateQuestionProps {
     questionId: string | number;
     setOnCheck?: (fn: () => void) => void;
     setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
 function useAudioUri(audioFile: string | undefined) {
@@ -100,9 +104,22 @@ function AudioButton({ audioUrls }: { audioUrls: string[] }) {
     );
 }
 
-export function TranslateQuestion({ words, options, selectedLanguage, direction, sentenceWords, onSelect, selectedOption, questionId, setOnCheck, setOnContinue }: TranslateQuestionProps) {
+export function TranslateQuestion({
+    words,
+    options,
+    selectedLanguage,
+    direction,
+    sentenceWords,
+    onSelect,
+    selectedOption,
+    questionId,
+    setOnCheck,
+    setOnContinue,
+    setIsQuestionAnswered,
+}: TranslateQuestionProps) {
     const [selectedWordIds, setSelectedWordIds] = React.useState<number[]>([]);
     const { setFeedback, resetFeedback } = useFeedback();
+    const { colors, isDark } = useTheme();
 
     // Helper: get word by id
     function getWordById(id: string | number) {
@@ -152,36 +169,47 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
             })
             .join(' ');
         promptRow = (
-            <View style={styles.speechBubbleRow}>
-                <Image
-                    source={selectedGif}
-                    style={styles.kittyGif}
-                    accessibilityLabel="Cute waiting character"
-                />
-                <View style={styles.speechBubbleContainer}>
-                    <View style={styles.speechBubble}>
-                        <ThemedText style={styles.speechBubbleText}>{sentence}</ThemedText>
-                        {direction === 'to_english' && audioUrls.length > 0 && (
-                            <AudioButton audioUrls={audioUrls} />
-                        )}
-                    </View>
-                    <View style={styles.speechBubbleTail} />
-                </View>
-            </View>
+            <AudioPlayer audioUrls={audioUrls} text={sentence} autoPlay={true} />
         );
     }
 
     // Option cards (bottom)
-    const availableOptions = options.filter(
-        (id) => !selectedWordIds.includes(Number(id))
-    );
+    const availableOptions = options.filter((id) => {
+        if (selectedWordIds.includes(Number(id))) return false;
+        const word = getWordById(id);
+        if (!word) return false;
+        const text = direction === 'from_english'
+            ? word.translations[selectedLanguage]
+            : word.translations['en'];
+        return !!text && text.trim().length > 0;
+    });
 
     function handleSelectOption(id: string | number) {
+        const word = getWordById(id);
+        console.log('word', word);
+        if (word?.audio?.[selectedLanguage]) {
+            console.log('word.audio[selectedLanguage]', word.audio[selectedLanguage]);
+            const sound = new Audio.Sound();
+            const audioUrl = `${HOST_URL}/api/word/audio/get/${word.audio[selectedLanguage]}`;
+            sound.loadAsync({ uri: audioUrl }).then(() => {
+                console.log('loaded audio');
+                sound.playAsync();
+                sound.setOnPlaybackStatusUpdate((status) => {
+                    if (status.isLoaded && status.didJustFinish) {
+                        sound.unloadAsync();
+                    }
+                });
+            }).catch(() => {
+                console.log('error loading audio');
+            });
+        }
         setSelectedWordIds(prev => [...prev, Number(id)]);
+        setIsQuestionAnswered(true);
     }
 
     function handleRemoveSelected(idx: number) {
         setSelectedWordIds(prev => prev.filter((_, i) => i !== idx));
+        setIsQuestionAnswered(selectedWordIds.length > 1);
     }
 
     function handleCheck() {
@@ -239,8 +267,8 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
     }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     return (
-        <ThemedView style={styles.container}>
-            <ThemedText style={styles.title}>Translate this sentence</ThemedText>
+        <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ThemedText style={[styles.title, { color: colors.text }]}>Translate this sentence</ThemedText>
             {promptRow}
             {/* Selected answer row */}
             <View style={styles.selectedRow}>
@@ -249,14 +277,18 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
                     if (!word) return null;
                     const text = direction === 'from_english' ? word.translations[selectedLanguage] : word.translations['en'];
                     return (
-                        <Pressable key={idx} style={styles.selectedCard} onPress={() => handleRemoveSelected(idx)}>
-                            <ThemedText style={styles.selectedCardText}>{text}</ThemedText>
+                        <Pressable
+                            key={idx}
+                            style={[styles.selectedCard, { backgroundColor: isDark ? colors.surface : '#E0F2F1' }]}
+                            onPress={() => handleRemoveSelected(idx)}
+                        >
+                            <ThemedText style={[styles.selectedCardText, { color: isDark ? colors.success : '#00796B' }]}>{text}</ThemedText>
                         </Pressable>
                     );
                 })}
             </View>
             {/* Duolingo-style single line for the answer */}
-            <View style={styles.singleAnswerLine} />
+            <View style={[styles.singleAnswerLine, { backgroundColor: colors.border }]} />
             {/* Option cards */}
             <View style={styles.optionsGrid}>
                 {availableOptions.map((id, idx) => {
@@ -264,8 +296,15 @@ export function TranslateQuestion({ words, options, selectedLanguage, direction,
                     if (!word) return null;
                     const text = direction === 'from_english' ? word.translations[selectedLanguage] : word.translations['en'];
                     return (
-                        <Pressable key={id} style={styles.optionCard} onPress={() => handleSelectOption(id)}>
-                            <ThemedText style={styles.optionText}>{text}</ThemedText>
+                        <Pressable
+                            key={id}
+                            style={[styles.optionCard, {
+                                backgroundColor: isDark ? colors.surface : '#fff',
+                                borderColor: colors.border,
+                            }]}
+                            onPress={() => handleSelectOption(id)}
+                        >
+                            <ThemedText style={[styles.optionText, { color: colors.text }]}>{text}</ThemedText>
                         </Pressable>
                     );
                 })}
@@ -278,8 +317,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-
-        backgroundColor: '#fff',
         position: 'relative',
         paddingBottom: 96,
     },
@@ -308,7 +345,6 @@ const styles = StyleSheet.create({
     },
     speechBubble: {
         borderWidth: 2,
-        borderColor: '#E5E7EB',
         borderRadius: 18,
         paddingVertical: 12,
         paddingHorizontal: 20,
@@ -319,7 +355,6 @@ const styles = StyleSheet.create({
     },
     speechBubbleText: {
         fontSize: 20,
-        color: '#222',
         fontWeight: '500',
         flex: 1,
     },
@@ -327,7 +362,6 @@ const styles = StyleSheet.create({
         width: 0,
         height: 0,
         borderTopWidth: 12,
-        borderTopColor: '#E5E7EB',
         borderLeftWidth: 0,
         borderLeftColor: 'transparent',
         borderRightWidth: 16,
@@ -359,20 +393,17 @@ const styles = StyleSheet.create({
     selectedCardText: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#00796B',
     },
     optionsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 8,
         justifyContent: 'center',
         marginBottom: 80,
     },
     optionCard: {
-        backgroundColor: '#fff',
         borderRadius: 12,
         borderWidth: 1.5,
-        borderColor: '#E5E7EB',
         paddingVertical: 16,
         paddingHorizontal: 18,
         alignItems: 'center',
@@ -387,14 +418,12 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     optionText: {
-        fontSize: 18,
-        color: '#222',
+        fontSize: 16,
         fontWeight: '500',
         textAlign: 'center',
     },
     singleAnswerLine: {
         height: 2,
-        backgroundColor: '#E5E7EB',
         borderRadius: 1,
         marginTop: 1,
         marginBottom: 16,

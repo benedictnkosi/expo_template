@@ -1,4 +1,4 @@
-import { StyleSheet, View, Image, TouchableOpacity, ImageSourcePropType } from 'react-native';
+import { StyleSheet, View, Image, TouchableOpacity, ImageSourcePropType, Platform } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -109,7 +109,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 4,
-    marginTop: 24,
+    marginTop: Platform.select({
+      ios: 48,
+      android: 24,
+    }),
     marginBottom: 16,
   },
   greeting: {

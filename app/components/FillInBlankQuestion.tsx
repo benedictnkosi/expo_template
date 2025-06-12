@@ -18,13 +18,24 @@ interface FillInBlankQuestionProps {
     questionId: string | number;
     setOnCheck?: (fn: () => void) => void;
     setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
 function getWordById(words: Word[], id: string | number) {
     return words.find(w => w.id === Number(id));
 }
 
-export function FillInBlankQuestion({ words, sentenceWords, options, blankIndex, selectedLanguage, questionId, setOnCheck, setOnContinue }: FillInBlankQuestionProps) {
+export function FillInBlankQuestion({
+    words,
+    sentenceWords,
+    options,
+    blankIndex,
+    selectedLanguage,
+    questionId,
+    setOnCheck,
+    setOnContinue,
+    setIsQuestionAnswered,
+}: FillInBlankQuestionProps) {
     const [selectedOption, setSelectedOption] = useState<number | null>(null);
     const { setFeedback, resetFeedback } = useFeedback();
 
@@ -57,6 +68,7 @@ export function FillInBlankQuestion({ words, sentenceWords, options, blankIndex,
 
     function handleSelectOption(id: string | number) {
         setSelectedOption(Number(id));
+        setIsQuestionAnswered(true);
     }
 
     function handleCheck() {

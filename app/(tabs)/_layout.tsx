@@ -41,42 +41,24 @@ export default function TabLayout() {
         },
       }}>
       <Tabs.Screen
-        name="profile"
+        name="index"
         options={{
-          title: 'Profile',
+          title: 'Learn',
           tabBarIcon: ({ color }) => (
             <Text style={{ fontSize: 24 }}>📖</Text>
           ),
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="profile"
         options={{
-          title: 'Learn',
+          title: 'Profile',
           tabBarIcon: ({ color }) => (
-            <View
-              style={{
-                backgroundColor: colors.primary,
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 20,
-                shadowColor: '#000',
-                shadowOffset: {
-                  width: 0,
-                  height: 2,
-                },
-                shadowOpacity: 0.25,
-                shadowRadius: 3.84,
-                elevation: 5,
-              }}>
-              <Text style={{ fontSize: 28 }}>📚</Text>
-            </View>
+            <Text style={{ fontSize: 24 }}>👤</Text>
           ),
         }}
       />
+
 
     </Tabs>
   );

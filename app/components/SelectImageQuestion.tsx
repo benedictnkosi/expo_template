@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Pressable, View, Dimensions, Text, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { ThemedText } from '@/components/ThemedText';
@@ -9,6 +9,8 @@ import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useFeedback } from '../contexts/FeedbackContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AudioPlayer } from './AudioPlayer';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Word {
     id: number;
@@ -27,6 +29,7 @@ interface SelectImageQuestionProps {
     questionId: string;
     setOnCheck?: (fn: () => void) => void;
     setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
 function useAudioUri(audioFile: string | undefined, areResourcesDownloaded: boolean) {
@@ -51,64 +54,6 @@ function useAudioUri(audioFile: string | undefined, areResourcesDownloaded: bool
     return uri;
 }
 
-function AudioButton({ audioUrl, autoPlay = false }: { audioUrl: string; autoPlay?: boolean }) {
-    const [sound, setSound] = React.useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = React.useState(false);
-
-    async function playSound() {
-        try {
-            if (sound) {
-                if (isPlaying) {
-                    await sound.stopAsync();
-                    setIsPlaying(false);
-                } else {
-                    await sound.playAsync();
-                    setIsPlaying(true);
-                }
-            } else {
-                const { sound: newSound } = await Audio.Sound.createAsync(
-                    { uri: audioUrl },
-                    { shouldPlay: true }
-                );
-                setSound(newSound);
-                setIsPlaying(true);
-            }
-        } catch (error) {
-            console.error('Error playing sound:', error);
-        }
-    }
-
-    React.useEffect(() => {
-        if (autoPlay && audioUrl) {
-            playSound();
-        }
-        return sound
-            ? () => {
-                sound.unloadAsync();
-            }
-            : undefined;
-    }, [audioUrl, autoPlay]);
-
-    return (
-        <Pressable onPress={playSound} style={styles.bigAudioButton} accessibilityLabel="Play word audio">
-            <Ionicons
-                name="volume-high"
-                size={28}
-                color="#fff"
-            />
-        </Pressable>
-    );
-}
-
-function AudioPrompt({ word, audioUrl, autoPlay = false }: { word: string; audioUrl: string; autoPlay?: boolean }) {
-    return (
-        <View style={styles.audioPromptContainer}>
-            <AudioButton audioUrl={audioUrl} autoPlay={autoPlay} />
-            <Text style={styles.audioPromptWord}>{word}</Text>
-        </View>
-    );
-}
-
 export function SelectImageQuestion({
     words,
     options,
@@ -118,16 +63,69 @@ export function SelectImageQuestion({
     questionId,
     setOnCheck,
     setOnContinue,
+    setIsQuestionAnswered,
 }: SelectImageQuestionProps) {
     const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
     const { setFeedback, resetFeedback } = useFeedback();
     const insets = useSafeAreaInsets();
+    const scrollViewRef = useRef<ScrollView>(null);
+    const { colors, isDark } = useTheme();
+    const [autoPlayAudio, setAutoPlayAudio] = React.useState(true);
+
+    // Scroll to top on mount
+    useEffect(() => {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }, []);
+
+    // Find the correct word and its audio/label
+    let audioPrompt: React.ReactNode = null;
+    let correctIndex: number | null = null;
+    let audioFile: string | undefined;
+    if (
+        words.length > 0 &&
+        options.length > 0 &&
+        correctOption !== null &&
+        correctOption < options.length
+    ) {
+        const correctWord = words.find(
+            (word) => String(word.id) === String(options[correctOption])
+        );
+        correctIndex = words.findIndex((word) => String(word.id) === String(options[correctOption]));
+        audioFile = correctWord?.audio[selectedLanguage];
+    }
+
+    const audioUrl = useAudioUri(audioFile, areResourcesDownloaded);
+
+    // Add useEffect for initial audio playback
+    React.useEffect(() => {
+        if (audioUrl) {
+            const sound = new Audio.Sound();
+            sound.loadAsync({ uri: audioUrl }).then(() => {
+                sound.playAsync();
+            });
+            return () => {
+                sound.unloadAsync();
+            };
+        }
+    }, [audioUrl]); // Depend on audioUrl instead of empty array
+
+    if (audioFile && audioUrl) {
+        audioPrompt = (
+            <View style={styles.audioPromptContainer}>
+                <View style={styles.audioOnlyWrapper}>
+                    <AudioPlayer audioUrls={[audioFile]} autoPlay={autoPlayAudio} text={words.find((word) => String(word.id) === String(options[correctOption!]))?.translations[selectedLanguage]} />
+                </View>
+            </View>
+        );
+    }
 
     console.log('SelectImageQuestion options:', options);
     console.log('SelectImageQuestion words:', words);
 
     function handleSelectOption(index: number) {
         setSelectedIndex(index);
+        setIsQuestionAnswered(true);
+        setAutoPlayAudio(false);
     }
 
     function handleCheckOrContinue() {
@@ -148,35 +146,19 @@ export function SelectImageQuestion({
         setSelectedIndex(null);
     }
 
-    // Find the correct word and its audio/label
-    let audioPrompt: React.ReactNode = null;
-    let correctIndex: number | null = null;
-    if (
-        words.length > 0 &&
-        options.length > 0 &&
-        correctOption !== null &&
-        correctOption < options.length
-    ) {
-        const correctWord = words.find(
-            (word) => String(word.id) === String(options[correctOption])
-        );
-        correctIndex = words.findIndex((word) => String(word.id) === String(options[correctOption]));
-        const audioFile = correctWord?.audio[selectedLanguage];
-        const audioUrl = useAudioUri(audioFile, areResourcesDownloaded);
-        if (audioUrl && correctWord?.translations[selectedLanguage]) {
-            audioPrompt = <AudioPrompt word={correctWord.translations[selectedLanguage]} audioUrl={audioUrl} autoPlay={true} />;
-        }
-    }
-
     React.useEffect(() => {
         setOnCheck?.(handleCheckOrContinue);
         setOnContinue?.(resetQuestion);
     }, [setOnCheck, setOnContinue, handleCheckOrContinue, resetQuestion]);
 
     return (
-        <View style={styles.container}>
-            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-                <ThemedText style={styles.title}>Select the correct image</ThemedText>
+        <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+            >
+                <ThemedText style={[styles.title, { color: colors.text }]}>Select the correct image</ThemedText>
                 {audioPrompt}
                 <View style={styles.optionsGrid}>
                     {options.map((optionId, index) => {
@@ -192,11 +174,13 @@ export function SelectImageQuestion({
                                 key={`option-${optionId}-${index}`}
                                 style={[
                                     styles.optionCard,
+                                    {
+                                        backgroundColor: colors.surface,
+                                        borderColor: isSelected ? colors.primary : colors.border,
+                                    },
                                     isSelected && styles.selectedOptionCard,
-                                    isSelected && !isCorrect && styles.incorrectOptionCard,
                                 ]}
                                 onPress={() => handleSelectOption(index)}
-                                disabled={selectedIndex !== null}
                                 accessibilityLabel={`Select ${selectedLanguageWord}`}
                             >
                                 <Image
@@ -206,24 +190,25 @@ export function SelectImageQuestion({
                                     transition={200}
                                 />
                                 <View style={styles.optionTextContainer}>
-                                    <ThemedText style={styles.englishTranslation}>{word.translations['en']}</ThemedText>
+                                    <ThemedText style={[styles.englishTranslation, { color: colors.textSecondary }]}>
+                                        {word.translations['en']}
+                                    </ThemedText>
                                 </View>
                             </Pressable>
                         );
                     })}
                 </View>
             </ScrollView>
-        </View>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
 
-        backgroundColor: '#fff',
     },
     scrollView: {
-        // flex: 1, // Removed for debugging
+
     },
     scrollContent: {
         padding: 16,
@@ -237,34 +222,18 @@ const styles = StyleSheet.create({
         textAlign: 'left',
     },
     audioPromptContainer: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 16,
         gap: 12,
-    },
-    bigAudioButton: {
-        backgroundColor: '#22A9F5',
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 4,
-        shadowColor: '#22A9F5',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
+        width: '100%',
     },
     audioPromptWord: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#22A9F5',
         textDecorationLine: 'underline',
         textDecorationStyle: 'dashed',
-        textDecorationColor: '#22A9F5',
-        marginLeft: 2,
+        textAlign: 'center',
     },
     optionsGrid: {
         flexDirection: 'row',
@@ -275,30 +244,18 @@ const styles = StyleSheet.create({
     optionCard: {
         borderRadius: 18,
         overflow: 'hidden',
-        backgroundColor: '#fff',
         borderWidth: 2,
-        borderColor: '#E5E7EB',
         width: '45%',
         aspectRatio: 1,
     },
     selectedOptionCard: {
-        borderColor: '#22A9F5',
-        borderWidth: 3,
-    },
-    incorrectOptionCard: {
-        borderColor: '#EF4444',
         borderWidth: 3,
     },
     optionImage: {
         width: '100%',
         height: undefined,
         aspectRatio: 1,
-    },
-    optionText: {
-        fontSize: 16,
-        fontWeight: '600',
-        textAlign: 'center',
-        color: '#222',
+        backgroundColor: 'transparent',
     },
     optionTextContainer: {
         padding: 8,
@@ -306,7 +263,11 @@ const styles = StyleSheet.create({
     },
     englishTranslation: {
         fontSize: 14,
-        color: '#666',
         textAlign: 'center',
+    },
+    audioOnlyWrapper: {
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 }); 

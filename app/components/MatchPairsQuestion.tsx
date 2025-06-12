@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, Pressable, Text, Dimensions, Animated } from 'react-native';
+import { View, StyleSheet, Pressable, Text, Dimensions, Animated, useColorScheme } from 'react-native';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { HOST_URL } from '@/config/api';
@@ -18,11 +18,12 @@ interface MatchPairsQuestionProps {
     words: Word[];
     selectedLanguage: string;
     areResourcesDownloaded: boolean;
-    onCheck: () => void;
+    onCheck?: () => void;
     matchType?: 'audio' | 'text';
-    questionId: string | number;
-    setOnCheck?: (callback: () => void) => void;
-    setOnContinue?: (callback: () => void) => void;
+    questionId: string;
+    setOnCheck?: (fn: () => void) => void;
+    setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
 function useAudioUri(audioFile: string | undefined, areResourcesDownloaded: boolean) {
@@ -101,8 +102,11 @@ export function MatchPairsQuestion({
     matchType = 'audio',
     questionId,
     setOnCheck,
-    setOnContinue
+    setOnContinue,
+    setIsQuestionAnswered,
 }: MatchPairsQuestionProps) {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
     const screenWidth = Dimensions.get('window').width;
     const cardWidth = (screenWidth - 48) / 2;
     const [selectedAudioId, setSelectedAudioId] = React.useState<number | null>(null);
@@ -160,9 +164,28 @@ export function MatchPairsQuestion({
             setSelectedAudioId(null);
             playFeedbackSound('correct');
             setTimeout(() => {
-                setDisabledLeftIds(prev => new Set([...prev, wordId]));
-                setDisabledRightIds(prev => new Set([...prev, wordId]));
+                setDisabledLeftIds(prev => {
+                    const newSet = new Set([...prev, wordId]);
+                    if (newSet.size + disabledRightIds.size + 1 === words.length * 2) {
+                        setIsQuestionAnswered(true);
+                    }
+                    return newSet;
+                });
+                setDisabledRightIds(prev => {
+                    const newSet = new Set([...prev, wordId]);
+                    if (disabledLeftIds.size + newSet.size === words.length * 2) {
+                        setIsQuestionAnswered(true);
+                    }
+                    return newSet;
+                });
                 setJustMatchedId(null);
+                // Check if all pairs matched after both sets update
+                if (
+                    (disabledLeftIds.size + 1 === words.length) &&
+                    (disabledRightIds.size + 1 === words.length)
+                ) {
+                    setIsQuestionAnswered(true);
+                }
             }, 1000); // 1 second
         } else {
             setWrongTranslationId(wordId);
@@ -189,22 +212,26 @@ export function MatchPairsQuestion({
     };
 
     const getCardStyle = (wordId: number, isAudio: boolean) => {
-        const baseStyle = [styles.card, { width: cardWidth }];
+        const baseStyle = [
+            styles.card,
+            { width: cardWidth },
+            isDark && styles.cardDark
+        ];
 
         if (justMatchedId === wordId) {
-            return [...baseStyle, styles.justMatchedCard];
+            return [...baseStyle, isDark ? styles.justMatchedCardDark : styles.justMatchedCard];
         }
 
         if ((isAudio && disabledLeftIds.has(wordId)) || (!isAudio && disabledRightIds.has(wordId))) {
-            return [...baseStyle, styles.disabledCard];
+            return [...baseStyle, isDark ? styles.disabledCardDark : styles.disabledCard];
         }
 
         if (!isAudio && wrongTranslationId === wordId) {
-            return [...baseStyle, styles.wrongCard];
+            return [...baseStyle, isDark ? styles.wrongCardDark : styles.wrongCard];
         }
 
         if (isAudio && selectedAudioId === wordId) {
-            return [...baseStyle, styles.selectedCard];
+            return [...baseStyle, isDark ? styles.selectedCardDark : styles.selectedCard];
         }
 
         return baseStyle;
@@ -236,8 +263,13 @@ export function MatchPairsQuestion({
         setOnContinue?.(resetQuestion);
     }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
+    function handleSelectOption(id: string | number) {
+        // ... existing code ...
+        setIsQuestionAnswered(true);
+    }
+
     return (
-        <ThemedView style={styles.container}>
+        <ThemedView style={[styles.container, { backgroundColor: isDark ? '#181A20' : '#fff' }]}>
             <ThemedText style={styles.title} children="Tap the matching pairs" />
             <View style={styles.pairRowHeader}>
                 <View style={{ width: cardWidth }} />
@@ -264,7 +296,7 @@ export function MatchPairsQuestion({
                                 {matchType === 'audio' ? (
                                     <AudioButton audioUrl={audioUrl} isSelected={isSelected} />
                                 ) : (
-                                    <ThemedText style={styles.translationText} children={selectedLanguageWord} />
+                                    <ThemedText style={[styles.translationText, isDark && styles.translationTextDark]} children={selectedLanguageWord} />
                                 )}
                             </Pressable>
                             <Pressable
@@ -272,7 +304,7 @@ export function MatchPairsQuestion({
                                 onPress={() => handleTranslationCardPress(shuffledWords[idx].id)}
                                 disabled={isRightDisabled}
                             >
-                                <ThemedText style={styles.translationText} children={shuffledWords[idx].translations['en'] || ''} />
+                                <ThemedText style={[styles.translationText, isDark && styles.translationTextDark]} children={shuffledWords[idx].translations['en'] || ''} />
                             </Pressable>
                         </View>
                     );
@@ -284,7 +316,6 @@ export function MatchPairsQuestion({
 
 const styles = StyleSheet.create({
     container: {
-
         backgroundColor: '#fff',
     },
     title: {
@@ -320,6 +351,12 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
+    cardDark: {
+        backgroundColor: '#1F2937',
+        borderColor: '#374151',
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+    },
     audioButton: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -336,6 +373,52 @@ const styles = StyleSheet.create({
         color: '#222',
         fontWeight: '500',
         textAlign: 'center',
+    },
+    translationTextDark: {
+        color: '#E5E7EB',
+    },
+    selectedCard: {
+        borderColor: '#22A9F5',
+        borderWidth: 2,
+    },
+    selectedCardDark: {
+        borderColor: '#60A5FA',
+        borderWidth: 2,
+    },
+    matchedCard: {
+        borderColor: '#34D399',
+        borderWidth: 2,
+        backgroundColor: '#F0FDF4',
+    },
+    justMatchedCard: {
+        borderColor: '#34D399',
+        borderWidth: 2,
+        backgroundColor: '#F0FDF4',
+    },
+    justMatchedCardDark: {
+        borderColor: '#34D399',
+        borderWidth: 2,
+        backgroundColor: '#064E3B',
+    },
+    wrongCard: {
+        borderColor: '#EF4444',
+        borderWidth: 2,
+        backgroundColor: '#FEF2F2',
+    },
+    wrongCardDark: {
+        borderColor: '#EF4444',
+        borderWidth: 2,
+        backgroundColor: '#7F1D1D',
+    },
+    disabledCard: {
+        backgroundColor: '#F3F4F6',
+        borderColor: '#E5E7EB',
+        opacity: 0.6,
+    },
+    disabledCardDark: {
+        backgroundColor: '#374151',
+        borderColor: '#4B5563',
+        opacity: 0.6,
     },
     checkButton: {
         backgroundColor: '#E5E7EB',
@@ -355,15 +438,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         marginBottom: 0,
     },
-    selectedCard: {
-        borderColor: '#22A9F5',
-        borderWidth: 2,
-    },
-    matchedCard: {
-        borderColor: '#34D399',
-        borderWidth: 2,
-        backgroundColor: '#F0FDF4',
-    },
     checkButtonActive: {
         backgroundColor: '#22A9F5',
     },
@@ -373,11 +447,6 @@ const styles = StyleSheet.create({
     audioButtonSelected: {
         // Optionally add a subtle highlight if you want
         // backgroundColor: '#E0F2FE',
-    },
-    wrongCard: {
-        borderColor: '#EF4444',
-        borderWidth: 2,
-        backgroundColor: '#FEF2F2',
     },
     feedbackContainer: {
         backgroundColor: '#FEE2E2',
@@ -404,15 +473,5 @@ const styles = StyleSheet.create({
     dismissButtonText: {
         color: '#fff',
         fontWeight: '600',
-    },
-    justMatchedCard: {
-        borderColor: '#34D399',
-        borderWidth: 2,
-        backgroundColor: '#F0FDF4',
-    },
-    disabledCard: {
-        backgroundColor: '#F3F4F6',
-        borderColor: '#E5E7EB',
-        opacity: 0.6,
     },
 }); 

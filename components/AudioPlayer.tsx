@@ -208,98 +208,102 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(({ audio
 
     return (
         <View style={styles.container}>
-            {imageUrl && (
-                <Image
-                    source={{ uri: imageUrl }}
-                    style={styles.image}
-                    resizeMode="cover"
-                    onLoadStart={() => console.log('[AudioPlayer] Image loading started:', imageUrl)}
-                    onLoad={() => console.log('[AudioPlayer] Image loaded successfully:', imageUrl)}
-                    onError={(error) => console.error('[AudioPlayer] Image loading error:', error.nativeEvent.error)}
-                />
-            )}
-            <View style={styles.controlsContainer}>
-                {title && (
-                    <ThemedText style={styles.title}>{title}</ThemedText>
-                )}
-                <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                        <View
-                            style={[
-                                styles.progressFill,
-                                {
-                                    width: `${hasDuration ? (position / duration) * 100 : 0}%`,
-                                    backgroundColor: colors.primary
-                                }
-                            ]}
+            <View style={styles.contentContainer}>
+                {imageUrl && (
+                    <View style={styles.imageContainer}>
+                        <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.image}
+                            resizeMode="cover"
+                            onLoadStart={() => console.log('[AudioPlayer] Image loading started:', imageUrl)}
+                            onLoad={() => console.log('[AudioPlayer] Image loaded successfully:', imageUrl)}
+                            onError={(error) => console.error('[AudioPlayer] Image loading error:', error.nativeEvent.error)}
                         />
                     </View>
-                    <View style={styles.timeContainer}>
-                        <ThemedText style={styles.timeText}>{formatTime(position)}</ThemedText>
-                        <ThemedText style={styles.timeText}>
-                            {hasDuration ? formatTime(duration) : '--:--'}
-                        </ThemedText>
+                )}
+                <View style={styles.controlsContainer}>
+                    {title && (
+                        <ThemedText style={styles.title}>{title}</ThemedText>
+                    )}
+                    <View style={styles.progressContainer}>
+                        <View style={styles.progressBar}>
+                            <View
+                                style={[
+                                    styles.progressFill,
+                                    {
+                                        width: `${hasDuration ? (position / duration) * 100 : 0}%`,
+                                        backgroundColor: colors.primary
+                                    }
+                                ]}
+                            />
+                        </View>
+                        <View style={styles.timeContainer}>
+                            <ThemedText style={styles.timeText}>{formatTime(position)}</ThemedText>
+                            <ThemedText style={styles.timeText}>
+                                {hasDuration ? formatTime(duration) : '--:--'}
+                            </ThemedText>
+                        </View>
                     </View>
-                </View>
-                <View style={styles.controlsRow}>
-                    <TouchableOpacity
-                        onPress={rewindSound}
-                        style={[styles.skipButton, {
-                            borderColor: colors.primary,
-                            opacity: disabled ? 0.5 : 1
-                        }]}
-                        disabled={!sound || isLoading || disabled}
-                    >
-                        <View style={styles.skipContent}>
-                            <Ionicons
-                                name="play-back"
-                                size={16}
-                                color={colors.primary}
-                                style={styles.skipIcon}
-                            />
-                            <ThemedText style={[styles.skipText, { color: colors.primary }]}>
-                                5
-                            </ThemedText>
-                        </View>
-                    </TouchableOpacity>
+                    <View style={styles.controlsRow}>
+                        <TouchableOpacity
+                            onPress={rewindSound}
+                            style={[styles.skipButton, {
+                                borderColor: colors.primary,
+                                opacity: disabled ? 0.5 : 1
+                            }]}
+                            disabled={!sound || isLoading || disabled}
+                        >
+                            <View style={styles.skipContent}>
+                                <Ionicons
+                                    name="play-back"
+                                    size={16}
+                                    color={colors.primary}
+                                    style={styles.skipIcon}
+                                />
+                                <ThemedText style={[styles.skipText, { color: colors.primary }]}>
+                                    5
+                                </ThemedText>
+                            </View>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={isPlaying ? stopSound : playSound}
-                        style={[styles.playButton, {
-                            backgroundColor: disabled ? '#ccc' : colors.primary,
-                            opacity: disabled ? 0.5 : 1
-                        }]}
-                        disabled={isLoading || disabled}
-                    >
-                        {isLoading ? (
-                            <Ionicons name="hourglass-outline" size={24} color={colors.text} />
-                        ) : isPlaying ? (
-                            <Ionicons name="pause" size={24} color={colors.text} />
-                        ) : (
-                            <Ionicons name="play" size={24} color={colors.text} />
-                        )}
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={isPlaying ? stopSound : playSound}
+                            style={[styles.playButton, {
+                                backgroundColor: disabled ? '#ccc' : colors.primary,
+                                opacity: disabled ? 0.5 : 1
+                            }]}
+                            disabled={isLoading || disabled}
+                        >
+                            {isLoading ? (
+                                <Ionicons name="hourglass-outline" size={24} color={colors.text} />
+                            ) : isPlaying ? (
+                                <Ionicons name="pause" size={24} color={colors.text} />
+                            ) : (
+                                <Ionicons name="play" size={24} color={colors.text} />
+                            )}
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        onPress={fastForwardSound}
-                        style={[styles.skipButton, {
-                            borderColor: colors.primary,
-                            opacity: disabled ? 0.5 : 1
-                        }]}
-                        disabled={!sound || isLoading || disabled}
-                    >
-                        <View style={styles.skipContent}>
-                            <Ionicons
-                                name="play-forward"
-                                size={16}
-                                color={colors.primary}
-                                style={styles.skipIcon}
-                            />
-                            <ThemedText style={[styles.skipText, { color: colors.primary }]}>
-                                5
-                            </ThemedText>
-                        </View>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={fastForwardSound}
+                            style={[styles.skipButton, {
+                                borderColor: colors.primary,
+                                opacity: disabled ? 0.5 : 1
+                            }]}
+                            disabled={!sound || isLoading || disabled}
+                        >
+                            <View style={styles.skipContent}>
+                                <Ionicons
+                                    name="play-forward"
+                                    size={16}
+                                    color={colors.primary}
+                                    style={styles.skipIcon}
+                                />
+                                <ThemedText style={[styles.skipText, { color: colors.primary }]}>
+                                    5
+                                </ThemedText>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </View>
@@ -312,25 +316,37 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         marginVertical: 10,
+        backgroundColor: '#1a2233', // Bubble effect, adjust as needed
+        padding: 0,
+    },
+    contentContainer: {
+        flexDirection: 'column', // Changed from 'row' to 'column'
+        width: '100%',
+        alignItems: 'stretch', // Stretch children to fill width
+    },
+    imageContainer: {
+        width: '100%', // Full width
+        aspectRatio: 3, // Adjust as needed for your image shape
+        marginRight: 0, // Remove margin
+        marginBottom: 12, // Add spacing below image
     },
     image: {
         width: '100%',
-        height: 200,
-        borderRadius: 12,
+        height: '100%',
+        borderRadius: 8,
     },
     controlsContainer: {
-        padding: 16,
-        alignItems: 'center',
+        width: '100%', // Full width
+        padding: 12,
     },
     title: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
-        marginBottom: 12,
-        textAlign: 'center',
+        marginBottom: 8,
     },
     progressContainer: {
         width: '100%',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     progressBar: {
         height: 4,
@@ -355,19 +371,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 16,
+        gap: 12,
     },
     playButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
     },
     skipButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
         borderWidth: 2,
         justifyContent: 'center',
         alignItems: 'center',
@@ -381,7 +397,7 @@ const styles = StyleSheet.create({
         marginBottom: -2,
     },
     skipText: {
-        fontSize: 12,
+        fontSize: 10,
         fontWeight: '600',
         marginTop: -2,
     },

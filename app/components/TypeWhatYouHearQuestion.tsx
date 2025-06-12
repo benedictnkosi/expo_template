@@ -3,7 +3,8 @@ import { View, StyleSheet, TextInput, Keyboard } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useFeedback } from '../contexts/FeedbackContext';
-import { AudioOnly } from './AudioOnly';
+import { AudioPlayer } from './AudioPlayer';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Word {
     id: number;
@@ -18,11 +19,22 @@ interface TypeWhatYouHearQuestionProps {
     questionId: string | number;
     setOnCheck?: (fn: () => void) => void;
     setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
-export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, questionId, setOnCheck, setOnContinue }: TypeWhatYouHearQuestionProps) {
+export function TypeWhatYouHearQuestion({
+    words,
+    options,
+    selectedLanguage,
+    questionId,
+    setOnCheck,
+    setOnContinue,
+    setIsQuestionAnswered,
+}: TypeWhatYouHearQuestionProps) {
     const [userInput, setUserInput] = useState('');
     const { setFeedback, resetFeedback } = useFeedback();
+    const { colors, isDark } = useTheme()
+    const [autoPlay, setAutoPlay] = React.useState(true);
 
     // Get all correct words and concatenate their translations
     const correctWords = options
@@ -31,10 +43,11 @@ export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, ques
     const correctAnswer = correctWords
         .map(word => word.translations[selectedLanguage])
         .join(' ');
-    const audioUris = correctWords.map(word => word.audio[selectedLanguage]).filter(Boolean);
 
-    // Combine all audio URIs into a single string for the AudioOnly component
-    const combinedAudioUrl = audioUris.length > 0 ? audioUris[0] : undefined;
+    // Get all audio URIs for the sequence
+    const audioUrls = correctWords
+        .map(word => word.audio[selectedLanguage])
+        .filter(Boolean);
 
     function resetQuestion() {
         resetFeedback();
@@ -54,20 +67,36 @@ export function TypeWhatYouHearQuestion({ words, options, selectedLanguage, ques
         });
     }
 
+    function handleTextChange(text: string) {
+        setUserInput(text);
+        setIsQuestionAnswered(text.length > 0);
+        if (text.length > 0) {
+            setAutoPlay(false);
+        }
+    }
+
     useEffect(() => {
         setOnCheck?.(handleCheck);
         setOnContinue?.(resetQuestion);
     }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     return (
-        <ThemedView style={styles.container}>
-            <ThemedText style={styles.title}>Type what you hear</ThemedText>
-            <AudioOnly audioUrl={combinedAudioUrl} />
+        <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ThemedText style={[styles.title, { color: colors.text }]}>Type what you hear</ThemedText>
+            <AudioPlayer audioUrls={audioUrls} autoPlay={autoPlay} />
             <TextInput
-                style={styles.input}
+                style={[
+                    styles.input,
+                    {
+                        backgroundColor: isDark ? colors.surface : '#fff',
+                        borderColor: colors.border,
+                        color: colors.text,
+                    },
+                ]}
                 value={userInput}
-                onChangeText={setUserInput}
+                onChangeText={handleTextChange}
                 placeholder="Type your answer"
+                placeholderTextColor={isDark ? colors.textSecondary : '#888'}
                 autoCapitalize="none"
                 autoCorrect={false}
                 accessibilityLabel="Type what you hear"
@@ -82,7 +111,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-        backgroundColor: '#fff',
     },
     title: {
         fontSize: 22,
@@ -92,13 +120,10 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1.5,
-        borderColor: '#E5E7EB',
         borderRadius: 12,
         paddingVertical: 14,
         paddingHorizontal: 18,
         fontSize: 18,
-        color: '#222',
-        backgroundColor: '#fff',
         marginBottom: 16,
         textAlign: 'center',
     },

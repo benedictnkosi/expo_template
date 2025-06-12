@@ -3,7 +3,8 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useFeedback } from '../contexts/FeedbackContext';
-import { AudioOnly } from './AudioOnly';
+import { AudioPlayer } from './AudioPlayer';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Word {
     id: number;
@@ -20,37 +21,42 @@ interface TapWhatYouHearQuestionProps {
     questionId: string;
     setOnCheck?: (fn: () => void) => void;
     setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
 function getWordById(words: Word[], id: string | number) {
     return words.find(w => w.id === Number(id));
 }
 
-export function TapWhatYouHearQuestion({ words, sentenceWords, options, selectedLanguage, questionId, setOnCheck, setOnContinue }: TapWhatYouHearQuestionProps) {
+export function TapWhatYouHearQuestion({ words, sentenceWords, options, selectedLanguage, questionId, setOnCheck, setOnContinue, setIsQuestionAnswered }: TapWhatYouHearQuestionProps) {
     const [selectedWordIds, setSelectedWordIds] = useState<number[]>([]);
     const { setFeedback, resetFeedback } = useFeedback();
+    const { colors, isDark } = useTheme();
 
-    // Get audio URLs for normal and slow (if available)
-    const audioUrl = useMemo(() => {
-        // Assume first word's audio for the sentence (or combine as needed)
-        const firstWord = getWordById(words, sentenceWords[0]);
-        return firstWord?.audio?.[selectedLanguage];
-    }, [words, sentenceWords, selectedLanguage]);
+    console.log('sentenceWords', questionId);
 
-    const slowAudioUrl = useMemo(() => {
-        // If you have slow audio, use it; else fallback to normal
-        // This is a placeholder; adapt as needed for your data
-        return audioUrl;
-    }, [audioUrl]);
+    // Get audio URLs for normal and slow (if available) - only calculate once when sentence words change
+    const audioUrls = useMemo(() => {
+        return sentenceWords
+            .map(id => {
+                const word = getWordById(words, id);
+                return word?.audio?.[selectedLanguage];
+            })
+            .filter((url): url is string => !!url);
+    }, [words, sentenceWords, selectedLanguage]); // Remove selectedWordIds from dependencies
+
+    console.log('audioUrls', audioUrls);
 
     const availableOptions = options.filter(id => !selectedWordIds.includes(Number(id)));
 
     function handleSelectOption(id: string | number) {
         setSelectedWordIds(prev => [...prev, Number(id)]);
+        setIsQuestionAnswered(true);
     }
 
     function handleRemoveSelected(idx: number) {
         setSelectedWordIds(prev => prev.filter((_, i) => i !== idx));
+        setIsQuestionAnswered(selectedWordIds.length > 1);
     }
 
     function handleCheck() {
@@ -88,30 +94,41 @@ export function TapWhatYouHearQuestion({ words, sentenceWords, options, selected
     }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
 
     return (
-        <ThemedView style={styles.container}>
-            <ThemedText style={styles.title}>Tap what you hear</ThemedText>
-            <AudioOnly audioUrl={audioUrl} slowAudioUrl={slowAudioUrl} />
+        <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+            <ThemedText style={[styles.title, { color: colors.text }]}>Tap what you hear</ThemedText>
+            <AudioPlayer audioUrls={audioUrls} />
             {/* Selected answer row */}
             <View style={styles.selectedRow}>
                 {selectedWordIds.map((id, idx) => {
                     const word = getWordById(words, id);
                     if (!word) return null;
                     return (
-                        <Pressable key={idx} style={styles.selectedCard} onPress={() => handleRemoveSelected(idx)}>
-                            <ThemedText style={styles.selectedCardText}>{word.translations[selectedLanguage]}</ThemedText>
+                        <Pressable
+                            key={idx}
+                            style={[styles.selectedCard, { backgroundColor: isDark ? colors.surface : '#E0F2F1' }]}
+                            onPress={() => handleRemoveSelected(idx)}
+                        >
+                            <ThemedText style={[styles.selectedCardText, { color: isDark ? colors.success : '#00796B' }]}>{word.translations[selectedLanguage]}</ThemedText>
                         </Pressable>
                     );
                 })}
             </View>
-            <View style={styles.singleAnswerLine} />
+            <View style={[styles.singleAnswerLine, { backgroundColor: colors.border }]} />
             {/* Option cards */}
             <View style={styles.optionsGrid}>
                 {availableOptions.map((id) => {
                     const word = getWordById(words, id);
                     if (!word) return null;
                     return (
-                        <Pressable key={id} style={styles.optionCard} onPress={() => handleSelectOption(id)}>
-                            <ThemedText style={styles.optionText}>{word.translations[selectedLanguage]}</ThemedText>
+                        <Pressable
+                            key={id}
+                            style={[styles.optionCard, {
+                                backgroundColor: isDark ? colors.surface : '#fff',
+                                borderColor: colors.border,
+                            }]}
+                            onPress={() => handleSelectOption(id)}
+                        >
+                            <ThemedText style={[styles.optionText, { color: colors.text }]}>{word.translations[selectedLanguage]}</ThemedText>
                         </Pressable>
                     );
                 })}
@@ -124,7 +141,6 @@ const styles = StyleSheet.create({
     container: {
         padding: 16,
         gap: 16,
-        backgroundColor: '#fff',
     },
     title: {
         fontSize: 22,
@@ -149,20 +165,16 @@ const styles = StyleSheet.create({
     selectedCardText: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#00796B',
     },
     optionsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 12,
+        gap: 8,
         justifyContent: 'center',
         marginBottom: 16,
     },
     optionCard: {
-        backgroundColor: '#fff',
         borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#E5E7EB',
         paddingVertical: 16,
         paddingHorizontal: 18,
         alignItems: 'center',
@@ -177,14 +189,12 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     optionText: {
-        fontSize: 18,
-        color: '#222',
+        fontSize: 16,
         fontWeight: '500',
         textAlign: 'center',
     },
     singleAnswerLine: {
         height: 2,
-        backgroundColor: '#E5E7EB',
         borderRadius: 1,
         marginTop: 1,
         marginBottom: 16,

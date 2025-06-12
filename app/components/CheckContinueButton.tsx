@@ -6,6 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFeedback } from '../contexts/FeedbackContext';
 import { HOST_URL } from '@/config/api';
+import { Audio } from 'expo-av';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface FeedbackButtonProps {
     isDisabled: boolean;
@@ -15,6 +17,7 @@ interface FeedbackButtonProps {
 
 export function FeedbackMessage({ onContinue }: { onContinue: () => void }) {
     const { isChecked, isCorrect, feedbackText, correctAnswer, questionId } = useFeedback();
+    const { colors, isDark } = useTheme();
     const feedbackColor = isChecked && !isCorrect ? '#EF4444' : '#10B981';
     const [isReporting, setIsReporting] = React.useState(false);
     const [reportStatus, setReportStatus] = React.useState<string | null>(null);
@@ -48,16 +51,16 @@ export function FeedbackMessage({ onContinue }: { onContinue: () => void }) {
     return (
         <View style={styles.feedbackContainerRow}>
             <View style={styles.feedbackContainerText}>
-                <ThemedText style={[styles.feedbackText, { color: feedbackColor }]}>
+                <ThemedText style={[styles.feedbackText, { color: isChecked && !isCorrect ? colors.error : colors.success }]}>
                     {feedbackText || (isCorrect ? '✅ Correct!' : '❌ That\'s not quite right')}
                 </ThemedText>
                 {!isCorrect && correctAnswer && (
-                    <ThemedText style={styles.correctAnswerText}>
+                    <ThemedText style={[styles.correctAnswerText, { color: colors.error }]}>
                         💡 Correct answer: {correctAnswer}
                     </ThemedText>
                 )}
                 {reportStatus && (
-                    <ThemedText style={styles.reportStatus}>{reportStatus}</ThemedText>
+                    <ThemedText style={[styles.reportStatus, { color: colors.success }]}>{reportStatus}</ThemedText>
                 )}
             </View>
             <Pressable
@@ -77,6 +80,40 @@ export function FeedbackButton({ isDisabled, onCheck, onContinue }: FeedbackButt
     const { width } = useWindowDimensions();
     const scale = React.useRef(new Animated.Value(1)).current;
     const insets = useSafeAreaInsets();
+    const soundRef = React.useRef<Audio.Sound | null>(null);
+    const latestFeedbackRef = React.useRef({ isCorrect });
+    const { colors, isDark } = useTheme();
+
+    // Update ref when feedback changes
+    React.useEffect(() => {
+        latestFeedbackRef.current = { isCorrect };
+    }, [isCorrect]);
+
+    // Play feedback sound
+    async function playFeedbackSound(type: 'correct' | 'wrong') {
+        try {
+            if (soundRef.current) {
+                await soundRef.current.unloadAsync();
+            }
+            const soundObject = new Audio.Sound();
+            const source =
+                type === 'correct'
+                    ? require('../../assets/audio/correct.mp3')
+                    : require('../../assets/audio/wrong.mp3');
+            await soundObject.loadAsync(source);
+            await soundObject.playAsync();
+            soundRef.current = soundObject;
+            // Unload after playback
+            soundObject.setOnPlaybackStatusUpdate((status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                    soundObject.unloadAsync();
+                    soundRef.current = null;
+                }
+            });
+        } catch (e) {
+            // fail silently
+        }
+    }
 
     const handlePressIn = () => {
         Animated.spring(scale, {
@@ -92,32 +129,56 @@ export function FeedbackButton({ isDisabled, onCheck, onContinue }: FeedbackButt
         }).start();
     };
 
+    const handleCheck = async () => {
+        await onCheck();
+        // Wait for the feedback context to update
+        setTimeout(() => {
+            playFeedbackSound(latestFeedbackRef.current.isCorrect ? 'correct' : 'wrong');
+        }, 100);
+    };
+
     let buttonText = 'Check';
-    let buttonStyle = { ...styles.button };
-    let buttonTextStyle = { ...styles.buttonText };
+    let buttonStyle = { ...styles.button, backgroundColor: 'transparent' };
+    let buttonTextStyle = { ...styles.buttonText, color: colors.buttonText };
     let useGradient = false;
 
+    console.log('isDisabled', isDisabled);
+    console.log('isChecked', isChecked);
+    console.log('isCorrect', isCorrect);
+
     if (isDisabled) {
-        buttonStyle = { ...buttonStyle, ...styles.buttonDisabled };
-        buttonTextStyle = { ...buttonTextStyle, ...styles.buttonTextDisabled };
+        buttonStyle = {
+            ...buttonStyle,
+            backgroundColor: isDark ? colors.surfaceHigh : colors.surface,
+            shadowColor: 'transparent',
+            elevation: 0,
+        };
+        buttonTextStyle = { ...buttonTextStyle, color: isDark ? colors.textSecondary : '#9CA3AF' };
     } else if (isChecked && isCorrect) {
         buttonText = 'Continue';
         buttonStyle = { ...buttonStyle, ...styles.buttonChecked };
-        buttonTextStyle = { ...buttonTextStyle, ...styles.buttonTextChecked };
+        buttonTextStyle = { ...buttonTextStyle, color: colors.buttonText };
         useGradient = true;
     } else if (isChecked && !isCorrect) {
         buttonText = 'Got it';
-        buttonStyle = { ...buttonStyle, ...styles.buttonIncorrect };
-        buttonTextStyle = { ...buttonTextStyle, ...styles.buttonTextIncorrect };
+        buttonStyle = {
+            ...buttonStyle,
+            backgroundColor: colors.error,
+        };
+        buttonTextStyle = { ...buttonTextStyle, color: colors.buttonText };
     } else if (!isDisabled) {
         buttonStyle = { ...buttonStyle, ...styles.buttonEnabled };
-        buttonTextStyle = { ...buttonTextStyle, ...styles.buttonTextEnabled };
+        buttonTextStyle = { ...buttonTextStyle, color: colors.buttonText };
         useGradient = true;
     }
 
-    if (isDisabled) {
-        buttonStyle = { ...buttonStyle, shadowColor: 'transparent', elevation: 0 };
-    }
+    React.useEffect(() => {
+        return () => {
+            if (soundRef.current) {
+                soundRef.current.unloadAsync();
+            }
+        };
+    }, []);
 
     return (
         <View style={[styles.stickyButtonContainer, { width, paddingBottom: insets.bottom + 16 }]}>
@@ -131,7 +192,7 @@ export function FeedbackButton({ isDisabled, onCheck, onContinue }: FeedbackButt
                     >
                         <Pressable
                             style={{ width: '100%', alignItems: 'center', justifyContent: 'center', height: '100%' }}
-                            onPress={isChecked ? onContinue : onCheck}
+                            onPress={isChecked ? onContinue : handleCheck}
                             disabled={isDisabled}
                             onPressIn={handlePressIn}
                             onPressOut={handlePressOut}
@@ -143,8 +204,11 @@ export function FeedbackButton({ isDisabled, onCheck, onContinue }: FeedbackButt
                     </LinearGradient>
                 ) : (
                     <Pressable
-                        style={buttonStyle}
-                        onPress={isChecked ? onContinue : onCheck}
+                        style={[
+                            buttonStyle,
+                            isDisabled && { borderColor: isDark ? colors.border : '#E5E7EB', borderWidth: 1 }
+                        ]}
+                        onPress={isChecked ? onContinue : handleCheck}
                         disabled={isDisabled}
                         onPressIn={handlePressIn}
                         onPressOut={handlePressOut}
@@ -205,7 +269,7 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 6,
         marginBottom: 0,
-        backgroundColor: 'transparent', // for gradient
+        backgroundColor: 'transparent',
     },
     buttonEnabled: {},
     buttonChecked: {},
@@ -243,7 +307,6 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     correctAnswerText: {
-        color: '#EF4444',
         fontSize: 16,
         textAlign: 'left',
         marginTop: 4,
@@ -256,7 +319,6 @@ const styles = StyleSheet.create({
     },
     reportStatus: {
         fontSize: 14,
-        color: '#10B981',
         marginTop: 4,
     },
 }); 

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Pressable, ActivityIndicator, ScrollView, View, Modal } from 'react-native';
+import { StyleSheet, Pressable, ActivityIndicator, ScrollView, View, Modal, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
@@ -18,6 +18,8 @@ import { CompleteTranslationQuestion } from './components/CompleteTranslationQue
 import { FeedbackProvider } from './contexts/FeedbackContext';
 import { FeedbackMessage, FeedbackButton } from './components/CheckContinueButton';
 import { useFeedback } from './contexts/FeedbackContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { InteractionManager } from 'react-native';
 
 interface Word {
     id: number;
@@ -44,54 +46,6 @@ interface IncorrectQuestion {
     questionId: string | number;
 }
 
-// Common props for all question components
-interface BaseQuestionProps {
-    words: Word[];
-    selectedLanguage: string;
-    questionId: string | number;
-    setOnCheck?: (fn: () => void) => void;
-    setOnContinue?: (fn: () => void) => void;
-    onAnswerChange?: (answer: string | number | (string | number)[]) => void;
-}
-
-interface SelectImageQuestionProps extends BaseQuestionProps {
-    options: string[];
-    correctOption: number | null;
-    areResourcesDownloaded: boolean;
-}
-
-interface TapWhatYouHearQuestionProps extends BaseQuestionProps {
-    sentenceWords: string[];
-    options: string[];
-}
-
-interface MatchPairsQuestionProps extends BaseQuestionProps {
-    areResourcesDownloaded: boolean;
-    onCheck: () => void;
-    matchType?: 'audio' | 'text';
-}
-
-interface TypeWhatYouHearQuestionProps extends BaseQuestionProps {
-    options: string[];
-}
-
-interface FillInBlankQuestionProps extends BaseQuestionProps {
-    sentenceWords: string[];
-    options: string[];
-    blankIndex: number;
-}
-
-interface CompleteTranslationQuestionProps extends BaseQuestionProps {
-    options: string[];
-    blankIndex: number;
-}
-
-interface TranslateQuestionProps extends BaseQuestionProps {
-    options: string[];
-    direction: 'from_english' | 'to_english';
-    sentenceWords: string[] | null;
-}
-
 // Helper to check if resources are downloaded for a unit/language
 async function areResourcesDownloaded(unitId: number, languageCode: string): Promise<boolean> {
     const key = `unit_${unitId}_${languageCode}_resources`;
@@ -103,20 +57,10 @@ async function areResourcesDownloaded(unitId: number, languageCode: string): Pro
     return false;
 }
 
-function ReviewSection({ onRetry }: { onRetry: () => void }) {
-    return (
-        <ThemedView style={styles.reviewContainer}>
-            <ThemedText style={styles.reviewTitle}>Let's retry the questions you got wrong.</ThemedText>
-            <Pressable style={styles.letsGoButton} onPress={onRetry} accessibilityRole="button">
-                <ThemedText style={styles.letsGoButtonText}>Let's go 🚀</ThemedText>
-            </Pressable>
-        </ThemedView>
-    );
-}
-
 function LessonContent() {
     const { lessonId, lessonTitle, languageCode, unitName, lessonNumber } = useLocalSearchParams();
     const router = useRouter();
+    const { colors, isDark } = useTheme();
     const [questions, setQuestions] = useState<Question[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -125,12 +69,347 @@ function LessonContent() {
     const { isChecked, isCorrect, questionId } = useFeedback();
     const checkRef = useRef<() => void>(() => { });
     const continueRef = useRef<() => void>(() => { });
+    const scrollViewRef = useRef<ScrollView>(null);
     const [incorrectQuestions, setIncorrectQuestions] = useState<IncorrectQuestion[]>([]);
     const [showReview, setShowReview] = useState(false);
     const [isRetryingIncorrect, setIsRetryingIncorrect] = useState(false);
     const [originalQuestions, setOriginalQuestions] = useState<Question[]>([]);
     const [showCelebration, setShowCelebration] = useState(false);
     const [showQuitModal, setShowQuitModal] = useState(false);
+    const [correctStreak, setCorrectStreak] = useState(0);
+    const [showStreakCelebration, setShowStreakCelebration] = useState(false);
+    const [isQuestionAnswered, setIsQuestionAnswered] = useState(false);
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+        },
+        content: {
+            flex: 1,
+        },
+        scrollView: {
+            flex: 1,
+        },
+        progressContainer: {
+            padding: 16,
+            gap: 8,
+        },
+        progressBackground: {
+            height: 8,
+            backgroundColor: isDark ? colors.surfaceHigh : '#E5E7EB',
+            borderRadius: 4,
+            overflow: 'hidden',
+        },
+        progressFill: {
+            height: '100%',
+            backgroundColor: colors.primary,
+            borderRadius: 4,
+        },
+        progressText: {
+            fontSize: 14,
+            textAlign: 'center',
+            opacity: 0.8,
+            color: colors.text,
+        },
+        questionContainer: {
+            padding: 16,
+            gap: 16,
+        },
+        questionTitle: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            marginBottom: 16,
+            color: colors.text,
+        },
+        optionsContainer: {
+            gap: 12,
+        },
+        optionButton: {
+            backgroundColor: isDark ? colors.surfaceHigh : colors.primary,
+            padding: 16,
+            borderRadius: 12,
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+        },
+        optionButtonPressed: {
+            opacity: 0.8,
+            transform: [{ scale: 0.98 }],
+        },
+        checkButton: {
+            margin: 16,
+            padding: 12,
+            backgroundColor: isDark ? colors.surfaceHigh : '#E5E7EB',
+            borderRadius: 8,
+            alignItems: 'center',
+        },
+        checkButtonSelected: {
+            backgroundColor: colors.success,
+        },
+        checkButtonText: {
+            fontSize: 16,
+            fontWeight: '600',
+            color: colors.text,
+        },
+        checkButtonTextSelected: {
+            color: colors.buttonText,
+        },
+        feedbackContainer: {
+            padding: 16,
+            backgroundColor: isDark ? colors.surface : '#fff',
+            borderTopWidth: 1,
+            borderTopColor: isDark ? colors.border : '#E5E7EB',
+            zIndex: 10,
+            alignItems: 'center',
+            width: '100%',
+            flexDirection: 'column',
+            gap: 12,
+        },
+        correctFeedback: {
+            color: colors.success,
+            fontWeight: 'bold',
+            fontSize: 20,
+        },
+        correctLabel: {
+            color: colors.success,
+            fontWeight: '600',
+            fontSize: 18,
+            marginLeft: 8,
+            textDecorationLine: 'underline',
+        },
+        reviewContainer: {
+            flex: 1,
+            padding: 16,
+        },
+        reviewTitle: {
+            fontSize: 24,
+            fontWeight: 'bold',
+            marginBottom: 16,
+            textAlign: 'center',
+            color: colors.text,
+        },
+        reviewScrollView: {
+            flex: 1,
+        },
+        reviewItem: {
+            backgroundColor: isDark ? colors.surface : '#fff',
+            padding: 16,
+            borderRadius: 12,
+            marginBottom: 12,
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+            elevation: 3,
+        },
+        reviewQuestionNumber: {
+            fontSize: 18,
+            fontWeight: 'bold',
+            marginBottom: 8,
+            color: colors.text,
+        },
+        reviewQuestionType: {
+            fontSize: 16,
+            color: colors.textSecondary,
+            marginBottom: 8,
+        },
+        reviewAnswer: {
+            fontSize: 16,
+            color: colors.error,
+            marginBottom: 4,
+        },
+        reviewCorrectAnswer: {
+            fontSize: 16,
+            color: colors.success,
+        },
+        retryButton: {
+            backgroundColor: colors.primary,
+            padding: 16,
+            borderRadius: 12,
+            marginTop: 16,
+            alignItems: 'center',
+        },
+        retryButtonText: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: colors.buttonText,
+        },
+        letsGoButton: {
+            backgroundColor: colors.primary,
+            padding: 16,
+            borderRadius: 12,
+            marginTop: 32,
+            alignItems: 'center',
+        },
+        letsGoButtonText: {
+            fontSize: 20,
+            fontWeight: '700',
+            color: colors.buttonText,
+        },
+        celebrationContainer: {
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 32,
+        },
+        celebrationTitle: {
+            fontSize: 32,
+            fontWeight: 'bold',
+            color: colors.success,
+            marginBottom: 16,
+            textAlign: 'center',
+        },
+        celebrationSubtitle: {
+            fontSize: 20,
+            color: colors.text,
+            marginBottom: 12,
+            textAlign: 'center',
+        },
+        celebrationPoints: {
+            fontSize: 24,
+            color: colors.primary,
+            fontWeight: '700',
+            marginTop: 16,
+            marginBottom: 32,
+            textAlign: 'center',
+        },
+        continueButton: {
+            backgroundColor: colors.primary,
+            paddingVertical: 16,
+            paddingHorizontal: 32,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.1,
+            shadowRadius: 3,
+            elevation: 3,
+        },
+        continueButtonPressed: {
+            opacity: 0.9,
+            transform: [{ scale: 0.98 }],
+        },
+        continueButtonText: {
+            fontSize: 18,
+            fontWeight: '600',
+            color: colors.buttonText,
+        },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: colors.backdrop,
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalContent: {
+            backgroundColor: isDark ? colors.surface : '#FFFFFF',
+            borderRadius: 16,
+            padding: 24,
+            width: '90%',
+            maxWidth: 400,
+            alignItems: 'center',
+        },
+        modalTitle: {
+            fontSize: 24,
+            fontWeight: 'bold',
+            marginBottom: 16,
+            color: colors.text,
+        },
+        modalText: {
+            fontSize: 16,
+            textAlign: 'center',
+            marginBottom: 24,
+            color: colors.textSecondary,
+            lineHeight: 24,
+        },
+        modalButtons: {
+            flexDirection: 'row',
+            gap: 12,
+            width: '100%',
+        },
+        modalButton: {
+            flex: 1,
+            padding: 16,
+            borderRadius: 12,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        cancelButton: {
+            backgroundColor: isDark ? colors.surfaceHigh : '#F1F5F9',
+        },
+        quitButton: {
+            backgroundColor: colors.error,
+        },
+        cancelButtonText: {
+            color: colors.text,
+            fontSize: 16,
+            fontWeight: '600',
+        },
+        quitButtonText: {
+            color: colors.buttonText,
+            fontSize: 16,
+            fontWeight: '600',
+        },
+        streakCelebrationContainer: {
+            backgroundColor: isDark ? colors.surface : '#FFFFFF',
+            borderRadius: 20,
+            padding: 32,
+            width: '90%',
+            maxWidth: 400,
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 4,
+            },
+            shadowOpacity: 0.3,
+            shadowRadius: 4.65,
+            elevation: 8,
+        },
+        streakTitle: {
+            fontSize: 32,
+            fontWeight: 'bold',
+            color: colors.accent,
+            marginBottom: 16,
+            textAlign: 'center',
+        },
+        streakSubtitle: {
+            fontSize: 24,
+            color: colors.text,
+            marginBottom: 12,
+            textAlign: 'center',
+        },
+        streakPoints: {
+            fontSize: 28,
+            color: colors.accent,
+            fontWeight: '700',
+            marginTop: 16,
+            marginBottom: 32,
+            textAlign: 'center',
+        },
+    });
+
+    function ReviewSection({ onRetry }: { onRetry: () => void }) {
+        return (
+            <ThemedView style={styles.reviewContainer}>
+                <ThemedText style={styles.reviewTitle}>Let's retry the questions you got wrong.</ThemedText>
+                <Pressable style={styles.letsGoButton} onPress={onRetry} accessibilityRole="button">
+                    <ThemedText style={styles.letsGoButtonText}>Let's go 🚀</ThemedText>
+                </Pressable>
+            </ThemedView>
+        );
+    }
 
     // Function to increment points
     const incrementPoints = async () => {
@@ -276,10 +555,26 @@ function LessonContent() {
         }
     }, [showReview, incorrectQuestions.length, isRetryingIncorrect]);
 
+    // Effect to track correct streak
+    useEffect(() => {
+        if (isChecked && isCorrect) {
+            setCorrectStreak(prev => {
+                const newStreak = prev + 1;
+                if (newStreak === 10) {
+                    setShowStreakCelebration(true);
+                }
+                return newStreak;
+            });
+        } else if (isChecked && !isCorrect) {
+            setCorrectStreak(0);
+        }
+    }, [isChecked, isCorrect]);
+
     const handleCheck = () => checkRef.current();
     const handleContinue = () => {
         continueRef.current?.(); // Reset child state
         setCurrentQuestionIndex(idx => idx + 1); // Move to next question
+        setIsQuestionAnswered(false); // Reset isQuestionAnswered for the next question
     };
 
     const handleQuit = () => {
@@ -322,6 +617,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -335,6 +631,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -349,6 +646,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -361,6 +659,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -375,6 +674,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -388,6 +688,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -402,6 +703,7 @@ function LessonContent() {
                         questionId={String(question.id)}
                         setOnCheck={fn => { checkRef.current = fn; }}
                         setOnContinue={fn => { continueRef.current = fn; }}
+                        setIsQuestionAnswered={setIsQuestionAnswered}
                     />
                 );
 
@@ -409,6 +711,117 @@ function LessonContent() {
                 return null;
         }
     };
+
+    // Streak Celebration Component
+    function StreakCelebration() {
+        const [scale] = useState(new Animated.Value(0));
+        const [rotation] = useState(new Animated.Value(0));
+
+        useEffect(() => {
+            // Award bonus points when streak celebration is shown
+            const awardStreakPoints = async () => {
+                try {
+                    const authData = await SecureStore.getItemAsync('auth');
+                    if (!authData) {
+                        console.error('No auth data found');
+                        return;
+                    }
+                    const { user } = JSON.parse(authData);
+                    const response = await fetch(`${HOST_URL}/api/language-learners/${user.uid}/increment-points`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            points: 5, // Bonus points for streak
+                            lessonId: Number(lessonId),
+                            streak: true // Flag to indicate this is a streak bonus
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to increment streak points');
+                    }
+
+                    const data = await response.json();
+                    console.log('Streak bonus points awarded:', data);
+                } catch (error) {
+                    console.error('Error awarding streak points:', error);
+                }
+            };
+
+            if (showStreakCelebration) {
+                awardStreakPoints();
+            }
+
+            Animated.parallel([
+                Animated.spring(scale, {
+                    toValue: 1,
+                    useNativeDriver: true,
+                    tension: 50,
+                    friction: 7,
+                }),
+                Animated.sequence([
+                    Animated.timing(rotation, {
+                        toValue: 1,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(rotation, {
+                        toValue: 0,
+                        duration: 500,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ]).start();
+        }, [showStreakCelebration]);
+
+        const handleContinue = () => {
+            setShowStreakCelebration(false);
+        };
+
+        const spin = rotation.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0deg', '360deg'],
+        });
+
+        return (
+            <Modal
+                visible={showStreakCelebration}
+                transparent
+                animationType="fade"
+                onRequestClose={handleContinue}
+            >
+                <View style={styles.modalOverlay}>
+                    <Animated.View
+                        style={[
+                            styles.streakCelebrationContainer,
+                            {
+                                transform: [
+                                    { scale },
+                                    { rotate: spin },
+                                ],
+                            },
+                        ]}
+                    >
+                        <ThemedText style={styles.streakTitle}>🔥 10 IN A ROW! 🔥</ThemedText>
+                        <ThemedText style={styles.streakSubtitle}>You're on fire!</ThemedText>
+                        <ThemedText style={styles.streakPoints}>+5 bonus points</ThemedText>
+                        <Pressable
+                            style={({ pressed }) => [
+                                styles.continueButton,
+                                pressed && styles.continueButtonPressed
+                            ]}
+                            onPress={handleContinue}
+                            accessibilityRole="button"
+                        >
+                            <ThemedText style={styles.continueButtonText}>Keep Going!</ThemedText>
+                        </Pressable>
+                    </Animated.View>
+                </View>
+            </Modal>
+        );
+    }
 
     // CelebrationScreen moved inside LessonContent to access incrementPoints
     function CelebrationScreen() {
@@ -441,6 +854,13 @@ function LessonContent() {
         );
     }
 
+    // Add effect to scroll to top when question changes
+    useEffect(() => {
+        InteractionManager.runAfterInteractions(() => {
+            scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        });
+    }, [currentQuestionIndex]);
+
     return (
         <ThemedView style={styles.container}>
             <LessonHeader
@@ -448,6 +868,7 @@ function LessonContent() {
                 subText={lessonNumber ? `Lesson ${lessonNumber}` : undefined}
                 showBackButton={true}
                 onBackPress={handleQuit}
+                topPadding={0}
             />
             {isLoading ? (
                 <ActivityIndicator size="large" />
@@ -461,6 +882,7 @@ function LessonContent() {
                 />
             ) : questions.length > 0 && currentQuestionIndex < questions.length ? (
                 <ScrollView
+                    ref={scrollViewRef}
                     style={styles.scrollView}
                     contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
                 >
@@ -478,13 +900,13 @@ function LessonContent() {
                 <SafeAreaView edges={['bottom']} style={styles.feedbackContainer}>
                     <FeedbackMessage onContinue={handleContinue} />
                     <FeedbackButton
-                        isDisabled={false}
+                        isDisabled={!isQuestionAnswered}
                         onCheck={handleCheck}
                         onContinue={handleContinue}
                     />
                 </SafeAreaView>
             )}
-
+            <StreakCelebration />
             <Modal
                 visible={showQuitModal}
                 transparent={true}
@@ -526,283 +948,4 @@ export default function LessonScreen() {
             </FeedbackProvider>
         </SafeAreaView>
     );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    content: {
-        flex: 1,
-    },
-    scrollView: {
-        flex: 1,
-    },
-    progressContainer: {
-        padding: 16,
-        gap: 8,
-    },
-    progressBackground: {
-        height: 8,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: '#A1CEDC',
-        borderRadius: 4,
-    },
-    progressText: {
-        fontSize: 14,
-        textAlign: 'center',
-        opacity: 0.8,
-    },
-    questionContainer: {
-        padding: 16,
-        gap: 16,
-    },
-    questionTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 16,
-    },
-    optionsContainer: {
-        gap: 12,
-    },
-    optionButton: {
-        backgroundColor: '#A1CEDC',
-        padding: 16,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
-    },
-    optionButtonPressed: {
-        opacity: 0.8,
-        transform: [{ scale: 0.98 }],
-    },
-    checkButton: {
-        margin: 16,
-        padding: 12,
-        backgroundColor: '#E5E7EB',
-        borderRadius: 8,
-        alignItems: 'center',
-    },
-    checkButtonSelected: {
-        backgroundColor: '#4CAF50',
-    },
-    checkButtonText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#4B5563',
-    },
-    checkButtonTextSelected: {
-        color: '#FFFFFF',
-    },
-    feedbackContainer: {
-        padding: 16,
-        backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
-        zIndex: 10,
-        alignItems: 'center',
-        width: '100%',
-        flexDirection: 'column',
-        gap: 12,
-    },
-    correctFeedback: {
-        color: '#4CAF50',
-        fontWeight: 'bold',
-        fontSize: 20,
-    },
-    correctLabel: {
-        color: '#4CAF50',
-        fontWeight: '600',
-        fontSize: 18,
-        marginLeft: 8,
-        textDecorationLine: 'underline',
-    },
-    reviewContainer: {
-        flex: 1,
-        padding: 16,
-    },
-    reviewTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    reviewScrollView: {
-        flex: 1,
-    },
-    reviewItem: {
-        backgroundColor: '#fff',
-        padding: 16,
-        borderRadius: 12,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    reviewQuestionNumber: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 8,
-    },
-    reviewQuestionType: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 8,
-    },
-    reviewAnswer: {
-        fontSize: 16,
-        color: '#E53935',
-        marginBottom: 4,
-    },
-    reviewCorrectAnswer: {
-        fontSize: 16,
-        color: '#43A047',
-    },
-    retryButton: {
-        backgroundColor: '#A1CEDC',
-        padding: 16,
-        borderRadius: 12,
-        marginTop: 16,
-        alignItems: 'center',
-    },
-    retryButtonText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#fff',
-    },
-    letsGoButton: {
-        backgroundColor: '#A1CEDC',
-        padding: 16,
-        borderRadius: 12,
-        marginTop: 32,
-        alignItems: 'center',
-    },
-    letsGoButtonText: {
-        fontSize: 20,
-        fontWeight: '700',
-        color: '#fff',
-    },
-    celebrationContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-    },
-    celebrationTitle: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#43A047',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    celebrationSubtitle: {
-        fontSize: 20,
-        color: '#333',
-        marginBottom: 12,
-        textAlign: 'center',
-    },
-    celebrationPoints: {
-        fontSize: 24,
-        color: '#A1CEDC',
-        fontWeight: '700',
-        marginTop: 16,
-        marginBottom: 32,
-        textAlign: 'center',
-    },
-    continueButton: {
-        backgroundColor: '#A1CEDC',
-        paddingVertical: 16,
-        paddingHorizontal: 32,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    continueButtonPressed: {
-        opacity: 0.9,
-        transform: [{ scale: 0.98 }],
-    },
-    continueButtonText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        padding: 24,
-        width: '90%',
-        maxWidth: 400,
-        alignItems: 'center',
-    },
-    modalTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 16,
-        color: '#1E293B',
-    },
-    modalText: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 24,
-        color: '#64748B',
-        lineHeight: 24,
-    },
-    modalButtons: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
-    modalButton: {
-        flex: 1,
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cancelButton: {
-        backgroundColor: '#F1F5F9',
-    },
-    quitButton: {
-        backgroundColor: '#EF4444',
-    },
-    cancelButtonText: {
-        color: '#1E293B',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    quitButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-}); 
+} 

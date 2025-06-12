@@ -12,14 +12,25 @@ interface LessonHeaderProps {
     languageName?: string;
     subText?: string;
     onBackPress?: () => void;
+    topPadding?: number;
 }
 
-export function LessonHeader({ title, showBackButton = true, languageName, subText, onBackPress }: LessonHeaderProps) {
-    const { isDark } = useTheme();
+export function LessonHeader({
+    title,
+    showBackButton = true,
+    languageName,
+    subText,
+    onBackPress,
+    topPadding = Platform.select({
+        ios: 16,
+        android: 12,
+    })
+}: LessonHeaderProps) {
+    const { isDark, colors } = useTheme();
     const emoji = languageName && LANGUAGE_EMOJIS[languageName] ? LANGUAGE_EMOJIS[languageName] : '🏳️‍🌈';
 
     return (
-        <View style={styles.headerWrapper}>
+        <View style={[styles.headerWrapper, { backgroundColor: colors.card }]}>
             <View style={styles.headerContent}>
                 {showBackButton && (
                     <TouchableOpacity
@@ -31,7 +42,7 @@ export function LessonHeader({ title, showBackButton = true, languageName, subTe
                         <Ionicons
                             name="close"
                             size={28}
-                            color={isDark ? '#FFFFFF' : '#1E293B'}
+                            color={colors.text}
                         />
                     </TouchableOpacity>
                 )}
@@ -40,12 +51,12 @@ export function LessonHeader({ title, showBackButton = true, languageName, subTe
                         <ThemedText style={styles.emoji} accessibilityLabel="Language emoji">
                             {emoji}
                         </ThemedText>
-                        <ThemedText style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+                        <ThemedText style={[styles.title, { color: colors.text }]} numberOfLines={1} ellipsizeMode="tail">
                             {title}
                         </ThemedText>
                     </View>
                     {subText && (
-                        <ThemedText style={styles.subText} numberOfLines={1} ellipsizeMode="tail">
+                        <ThemedText style={[styles.subText, { color: colors.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
                             {subText}
                         </ThemedText>
                     )}
@@ -58,7 +69,6 @@ export function LessonHeader({ title, showBackButton = true, languageName, subTe
 
 const styles = StyleSheet.create({
     headerWrapper: {
-        backgroundColor: '#F1F5F9',
         borderBottomLeftRadius: 18,
         borderBottomRightRadius: 18,
         ...Platform.select({
@@ -77,7 +87,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingTop: 18,
+        paddingTop: 0,
         paddingBottom: 18,
         paddingHorizontal: 18,
     },
@@ -108,12 +118,10 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1E293B',
         letterSpacing: 0.2,
     },
     subText: {
         fontSize: 13,
-        color: '#64748B',
         textAlign: 'center',
         marginTop: 2,
         opacity: 0.85,

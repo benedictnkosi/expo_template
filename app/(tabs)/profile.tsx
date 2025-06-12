@@ -4,28 +4,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useState, useEffect } from 'react';
-import { Picker } from '@react-native-picker/picker';
 import Toast from 'react-native-toast-message';
 import Modal from 'react-native-modal';
 import { LessonHeader } from '@/components/LessonHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Switch, Linking } from 'react-native';
+import { View, TouchableOpacity, ScrollView, TextInput, Platform, StyleSheet, Linking } from 'react-native';
 import React from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { HOST_URL } from '@/config/api';
 
 interface ProfileInfo {
   name: string;
-  grade: string;
-  terms?: string;
   email?: string;
-}
-
-interface Grade {
-  id: number;
-  number: number;
-  active: number;
 }
 
 export default function ProfileScreen() {
@@ -34,11 +27,8 @@ export default function ProfileScreen() {
   const { colors, isDark } = useTheme();
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
   const [editName, setEditName] = useState('');
-  const [editGrade, setEditGrade] = useState('');
-  const [editTerms, setEditTerms] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [grades, setGrades] = useState<Grade[]>([]);
   const [showAlert, setShowAlert] = useState(false);
   const [alertConfig] = useState<{
     title: string;
@@ -46,84 +36,80 @@ export default function ProfileScreen() {
     onConfirm?: () => void;
   }>({ title: '', message: '' });
   const insets = useSafeAreaInsets();
-  const [showGradeChangeModal, setShowGradeChangeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [newThreadNotification, setNewThreadNotification] = useState(true);
-
-  // Available options
-  const TERMS = [1, 2, 3, 4];
 
   useEffect(() => {
-    // Initialize with mock data
-    setProfileInfo({
-      name: 'John Doe',
-      grade: '10',
-      terms: '1, 2',
-      email: user?.email || ''
-    });
-    setEditName('John Doe');
-    setEditGrade('10');
-    setEditTerms('1, 2');
+    async function fetchLearnerData() {
+      try {
+        const authData = await SecureStore.getItemAsync('auth');
+        if (!authData) {
+          throw new Error('No auth data found');
+        }
+        const { user } = JSON.parse(authData);
+
+        const response = await fetch(`${HOST_URL}/api/language-learners/uid/${user.uid}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch learner data');
+        }
+
+        const learnerData = await response.json();
+        setProfileInfo({
+          name: learnerData.name,
+          email: user?.email || ''
+        });
+        setEditName(learnerData.name);
+      } catch (error) {
+        console.error('Error fetching learner data:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to load profile data',
+          position: 'top',
+          topOffset: 60,
+          visibilityTime: 3000,
+          autoHide: true
+        });
+      }
+    }
+
+    fetchLearnerData();
   }, [user?.email]);
 
-  useEffect(() => {
-    // Mock grades data
-    setGrades([
-      { id: 1, number: 10, active: 1 },
-      { id: 2, number: 11, active: 1 },
-      { id: 3, number: 12, active: 1 }
-    ]);
-  }, []);
-
-  useEffect(() => {
-    // Check if sound is enabled
-    AsyncStorage.getItem('soundEnabled').then(value => {
-      setSoundEnabled(value === null ? true : value === 'true');
-    });
-
-    // Check if new thread notifications are enabled
-    AsyncStorage.getItem('newThreadNotification').then(value => {
-      setNewThreadNotification(value === null ? true : value === 'true');
-    });
-  }, []);
-
   const handleSave = async () => {
-    const selectedTerms = editTerms.split(',').map(t => t.trim()).filter(Boolean);
-
-    if (selectedTerms.length === 0) {
-      Toast.show({
-        type: 'error',
-        text1: 'Missing Selection',
-        text2: 'Please select at least one term',
-        position: 'bottom'
-      });
-      return;
-    }
-
-    if (editGrade !== profileInfo?.grade) {
-      setShowGradeChangeModal(true);
-    } else {
-      await saveChanges();
-    }
+    await saveChanges();
   };
 
   const saveChanges = async () => {
     setIsSaving(true);
     try {
-      const cleanTerms = editTerms.split(',')
-        .map(t => t.trim())
-        .filter(Boolean)
-        .join(', ');
+      const authData = await SecureStore.getItemAsync('auth');
+      if (!authData) {
+        throw new Error('No auth data found');
+      }
+      const { user } = JSON.parse(authData);
 
-      // Mock successful save
+      const response = await fetch(`${HOST_URL}/api/language-learners/${user.uid}/name`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editName.trim(),
+        }),
+      });
+
+      console.log('response', response);
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile');
+      }
+
+      const updatedProfile = await response.json();
       setProfileInfo(prev => ({
         ...prev!,
-        name: editName.trim(),
-        grade: editGrade,
-        terms: cleanTerms
+        name: updatedProfile.name,
       }));
 
       Toast.show({
@@ -147,7 +133,6 @@ export default function ProfileScreen() {
       });
     } finally {
       setIsSaving(false);
-      setShowGradeChangeModal(false);
     }
   };
 
@@ -198,50 +183,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const toggleSound = async () => {
-    try {
-      const newSoundState = !soundEnabled;
-      await AsyncStorage.setItem('soundEnabled', newSoundState.toString());
-      setSoundEnabled(newSoundState);
-
-      Toast.show({
-        type: 'success',
-        text1: newSoundState ? 'Sounds enabled' : 'Sounds disabled',
-        position: 'bottom'
-      });
-    } catch (error) {
-      console.error('Error toggling sound settings:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update sound settings',
-        position: 'bottom'
-      });
-    }
-  };
-
-  const toggleNewThreadNotification = async () => {
-    try {
-      const newNotificationState = !newThreadNotification;
-      await AsyncStorage.setItem('newThreadNotification', newNotificationState.toString());
-      setNewThreadNotification(newNotificationState);
-
-      Toast.show({
-        type: 'success',
-        text1: newNotificationState ? 'New thread notifications enabled' : 'New thread notifications disabled',
-        position: 'bottom'
-      });
-    } catch (error) {
-      console.error('Error toggling notification settings:', error);
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to update notification settings',
-        position: 'bottom'
-      });
-    }
-  };
-
   return (
     <LinearGradient
       colors={isDark ? ['#1E1E1E', '#121212'] : ['#FFFFFF', '#F8FAFC', '#F1F5F9']}
@@ -286,96 +227,14 @@ export default function ProfileScreen() {
                 </ThemedText>
               </View>
 
-              <View style={styles.inputGroup}>
-                <ThemedText style={[styles.label, { color: colors.text }]}>Grade</ThemedText>
-                <View style={[styles.pickerContainer, {
-                  backgroundColor: isDark ? colors.surface : '#FFFFFF',
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                }]}>
-                  <Picker
-                    selectedValue={editGrade}
-                    onValueChange={setEditGrade}
-                    style={[
-                      styles.picker,
-                      Platform.OS === 'android' ? {
-                        backgroundColor: 'transparent',
-                        color: colors.text,
-                        height: 50
-                      } : {
-                        color: colors.text
-                      }
-                    ]}
-                    dropdownIconColor={colors.text}
-                    mode="dropdown"
-                  >
-                    <Picker.Item
-                      label="Select Grade"
-                      value=""
-                      color={isDark ? colors.textSecondary : '#94A3B8'}
-                    />
-                    {grades.map((grade) => (
-                      <Picker.Item
-                        key={grade.id}
-                        label={`Grade ${grade.number}`}
-                        value={grade.number.toString()}
-                        color={isDark ? colors.text : '#1E293B'}
-                      />
-                    ))}
-                  </Picker>
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <ThemedText style={[styles.label, { color: colors.text }]}>Terms</ThemedText>
-                <View style={styles.optionsContainer}>
-                  {TERMS.map((term) => (
-                    <TouchableOpacity
-                      key={term}
-                      style={[
-                        styles.optionButton,
-                        {
-                          backgroundColor: isDark ? colors.surface : 'rgba(226, 232, 240, 0.3)',
-                          borderColor: colors.border
-                        },
-                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) && [
-                          styles.optionButtonSelected,
-                          { backgroundColor: colors.primary }
-                        ]
-                      ]}
-                      onPress={() => {
-                        const termsArray = editTerms.split(',').map(t => t.trim()).filter(Boolean);
-                        if (termsArray.includes(term.toString())) {
-                          setEditTerms(termsArray.filter(t => t !== term.toString()).join(','));
-                        } else {
-                          setEditTerms(termsArray.concat(term.toString()).join(','));
-                        }
-                      }}
-                    >
-                      <ThemedText style={[
-                        styles.optionButtonText,
-                        { color: colors.text },
-                        editTerms.split(',').map(t => t.trim()).includes(term.toString()) &&
-                        styles.optionButtonTextSelected
-                      ]}>
-                        Term {term}
-                      </ThemedText>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
               <TouchableOpacity
                 style={[
                   styles.button,
                   styles.saveButton,
-                  { backgroundColor: colors.primary },
-                  !editTerms.split(',').filter(Boolean).length &&
-                  styles.buttonDisabled
+                  { backgroundColor: colors.primary }
                 ]}
                 onPress={handleSave}
-                disabled={isSaving || !editTerms.split(',').filter(Boolean).length}
+                disabled={isSaving}
               >
                 <ThemedText style={styles.buttonText}>
                   {isSaving ? 'Saving...' : 'Save Changes'}
@@ -383,41 +242,6 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </ThemedView>
-        </ThemedView>
-
-        <ThemedView style={[styles.sectionCard, {
-          backgroundColor: isDark ? colors.card : '#FFFFFF',
-          borderColor: colors.border
-        }]}>
-          <ThemedText style={[styles.sectionTitle, { color: colors.text }]}>Settings</ThemedText>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Sound Effects</ThemedText>
-              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Play sounds for interactions
-              </ThemedText>
-            </View>
-            <Switch
-              value={soundEnabled}
-              onValueChange={toggleSound}
-              trackColor={{ false: isDark ? colors.border : '#E2E8F0', true: colors.primary }}
-              thumbColor={soundEnabled ? '#FFFFFF' : '#FFFFFF'}
-            />
-          </View>
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={[styles.settingTitle, { color: colors.text }]}>Notifications</ThemedText>
-              <ThemedText style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                Receive notifications for new content
-              </ThemedText>
-            </View>
-            <Switch
-              value={newThreadNotification}
-              onValueChange={toggleNewThreadNotification}
-              trackColor={{ false: isDark ? colors.border : '#E2E8F0', true: colors.primary }}
-              thumbColor={newThreadNotification ? '#FFFFFF' : '#FFFFFF'}
-            />
-          </View>
         </ThemedView>
 
         <ThemedView style={styles.signOutContainer}>
@@ -468,48 +292,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </ThemedView>
       </ScrollView>
-
-      <Modal
-        isVisible={showGradeChangeModal}
-        onBackdropPress={() => setShowGradeChangeModal(false)}
-        style={styles.modal}
-      >
-        <View style={[styles.confirmationModal, {
-          backgroundColor: isDark ? colors.card : '#FFFFFF'
-        }]}>
-          <View style={styles.confirmationHeader}>
-            <ThemedText style={[styles.confirmationTitle, { color: colors.text }]}>Change Grade?</ThemedText>
-          </View>
-          <ThemedText style={[styles.confirmationText, { color: colors.textSecondary }]}>
-            Are you sure you want to change your grade? This will reset your progress.
-          </ThemedText>
-          <View style={styles.confirmationButtons}>
-            <TouchableOpacity
-              style={[styles.paperButton]}
-              onPress={() => setShowGradeChangeModal(false)}
-            >
-              <LinearGradient
-                colors={isDark ? ['#475569', '#334155'] : ['#64748B', '#475569']}
-                style={styles.paperButtonGradient}
-              >
-                <ThemedText style={styles.paperButtonText}>Cancel</ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.paperButton]}
-              onPress={saveChanges}
-            >
-              <LinearGradient
-                colors={isDark ? ['#7C3AED', '#4F46E5'] : ['#9333EA', '#4F46E5']}
-                style={styles.paperButtonGradient}
-              >
-                <ThemedText style={styles.paperButtonText}>Confirm</ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       <Modal
         isVisible={showDeleteModal}
@@ -671,19 +453,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  pickerContainer: {
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  picker: {
-    width: '100%',
-    ...(Platform.OS === 'ios' && {
-      height: 150
-    }),
-    ...(Platform.OS === 'android' && {
-      height: 50
-    })
-  },
   signOutContainer: {
     padding: 20,
     marginTop: 20,
@@ -765,59 +534,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
   },
-  sectionCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  settingInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  settingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  settingDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
   buttonDisabled: {
     opacity: 0.5,
-  },
-  optionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  optionButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  optionButtonSelected: {
-    borderColor: '#7C3AED',
-  },
-  optionButtonText: {
-    fontSize: 14,
-  },
-  optionButtonTextSelected: {
-    color: '#FFFFFF',
   },
   deleteAccountButton: {
     borderWidth: 1,

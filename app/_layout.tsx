@@ -104,27 +104,7 @@ function RootLayoutNav() {
               presentation: 'card'
             }}
           />
-          <Stack.Screen
-            name="lesson"
-            options={{
-              headerShown: false,
-              presentation: 'card'
-            }}
-          />
-          <Stack.Screen
-            name="quiz"
-            options={{
-              headerShown: false,
-              presentation: 'fullScreenModal'
-            }}
-          />
-          <Stack.Screen
-            name="maths"
-            options={{
-              headerShown: false,
-              presentation: 'fullScreenModal'
-            }}
-          />
+
           <Stack.Screen
             name="profile"
             options={{

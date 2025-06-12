@@ -12,6 +12,8 @@ import type { DownloadProgressData } from 'expo-file-system';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/contexts/ThemeContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Lesson {
     id: number;
@@ -55,6 +57,31 @@ interface DownloadProgress {
     };
 }
 
+// Add new interface for tracking current unit
+interface CurrentUnit {
+    id: number;
+    lastAccessed: Date;
+}
+
+interface Learner {
+    id: number;
+    uid: string;
+    name: string;
+    created: string;
+    lastSeen: string;
+    email: string;
+    points: number;
+    streak: number;
+    streakLastUpdated: string;
+    avatar: string;
+    expoPushToken: string;
+    followMeCode: string;
+    version: string;
+    os: string;
+    reminders: boolean;
+    subscription: 'free' | 'premium';
+}
+
 const LESSON_STATUS = {
     completed: { icon: '⭐️', color: '#22c55e', label: 'Perfect!' },
     started: { icon: '✅', color: '#fbbf24', label: 'In Progress' },
@@ -63,38 +90,92 @@ const LESSON_STATUS = {
 
 export default function LessonsScreen() {
     const { languageCode, languageName } = useLocalSearchParams();
+    const { colors, isDark } = useTheme();
     const [units, setUnits] = useState<Unit[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [learnerProgress, setLearnerProgress] = useState<LessonProgress[]>([]);
     const [downloadedResources, setDownloadedResources] = useState<Set<string>>(new Set());
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+    const [currentUnit, setCurrentUnit] = useState<CurrentUnit | null>(null);
+    const [learner, setLearner] = useState<Learner | null>(null);
     const router = useRouter();
     const [showScrollTop, setShowScrollTop] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
+    // Function to fetch learner data
+    const fetchLearner = useCallback(async () => {
+        try {
+            const authData = await SecureStore.getItemAsync('auth');
+            if (!authData) {
+                throw new Error('No auth data found');
+            }
+            const { user } = JSON.parse(authData);
+
+            const response = await fetch(`${HOST_URL}/api/language-learners/uid/${user.uid}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch learner data');
+            }
+
+            const learnerData: Learner = await response.json();
+            setLearner(learnerData);
+        } catch (error) {
+            console.error('[App] Error fetching learner data:', error);
+        }
+    }, []);
+
+    // Use focus effect to fetch learner data when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            console.log('[App] Screen focused - fetching latest learner data');
+            fetchLearner();
+        }, [fetchLearner])
+    );
+
     // Function to determine if a unit is locked
     const isUnitLocked = (unitId: number): boolean => {
-        // If there's no progress, only unlock the unit with the lowest order
-        if (learnerProgress.length === 0) {
-            const lowestOrderUnit = units.reduce((lowest, current) =>
-                (current.unitOrder < lowest.unitOrder) ? current : lowest
-            );
-            return unitId !== lowestOrderUnit.id;
+        console.log('[isUnitLocked] Checking unit:', unitId);
+        const unit = units.find(u => u.id === unitId);
+        if (!unit) {
+            console.log('[isUnitLocked] Unit not found:', unitId);
+            return true;
         }
 
-        // Check if any lesson in this unit has been started or completed
-        return !learnerProgress.some(p =>
-            p.unitId === unitId &&
-            (p.status === 'started' || p.status === 'completed')
-        );
+        const minOrder = Math.min(...units.map(u => u.unitOrder));
+        if (unit.unitOrder === minOrder) {
+            console.log('[isUnitLocked] This is the first unit, always unlocked:', unitId);
+            return false;
+        }
+
+        if (learner?.subscription === 'free' && unitId !== units[0]?.id) {
+            console.log('[isUnitLocked] Free user, locking unit:', unitId);
+            return true;
+        }
+
+        const prevUnit = units.find(u => u.unitOrder === unit.unitOrder - 1);
+        if (!prevUnit) {
+            console.log('[isUnitLocked] Previous unit not found for unit:', unitId);
+            return true;
+        }
+
+        const allPrevCompleted = prevUnit.lessons.every(lesson => {
+            const progress = learnerProgress.find(p => p.lessonId === lesson.id);
+            console.log('[isUnitLocked] Previous unit lesson', lesson.id, 'progress:', progress?.status);
+            return progress?.status === 'completed';
+        });
+        console.log('[isUnitLocked] All previous unit lessons completed:', allPrevCompleted, 'for unit:', unitId);
+
+        return !allPrevCompleted;
     };
 
     // Function to determine if a lesson is locked
     const isLessonLocked = (unitId: number, lessonId: number): boolean => {
+        console.log('[isLessonLocked] Checking lesson:', lessonId, 'in unit:', unitId);
         // If the unit is locked, all its lessons are locked
-        if (isUnitLocked(unitId)) {
+        const unitLocked = isUnitLocked(unitId);
+        console.log('[isLessonLocked] Unit locked:', unitLocked);
+        if (unitLocked) {
             return true;
         }
 
@@ -107,7 +188,9 @@ export default function LessonsScreen() {
             const lowestOrderLesson = unitLessons.reduce((lowest, current) =>
                 (current.lessonOrder < lowest.lessonOrder) ? current : lowest
             );
-            return unitId !== lowestOrderUnit.id || lessonId !== lowestOrderLesson.id;
+            const locked = unitId !== lowestOrderUnit.id || lessonId !== lowestOrderLesson.id;
+            console.log('[isLessonLocked] No progress, lowestOrderUnit:', lowestOrderUnit.id, 'lowestOrderLesson:', lowestOrderLesson.id, 'locked:', locked);
+            return locked;
         }
 
         // Find the highest lesson order that has been started or completed in this unit
@@ -123,22 +206,35 @@ export default function LessonsScreen() {
                     return lesson?.lessonOrder || 0;
                 })
         );
+        console.log('[isLessonLocked] highestLessonOrder:', highestLessonOrder);
 
         // Find the current lesson's order
         const currentLesson = unitLessons.find(l => l.id === lessonId);
         const currentLessonOrder = currentLesson?.lessonOrder || 0;
+        console.log('[isLessonLocked] currentLessonOrder:', currentLessonOrder);
 
         // If the previous lesson is completed, unlock this lesson
         const previousLesson = unitLessons.find(l => l.lessonOrder === currentLessonOrder - 1);
         if (previousLesson) {
             const previousLessonProgress = learnerProgress.find(p => p.lessonId === previousLesson.id);
+            console.log('[isLessonLocked] previousLesson:', previousLesson.id, 'progress:', previousLessonProgress?.status);
             if (previousLessonProgress?.status === 'completed') {
                 return false;
             }
         }
 
+        // If no progress in this unit, unlock the first lesson
+        if (highestLessonOrder === -Infinity) {
+            const minOrder = Math.min(...unitLessons.map(l => l.lessonOrder));
+            const unlocked = currentLessonOrder === minOrder;
+            console.log('[isLessonLocked] No progress in unit, unlock first lesson:', unlocked);
+            return !unlocked;
+        }
+
         // Lock if this lesson's order is higher than the highest started/completed lesson
-        return currentLessonOrder > highestLessonOrder;
+        const locked = currentLessonOrder > highestLessonOrder;
+        console.log('[isLessonLocked] locked:', locked);
+        return locked;
     };
 
     // Function to download a single resource
@@ -376,19 +472,90 @@ export default function LessonsScreen() {
         fetchData();
     }, [languageCode]);
 
+    // Add function to delete resources for a specific unit
+    const deleteUnitResources = async (unitId: number) => {
+        try {
+            console.log(`[Unit ${unitId}] Starting resource cleanup`);
+
+            // Fetch resource list to know what to delete
+            const response = await fetch(`${HOST_URL}/api/unit-resources/${unitId}/${languageCode}`);
+            if (!response.ok) {
+                console.error(`[Unit ${unitId}] Failed to fetch resource list for cleanup`);
+                return;
+            }
+
+            const resources: UnitResources = await response.json();
+
+            // Delete audio files
+            for (const audioFile of resources.audio) {
+                const fileUri = `${FileSystem.documentDirectory}audio/${audioFile}`;
+                try {
+                    await FileSystem.deleteAsync(fileUri, { idempotent: true });
+                    console.log(`[Unit ${unitId}] Deleted audio file: ${audioFile}`);
+                } catch (error) {
+                    console.error(`[Unit ${unitId}] Error deleting audio file ${audioFile}:`, error);
+                }
+            }
+
+            // Delete image files
+            for (const imageFile of resources.images) {
+                const fileUri = `${FileSystem.documentDirectory}image/${imageFile}`;
+                try {
+                    await FileSystem.deleteAsync(fileUri, { idempotent: true });
+                    console.log(`[Unit ${unitId}] Deleted image file: ${imageFile}`);
+                } catch (error) {
+                    console.error(`[Unit ${unitId}] Error deleting image file ${imageFile}:`, error);
+                }
+            }
+
+            // Update downloaded resources state
+            setDownloadedResources(prev => {
+                const newSet = new Set(prev);
+                resources.audio.forEach(audio => newSet.delete(audio));
+                resources.images.forEach(image => newSet.delete(image));
+                return newSet;
+            });
+
+            console.log(`[Unit ${unitId}] Resource cleanup completed`);
+        } catch (error) {
+            console.error(`[Unit ${unitId}] Error in resource cleanup:`, error);
+        }
+    };
+
+    // Modify handleLessonPress to handle unit changes
     const handleLessonPress = async (lesson: Lesson) => {
-        // If this is the first lesson being started, download resources
-        if (learnerProgress.length === 0) {
-            console.log('[App] First lesson being started - downloading unit resources');
+        // Check if we're switching units
+        if (currentUnit && currentUnit.id !== lesson.unitId) {
+            console.log(`[App] Switching from unit ${currentUnit.id} to unit ${lesson.unitId}`);
+
+            // Delete resources from the old unit
+            await deleteUnitResources(currentUnit.id);
+
+            // Update current unit
+            setCurrentUnit({
+                id: lesson.unitId,
+                lastAccessed: new Date()
+            });
+        } else if (!currentUnit) {
+            // First time accessing a unit
+            setCurrentUnit({
+                id: lesson.unitId,
+                lastAccessed: new Date()
+            });
+        }
+
+        // Download resources for the new unit if not already downloaded
+        if (!downloadedResources.size) {
+            console.log('[App] Downloading resources for new unit');
             try {
                 await downloadUnitResources(lesson.unitId);
             } catch (error) {
-                console.error('[App] Error downloading resources for first lesson:', error);
+                console.error('[App] Error downloading resources for new unit:', error);
                 // Continue with navigation even if download fails
             }
         }
 
-        // Update learner progress
+        // Rest of the existing handleLessonPress code...
         try {
             const authData = await SecureStore.getItemAsync('auth');
             if (!authData) {
@@ -415,11 +582,9 @@ export default function LessonsScreen() {
             const updatedProgress = await progressResponse.json();
             console.log('[App] Updated learner progress:', updatedProgress);
 
-            // Update local progress state
             setLearnerProgress(prev => {
                 const existingProgress = prev.find(p => p.lessonId === lesson.id);
                 if (existingProgress) {
-                    // Do not downgrade from completed to started
                     if (existingProgress.status === 'completed') {
                         return prev;
                     }
@@ -429,7 +594,6 @@ export default function LessonsScreen() {
             });
         } catch (error) {
             console.error('[App] Error updating learner progress:', error);
-            // Continue with navigation even if progress update fails
         }
 
         console.log('[App] Navigating to lesson:', lesson.title);
@@ -485,25 +649,38 @@ export default function LessonsScreen() {
 
         const { icon, color, label } = LESSON_STATUS[status];
 
+        // Theme-aware colors
+        const cardBg = locked
+            ? (isDark ? colors.surfaceHigh : '#f1f5f9')
+            : (isDark ? colors.surface : '#fff');
+        const borderCol = locked
+            ? (isDark ? colors.border : '#e5e7eb')
+            : color;
+        const iconCol = locked
+            ? (isDark ? colors.textSecondary : '#a1a1aa')
+            : color;
+        const textCol = locked
+            ? (isDark ? colors.textSecondary : '#A1A1AA')
+            : colors.text;
+        const statusCol = locked
+            ? (isDark ? colors.textSecondary : '#a1a1aa')
+            : color;
+
         return (
             <Pressable
                 onPress={onPress}
                 disabled={locked}
-                style={[
-                    styles.lessonCard,
-                    { backgroundColor: locked ? '#f1f5f9' : '#fff', borderColor: locked ? '#e5e7eb' : color },
-                    locked && styles.lessonCardLocked,
-                ]}
+                style={[styles.lessonCard, { backgroundColor: cardBg, borderColor: borderCol }, locked && styles.lessonCardLocked]}
                 accessibilityRole="button"
                 accessibilityLabel={locked ? 'Locked lesson' : 'Lesson'}
             >
                 <View style={styles.lessonIconContainer}>
-                    <ThemedText style={[styles.lessonIcon, { color: locked ? '#a1a1aa' : color }]}>{icon}</ThemedText>
+                    <ThemedText style={[styles.lessonIcon, { color: iconCol }]}>{icon}</ThemedText>
                 </View>
-                <ThemedText style={[styles.lessonLevel, locked && styles.lessonTitleLocked]}>
+                <ThemedText style={[styles.lessonLevel, { color: textCol }, locked && styles.lessonTitleLocked]}>
                     Level {lesson.lessonOrder}
                 </ThemedText>
-                <ThemedText style={[styles.lessonStatus, { color: locked ? '#a1a1aa' : color }]}>
+                <ThemedText style={[styles.lessonStatus, { color: statusCol }]}>
                     {locked ? 'Locked' : (status === 'not_started' ? 'Continue' : label)}
                 </ThemedText>
             </Pressable>
@@ -540,9 +717,12 @@ export default function LessonsScreen() {
     }
 
     function UnitCard({ unit }: { unit: Unit }) {
+        const isLocked = isUnitLocked(unit.id);
+        const isPremiumLocked = learner?.subscription === 'free' && unit.id !== units[0]?.id;
+
         return (
             <LinearGradient
-                colors={['#2563EB', '#3B82F6']}
+                colors={isLocked ? ['#94A3B8', '#64748B'] : ['#2563EB', '#3B82F6']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.unitCard}
@@ -551,7 +731,15 @@ export default function LessonsScreen() {
                     <Ionicons name="cube-outline" size={32} color="#fff" style={{ opacity: 0.85 }} />
                 </View>
                 <View style={styles.unitCardTextContainer}>
-                    <ThemedText style={styles.unitCardTitle}>{unit.name}</ThemedText>
+                    <View style={styles.unitCardTitleContainer}>
+                        <ThemedText style={styles.unitCardTitle}>{unit.name}</ThemedText>
+                        {isPremiumLocked && (
+                            <View style={styles.premiumBadge}>
+                                <Ionicons name="star" size={12} color="#FCD34D" />
+                                <ThemedText style={styles.premiumBadgeText}>Premium</ThemedText>
+                            </View>
+                        )}
+                    </View>
                     {unit.description && (
                         <ThemedText style={styles.unitCardDescription}>{unit.description}</ThemedText>
                     )}
@@ -571,371 +759,408 @@ export default function LessonsScreen() {
     }).length;
     const currentLevel = completedLessons + 1;
 
+    // Add cleanup effect when component unmounts
+    useEffect(() => {
+        return () => {
+            // Cleanup resources when component unmounts
+            if (currentUnit) {
+                deleteUnitResources(currentUnit.id).catch(console.error);
+            }
+        };
+    }, [currentUnit]);
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: isDark ? colors.background : '#F8FAFC',
+        },
+        scrollView: {
+            flex: 1,
+        },
+        unitContainer: {
+            marginBottom: 32,
+            marginHorizontal: 8,
+        },
+        unitHeader: {
+            backgroundColor: colors.primary,
+            padding: 16,
+            marginHorizontal: 8,
+            marginTop: 16,
+            borderRadius: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 6,
+            elevation: 2,
+        },
+        unitHeaderLocked: {
+            backgroundColor: isDark ? colors.surfaceHigh : '#94A3B8',
+        },
+        unitName: {
+            fontSize: 20,
+            fontWeight: 'bold',
+            color: colors.buttonText,
+            flex: 1,
+        },
+        lessonsGrid: {
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-start',
+            paddingHorizontal: 8,
+            paddingBottom: 8,
+        },
+        lessonCard: {
+            width: '31%',
+            margin: '1%',
+            borderRadius: 16,
+            borderWidth: 2,
+            alignItems: 'center',
+            paddingVertical: 18,
+            paddingHorizontal: 8,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 6,
+            elevation: 2,
+            backgroundColor: isDark ? colors.surface : '#fff',
+            minWidth: 100,
+            maxWidth: 140,
+        },
+        lessonCardLocked: {
+            opacity: 0.5,
+        },
+        lessonIconContainer: {
+            marginBottom: 8,
+        },
+        lessonIcon: {
+            fontSize: 36,
+        },
+        lessonLevel: {
+            fontSize: 15,
+            fontWeight: 'bold',
+            marginBottom: 2,
+            color: colors.text,
+        },
+        lessonStatus: {
+            fontSize: 13,
+            fontWeight: '600',
+            marginTop: 2,
+        },
+        lessonTitleLocked: {
+            color: isDark ? colors.textSecondary : '#A1A1AA',
+        },
+        lockedText: {
+            fontSize: 16,
+            marginLeft: 12,
+            color: isDark ? colors.textSecondary : '#A1A1AA',
+            fontWeight: '500',
+        },
+        downloadProgressContainer: {
+            padding: 16,
+            backgroundColor: isDark ? colors.surfaceHigh : '#EFF6FF',
+            borderBottomWidth: 1,
+            borderBottomColor: isDark ? colors.border : '#DBEAFE',
+        },
+        downloadProgressText: {
+            fontSize: 14,
+            color: colors.primary,
+            marginBottom: 8,
+        },
+        currentFileProgress: {
+            marginTop: 4,
+        },
+        currentFileName: {
+            fontSize: 12,
+            color: colors.primary,
+            marginBottom: 4,
+        },
+        progressBarContainer: {
+            height: 4,
+            backgroundColor: isDark ? colors.surfaceHigh : '#DBEAFE',
+            borderRadius: 2,
+            overflow: 'hidden',
+        },
+        progressBar: {
+            height: '100%',
+            backgroundColor: colors.primary,
+            borderRadius: 2,
+        },
+        scrollTopButton: {
+            position: 'absolute',
+            right: 20,
+            bottom: 20,
+            zIndex: 1000,
+        },
+        scrollTopPressable: {
+            backgroundColor: colors.primary,
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            justifyContent: 'center',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 4,
+            elevation: 4,
+        },
+        scrollTopPressed: {
+            transform: [{ scale: 0.95 }],
+            backgroundColor: isDark ? colors.surfaceHigh : '#1D4ED8',
+        },
+        scrollTopText: {
+            fontSize: 24,
+            color: colors.buttonText,
+            fontWeight: 'bold',
+        },
+        unitProgressBarContainer: {
+            marginHorizontal: 16,
+            marginTop: 8,
+            marginBottom: 4,
+            alignItems: 'flex-start',
+        },
+        unitProgressBarBg: {
+            width: '100%',
+            height: 8,
+            backgroundColor: isDark ? colors.surfaceHigh : '#e5e7eb',
+            borderRadius: 4,
+            overflow: 'hidden',
+        },
+        unitProgressBarFill: {
+            height: '100%',
+            backgroundColor: colors.primary,
+            borderRadius: 4,
+        },
+        unitProgressText: {
+            fontSize: 12,
+            color: colors.primary,
+            marginTop: 4,
+            fontWeight: '500',
+        },
+        progressCard: {
+            backgroundColor: isDark ? colors.surface : '#fff',
+            borderRadius: 18,
+            padding: 20,
+            margin: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 2,
+        },
+        progressCardHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 12,
+        },
+        progressCardTitle: {
+            fontSize: 17,
+            fontWeight: 'bold',
+            color: colors.text,
+        },
+        progressLevelBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isDark ? colors.surfaceHigh : '#e0fbe3',
+            borderRadius: 12,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+        },
+        progressLevelText: {
+            color: colors.success,
+            fontWeight: 'bold',
+            marginLeft: 4,
+            fontSize: 14,
+        },
+        progressBarBg: {
+            width: '100%',
+            height: 10,
+            backgroundColor: isDark ? colors.surfaceHigh : '#e5e7eb',
+            borderRadius: 5,
+            overflow: 'hidden',
+            marginBottom: 8,
+        },
+        progressBarFill: {
+            height: '100%',
+            backgroundColor: colors.success,
+            borderRadius: 5,
+        },
+        progressCardSubtext: {
+            fontSize: 13,
+            color: isDark ? colors.textSecondary : '#64748B',
+            marginTop: 2,
+            fontWeight: '500',
+        },
+        unitCard: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderRadius: 20,
+            padding: 24,
+            marginHorizontal: 16,
+            marginTop: 16,
+            marginBottom: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.08,
+            shadowRadius: 8,
+            elevation: 2,
+            justifyContent: 'space-between',
+        },
+        unitCardIconContainer: {
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: 'rgba(255,255,255,0.12)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 16,
+        },
+        unitCardTextContainer: {
+            flex: 1,
+            marginLeft: 16,
+        },
+        unitCardTitleContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 2,
+        },
+        unitCardTitle: {
+            color: colors.buttonText,
+            fontSize: 16,
+            fontWeight: 'bold',
+        },
+        unitCardDescription: {
+            color: isDark ? colors.textSecondary : '#e0e7ef',
+            fontSize: 14,
+            marginBottom: 0,
+        },
+        unitCardLessonCount: {
+            color: colors.buttonText,
+            fontSize: 15,
+            fontWeight: '500',
+            marginTop: 8,
+            textAlign: 'right',
+            alignSelf: 'flex-end',
+        },
+        premiumBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isDark ? 'rgba(252, 211, 77, 0.15)' : 'rgba(252, 211, 77, 0.2)',
+            borderRadius: 12,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            marginLeft: 8,
+            borderWidth: 1,
+            borderColor: '#FCD34D',
+        },
+        premiumBadgeText: {
+            color: '#FCD34D',
+            fontSize: 12,
+            fontWeight: 'bold',
+            marginLeft: 4,
+        },
+    });
+
     return (
-        <ThemedView style={[styles.container, { backgroundColor: '#F8FAFC' }]}>
-            <LessonHeader title={languageName as string} languageName={languageName as string} />
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+            <ThemedView style={styles.container}>
+                <LessonHeader
+                    title={languageName as string}
+                    languageName={languageName as string}
+                    topPadding={0} // Let SafeAreaView handle the top padding
+                />
 
-            {isLoading ? (
-                <ActivityIndicator size="large" />
-            ) : error ? (
-                <ThemedText>{error}</ThemedText>
-            ) : (
-                <>
-                    {downloadProgress && (
-                        <ThemedView style={styles.downloadProgressContainer}>
-                            <ThemedText style={styles.downloadProgressText}>
-                                Downloading resources: {downloadProgress.completed}/{downloadProgress.total}
-                            </ThemedText>
-                            {downloadProgress.currentFile && (
-                                <ThemedView style={styles.currentFileProgress}>
-                                    <ThemedText style={styles.currentFileName} numberOfLines={1}>
-                                        {downloadProgress.currentFile.name}
-                                    </ThemedText>
-                                    <View style={styles.progressBarContainer}>
-                                        <View
-                                            style={[
-                                                styles.progressBar,
-                                                { width: `${downloadProgress.currentFile.progress * 100}%` }
-                                            ]}
-                                        />
-                                    </View>
-                                </ThemedView>
-                            )}
-                        </ThemedView>
-                    )}
-                    <ProgressCard completed={completedLessons} total={allLessons.length} level={currentLevel} />
-                    <ScrollView
-                        ref={scrollViewRef}
-                        style={styles.scrollView}
-                        contentContainerStyle={{ paddingBottom: 32 }}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                    >
-
-                        {units.map((unit) => {
-                            const unitLocked = isUnitLocked(unit.id);
-                            // Calculate progress for this unit
-                            const totalLessons = unit.lessons.length;
-                            const completedLessons = unit.lessons.filter(l => {
-                                const progress = getLessonProgress(l.id);
-                                return progress?.status === 'completed';
-                            }).length;
-                            const progressPercent = totalLessons > 0 ? completedLessons / totalLessons : 0;
-
-                            return (
-                                <ThemedView key={unit.id} style={styles.unitContainer}>
-                                    <UnitCard unit={unit} />
-                                    <ThemedView style={styles.lessonsGrid}>
-                                        {unit.lessons.map((lesson) => {
-                                            const progress = getLessonProgress(lesson.id);
-                                            const lessonLocked = isLessonLocked(unit.id, lesson.id);
-                                            return (
-                                                <LessonCard
-                                                    key={lesson.id}
-                                                    lesson={lesson}
-                                                    progress={progress}
-                                                    locked={lessonLocked}
-                                                    onPress={() => !lessonLocked && handleLessonPress(lesson)}
-                                                />
-                                            );
-                                        })}
+                {isLoading ? (
+                    <ActivityIndicator size="large" color={colors.primary} />
+                ) : error ? (
+                    <ThemedText>{error}</ThemedText>
+                ) : (
+                    <>
+                        {downloadProgress && (
+                            <ThemedView style={styles.downloadProgressContainer}>
+                                <ThemedText style={styles.downloadProgressText}>
+                                    Downloading resources: {downloadProgress.completed}/{downloadProgress.total}
+                                </ThemedText>
+                                {downloadProgress.currentFile && (
+                                    <ThemedView style={styles.currentFileProgress}>
+                                        <ThemedText style={styles.currentFileName} numberOfLines={1}>
+                                            {downloadProgress.currentFile.name}
+                                        </ThemedText>
+                                        <View style={styles.progressBarContainer}>
+                                            <View
+                                                style={[
+                                                    styles.progressBar,
+                                                    { width: `${downloadProgress.currentFile.progress * 100}%` }
+                                                ]}
+                                            />
+                                        </View>
                                     </ThemedView>
-                                </ThemedView>
-                            );
-                        })}
-                    </ScrollView>
-                    <Animated.View
-                        style={[
-                            styles.scrollTopButton,
-                            { opacity: fadeAnim }
-                        ]}
-                    >
-                        <Pressable
-                            onPress={scrollToTop}
-                            style={({ pressed }) => [
-                                styles.scrollTopPressable,
-                                pressed && styles.scrollTopPressed
+                                )}
+                            </ThemedView>
+                        )}
+                        <ProgressCard completed={completedLessons} total={allLessons.length} level={currentLevel} />
+                        <ScrollView
+                            ref={scrollViewRef}
+                            style={styles.scrollView}
+                            contentContainerStyle={{ paddingBottom: 32 }}
+                            onScroll={handleScroll}
+                            scrollEventThrottle={16}
+                        >
+
+                            {units.map((unit) => {
+                                const unitLocked = isUnitLocked(unit.id);
+                                // Calculate progress for this unit
+                                const totalLessons = unit.lessons.length;
+                                const completedLessons = unit.lessons.filter(l => {
+                                    const progress = getLessonProgress(l.id);
+                                    return progress?.status === 'completed';
+                                }).length;
+                                const progressPercent = totalLessons > 0 ? completedLessons / totalLessons : 0;
+
+                                return (
+                                    <ThemedView key={unit.id} style={styles.unitContainer}>
+                                        <UnitCard unit={unit} />
+                                        <ThemedView style={styles.lessonsGrid}>
+                                            {unit.lessons.map((lesson) => {
+                                                const progress = getLessonProgress(lesson.id);
+                                                const lessonLocked = isLessonLocked(unit.id, lesson.id);
+                                                return (
+                                                    <LessonCard
+                                                        key={lesson.id}
+                                                        lesson={lesson}
+                                                        progress={progress}
+                                                        locked={lessonLocked}
+                                                        onPress={() => !lessonLocked && handleLessonPress(lesson)}
+                                                    />
+                                                );
+                                            })}
+                                        </ThemedView>
+                                    </ThemedView>
+                                );
+                            })}
+                        </ScrollView>
+                        <Animated.View
+                            style={[
+                                styles.scrollTopButton,
+                                { opacity: fadeAnim }
                             ]}
                         >
-                            <ThemedText style={styles.scrollTopText}>↑</ThemedText>
-                        </Pressable>
-                    </Animated.View>
-                </>
-            )}
-        </ThemedView>
+                            <Pressable
+                                onPress={scrollToTop}
+                                style={({ pressed }) => [
+                                    styles.scrollTopPressable,
+                                    pressed && styles.scrollTopPressed
+                                ]}
+                            >
+                                <ThemedText style={styles.scrollTopText}>↑</ThemedText>
+                            </Pressable>
+                        </Animated.View>
+                    </>
+                )}
+            </ThemedView>
+        </SafeAreaView>
     );
-}
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#F8FAFC',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    unitContainer: {
-        marginBottom: 32,
-        marginHorizontal: 8,
-    },
-    unitHeader: {
-        backgroundColor: '#2563EB',
-        padding: 16,
-        marginHorizontal: 8,
-        marginTop: 16,
-        borderRadius: 14,
-        flexDirection: 'row',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 2,
-    },
-    unitHeaderLocked: {
-        backgroundColor: '#94A3B8',
-    },
-    unitName: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-        flex: 1,
-    },
-    lessonsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'flex-start',
-        paddingHorizontal: 8,
-        paddingBottom: 8,
-    },
-    lessonCard: {
-        width: '31%',
-        margin: '1%',
-        borderRadius: 16,
-        borderWidth: 2,
-        alignItems: 'center',
-        paddingVertical: 18,
-        paddingHorizontal: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 2,
-        backgroundColor: '#fff',
-        minWidth: 100,
-        maxWidth: 140,
-    },
-    lessonCardLocked: {
-        opacity: 0.5,
-    },
-    lessonIconContainer: {
-        marginBottom: 8,
-    },
-    lessonIcon: {
-        fontSize: 36,
-    },
-    lessonLevel: {
-        fontSize: 15,
-        fontWeight: 'bold',
-        marginBottom: 2,
-        color: '#0f172a',
-    },
-    lessonStatus: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    lessonTitleLocked: {
-        color: '#A1A1AA',
-    },
-    lockedText: {
-        fontSize: 16,
-        marginLeft: 12,
-        color: '#A1A1AA',
-        fontWeight: '500',
-    },
-    downloadProgressContainer: {
-        padding: 16,
-        backgroundColor: '#EFF6FF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#DBEAFE',
-    },
-    downloadProgressText: {
-        fontSize: 14,
-        color: '#1E40AF',
-        marginBottom: 8,
-    },
-    currentFileProgress: {
-        marginTop: 4,
-    },
-    currentFileName: {
-        fontSize: 12,
-        color: '#3B82F6',
-        marginBottom: 4,
-    },
-    progressBarContainer: {
-        height: 4,
-        backgroundColor: '#DBEAFE',
-        borderRadius: 2,
-        overflow: 'hidden',
-    },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#3B82F6',
-        borderRadius: 2,
-    },
-    scrollTopButton: {
-        position: 'absolute',
-        right: 20,
-        bottom: 20,
-        zIndex: 1000,
-    },
-    scrollTopPressable: {
-        backgroundColor: '#2563EB',
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    scrollTopPressed: {
-        transform: [{ scale: 0.95 }],
-        backgroundColor: '#1D4ED8',
-    },
-    scrollTopText: {
-        fontSize: 24,
-        color: '#FFFFFF',
-        fontWeight: 'bold',
-    },
-    unitProgressBarContainer: {
-        marginHorizontal: 16,
-        marginTop: 8,
-        marginBottom: 4,
-        alignItems: 'flex-start',
-    },
-    unitProgressBarBg: {
-        width: '100%',
-        height: 8,
-        backgroundColor: '#e5e7eb',
-        borderRadius: 4,
-        overflow: 'hidden',
-    },
-    unitProgressBarFill: {
-        height: '100%',
-        backgroundColor: '#2563EB',
-        borderRadius: 4,
-    },
-    unitProgressText: {
-        fontSize: 12,
-        color: '#2563EB',
-        marginTop: 4,
-        fontWeight: '500',
-    },
-    progressCard: {
-        backgroundColor: '#fff',
-        borderRadius: 18,
-        padding: 20,
-        margin: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 2,
-    },
-    progressCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    progressCardTitle: {
-        fontSize: 17,
-        fontWeight: 'bold',
-        color: '#0f172a',
-    },
-    progressLevelBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#e0fbe3',
-        borderRadius: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 3,
-    },
-    progressLevelText: {
-        color: '#22c55e',
-        fontWeight: 'bold',
-        marginLeft: 4,
-        fontSize: 14,
-    },
-    progressBarBg: {
-        width: '100%',
-        height: 10,
-        backgroundColor: '#e5e7eb',
-        borderRadius: 5,
-        overflow: 'hidden',
-        marginBottom: 8,
-    },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: '#22c55e',
-        borderRadius: 5,
-    },
-    progressCardSubtext: {
-        fontSize: 13,
-        color: '#64748B',
-        marginTop: 2,
-        fontWeight: '500',
-    },
-    unitCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 20,
-        padding: 24,
-        marginHorizontal: 16,
-        marginTop: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 2,
-        justifyContent: 'space-between',
-    },
-    unitCardIconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: 'rgba(255,255,255,0.12)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 16,
-    },
-    unitCardTextContainer: {
-        flex: 1,
-        marginLeft: 16,
-    },
-    unitCardTitle: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 2,
-    },
-    unitCardDescription: {
-        color: '#e0e7ef',
-        fontSize: 14,
-        marginBottom: 0,
-    },
-    unitCardLessonCount: {
-        color: '#fff',
-        fontSize: 15,
-        fontWeight: '500',
-        marginTop: 8,
-        textAlign: 'right',
-        alignSelf: 'flex-end',
-    },
-}); 
+} 

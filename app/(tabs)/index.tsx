@@ -11,6 +11,7 @@ import { Language } from '@/types/language';
 import { HOST_URL } from '@/config/api';
 import { LANGUAGE_EMOJIS } from '@/components/language-emojis';
 import { Header } from '@/components/Header';
+import { useTheme } from '@/contexts/ThemeContext';
 
 // Speaker data for South African languages
 const SPEAKERS_DATA: Record<string, { speakers: number; percentage: number }> = {
@@ -29,21 +30,21 @@ const SPEAKERS_DATA: Record<string, { speakers: number; percentage: number }> = 
   Other: { speakers: 1300000, percentage: 2.1 },
 };
 
-// Unique color for each language card
-const LANGUAGE_COLORS: Record<string, string> = {
-  Zulu: '#FDE68A',
-  Xhosa: '#E0E7FF',
-  Afrikaans: '#FEF3C7',
-  English: '#DBEAFE',
-  Sepedi: '#FDE68A',
-  Tswana: '#F3F4F6',
-  Sesotho: '#E0F2FE',
-  Xitsonga: '#DCFCE7',
-  Swati: '#FCE7F3',
-  Venda: '#F3E8FF',
-  Ndebele: '#F3F4F6',
-  'Sign Language': '#E5E7EB',
-  Other: '#F1F5F9',
+// Unique color for each language card - updated for dark mode compatibility
+const LANGUAGE_COLORS: Record<string, { light: string; dark: string }> = {
+  Zulu: { light: '#FDE68A', dark: '#92400E' },
+  Xhosa: { light: '#E0E7FF', dark: '#3730A3' },
+  Afrikaans: { light: '#FEF3C7', dark: '#92400E' },
+  English: { light: '#DBEAFE', dark: '#1E40AF' },
+  Sepedi: { light: '#FDE68A', dark: '#92400E' },
+  Tswana: { light: '#F3F4F6', dark: '#374151' },
+  Sesotho: { light: '#E0F2FE', dark: '#0369A1' },
+  Xitsonga: { light: '#DCFCE7', dark: '#166534' },
+  Swati: { light: '#FCE7F3', dark: '#831843' },
+  Venda: { light: '#F3E8FF', dark: '#6B21A8' },
+  Ndebele: { light: '#F3F4F6', dark: '#374151' },
+  'Sign Language': { light: '#E5E7EB', dark: '#4B5563' },
+  Other: { light: '#F1F5F9', dark: '#334155' },
 };
 
 // Helper to map API language names to speakers data keys
@@ -75,6 +76,7 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     async function fetchLanguages() {
@@ -102,14 +104,76 @@ export default function HomeScreen() {
     });
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingTop: 20,
+    },
+    titleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    languagesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+      justifyContent: 'center',
+      paddingBottom: 24,
+    },
+    languageCard: {
+      paddingVertical: 28,
+      paddingHorizontal: 20,
+      borderRadius: 18,
+      minWidth: 180,
+      alignItems: 'center',
+      marginBottom: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.10,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: isDark ? colors.border : '#e6e6e6',
+    },
+    languageCardPressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.97 }],
+    },
+    languageEmoji: {
+      fontSize: 40,
+      marginBottom: 10,
+    },
+    languageName: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 2,
+      color: colors.text,
+    },
+    languageNativeName: {
+      fontSize: 14,
+      opacity: 0.7,
+      color: colors.textSecondary,
+      marginBottom: 2,
+    },
+    languageSpeakers: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    headerImage: {
+      height: 200,
+      width: '100%',
+    },
+  });
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: 'transparent', dark: 'transparent' }}
       headerImage={<Header />}
     >
       <ThemedView style={styles.container}>
-
-
         {isLoading ? (
           <ThemedText>Loading languages...</ThemedText>
         ) : error ? (
@@ -129,7 +193,15 @@ export default function HomeScreen() {
                   style={({ pressed }) => [
                     [
                       styles.languageCard,
-                      { backgroundColor: LANGUAGE_COLORS[language.name] || '#fff' },
+                      {
+                        backgroundColor: LANGUAGE_COLORS[language.name]
+                          ? (isDark
+                            ? LANGUAGE_COLORS[language.name].dark
+                            : LANGUAGE_COLORS[language.name].light)
+                          : isDark
+                            ? colors.surface
+                            : '#fff'
+                      },
                     ],
                     pressed && styles.languageCardPressed,
                   ]}
@@ -164,67 +236,3 @@ export default function HomeScreen() {
     </ParallaxScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 20,
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  languagesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-    justifyContent: 'center',
-    paddingBottom: 24,
-  },
-  languageCard: {
-    paddingVertical: 28,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    minWidth: 180,
-    alignItems: 'center',
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e6e6e6',
-  },
-  languageCardPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.97 }],
-  },
-  languageEmoji: {
-    fontSize: 40,
-    marginBottom: 10,
-  },
-  languageName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 2,
-    color: '#222',
-  },
-  languageNativeName: {
-    fontSize: 14,
-    opacity: 0.7,
-    color: '#666',
-    marginBottom: 2,
-  },
-  languageSpeakers: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2,
-  },
-  headerImage: {
-    height: 200,
-    width: '100%',
-  },
-});

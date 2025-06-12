@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { View, StyleSheet, Pressable, TextInput, Keyboard } from 'react-native';
 import { Audio } from 'expo-av';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FeedbackMessage, FeedbackButton } from './CheckContinueButton';
 import { useFeedback } from '../contexts/FeedbackContext';
+import { AudioPlayer } from './AudioPlayer';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Word {
     id: number;
@@ -15,12 +17,13 @@ interface Word {
 
 interface CompleteTranslationQuestionProps {
     words: Word[];
-    options: string[];
+    options: (string | number)[];
     selectedLanguage: string;
     blankIndex: number;
-    questionId: string;
+    questionId: string | number;
     setOnCheck?: (fn: () => void) => void;
     setOnContinue?: (fn: () => void) => void;
+    setIsQuestionAnswered: (answered: boolean) => void;
 }
 
 export function CompleteTranslationQuestion({
@@ -30,38 +33,44 @@ export function CompleteTranslationQuestion({
     blankIndex,
     questionId,
     setOnCheck,
-    setOnContinue
+    setOnContinue,
+    setIsQuestionAnswered,
 }: CompleteTranslationQuestionProps) {
     const [userInput, setUserInput] = useState('');
-    const [isPlaying, setIsPlaying] = useState(false);
-    const soundRef = useRef<Audio.Sound | null>(null);
-    const audioQueueRef = useRef<string[]>([]);
-    const currentAudioIndexRef = useRef(0);
     const { setFeedback, resetFeedback, isChecked } = useFeedback();
+    const theme = useTheme();
 
     // Get all words and their translations
-    const correctWords = options
-        .map(optionId => words.find(w => w.id === Number(optionId)))
-        .filter((word): word is Word => word !== undefined);
+    const correctWords = useMemo(() =>
+        options
+            .map(optionId => words.find(w => w.id === Number(optionId)))
+            .filter((word): word is Word => word !== undefined),
+        [options, words]
+    );
 
     const correctAnswer = correctWords[blankIndex]?.translations[selectedLanguage] || '';
-    const audioUris = correctWords.map(word => word.audio[selectedLanguage]).filter(Boolean);
+
+    const audioUris = useMemo(() =>
+        correctWords.map(word => word.audio[selectedLanguage]).filter(Boolean),
+        [correctWords, selectedLanguage]
+    );
 
     // Create the sentence with blank or user input
-    const sentenceParts = correctWords.map((word, index) => {
-        if (index === blankIndex) {
-            return userInput || '_____';
-        }
-        return word.translations[selectedLanguage];
-    });
+    const sentenceParts = useMemo(() =>
+        correctWords.map((word, index) => {
+            if (index === blankIndex) {
+                return userInput || '_____';
+            }
+            return word.translations[selectedLanguage];
+        }),
+        [correctWords, blankIndex, userInput, selectedLanguage]
+    );
 
     const sentence = sentenceParts.join(' ');
 
-    useEffect(() => {
-        if (audioUris.length > 0) {
-            handlePlayAudio();
-        }
-    }, [audioUris]);
+    const audioComponent = useMemo(() => (
+        <AudioPlayer audioUrls={audioUris} />
+    ), [audioUris]);
 
     function resetQuestion() {
         resetFeedback();
@@ -72,50 +81,6 @@ export function CompleteTranslationQuestion({
         setOnCheck?.(handleCheck);
         setOnContinue?.(resetQuestion);
     }, [setOnCheck, setOnContinue, handleCheck, resetQuestion]);
-
-    async function playNextAudio() {
-        if (currentAudioIndexRef.current >= audioQueueRef.current.length) {
-            setIsPlaying(false);
-            currentAudioIndexRef.current = 0;
-            return;
-        }
-
-        try {
-            const currentAudioUri = audioQueueRef.current[currentAudioIndexRef.current];
-            if (soundRef.current) {
-                await soundRef.current.unloadAsync();
-                soundRef.current = null;
-            }
-
-            const { sound } = await Audio.Sound.createAsync(
-                { uri: currentAudioUri },
-                { shouldPlay: true },
-                (status) => {
-                    if (status.isLoaded && status.didJustFinish) {
-                        currentAudioIndexRef.current++;
-                        playNextAudio();
-                    }
-                }
-            );
-            soundRef.current = sound;
-            await sound.playAsync();
-        } catch (e) {
-            setIsPlaying(false);
-            currentAudioIndexRef.current = 0;
-        }
-    }
-
-    async function handlePlayAudio() {
-        if (!audioUris.length) return;
-        try {
-            setIsPlaying(true);
-            audioQueueRef.current = audioUris;
-            currentAudioIndexRef.current = 0;
-            await playNextAudio();
-        } catch (e) {
-            setIsPlaying(false);
-        }
-    }
 
     function handleCheck() {
         Keyboard.dismiss();
@@ -139,27 +104,23 @@ export function CompleteTranslationQuestion({
         });
     }
 
+    function handleTextChange(text: string) {
+        setUserInput(text);
+        setIsQuestionAnswered(text.length > 0);
+    }
+
     return (
         <ThemedView style={styles.container}>
-            <ThemedText style={styles.title}>Complete the translation</ThemedText>
+            <ThemedText style={[styles.title, { color: theme.colors.text }]}>Complete the translation</ThemedText>
 
-            <Pressable
-                style={styles.audioButton}
-                onPress={handlePlayAudio}
-                accessibilityLabel="Play audio"
-                disabled={isPlaying || !audioUris.length}
-            >
-                <ThemedText style={styles.audioButtonText}>
-                    🔊
-                </ThemedText>
-            </Pressable>
+            {audioComponent}
 
             <ThemedText style={styles.sentence}>{sentence}</ThemedText>
 
             <TextInput
                 style={styles.input}
                 value={userInput}
-                onChangeText={setUserInput}
+                onChangeText={handleTextChange}
                 placeholder="Type the missing word"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -168,8 +129,6 @@ export function CompleteTranslationQuestion({
                 returnKeyType="done"
                 onSubmitEditing={handleCheck}
             />
-
-
         </ThemedView>
     );
 }
@@ -185,23 +144,6 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 16,
         textAlign: 'left',
-    },
-    audioButton: {
-        backgroundColor: '#E0F7FA',
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
-        alignSelf: 'center',
-    },
-    audioButtonText: {
-        fontSize: 32,
-        color: '#00796B',
-        fontWeight: '600',
-        marginBottom: 16,
-        alignSelf: 'center',
     },
     sentence: {
         fontSize: 20,
