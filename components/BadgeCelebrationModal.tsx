@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, Modal, Image, Animated, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Modal, Image, Animated, TouchableOpacity, Share } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Badge } from '@/services/api';
@@ -15,6 +15,18 @@ interface BadgeCelebrationModalProps {
 export function BadgeCelebrationModal({ isVisible, onClose, badge }: BadgeCelebrationModalProps) {
     const { colors, isDark } = useTheme();
     const [scale] = React.useState(new Animated.Value(0));
+
+    const handleShare = async () => {
+        const shareMessage = `🏆 Achievement Unlocked! 🎉\n\nI just earned the "${badge.name}" badge!\n\n${badge.rules}\n\n🎯 Making progress in my exam prep journey! 🚀\n\n#ExamQuiz #Achievement #Learning`;
+        
+        try {
+            await Share.share({
+                message: shareMessage,
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
 
     React.useEffect(() => {
         if (isVisible) {
@@ -79,6 +91,22 @@ export function BadgeCelebrationModal({ isVisible, onClose, badge }: BadgeCelebr
                         <ThemedText style={[styles.celebrationText, { color: colors.text }]}>
                             🎯 Keep up the amazing work! 🚀
                         </ThemedText>
+                        <TouchableOpacity
+                            style={[styles.shareButton, { backgroundColor: colors.primary }]}
+                            onPress={handleShare}
+                        >
+                            <ThemedText style={styles.shareButtonText}>
+                                Share Your Achievement 🏆
+                            </ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.continueLink}
+                            onPress={onClose}
+                        >
+                            <ThemedText style={[styles.continueLinkText, { color: colors.textSecondary }]}>
+                                Continue
+                            </ThemedText>
+                        </TouchableOpacity>
                     </Animated.View>
                 </TouchableOpacity>
             </TouchableOpacity>
@@ -147,6 +175,29 @@ const styles = StyleSheet.create({
     },
     celebrationText: {
         fontSize: 18,
+        textAlign: 'center',
+    },
+    shareButton: {
+        width: '100%',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 24,
+    },
+    shareButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    continueLink: {
+        marginTop: 16,
+        padding: 8,
+    },
+    continueLinkText: {
+        fontSize: 14,
+        textDecorationLine: 'underline',
         textAlign: 'center',
     },
 }); 

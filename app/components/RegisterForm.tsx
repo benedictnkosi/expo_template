@@ -1,27 +1,31 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemedText } from '@/components/ThemedText';
 import Toast from 'react-native-toast-message';
-import { createLearner } from '@/services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { OnboardingData } from '../onboarding';
-import { analytics } from '@/services/analytics';
+import { HOST_URL } from '@/config/api';
 
 interface RegisterFormProps {
     onboardingData: OnboardingData;
+    defaultMethod?: RegistrationMethod;
 }
 
-export default function RegisterForm({ onboardingData }: RegisterFormProps) {
+type RegistrationMethod = 'email' | 'phone';
+
+export default function RegisterForm({ onboardingData, defaultMethod = 'email' }: RegisterFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [phoneNumber, setPhoneNumber] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [registrationMethod, setRegistrationMethod] = useState<RegistrationMethod>(defaultMethod);
     const { signUp } = useAuth();
 
     const logAnalyticsEvent = async (eventName: string, params: {
@@ -29,20 +33,52 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
         email: string;
         error?: string;
     }) => {
-        try {
-            await analytics.track(eventName, params);
-        } catch (error) {
-            console.error('Analytics error:', error);
-        }
+        console.log('Logging analytics event:', eventName, params);
+    };
+
+    const validatePhoneNumber = (phone: string): boolean => {
+        return /^\d{10}$/.test(phone);
     };
 
     const handleRegister = async () => {
-        if (!name || !email || !password || !confirmPassword) {
+        if (!name || !password || !confirmPassword) {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
                 text2: 'Please fill in all fields',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
+            });
+            return;
+        }
+
+        if (registrationMethod === 'phone' && !validatePhoneNumber(phoneNumber)) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Please enter a valid 10-digit phone number',
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
+            });
+            return;
+        }
+
+        if (registrationMethod === 'email' && !email) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Please enter your email',
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -52,7 +88,11 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 type: 'error',
                 text1: 'Error',
                 text2: 'Password must be at least 6 characters',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
@@ -62,47 +102,64 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 type: 'error',
                 text1: 'Error',
                 text2: 'Passwords do not match',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
             return;
         }
 
         setIsLoading(true);
         try {
+            const userEmail = registrationMethod === 'phone'
+                ? `${phoneNumber}@examquiz.co.za`
+                : email;
+
             // Register the user
-            const user = await signUp(email, password);
+            const user = await signUp(userEmail, password);
 
             // If we have onboarding data, update the learner profile
             if (onboardingData) {
                 const learnerData = {
                     name: name,
-                    grade: parseInt(onboardingData.grade),
-                    school: onboardingData.school,
-                    school_address: onboardingData.school_address || '',
-                    school_latitude: parseFloat(onboardingData.school_latitude as string) || 0,
-                    school_longitude: parseFloat(onboardingData.school_longitude as string) || 0,
-                    curriculum: onboardingData.curriculum,
-                    terms: "1,2,3,4",
-                    email: email,
+                    email: userEmail,
                     avatar: onboardingData.avatar,
                 };
 
-
-                const learner = await createLearner(user.uid, learnerData);
-                if (learner.status !== 'OK') {
-
-                    Toast.show({
-                        type: 'error',
-                        text1: 'Warning',
-                        text2: 'Account created but failed to save preferences',
-                        position: 'bottom'
+                // Create new learner
+                try {
+                    const response = await fetch(`${HOST_URL}/api/language-learners`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            uid: user.uid,
+                            name: learnerData.name,
+                            email: learnerData.email,
+                            points: 0,
+                            streak: 0,
+                            avatar: learnerData.avatar,
+                            expoPushToken: '', // This can be updated later when we get the push token
+                            followMeCode: '', // This will be generated by the backend
+                            version: '1.0.0',
+                            os: Platform.OS,
+                            reminders: true
+                        }),
                     });
 
-                    await logAnalyticsEvent('register_failed', {
-                        user_id: user.uid,
-                        email: email,
-                        error: learner.status
-                    });
+                    if (!response.ok) {
+                        throw new Error('Failed to create learner profile');
+                    }
+
+                    const learnerResponse = await response.json();
+                    console.log('Learner created:', learnerResponse);
+                } catch (error) {
+                    console.error('Error creating learner:', error);
+                    // Don't throw here as the user is already registered
+                    // Just log the error and continue
                 }
             }
 
@@ -111,7 +168,19 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
 
             await logAnalyticsEvent('register_success', {
                 user_id: user.uid,
-                email: email,
+                email: userEmail,
+            });
+
+            // Show success toast
+            Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: 'Account created successfully!',
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
 
             // Navigate to tabs
@@ -122,15 +191,54 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 type: 'error',
                 text1: 'Error',
                 text2: 'Failed to create account',
-                position: 'bottom'
+                position: 'bottom',
+                visibilityTime: 3000,
+                autoHide: true,
+                topOffset: 30,
+                bottomOffset: 40
             });
         } finally {
             setIsLoading(false);
         }
     };
 
+    const handleCreateGmail = () => {
+        setRegistrationMethod('phone');
+    };
+
     return (
         <View style={styles.container} testID="register-form-container">
+            <View style={styles.registrationMethodContainer}>
+                <TouchableOpacity
+                    style={[
+                        styles.methodButton,
+                        registrationMethod === 'email' && styles.methodButtonActive
+                    ]}
+                    onPress={() => setRegistrationMethod('email')}
+                >
+                    <ThemedText style={[
+                        styles.methodButtonText,
+                        registrationMethod === 'email' && styles.methodButtonTextActive
+                    ]}>
+                        Email
+                    </ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[
+                        styles.methodButton,
+                        registrationMethod === 'phone' && styles.methodButtonActive
+                    ]}
+                    onPress={() => setRegistrationMethod('phone')}
+                >
+                    <ThemedText style={[
+                        styles.methodButtonText,
+                        registrationMethod === 'phone' && styles.methodButtonTextActive
+                    ]}>
+                        Phone
+                    </ThemedText>
+                </TouchableOpacity>
+            </View>
+
             <TextInput
                 style={styles.input}
                 placeholder="Name"
@@ -141,18 +249,45 @@ export default function RegisterForm({ onboardingData }: RegisterFormProps) {
                 maxLength={50}
                 accessibilityLabel="Full name input"
             />
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                placeholderTextColor="#94A3B8"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                testID="email-input"
-                maxLength={50}
-                accessibilityLabel="Email input"
-            />
+
+            {registrationMethod === 'email' ? (
+                <>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Email"
+                        placeholderTextColor="#94A3B8"
+                        value={email}
+                        onChangeText={setEmail}
+                        autoCapitalize="none"
+                        keyboardType="email-address"
+                        testID="email-input"
+                        maxLength={50}
+                        accessibilityLabel="Email input"
+                    />
+                    <TouchableOpacity
+                        onPress={handleCreateGmail}
+                        style={styles.gmailLink}
+                        accessibilityLabel="Use phone number instead"
+                    >
+                        <ThemedText style={styles.gmailLinkText}>
+                            Don't have an email? Use your phone number
+                        </ThemedText>
+                    </TouchableOpacity>
+                </>
+            ) : (
+                <TextInput
+                    style={styles.input}
+                    placeholder="Phone Number (10 digits)"
+                    placeholderTextColor="#94A3B8"
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    keyboardType="phone-pad"
+                    testID="phone-input"
+                    maxLength={10}
+                    accessibilityLabel="Phone number input"
+                />
+            )}
+
             <View style={styles.inputContainer}>
                 <View style={styles.passwordContainer}>
                     <TextInput
@@ -224,6 +359,30 @@ const styles = StyleSheet.create({
     container: {
         width: '100%',
     },
+    registrationMethodContainer: {
+        flexDirection: 'row',
+        marginBottom: 16,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 12,
+        padding: 4,
+    },
+    methodButton: {
+        flex: 1,
+        padding: 12,
+        alignItems: 'center',
+        borderRadius: 8,
+    },
+    methodButtonActive: {
+        backgroundColor: '#4F46E5',
+    },
+    methodButtonText: {
+        color: '#94A3B8',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    methodButtonTextActive: {
+        color: '#FFFFFF',
+    },
     inputContainer: {
         marginBottom: 16,
     },
@@ -241,7 +400,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     passwordInput: {
-        paddingRight: 50, // Make room for the eye icon
+        paddingRight: 50,
         marginBottom: 0,
     },
     eyeIcon: {
@@ -251,7 +410,7 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     helperText: {
-        fontSize: 12,
+        fontSize: 14,
         color: '#94A3B8',
         marginLeft: 4,
         marginTop: 4,
@@ -270,5 +429,14 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    gmailLink: {
+        marginBottom: 16,
+        padding: 8,
+    },
+    gmailLinkText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        textDecorationLine: 'underline',
     },
 });

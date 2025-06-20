@@ -3,7 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
-    "esModuleInterop": true,
     "paths": {
       "@/*": [
         "./*"

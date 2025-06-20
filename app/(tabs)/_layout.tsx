@@ -1,7 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Platform, View, Text } from 'react-native';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -20,11 +19,12 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: isDark ? colors.card : '#FFFFFF',
           borderTopColor: isDark ? colors.border : '#E5E7EB',
+          height: 60
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 14,
           fontWeight: '500',
         },
         headerShown: false,
@@ -40,30 +40,31 @@ export default function TabLayout() {
           backgroundColor: theme.colors.background,
         },
       }}>
+
+      <Tabs.Screen
+        name="scoreboard"
+        options={{
+          title: 'Leaderboard',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>🏆</Text>
+          ),
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          title: 'Learn',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>📖</Text>
           ),
         }}
       />
       <Tabs.Screen
-        name="chat"
+        name="profile"
         options={{
-          title: 'Chats',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="social"
-        options={{
-          title: 'Social',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
+          title: 'Profile',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ fontSize: 24 }}>👤</Text>
           ),
         }}
       />

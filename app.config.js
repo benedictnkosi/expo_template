@@ -1,24 +1,39 @@
 export default {
-  name: 'exam-quiz',
-  slug: 'exam-quiz',
-  version: '2.7.17',
+  name: 'Dimpo Languages',
+  slug: 'dimpo-languages',
+  version: '1',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'examquiz',
+  scheme: 'dimpolanguages',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
+  newArchEnabled: false,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'za.co.examquizafrica',
+    bundleIdentifier: 'com.dimpolanguages',
     buildNumber: '1.0.2',
     googleServicesFile: './GoogleService-Info.plist',
     infoPlist: {
       "ITSAppUsesNonExemptEncryption": false,
       "UIBackgroundModes": ["remote-notification"]
-    }
+    },
+    "associatedDomains": ["applinks:examquiz.co.za"]
   },
   android: {
-    package: 'za.co.examquizafrica',
+    package: 'com.dimpolanguages',
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "data": [
+          {
+            "scheme": "https",
+            "host": "examquiz.co.za",
+            "pathPrefix": "/"
+          }
+        ],
+        "category": ["BROWSABLE", "DEFAULT"]
+      }
+    ],
     versionCode: 1,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
@@ -33,7 +48,6 @@ export default {
   },
   plugins: [
     'expo-router',
-    '@react-native-google-signin/google-signin',
     [
       'expo-build-properties',
       {

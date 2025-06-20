@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Exit on error
+set -e
+
 # Copy google-services.json to the correct location
 echo "Copying google-services.json to app directory..."
 cp google-services.json android/app/google-services.json
@@ -8,9 +11,10 @@ cp google-services.json android/app/google-services.json
 echo "Copying and renaming keystore file..."
 cp @nkosib__exam-quiz.jks android/app/keystore.jks
 
-#copy build.gradle to android directory
-echo "Copying build.gradle to android directory..."
-cp build.gradle android/app/build.gradle
+# Copy build.gradle files to android directory
+echo "Copying build.gradle files to android directory..."
+cp android-build.gradle android/build.gradle
+cp app-build.gradle android/app/build.gradle
 
 # Path to build.gradle
 GRADLE_FILE="./android/app/build.gradle"
@@ -39,7 +43,10 @@ cd android
 ./gradlew clean
 ./gradlew bundleRelease
 
-#copy the aab to /Users/mac1/Documents/aab
+# Create output directory if it doesn't exist
+mkdir -p /Users/mac1/Documents/aab
+
+# Copy the AAB file
 cp app/build/outputs/bundle/release/app-release.aab /Users/mac1/Documents/aab/app-release.aab
 
 echo "Build completed!"

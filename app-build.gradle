@@ -1,7 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: 'com.google.gms.google-services' // This must be at the bottom
+apply plugin: 'com.google.gms.google-services'
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
@@ -87,13 +87,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'za.co.examquizafrica'
+    namespace 'com.dimpolanguages'
     defaultConfig {
-        applicationId 'za.co.examquizafrica'
+        applicationId 'com.dimpolanguages'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 338
-        versionName "3.0.38"
+        versionCode 4
+        versionName "1.0.1"
     }
     signingConfigs {
         debug {
@@ -104,9 +104,9 @@ android {
         }
         release {
             storeFile file('keystore.jks')
-            storePassword "c4ea0fa65c00c133a38786b86790a73e"
-            keyAlias "18a2509529bd69f94e3d92cb654ab2ca"
-            keyPassword "291654a144e727dac362827c1344cc54"
+            storePassword "15ec2f70a58b1f07309c5756868c6f25"
+            keyAlias "b6489fff5583c1c7a5cb3c8eb3e4ab5d"
+            keyPassword "bea696d61457cd65ab59639fe3dba56a"
         }
     }
     buildTypes {
@@ -180,4 +180,8 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Add Firebase dependencies
+    implementation platform('com.google.firebase:firebase-bom:32.7.2')
+    implementation 'com.google.firebase:firebase-analytics'
 }

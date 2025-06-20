@@ -1,45 +1,170 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, Image, ScrollView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ThemedText } from '../components/ThemedText';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import Toast from 'react-native-toast-message';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
 import RegisterForm from './components/RegisterForm';
-import { analytics } from '../services/analytics';
-import { API_BASE_URL } from '@/config/api';
+import { HOST_URL } from '@/config/api';
 
-// Add function before WebBrowser.maybeCompleteAuthSession()
-async function getSchoolFunfacts(schoolName: string) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/school/fact?school_name=${encodeURIComponent(schoolName)}`);
-    const data = await response.json();
-    if (data.status === "OK") {
-      return {
-        fact: data.fact
-      };
-    }
-    throw new Error('Failed to fetch school facts');
-  } catch (error) {
-    console.error('Error fetching school facts:', error);
-    return {
-      fact: `${schoolName} is a great place to learn!`
-    };
-  }
+const SUPERHERO_NAMES = [
+  'Spider-Man',
+  'Iron Man',
+  'Captain America',
+  'Black Panther',
+  'Doctor Strange',
+  'Scarlet Witch',
+  'Hawkeye',
+  'Wolverine',
+  'Storm',
+  'Ms. Marvel',
+  'Moon Knight',
+  'Silver Surfer',
+  'She-Hulk',
+  'Daredevil',
+  'Shang-Chi',
+  'Superman',
+  'Batman',
+  'Wonder Woman',
+  'The Flash',
+  'Aquaman',
+  'Green Lantern',
+  'Cyborg',
+  'Martian Manhunter',
+  'Zatanna',
+  'Nightwing',
+  'Shazam',
+  'Hawkman',
+  'Green Arrow',
+  'Blue Beetle',
+  'Batgirl',
+  // Additional superheroes
+  'Thor',
+  'Black Widow',
+  'Hulk',
+  'Ant-Man',
+  'Wasp',
+  'Vision',
+  'Falcon',
+  'Winter Soldier',
+  'Black Canary',
+  'Supergirl',
+  // South African Celebrities
+  'Trevor Noah',
+  'Black Mambazo',
+  'Die Heuwels Fantasties',
+  'Die Antwoord',
+  'Goldfish',
+  'Black Coffee',
+  'DJ Fresh',
+  'Cassper Nyovest',
+  'Aka',
+  'Nasty C',
+  'Sho Madjozi',
+  'Mafikizolo',
+  'Mi Casa',
+  'Freshlyground',
+  'Loyiso Bala',
+  'Lira',
+  'Yvonne Chaka Chaka',
+  'Brenda Fassie',
+  'Lucky Dube',
+  'Johnny Clegg',
+  // American Pop Stars
+  'Taylor Swift',
+  'Beyoncé',
+  'Lady Gaga',
+  'Ariana Grande',
+  'Billie Eilish',
+  'Dua Lipa',
+  'Harry Styles',
+  'Justin Bieber',
+  'Rihanna',
+  'Katy Perry',
+  'Bruno Mars',
+  'The Weeknd',
+  'Post Malone',
+  'Drake',
+  'Ed Sheeran',
+  'Adele',
+  'Miley Cyrus',
+  'Selena Gomez',
+  'Shawn Mendes',
+  'Olivia Rodrigo',
+  // Famous Geniuses and Inventors
+  'Albert Einstein',
+  'Nikola Tesla',
+  'Marie Curie',
+  'Leonardo da Vinci',
+  'Isaac Newton',
+  'Thomas Edison',
+  'Stephen Hawking',
+  'Alan Turing',
+  'Ada Lovelace',
+  'Galileo Galilei',
+  'Archimedes',
+  'Charles Darwin',
+  'James Watt',
+  'Alexander Graham Bell',
+  'Wright Brothers',
+  'Tim Berners-Lee',
+  'Grace Hopper',
+  'Steve Jobs',
+  'Bill Gates',
+  'Elon Musk',
+  // Famous Athletes
+  'Usain Bolt',
+  'Serena Williams',
+  'Michael Jordan',
+  'Muhammad Ali',
+  'Lionel Messi',
+  'Cristiano Ronaldo',
+  'Roger Federer',
+  'Simone Biles',
+  'Michael Phelps',
+  'LeBron James',
+  // Nobel Laureates
+  'Nelson Mandela',
+  'Malala Yousafzai',
+  'Martin Luther King Jr',
+  'Mother Teresa',
+  'Albert Schweitzer',
+  'Wangari Maathai',
+  'Kofi Annan',
+  'Desmond Tutu',
+  'Jimmy Carter',
+  'Barack Obama',
+  // Inspirational Leaders
+  'Mahatma Gandhi',
+  'Winston Churchill',
+  'Abraham Lincoln',
+  'Queen Elizabeth II',
+  'Walt Disney',
+  'Oprah Winfrey',
+  'J.K. Rowling',
+  'Maya Angelou',
+  'Rosa Parks',
+  'Helen Keller'
+];
+
+function getRandomSuperheroName(): string {
+  const randomIndex = Math.floor(Math.random() * SUPERHERO_NAMES.length);
+  return SUPERHERO_NAMES[randomIndex];
 }
 
 WebBrowser.maybeCompleteAuthSession();
 
-const ILLUSTRATIONS = {
-  welcome: require('@/assets/images/illustrations/school.png'),
-  grade: require('@/assets/images/illustrations/stressed.png'),
-  school: require('@/assets/images/illustrations/friends.png'),
-  ready: require('@/assets/images/illustrations/exam.png'),
+const EMOJIS = {
+  welcome: '🇿🇦',
+  languages: '🗣️',
+  practice: '✍️',
+  audio: '🎧',
 };
 
 type AvatarImages = {
@@ -59,44 +184,148 @@ const AVATAR_IMAGES: AvatarImages = {
 };
 
 export interface OnboardingData {
-  grade: string;
-  school: string;
-  school_address: string;
-  school_latitude: string;
-  school_longitude: string;
   curriculum: string;
-  difficultSubject: string;
+  difficultSubject?: string;
   avatar: string;
+  school?: string;
+  school_address?: string;
+  school_latitude?: string | number;
+  school_longitude?: string | number;
 }
 
-// Helper function for safe analytics logging
-async function logAnalyticsEvent(eventName: string, eventParams?: Record<string, any>) {
+const EARLY_GRADE_INFO_STEP = 4.5;
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+interface GuestAccountParams {
+  selectedAvatar: string;
+  signUp: (email: string, password: string) => Promise<any>;
+}
+
+interface FirebaseError extends Error {
+  code?: string;
+  name: string;
+  message: string;
+  stack?: string;
+}
+
+async function createGuestAccount({ selectedAvatar, signUp }: GuestAccountParams, retryCount = 0): Promise<any> {
   try {
-    await analytics.track(eventName, eventParams);
-  } catch (error) {
-    console.error('[Analytics] Error logging event:', error);
+    console.log(`[Guest Account] Attempt ${retryCount + 1}/${MAX_RETRIES} - Starting guest account creation`);
+
+    // Generate a 16-character UID
+    const guestUid = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .slice(0, 16);
+
+    const guestEmail = `${guestUid}@guest.com`;
+    const defaultPassword = 'password';
+
+    console.log('[Guest Account] Generated credentials:', { guestEmail });
+
+    // Register the guest user
+    console.log('[Guest Account] Attempting to sign up with Firebase...');
+    const user = await signUp(guestEmail, defaultPassword);
+    console.log('[Guest Account] Firebase signup successful:', { uid: user?.uid });
+
+    // Create learner profile for guest
+    const learnerData = {
+      name: getRandomSuperheroName(),
+      email: guestEmail,
+      avatar: selectedAvatar,
+    };
+
+    console.log('[Guest Account] Created learner data:', learnerData);
+
+    // Create new learner in database
+    try {
+      const response = await fetch(`${HOST_URL}/api/language-learners`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uid: user.uid,
+          name: learnerData.name,
+          email: learnerData.email,
+          points: 0,
+          streak: 0,
+          avatar: learnerData.avatar,
+          expoPushToken: '', // This can be updated later when we get the push token
+          followMeCode: '', // This will be generated by the backend
+          version: '1.0.0',
+          os: Platform.OS,
+          reminders: true
+        }),
+      });
+
+      console.log('[Guest Account] Response:', response);
+
+      if (!response.ok) {
+        console.error('[Guest Account] Failed to create learner profile');
+        throw new Error('Failed to create learner profile');
+      }
+
+      const learnerResponse = await response.json();
+      console.log('[Guest Account] Learner created:', learnerResponse);
+    } catch (error) {
+      console.error('[Guest Account] Error creating learner:', error);
+      // Don't throw here as the user is already registered
+      // Just log the error and continue
+    }
+
+    // Store onboarding data
+    console.log('[Guest Account] Storing onboarding data...');
+    await AsyncStorage.setItem('onboardingData', JSON.stringify({
+      curriculum: 'CAPS',
+      avatar: selectedAvatar,
+      onboardingCompleted: true,
+      isGuest: true
+    }));
+
+    // Store auth token
+    console.log('[Guest Account] Storing auth token...');
+    await SecureStore.setItemAsync('auth', JSON.stringify({ user }));
+
+    console.log('[Guest Account] Guest account creation completed successfully');
+    return user;
+  } catch (error: unknown) {
+    const firebaseError = error as FirebaseError;
+    console.error('[Guest Account] Error details:', {
+      error: firebaseError,
+      errorName: firebaseError.name,
+      errorMessage: firebaseError.message,
+      errorCode: firebaseError.code,
+      errorStack: firebaseError.stack,
+      retryCount,
+      timestamp: new Date().toISOString()
+    });
+
+    if (retryCount < MAX_RETRIES) {
+      console.log(`[Guest Account] Retrying in ${RETRY_DELAY}ms... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return createGuestAccount({ selectedAvatar, signUp }, retryCount + 1);
+    }
+    throw error;
   }
 }
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
-  const [grade, setGrade] = useState('');
-  const [school, setSchool] = useState('');
-  const [schoolAddress, setSchoolAddress] = useState('');
-  const [schoolLatitude, setSchoolLatitude] = useState(0);
-  const [schoolLongitude, setSchoolLongitude] = useState(0);
-  const [schoolName, setSchoolName] = useState('');
-  const [curriculum, setCurriculum] = useState('');
-  const [difficultSubject, setDifficultSubject] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string>('1');
+  const [registrationMethod, setRegistrationMethod] = useState<'email' | 'phone'>('email');
   const insets = useSafeAreaInsets();
-  const [schoolFunfacts, setSchoolFunfacts] = useState('');
+  const { signUp } = useAuth();
 
   const [errors, setErrors] = useState({
-    grade: '',
-    school: '',
     curriculum: ''
   });
+
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
+
   useEffect(() => {
     async function checkAuthAndOnboarding() {
       try {
@@ -109,11 +338,6 @@ export default function OnboardingScreen() {
             router.replace('/(tabs)');
           }
         }
-
-        logAnalyticsEvent('onboarding_step_started', {
-          step_number: step + 1,
-          step_name: getStepName(step)
-        });
       } catch (error) {
         console.error('Error checking auth and onboarding:', error);
       }
@@ -123,34 +347,13 @@ export default function OnboardingScreen() {
   });
 
   const handleNextStep = () => {
-    logAnalyticsEvent('onboarding_step_complete', {
-      step_number: step + 1,
-      step_name: getStepName(step)
-    });
-    if (step === 1 && !grade) {
-      setErrors(prev => ({ ...prev, grade: 'Please select your grade' }));
-    } else if (step === 2 && !school) {
-      setErrors(prev => ({ ...prev, school: 'Please select your school' }));
-    } else if (step === 3 && !difficultSubject) {
-      setErrors(prev => ({ ...prev, difficultSubject: 'Please select your most challenging subject' }));
-    } else if (step === 4 && !selectedAvatar) {
-      setErrors(prev => ({ ...prev, selectedAvatar: 'Please select an avatar' }));
-    } else if (step === 5) {
+    setErrors({ curriculum: '' });
+
+    if (step === 5) { // If we're on the guest account step
       handleComplete();
     } else {
-      setErrors({ grade: '', school: '', curriculum: '' });
       setStep(step + 1);
     }
-  };
-
-  const handleSkipSchool = () => {
-    setSchool('Default School');
-    setSchoolName('Default School');
-    setSchoolAddress('123 Default Street, Default City');
-    setSchoolLatitude(-26.2041); // Default to Johannesburg coordinates
-    setSchoolLongitude(28.0473);
-    setErrors(prev => ({ ...prev, school: '' }));
-    setStep(step + 1);
   };
 
   const getStepName = (step: number): string => {
@@ -158,60 +361,34 @@ export default function OnboardingScreen() {
       case 0:
         return 'welcome';
       case 1:
-        return 'grade_selection';
+        return 'languages';
       case 2:
-        return 'school_selection';
+        return 'practice';
       case 3:
-        return 'difficult_subject_selection';
+        return 'audio';
       case 4:
-        return 'avatar_selection';
+        return 'avatar';
       case 5:
-        return 'registration';
+        return 'guest';
       default:
         return 'unknown';
     }
   };
 
-
   const handleComplete = async () => {
     try {
-
       // Store onboarding data
       await AsyncStorage.setItem('onboardingData', JSON.stringify({
-        grade,
-        school: schoolName,
-        school_address: schoolAddress,
-        school_latitude: schoolLatitude,
-        school_longitude: schoolLongitude,
         curriculum: 'CAPS',
-        difficultSubject,
         avatar: selectedAvatar,
         onboardingCompleted: true
       }));
-
-      // Log onboarding completion event
-      logAnalyticsEvent('onboarding_complete', {
-        grade,
-        school_name: schoolName,
-        school_address: schoolAddress,
-        school_latitude: schoolLatitude,
-        school_longitude: schoolLongitude,
-        curriculum: 'CAPS',
-        difficult_subject: difficultSubject,
-        avatar: selectedAvatar
-      });
 
       // Navigate to registration screen
       router.push({
         pathname: '/register',
         params: {
-          grade,
-          school: schoolName,
-          school_address: schoolAddress,
-          school_latitude: schoolLatitude.toString(),
-          school_longitude: schoolLongitude.toString(),
           curriculum: 'CAPS',
-          difficultSubject,
           avatar: selectedAvatar,
         }
       });
@@ -232,252 +409,107 @@ export default function OnboardingScreen() {
       case 0:
         return (
           <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="welcome-step">
-            <View style={{ width: '100%', height: 200, marginBottom: 40 }}>
-              <Image
-                source={ILLUSTRATIONS.welcome}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
-                testID="welcome-illustration"
-              />
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="welcome-emoji">
+                {EMOJIS.welcome}
+              </ThemedText>
             </View>
             <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="welcome-text-container">
-              <ThemedText style={[styles.welcomeTitle, { fontSize: 28, marginBottom: 24 }]} testID="welcome-title">
-                🎉 Welcome to Exam Quiz! 🚀
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 24, marginBottom: 24 }]} testID="welcome-title">
+                Welcome to Dimpo Lingo
               </ThemedText>
               <ThemedText style={[styles.welcomeText, { fontSize: 20, lineHeight: 32, marginBottom: 24 }]} testID="welcome-description">
-                📝 Get ready to boost your brainpower and ace your exams! 🏆
-              </ThemedText>
-              <ThemedText style={[styles.statsText, { fontSize: 18, lineHeight: 28 }]} testID="welcome-stats">
-                💡 Join 4,000+ students sharpening their skills with 8,000+ brain-boosting questions every day! 🧠🔥
+                🌟 Master South African languages with fun, interactive lessons! From Zulu to Afrikaans, we've got you covered.
               </ThemedText>
             </View>
           </View>
         );
-
       case 1:
         return (
-          <View style={styles.step} testID="grade-selection-step">
-            <Image
-              source={ILLUSTRATIONS.grade}
-              style={styles.illustration}
-              resizeMode="contain"
-              testID="grade-illustration"
-            />
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle} testID="grade-step-title">What grade are you in?</ThemedText>
-              <View style={styles.gradeButtons} testID="grade-buttons-container">
-                {[10, 11, 12].map((g) => (
-                  <TouchableOpacity
-                    key={g}
-                    style={[
-                      styles.gradeButton,
-                      grade === g.toString() && styles.gradeButtonSelected
-                    ]}
-                    onPress={() => {
-                      setGrade(g.toString());
-                      setErrors(prev => ({ ...prev, grade: '' }));
-                    }}
-                    testID={`grade-button-${g}`}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.gradeButtonText,
-                        grade === g.toString() && styles.gradeButtonTextSelected
-                      ]}
-                      testID={`grade-button-text-${g}`}
-                    >
-                      Grade {g}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              {errors.grade ? <ThemedText style={styles.errorText} testID="grade-error">{errors.grade}</ThemedText> : null}
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="languages-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="languages-emoji">
+                {EMOJIS.languages}
+              </ThemedText>
+            </View>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="languages-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="languages-title">
+                Learn 11 Official Languages
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="languages-description">
+                🇿🇦 Master Zulu, Xhosa, Afrikaans, and more! Our app makes learning South African languages fun and easy.
+              </ThemedText>
             </View>
           </View>
         );
-
       case 2:
         return (
-          <View style={styles.step} testID="school-selection-step">
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle} testID="school-step-title">🎓 Which school do you rep?</ThemedText>
-              <ThemedText style={styles.stepTitle} testID="school-step-subtitle">Join the learning squad! 🚀📚</ThemedText>
-              <GooglePlacesAutocomplete
-                placeholder="Search for your school..."
-                onPress={async (data, details = null) => {
-                  setSchool(data.description);
-                  setSchoolName(data.structured_formatting.main_text);
-                  setSchoolAddress(data.description);
-                  setErrors(prev => ({ ...prev, school: '' }));
-                  if (details) {
-                    setSchoolLatitude(details.geometry.location.lat);
-                    setSchoolLongitude(details.geometry.location.lng);
-                  }
-                  const funfacts = await getSchoolFunfacts(data.description);
-                  setSchoolFunfacts(funfacts.fact);
-                }}
-                fetchDetails={true}
-                onFail={error => console.error('GooglePlaces error:', error)}
-                styles={{
-                  container: styles.searchContainer,
-                  textInput: styles.searchInput,
-                  listView: {
-                    position: 'absolute',
-                    top: 60,
-                    left: 16,
-                    right: 16,
-                    backgroundColor: '#FFFFFF',
-                    borderRadius: 16,
-                    elevation: 3,
-                    zIndex: 1000,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 8,
-                  },
-                  row: {
-                    padding: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
-                  },
-                  description: {
-                    fontSize: 16,
-                    color: '#1E293B',
-                  },
-                }}
-                textInputProps={{
-                  placeholderTextColor: 'rgba(0, 0, 0, 0.5)',
-                  selectionColor: '#4338CA',
-                  testID: 'school-search-input'
-                }}
-                query={{
-                  key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || "",
-                  components: 'country:za',
-                  types: 'school',
-                  language: 'en',
-                }}
-              />
-              {school && (
-                <>
-                  <View style={styles.selectedSchoolContainer}>
-                    <View style={styles.selectedSchoolHeader}>
-                      <Ionicons name="location" size={20} color="#FFFFFF" />
-                      <ThemedText style={styles.selectedSchoolTitle}>Selected School</ThemedText>
-                    </View>
-                    <ThemedText style={styles.selectedSchoolName}>{schoolName}</ThemedText>
-                    <ThemedText style={styles.selectedSchoolAddress}>{schoolAddress}</ThemedText>
-                  </View>
-                  {schoolFunfacts && (
-                    <View style={styles.funFactContainer}>
-                      <View style={styles.funFactHeader}>
-                        <Ionicons name="information-circle" size={24} color="#FFFFFF" />
-                        <ThemedText style={styles.funFactTitle}>Did you know?</ThemedText>
-                      </View>
-                      <ThemedText style={styles.funFactText}>{schoolFunfacts}</ThemedText>
-                    </View>
-                  )}
-                </>
-              )}
-              {errors.school ? <ThemedText style={styles.errorText} testID="school-error">{errors.school}</ThemedText> : null}
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="practice-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="practice-emoji">
+                {EMOJIS.practice}
+              </ThemedText>
             </View>
-            {!school && (
-              <View style={styles.skipButtonContainer}>
-                <TouchableOpacity
-                  style={styles.skipButton}
-                  onPress={handleSkipSchool}
-                  testID="skip-school-button"
-                >
-                  <ThemedText style={styles.skipButtonText}>Skip for now</ThemedText>
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="practice-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="practice-title">
+                Interactive Practice
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="practice-description">
+                ✍️ Practice writing, speaking, and understanding with our interactive exercises. Perfect your pronunciation and grammar!
+              </ThemedText>
+            </View>
           </View>
         );
-
       case 3:
         return (
-          <View style={styles.step}>
-            <View style={styles.textContainer}>
-              <ThemedText style={styles.stepTitle}>
-                🤔 Which subject challenges you the most?
-              </ThemedText>
-              <ThemedText style={styles.stepSubtitle}>
-                We'll give extra attention to this one! 💪
+          <View style={[styles.step, { justifyContent: 'flex-start', paddingTop: 40 }]} testID="audio-step">
+            <View style={{ width: '100%', height: 300, marginBottom: 40, justifyContent: 'center', alignItems: 'center' }}>
+              <ThemedText style={{ fontSize: 120 }} testID="audio-emoji">
+                {EMOJIS.audio}
               </ThemedText>
             </View>
-            <ScrollView
-              style={styles.subjectsScrollView}
-              contentContainerStyle={styles.subjectsScrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <View style={styles.subjectButtons}>
-                {[
-                  { id: 'mathematics', label: 'Mathematics', emoji: '1️⃣' },
-                  { id: 'physics', label: 'Physical Sciences', emoji: '⚡' },
-                  { id: 'life_sciences', label: 'Life Sciences', emoji: '🧬' },
-                  { id: 'accounting', label: 'Accounting', emoji: '📊' },
-                  { id: 'other', label: 'Other', emoji: '📚' }
-                ].map((subject) => (
-                  <TouchableOpacity
-                    key={subject.id}
-                    style={[
-                      styles.subjectButton,
-                      difficultSubject === subject.id && styles.subjectButtonSelected
-                    ]}
-                    onPress={() => setDifficultSubject(subject.id)}
-                    testID={`subject-button-${subject.id}`}
-                  >
-                    <View style={styles.subjectContent}>
-                      <ThemedText style={styles.subjectEmoji}>{subject.emoji}</ThemedText>
-                      <ThemedText
-                        style={[
-                          styles.subjectButtonText,
-                          difficultSubject === subject.id && styles.subjectButtonTextSelected
-                        ]}
-                      >
-                        {subject.label}
-                      </ThemedText>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+            <View style={[styles.textContainer, { paddingHorizontal: 20 }]} testID="audio-text-container">
+              <ThemedText style={[styles.welcomeTitle, { fontSize: 26, marginBottom: 20 }]} testID="audio-title">
+                Native Speaker Audio
+              </ThemedText>
+              <ThemedText style={[styles.welcomeText, { fontSize: 18, lineHeight: 28, marginBottom: 20 }]} testID="audio-description">
+                🎧 Listen to native speakers and perfect your pronunciation. Learn authentic accents and expressions!
+              </ThemedText>
+            </View>
           </View>
         );
-
       case 4:
         return (
-          <View style={styles.step}>
+          <View style={styles.step} testID="avatar-step">
             <View style={styles.textContainer}>
               <ThemedText style={styles.stepTitle}>
-                🎨 Choose Your Avatar
+                Choose Your Avatar
               </ThemedText>
               <ThemedText style={styles.stepSubtitle}>
-                Pick a cool avatar to represent you! ✨
+                Select an avatar to represent you in the app
               </ThemedText>
             </View>
+
             <ScrollView
               style={styles.avatarsScrollView}
               contentContainerStyle={styles.avatarsScrollContent}
-              showsVerticalScrollIndicator={false}
             >
               <View style={styles.avatarsGrid}>
-                {Object.keys(AVATAR_IMAGES).map((num) => (
+                {Object.keys(AVATAR_IMAGES).map((avatarId) => (
                   <TouchableOpacity
-                    key={num}
+                    key={avatarId}
                     style={[
                       styles.avatarButton,
-                      selectedAvatar === num && styles.avatarButtonSelected
+                      selectedAvatar === avatarId && styles.avatarButtonSelected
                     ]}
-                    onPress={() => setSelectedAvatar(num)}
-                    testID={`avatar-button-${num}`}
+                    onPress={() => setSelectedAvatar(avatarId)}
+                    testID={`avatar-${avatarId}`}
                   >
                     <Image
-                      source={AVATAR_IMAGES[num]}
+                      source={AVATAR_IMAGES[avatarId]}
                       style={styles.avatarImage}
-                      resizeMode="cover"
                     />
-                    {selectedAvatar === num && (
+                    {selectedAvatar === avatarId && (
                       <View style={styles.avatarCheckmark}>
                         <Ionicons name="checkmark" size={16} color="#FFFFFF" />
                       </View>
@@ -488,41 +520,62 @@ export default function OnboardingScreen() {
             </ScrollView>
           </View>
         );
-
       case 5:
         return (
-          <View style={styles.step}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setStep(4)}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+          <View style={styles.step} testID="guest-step">
+            <View style={styles.textContainer}>
+              <ThemedText style={styles.stepTitle}>
+                Continue as Guest?
+              </ThemedText>
+              <ThemedText style={styles.stepSubtitle}>
+                You can start learning right away or create an account
+              </ThemedText>
+            </View>
 
-            <ScrollView style={styles.registrationContainer}>
-              <View style={styles.registrationHeader}>
-                <ThemedText style={styles.registrationTitle}>Create Your Account</ThemedText>
-                <ThemedText style={styles.registrationSubtitle}>
-                  🎯 Almost there! Set up your account to start your learning journey.
-                </ThemedText>
-              </View>
-
-              <RegisterForm
-                onboardingData={{
-                  grade,
-                  school: schoolName,
-                  school_address: schoolAddress,
-                  school_latitude: schoolLatitude.toString(),
-                  school_longitude: schoolLongitude.toString(),
-                  curriculum: 'CAPS',
-                  difficultSubject,
-                  avatar: selectedAvatar,
+            <View style={styles.authOptionsContainer}>
+              <TouchableOpacity
+                style={[styles.authButton, styles.guestButton]}
+                onPress={async () => {
+                  try {
+                    await createGuestAccount({ selectedAvatar, signUp });
+                    router.replace('/(tabs)');
+                  } catch (error) {
+                    console.error('Failed to create guest account:', error);
+                    Toast.show({
+                      type: 'error',
+                      text1: 'Error',
+                      text2: 'Failed to create guest account',
+                      position: 'bottom'
+                    });
+                  }
                 }}
-              />
-            </ScrollView>
+                testID="continue-as-guest-button"
+              >
+                <ThemedText style={styles.authButtonText}>
+                  Continue as Guest
+                </ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.authButton, styles.emailButton]}
+                onPress={() => {
+                  router.push({
+                    pathname: '/register',
+                    params: {
+                      curriculum: 'CAPS',
+                      avatar: selectedAvatar,
+                    }
+                  });
+                }}
+                testID="create-account-button"
+              >
+                <ThemedText style={styles.authButtonText}>
+                  Create Account
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
         );
-
       default:
         return null;
     }
@@ -533,11 +586,11 @@ export default function OnboardingScreen() {
       case 0:
         return true;
       case 1:
-        return !!grade;
+        return true;
       case 2:
-        return !!school;
+        return true;
       case 3:
-        return !!difficultSubject;
+        return true;
       case 4:
         return !!selectedAvatar;
       case 5:
@@ -557,7 +610,7 @@ export default function OnboardingScreen() {
           {renderStep()}
         </View>
 
-        {step < 5 && (
+        {(step < 5) && (
           <View style={styles.buttonContainer} testID="navigation-buttons">
             {step === 0 ? (
               <>
@@ -582,7 +635,9 @@ export default function OnboardingScreen() {
               <>
                 <TouchableOpacity
                   style={[styles.button, styles.secondaryButton]}
-                  onPress={() => setStep(step - 1)}
+                  onPress={() => {
+                    setStep(step - 1);
+                  }}
                   testID="previous-step-button"
                 >
                   <ThemedText style={styles.buttonText}>Back</ThemedText>
@@ -635,15 +690,16 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 20,
     marginBottom: 20,
   },
   illustration: {
-    width: '80%',
-    height: 200,
+    width: '60%',
+    height: 150,
     marginBottom: 24,
   },
   bigIllustration: {
-    width: '100%',
+    width: '80%',
     marginBottom: 40,
   },
   welcomeTitle: {
@@ -654,7 +710,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.5,
   },
-
   boastingText: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -664,7 +719,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 24,
   },
-
   welcomeText: {
     fontSize: 18,
     color: '#E2E8F0',
@@ -711,6 +765,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     gap: 12,
     marginTop: 'auto',
+    marginBottom: 20,
   },
   button: {
     flex: 1,
@@ -732,32 +787,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#4d5ad3',
-  },
-  gradeButtons: {
-    width: '100%',
-    gap: 12,
-    paddingHorizontal: 20,
-  },
-  gradeButton: {
-    width: '100%',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  gradeButtonSelected: {
-    borderColor: '#FFFFFF',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  gradeButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  gradeButtonTextSelected: {
-    color: '#FFFFFF',
   },
   debugText: {
     color: '#E2E8F0',
@@ -867,15 +896,20 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 20,
-    left: 20,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    top: 0,
+    left: 0,
+    zIndex: 100,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   planContainer: {
     flex: 1,
@@ -1270,4 +1304,176 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.9)',
   },
+  authOptionsContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
+    gap: 16,
+    marginTop: 32,
+  },
+  authButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 12,
+  },
+  emailButton: {
+    backgroundColor: '#4F46E5',
+  },
+  phoneButton: {
+    backgroundColor: '#3B82F6',
+  },
+  guestButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  authButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  guestPromptText: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  disclaimerContainer: {
+    width: '90%',
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  disclaimerInner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    gap: 16,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  checkboxChecked: {
+    backgroundColor: '#E0E7FF',
+    borderColor: '#4F46E5',
+  },
+  disclaimerTextWrapper: {
+    flex: 1,
+    flexDirection: 'column',
+    gap: 2,
+  },
+  disclaimerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  disclaimerIcon: {
+    fontSize: 18,
+    marginRight: 2,
+  },
+  disclaimerTitle: {
+    fontWeight: '700',
+    color: '#FBBF24',
+    fontSize: 15,
+  },
+  disclaimerText: {
+    fontSize: 15,
+    color: '#F3F4F6',
+    lineHeight: 22,
+    opacity: 0.85,
+  },
+  authButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 16,
+  },
+  checkboxText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  ratingsContainer: {
+    flex: 1,
+    width: '100%',
+    paddingHorizontal: 24,
+    justifyContent: 'space-between',
+  },
+  ratingsContent: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  ratingsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 28,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  starButton: {
+    padding: 8,
+  },
+  starIcon: {
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  ratingsSubtitle: {
+    fontSize: 16,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  ratingsFooter: {
+    marginBottom: 40,
+    paddingHorizontal: 20,
+  },
+  ratingsFooterText: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 20,
+  },
+  ratingInfoCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  ratingInfoText: {
+    fontSize: 15,
+    color: '#E2E8F0',
+    lineHeight: 24,
+  }
 });
